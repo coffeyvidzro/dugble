@@ -2,10 +2,13 @@ package team
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -13,12 +16,18 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 )
 
+var (
+	ErrInvitationNotAccepted   = errors.New("invitation not accepted")
+	ErrTeamMemberAlreadyExists = errors.New("team member already exists")
+)
+
 type Repository struct {
+	db      *pgxpool.Pool
 	queries *dbsqlc.Queries
 }
 
 func NewRepository(db *pgxpool.Pool) *Repository {
-	return &Repository{queries: dbsqlc.New(db)}
+	return &Repository{db: db, queries: dbsqlc.New(db)}
 }
 
 func (r *Repository) Create(ctx context.Context, name string, createdBy uuid.UUID) (Team, error) {
@@ -177,6 +186,49 @@ func (r *Repository) AcceptInvitation(ctx context.Context, tokenHash string) (In
 	return invitationFromSQLC(row), nil
 }
 
+func (r *Repository) AcceptInvitationAndCreateMember(
+	ctx context.Context,
+	tokenHash string,
+	teamID uuid.UUID,
+	userID uuid.UUID,
+	role string,
+	status string,
+) (Invitation, error) {
+	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return Invitation{}, fmt.Errorf("begin invitation transaction: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	q := r.queries.WithTx(tx)
+	row, err := q.AcceptTeamInvitation(ctx, dbsqlc.AcceptTeamInvitationParams{TokenHash: tokenHash})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Invitation{}, ErrInvitationNotAccepted
+		}
+		return Invitation{}, fmt.Errorf("accept team invitation: %w", err)
+	}
+
+	if _, err := q.CreateTeamMember(ctx, dbsqlc.CreateTeamMemberParams{
+		TeamID: teamID,
+		UserID: userID,
+		Role:   role,
+		Status: status,
+	}); err != nil {
+		if isUniqueViolation(err) {
+			return Invitation{}, ErrTeamMemberAlreadyExists
+		}
+		return Invitation{}, fmt.Errorf("create team member: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return Invitation{}, fmt.Errorf("commit invitation acceptance: %w", err)
+	}
+	return invitationFromSQLC(row), nil
+}
+
 func (r *Repository) DeclineInvitation(ctx context.Context, tokenHash string) (Invitation, error) {
 	row, err := r.queries.DeclineTeamInvitation(
 		ctx,
@@ -212,6 +264,11 @@ func (r *Repository) RemoveMember(ctx context.Context, teamID uuid.UUID, userID 
 		return fmt.Errorf("remove team member: %w", err)
 	}
 	return nil
+}
+
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
 
 func teamFromSQLC(row dbsqlc.Team) Team {

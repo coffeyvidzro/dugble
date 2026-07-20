@@ -2,6 +2,7 @@ package team
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/mail"
 	"strings"
@@ -322,21 +323,23 @@ func (s *Service) AcceptInvitation(ctx context.Context, token string) (Invitatio
 	if _, err := s.repository.GetMember(ctx, teamID, principal.UserID); err == nil {
 		return Invitation{}, apperrors.NewBadRequest("User is already a team member")
 	}
-	accepted, err := s.repository.AcceptInvitation(
+	accepted, err := s.repository.AcceptInvitationAndCreateMember(
 		ctx,
 		authnz.HashSessionToken(strings.TrimSpace(token)),
-	)
-	if err != nil {
-		return Invitation{}, apperrors.NewBadRequest("Invitation token is invalid or expired")
-	}
-	if _, err := s.repository.CreateMember(
-		ctx,
 		teamID,
 		principal.UserID,
 		invitation.Role,
 		"active",
-	); err != nil {
-		return Invitation{}, apperrors.NewInternal("Unable to add invited team member", err)
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrInvitationNotAccepted):
+			return Invitation{}, apperrors.NewBadRequest("Invitation token is invalid or expired")
+		case errors.Is(err, ErrTeamMemberAlreadyExists):
+			return Invitation{}, apperrors.NewBadRequest("User is already a team member")
+		default:
+			return Invitation{}, apperrors.NewInternal("Unable to accept invitation", err)
+		}
 	}
 	return accepted, nil
 }
