@@ -1,0 +1,20 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Dugble API",
+    "description": "Developer-first email and SMS API for African startups and teams.",
+    "version": "0.1.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.dugble.com",
+      "description": "Production"
+    }
+  ],
+  "paths": {},
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ]
+}

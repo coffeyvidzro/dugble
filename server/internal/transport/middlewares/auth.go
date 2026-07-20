@@ -1,0 +1,73 @@
+package middlewares
+
+import (
+	"context"
+	"time"
+
+	"github.com/labstack/echo/v5"
+
+	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
+	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
+	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
+	"github.com/coffeyvidzro/dugble/server/pkg/httputil"
+)
+
+type PrincipalRepository interface {
+	GetPrincipalByUserID(ctx context.Context, id string) (authnz.Principal, error)
+}
+
+type SessionStore interface {
+	GetByTokenHash(ctx context.Context, tokenHash string) (session.Record, error)
+	Touch(ctx context.Context, id string) error
+}
+
+type SessionAuthConfig struct {
+	Sessions SessionStore
+	Users    PrincipalRepository
+}
+
+func SessionAuth(config SessionAuthConfig) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) error {
+			if config.Sessions == nil || config.Users == nil {
+				return httputil.Error(
+					c,
+					apperrors.NewInternal("Authentication is not configured", nil),
+				)
+			}
+
+			cookie, err := c.Request().Cookie(authnz.SessionCookieName)
+			if err != nil || cookie.Value == "" {
+				return httputil.Error(c, apperrors.NewUnauthorized("Authentication is required"))
+			}
+
+			session, err := config.Sessions.GetByTokenHash(
+				c.Request().Context(),
+				authnz.HashSessionToken(cookie.Value),
+			)
+			if err != nil {
+				return httputil.Error(c, apperrors.NewInternal("Unable to load session", err))
+			}
+			if session.RevokedAt != nil || !session.ExpiresAt.After(time.Now().UTC()) {
+				return httputil.Error(c, apperrors.NewUnauthorized("Session is invalid or expired"))
+			}
+
+			user, err := config.Users.GetPrincipalByUserID(
+				c.Request().Context(),
+				session.UserID.String(),
+			)
+			if err != nil {
+				return httputil.Error(c, apperrors.NewInternal("Unable to resolve session user", err))
+			}
+
+			if err := config.Sessions.Touch(c.Request().Context(), session.ID); err != nil {
+				return httputil.Error(c, apperrors.NewInternal("Unable to update session activity", err))
+			}
+			principal := user
+			principal.SessionID = session.ID
+			ctx := authnz.ContextWithPrincipal(c.Request().Context(), principal)
+			c.SetRequest(c.Request().WithContext(ctx))
+			return next(c)
+		}
+	}
+}

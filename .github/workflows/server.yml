@@ -1,0 +1,47 @@
+name: Server CI
+
+on:
+  push:
+    paths:
+      - "server/**/*.go"
+      - "server/go.mod"
+      - "server/go.sum"
+      - "server/cmd/**"
+      - "server/internal/**"
+      - "server/pkg/**"
+      - ".github/workflows/server.yml"
+  pull_request:
+    paths:
+      - "server/**/*.go"
+      - "server/go.mod"
+      - "server/go.sum"
+      - "server/cmd/**"
+      - "server/internal/**"
+      - "server/pkg/**"
+      - ".github/workflows/server.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Build
+        run: go build -v ./...
