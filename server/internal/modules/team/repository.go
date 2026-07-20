@@ -1,0 +1,271 @@
+package team
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
+	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
+)
+
+type Repository struct {
+	queries *dbsqlc.Queries
+}
+
+func NewRepository(db *pgxpool.Pool) *Repository {
+	return &Repository{queries: dbsqlc.New(db)}
+}
+
+func (r *Repository) Create(ctx context.Context, name string, createdBy uuid.UUID) (Team, error) {
+	row, err := r.queries.CreateTeam(
+		ctx,
+		dbsqlc.CreateTeamParams{Name: name, CreatedBy: &createdBy},
+	)
+	if err != nil {
+		return Team{}, fmt.Errorf("create team: %w", err)
+	}
+	return teamFromSQLC(row), nil
+}
+
+func (r *Repository) Get(ctx context.Context, id uuid.UUID) (Team, error) {
+	row, err := r.queries.GetTeam(ctx, dbsqlc.GetTeamParams{ID: id})
+	if err != nil {
+		return Team{}, fmt.Errorf("get team: %w", err)
+	}
+	return teamFromSQLC(row), nil
+}
+
+func (r *Repository) ListForUser(ctx context.Context, userID uuid.UUID) ([]Team, error) {
+	rows, err := r.queries.ListTeamsForUser(ctx, dbsqlc.ListTeamsForUserParams{UserID: userID})
+	if err != nil {
+		return nil, fmt.Errorf("list teams for user: %w", err)
+	}
+	teams := make([]Team, 0, len(rows))
+	for _, row := range rows {
+		teams = append(teams, teamFromSQLC(row))
+	}
+	return teams, nil
+}
+
+func (r *Repository) Update(ctx context.Context, id uuid.UUID, name string) (Team, error) {
+	row, err := r.queries.UpdateTeam(ctx, dbsqlc.UpdateTeamParams{ID: id, Name: name})
+	if err != nil {
+		return Team{}, fmt.Errorf("update team: %w", err)
+	}
+	return teamFromSQLC(row), nil
+}
+
+func (r *Repository) Disable(ctx context.Context, id uuid.UUID) (Team, error) {
+	row, err := r.queries.DisableTeam(ctx, dbsqlc.DisableTeamParams{ID: id})
+	if err != nil {
+		return Team{}, fmt.Errorf("disable team: %w", err)
+	}
+	return teamFromSQLC(row), nil
+}
+
+func (r *Repository) CreateMember(
+	ctx context.Context,
+	teamID uuid.UUID,
+	userID uuid.UUID,
+	role string,
+	status string,
+) (Member, error) {
+	row, err := r.queries.CreateTeamMember(
+		ctx,
+		dbsqlc.CreateTeamMemberParams{TeamID: teamID, UserID: userID, Role: role, Status: status},
+	)
+	if err != nil {
+		return Member{}, fmt.Errorf("create team member: %w", err)
+	}
+	return memberFromSQLC(row), nil
+}
+
+func (r *Repository) GetMember(
+	ctx context.Context,
+	teamID uuid.UUID,
+	userID uuid.UUID,
+) (Member, error) {
+	row, err := r.queries.GetTeamMember(
+		ctx,
+		dbsqlc.GetTeamMemberParams{TeamID: teamID, UserID: userID},
+	)
+	if err != nil {
+		return Member{}, fmt.Errorf("get team member: %w", err)
+	}
+	return memberFromSQLC(row), nil
+}
+
+func (r *Repository) GetTenantMembership(
+	ctx context.Context,
+	teamID uuid.UUID,
+	userID uuid.UUID,
+) (tenant.Membership, error) {
+	member, err := r.GetMember(ctx, teamID, userID)
+	if err != nil {
+		return tenant.Membership{}, err
+	}
+	return tenant.Membership{
+		TeamID: teamID,
+		UserID: userID,
+		Role:   member.Role,
+		Status: member.Status,
+	}, nil
+}
+
+func (r *Repository) ListMembers(ctx context.Context, teamID uuid.UUID) ([]Member, error) {
+	rows, err := r.queries.ListTeamMembers(ctx, dbsqlc.ListTeamMembersParams{TeamID: teamID})
+	if err != nil {
+		return nil, fmt.Errorf("list team members: %w", err)
+	}
+	members := make([]Member, 0, len(rows))
+	for _, row := range rows {
+		members = append(members, memberFromSQLC(row))
+	}
+	return members, nil
+}
+
+func (r *Repository) CreateInvitation(
+	ctx context.Context,
+	teamID uuid.UUID,
+	email string,
+	role string,
+	tokenHash string,
+	invitedBy uuid.UUID,
+	expiresAt time.Time,
+) (Invitation, error) {
+	row, err := r.queries.CreateTeamInvitation(ctx, dbsqlc.CreateTeamInvitationParams{
+		TeamID:    teamID,
+		Email:     email,
+		Role:      role,
+		TokenHash: tokenHash,
+		InvitedBy: &invitedBy,
+		ExpiresAt: pgtype.Timestamptz{Time: expiresAt, Valid: true},
+	})
+	if err != nil {
+		return Invitation{}, fmt.Errorf("create team invitation: %w", err)
+	}
+	return invitationFromSQLC(row), nil
+}
+
+func (r *Repository) GetInvitationByTokenHash(
+	ctx context.Context,
+	tokenHash string,
+) (Invitation, error) {
+	row, err := r.queries.GetTeamInvitationByTokenHash(
+		ctx,
+		dbsqlc.GetTeamInvitationByTokenHashParams{TokenHash: tokenHash},
+	)
+	if err != nil {
+		return Invitation{}, fmt.Errorf("get team invitation by token hash: %w", err)
+	}
+	return invitationFromSQLC(row), nil
+}
+
+func (r *Repository) AcceptInvitation(ctx context.Context, tokenHash string) (Invitation, error) {
+	row, err := r.queries.AcceptTeamInvitation(
+		ctx,
+		dbsqlc.AcceptTeamInvitationParams{TokenHash: tokenHash},
+	)
+	if err != nil {
+		return Invitation{}, fmt.Errorf("accept team invitation: %w", err)
+	}
+	return invitationFromSQLC(row), nil
+}
+
+func (r *Repository) DeclineInvitation(ctx context.Context, tokenHash string) (Invitation, error) {
+	row, err := r.queries.DeclineTeamInvitation(
+		ctx,
+		dbsqlc.DeclineTeamInvitationParams{TokenHash: tokenHash},
+	)
+	if err != nil {
+		return Invitation{}, fmt.Errorf("decline team invitation: %w", err)
+	}
+	return invitationFromSQLC(row), nil
+}
+
+func (r *Repository) UpdateMemberRole(
+	ctx context.Context,
+	teamID uuid.UUID,
+	userID uuid.UUID,
+	role string,
+) (Member, error) {
+	row, err := r.queries.UpdateTeamMemberRole(
+		ctx,
+		dbsqlc.UpdateTeamMemberRoleParams{TeamID: teamID, UserID: userID, Role: role},
+	)
+	if err != nil {
+		return Member{}, fmt.Errorf("update team member role: %w", err)
+	}
+	return memberFromSQLC(row), nil
+}
+
+func (r *Repository) RemoveMember(ctx context.Context, teamID uuid.UUID, userID uuid.UUID) error {
+	if err := r.queries.RemoveTeamMember(
+		ctx,
+		dbsqlc.RemoveTeamMemberParams{TeamID: teamID, UserID: userID},
+	); err != nil {
+		return fmt.Errorf("remove team member: %w", err)
+	}
+	return nil
+}
+
+func teamFromSQLC(row dbsqlc.Team) Team {
+	var createdBy *string
+	if row.CreatedBy != nil {
+		value := row.CreatedBy.String()
+		createdBy = &value
+	}
+	return Team{
+		ID:        row.ID.String(),
+		Name:      row.Name,
+		Status:    row.Status,
+		CreatedBy: createdBy,
+		CreatedAt: row.CreatedAt.Time,
+		UpdatedAt: row.UpdatedAt.Time,
+	}
+}
+
+func invitationFromSQLC(row dbsqlc.TeamInvitation) Invitation {
+	var invitedBy *string
+	if row.InvitedBy != nil {
+		value := row.InvitedBy.String()
+		invitedBy = &value
+	}
+	var acceptedAt *time.Time
+	if row.AcceptedAt.Valid {
+		acceptedAt = &row.AcceptedAt.Time
+	}
+	var declinedAt *time.Time
+	if row.DeclinedAt.Valid {
+		declinedAt = &row.DeclinedAt.Time
+	}
+	return Invitation{
+		ID:         row.ID.String(),
+		TeamID:     row.TeamID.String(),
+		Email:      row.Email,
+		Role:       row.Role,
+		Status:     row.Status,
+		InvitedBy:  invitedBy,
+		ExpiresAt:  row.ExpiresAt.Time,
+		AcceptedAt: acceptedAt,
+		DeclinedAt: declinedAt,
+		CreatedAt:  row.CreatedAt.Time,
+		UpdatedAt:  row.UpdatedAt.Time,
+	}
+}
+
+func memberFromSQLC(row dbsqlc.TeamMember) Member {
+	return Member{
+		TeamID:    row.TeamID.String(),
+		UserID:    row.UserID.String(),
+		Role:      row.Role,
+		Status:    row.Status,
+		CreatedAt: row.CreatedAt.Time,
+		UpdatedAt: row.UpdatedAt.Time,
+	}
+}

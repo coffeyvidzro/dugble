@@ -1,0 +1,76 @@
+-- name: CreateTeam :one
+INSERT INTO teams (
+    name,
+    created_by
+) VALUES (
+    sqlc.arg(name),
+    sqlc.arg(created_by)
+)
+RETURNING *;
+
+-- name: GetTeam :one
+SELECT *
+FROM teams
+WHERE id = sqlc.arg(id);
+
+-- name: ListTeamsForUser :many
+SELECT t.*
+FROM teams t
+JOIN team_members tm ON tm.team_id = t.id
+WHERE tm.user_id = sqlc.arg(user_id)
+  AND tm.status = 'active'
+  AND t.status = 'active'
+ORDER BY t.created_at DESC;
+
+-- name: UpdateTeam :one
+UPDATE teams
+SET name = sqlc.arg(name),
+    updated_at = now()
+WHERE id = sqlc.arg(id)
+RETURNING *;
+
+-- name: DisableTeam :one
+UPDATE teams
+SET status = 'disabled',
+    updated_at = now()
+WHERE id = sqlc.arg(id)
+RETURNING *;
+
+-- name: CreateTeamMember :one
+INSERT INTO team_members (
+    team_id,
+    user_id,
+    role,
+    status
+) VALUES (
+    sqlc.arg(team_id),
+    sqlc.arg(user_id),
+    sqlc.arg(role),
+    sqlc.arg(status)
+)
+RETURNING *;
+
+-- name: GetTeamMember :one
+SELECT *
+FROM team_members
+WHERE team_id = sqlc.arg(team_id)
+  AND user_id = sqlc.arg(user_id);
+
+-- name: ListTeamMembers :many
+SELECT *
+FROM team_members
+WHERE team_id = sqlc.arg(team_id)
+ORDER BY created_at ASC;
+
+-- name: UpdateTeamMemberRole :one
+UPDATE team_members
+SET role = sqlc.arg(role),
+    updated_at = now()
+WHERE team_id = sqlc.arg(team_id)
+  AND user_id = sqlc.arg(user_id)
+RETURNING *;
+
+-- name: RemoveTeamMember :exec
+DELETE FROM team_members
+WHERE team_id = sqlc.arg(team_id)
+  AND user_id = sqlc.arg(user_id);

@@ -1,0 +1,114 @@
+name: dugble
+
+x-app-env: &app-env
+  APP_ENV: ${APP_ENV:-development}
+  DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-dugble}?sslmode=disable
+  FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+  ARCJET_KEY: ${ARCJET_KEY}
+
+x-app-build: &app-build
+  build:
+    context: ./server
+    dockerfile: Dockerfile
+
+services:
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: dugble-caddy
+    restart: unless-stopped
+    environment:
+      API_DOMAIN: ${API_DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - dugble-network
+    depends_on:
+      server:
+        condition: service_started
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: dugble-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-dugble}
+    expose:
+      - "5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - dugble-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:8-alpine
+    container_name: dugble-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - dugble-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  server:
+    <<: *app-build
+    container_name: dugble-server
+    restart: unless-stopped
+    command: ["/dugble/server"]
+    environment:
+      <<: *app-env
+    expose:
+      - "8080"
+    networks:
+      - dugble-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    <<: *app-build
+    container_name: dugble-worker
+    restart: unless-stopped
+    command: ["/dugble/worker"]
+    environment:
+      <<: *app-env
+    networks:
+      - dugble-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+networks:
+  dugble-network:
+    name: dugble-network
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
