@@ -1,7 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import type * as React from "react";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
@@ -13,6 +15,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { csrfFetch } from "@/lib/csrf-fetch";
 import { cn } from "@/lib/utils";
 
 export const formSchema = z.object({
@@ -24,6 +27,9 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -32,14 +38,32 @@ export function LoginForm({
     },
   });
 
-  function onSubmit(data: z.infer<typeof formSchema>) {
-    toast("You submitted the following values:", {
-      description: (
-        <pre className="mt-2 w-[320px] overflow-x-auto rounded-md bg-code p-4 text-code-foreground">
-          <code>{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
-    });
+  async function onSubmit(data: z.infer<typeof formSchema>) {
+    setLoading(true);
+
+    try {
+      const response = await csrfFetch("/api/v1/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => null);
+        toast.error(error?.error?.message ?? "Invalid email or password.");
+        return;
+      }
+
+      toast.success("Signed in successfully.");
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      toast.error("Unable to sign in. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -64,6 +88,7 @@ export function LoginForm({
                     placeholder="coffey@vidzro.com"
                     autoComplete="email"
                     type="email"
+                    disabled={loading}
                   />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
@@ -93,6 +118,7 @@ export function LoginForm({
                     placeholder="**************"
                     autoComplete="password"
                     type="password"
+                    disabled={loading}
                   />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
@@ -101,7 +127,7 @@ export function LoginForm({
               )}
             />
 
-            <Button type="submit" form="login-form">
+            <Button type="submit" disabled={loading} form="login-form">
               Sign in
             </Button>
           </FieldGroup>
