@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
-import { getBlogPostPath, getBlogPosts } from "@/lib/blog";
 import { baseUrl } from "@/lib/site";
+import { getBlogPostPath, getBlogPosts } from "./(marketing)/blog/utils";
 
 const routes = [
   "",

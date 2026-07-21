@@ -1,4 +1,4 @@
-import { formatBlogDate, getBlogPostPath, getBlogPosts } from "@/lib/blog";
+import { formatBlogDate, getBlogPostPath, getBlogPosts } from "./utils";
 
 export default async function Page() {
   const posts = await getBlogPosts();

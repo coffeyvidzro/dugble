@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { baseUrl } from "@/lib/site";
 import {
   formatBlogDate,
   getBlogPost,
   getBlogPostPath,
   getBlogPosts,
-} from "@/lib/blog";
-import { baseUrl } from "@/lib/site";
+} from "../utils";
 
 export async function generateStaticParams() {
   const posts = await getBlogPosts();
