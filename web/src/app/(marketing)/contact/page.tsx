@@ -1,52 +1,45 @@
-import { FocusedMarketingPage } from "@/components/marketing/focused-marketing-page";
+import { MarketingNav } from "@/components/marketing/marketing-nav";
+import { Button } from "@/components/ui/button";
+
+const reasons = [
+  "Early access",
+  "Product feedback",
+  "Volume SMS",
+  "Partnerships",
+  "Support",
+];
 
 export default function Page() {
   return (
-    <FocusedMarketingPage
-      eyebrow="Contact"
-      title="Talk to Dugble about messaging infrastructure."
-      description="Reach out for product feedback, early access, partnership conversations, support, or volume A2P messaging discussions."
-      checklist={[
-        "Early access and product feedback.",
-        "Volume messaging conversations.",
-        "Partnership and integration discussions.",
-        "Support for account or onboarding questions.",
-      ]}
-      note={{
-        title: "Let’s build with you",
-        description:
-          "The best product feedback comes from teams actively sending customer messages.",
-      }}
-      features={[
-        {
-          title: "Early access",
-          description:
-            "Join the first group of teams shaping Dugble workflows.",
-        },
-        {
-          title: "Product feedback",
-          description:
-            "Tell us what your current messaging stack makes difficult.",
-        },
-        {
-          title: "Volume planning",
-          description: "Discuss OTP, notification, email, or SMS scale needs.",
-        },
-        {
-          title: "Partnerships",
-          description:
-            "Explore integrations across product, delivery, or infrastructure.",
-        },
-        {
-          title: "Support",
-          description: "Get help with account, dashboard, or API questions.",
-        },
-        {
-          title: "Roadmap input",
-          description:
-            "Help prioritize the messaging primitives that matter most.",
-        },
-      ]}
-    />
+    <main className="min-h-svh bg-background text-foreground">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-12 px-6 py-8 lg:px-8">
+        <MarketingNav />
+        <section className="space-y-6 py-16">
+          <p className="font-medium text-primary text-sm uppercase tracking-[0.2em]">
+            Contact
+          </p>
+          <h1 className="font-heading text-5xl font-semibold tracking-tight md:text-6xl">
+            Talk to Dugble about A2P messaging.
+          </h1>
+          <p className="text-lg text-muted-foreground leading-8">
+            Reach out if you are building OTP, alert, receipt, or notification
+            workflows and want sharper infrastructure behind them.
+          </p>
+          <Button size="lg" render={<a href="mailto:hello@dugble.com" />}>
+            Email hello@dugble.com
+          </Button>
+        </section>
+        <section className="flex flex-wrap gap-2">
+          {reasons.map((reason) => (
+            <span
+              key={reason}
+              className="rounded-full border px-4 py-2 text-sm"
+            >
+              {reason}
+            </span>
+          ))}
+        </section>
+      </div>
+    </main>
   );
 }

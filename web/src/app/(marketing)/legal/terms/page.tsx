@@ -1,54 +1,28 @@
-import { FocusedMarketingPage } from "@/components/marketing/focused-marketing-page";
+import { MarketingNav } from "@/components/marketing/marketing-nav";
 
 export default function Page() {
   return (
-    <FocusedMarketingPage
-      eyebrow="Terms"
-      title="Terms for using Dugble APIs and dashboard."
-      description="These first-pass terms describe the expected use of Dugble accounts, APIs, messaging workflows, and operational responsibilities."
-      checklist={[
-        "Use APIs for lawful A2P messaging.",
-        "Keep API keys secure and server-side.",
-        "Respect recipient consent and applicable messaging rules.",
-        "Monitor delivery logs and webhook outcomes.",
-      ]}
-      note={{
-        title: "Legal placeholder",
-        description:
-          "This page is a product draft and should be replaced with counsel-reviewed terms before launch.",
-      }}
-      features={[
-        {
-          title: "Account responsibility",
-          description:
-            "Teams are responsible for users, workspaces, and credentials.",
-        },
-        {
-          title: "API usage",
-          description:
-            "Messaging APIs should be used for legitimate product communication.",
-        },
-        {
-          title: "Recipient rules",
-          description:
-            "Customers must follow applicable consent and messaging requirements.",
-        },
-        {
-          title: "Service changes",
-          description:
-            "Dugble may improve APIs, limits, routes, and dashboard features.",
-        },
-        {
-          title: "Operational limits",
-          description:
-            "Rate limits and safeguards protect platform reliability.",
-        },
-        {
-          title: "Support path",
-          description:
-            "Contact Dugble for questions about usage, compliance, or incidents.",
-        },
-      ]}
-    />
+    <main className="min-h-svh bg-background text-foreground">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-10 px-6 py-8 lg:px-8">
+        <MarketingNav />
+        <article className="space-y-6 py-16">
+          <p className="font-medium text-primary text-sm uppercase tracking-[0.2em]">
+            Terms
+          </p>
+          <h1 className="font-heading text-5xl font-semibold tracking-tight">
+            Terms placeholder.
+          </h1>
+          <p className="text-muted-foreground leading-8">
+            This is a product placeholder for Dugble API and dashboard terms. It
+            should be replaced by counsel-reviewed legal language before launch.
+          </p>
+          <p className="text-muted-foreground leading-8">
+            The expected use is lawful A2P messaging, secure API key handling,
+            recipient consent, and responsible monitoring of delivery logs and
+            webhook outcomes.
+          </p>
+        </article>
+      </div>
+    </main>
   );
 }

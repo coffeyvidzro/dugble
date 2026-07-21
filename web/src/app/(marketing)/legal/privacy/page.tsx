@@ -1,51 +1,28 @@
-import { FocusedMarketingPage } from "@/components/marketing/focused-marketing-page";
+import { MarketingNav } from "@/components/marketing/marketing-nav";
 
 export default function Page() {
   return (
-    <FocusedMarketingPage
-      eyebrow="Privacy"
-      title="Privacy principles for customer messaging data."
-      description="Dugble will handle account, workspace, recipient, and message-event data with clear product boundaries and operational safeguards."
-      checklist={[
-        "Collect only what messaging workflows need.",
-        "Separate account, workspace, and message data.",
-        "Protect credentials and operational logs.",
-        "Use data to provide delivery visibility and support.",
-      ]}
-      note={{
-        title: "Legal placeholder",
-        description:
-          "This first-pass page is product-oriented and should be reviewed by counsel before production launch.",
-      }}
-      features={[
-        {
-          title: "Account data",
-          description: "Used to authenticate users and manage workspaces.",
-        },
-        {
-          title: "Recipient data",
-          description: "Used to process messages and delivery outcomes.",
-        },
-        {
-          title: "Message data",
-          description:
-            "Used for logs, support, retries, and delivery visibility.",
-        },
-        {
-          title: "Webhook data",
-          description:
-            "Used to deliver event payloads to configured endpoints.",
-        },
-        {
-          title: "Retention planning",
-          description: "Define retention windows for logs and event history.",
-        },
-        {
-          title: "Security controls",
-          description:
-            "Protect access through sessions, API keys, and workspace boundaries.",
-        },
-      ]}
-    />
+    <main className="min-h-svh bg-background text-foreground">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-10 px-6 py-8 lg:px-8">
+        <MarketingNav />
+        <article className="space-y-6 py-16">
+          <p className="font-medium text-primary text-sm uppercase tracking-[0.2em]">
+            Privacy
+          </p>
+          <h1 className="font-heading text-5xl font-semibold tracking-tight">
+            Privacy placeholder.
+          </h1>
+          <p className="text-muted-foreground leading-8">
+            This is a product placeholder for how Dugble expects to handle
+            account, workspace, recipient, message, and webhook data. It should
+            be replaced by counsel-reviewed legal language before launch.
+          </p>
+          <p className="text-muted-foreground leading-8">
+            The product principle is to collect what message delivery needs,
+            protect operational logs, and make retention rules clear.
+          </p>
+        </article>
+      </div>
+    </main>
   );
 }

@@ -1,11 +1,5 @@
+import { MarketingNav } from "@/components/marketing/marketing-nav";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 
 const productPillars = [
   {
@@ -52,34 +46,7 @@ export default function Home() {
   return (
     <main className="min-h-svh bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-20 px-6 py-8 lg:px-8">
-        <header className="flex items-center justify-between gap-4">
-          <a href="/" className="font-heading font-semibold text-lg">
-            Dugble
-          </a>
-          <nav className="hidden items-center gap-6 text-muted-foreground text-sm md:flex">
-            <a href="/email-api" className="hover:text-foreground">
-              Email API
-            </a>
-            <a href="/sms-api" className="hover:text-foreground">
-              SMS API
-            </a>
-            <a href="/pricing" className="hover:text-foreground">
-              Pricing
-            </a>
-            <a href="/blog" className="hover:text-foreground">
-              Blog
-            </a>
-            <a href="/quickstart" className="hover:text-foreground">
-              Quickstart
-            </a>
-          </nav>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" render={<a href="/login" />}>
-              Sign in
-            </Button>
-            <Button render={<a href="/sign-up" />}>Start building</Button>
-          </div>
-        </header>
+        <MarketingNav />
 
         <section className="grid min-h-[70svh] items-center gap-10 py-10 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="space-y-8">
@@ -115,27 +82,27 @@ export default function Home() {
             </div>
           </div>
 
-          <Card className="overflow-hidden rounded-[2rem]">
-            <CardHeader>
-              <CardTitle>Send an OTP in one request</CardTitle>
-              <CardDescription>
+          <div className="rounded-[2rem] border bg-muted/40 p-6">
+            <div className="mb-5 space-y-1">
+              <h2 className="font-heading text-2xl font-semibold tracking-tight">
+                Send an OTP in one request
+              </h2>
+              <p className="text-muted-foreground text-sm">
                 A simple API surface for high-trust customer communication.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <pre className="overflow-x-auto rounded-3xl bg-muted p-5 text-sm leading-7">
-                <code>{`curl https://api.dugble.com/v1/messages/sms \\
-  -H "Authorization: Bearer dug_live_xxx" \\
-  -H "Content-Type: application/json" \\
+              </p>
+            </div>
+            <pre className="overflow-x-auto text-sm leading-7">
+              <code>{`curl https://api.dugble.com/v1/messages/sms \
+  -H "Authorization: Bearer dug_live_xxx" \
+  -H "Content-Type: application/json" \
   -d '{
     "to": "+233501234567",
     "template": "otp",
     "data": { "code": "123456" },
     "idempotency_key": "otp_01J..."
   }'`}</code>
-              </pre>
-            </CardContent>
-          </Card>
+            </pre>
+          </div>
         </section>
 
         <section className="space-y-8">
@@ -149,12 +116,14 @@ export default function Home() {
           </div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {productPillars.map((pillar) => (
-              <Card key={pillar.title}>
-                <CardHeader>
-                  <CardTitle>{pillar.title}</CardTitle>
-                  <CardDescription>{pillar.description}</CardDescription>
-                </CardHeader>
-              </Card>
+              <div key={pillar.title} className="rounded-[2rem] border p-5">
+                <h3 className="font-heading text-xl font-semibold tracking-tight">
+                  {pillar.title}
+                </h3>
+                <p className="mt-3 text-muted-foreground text-sm leading-6">
+                  {pillar.description}
+                </p>
+              </div>
             ))}
           </div>
         </section>

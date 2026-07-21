@@ -1,52 +1,28 @@
-import { FocusedMarketingPage } from "@/components/marketing/focused-marketing-page";
+import { MarketingNav } from "@/components/marketing/marketing-nav";
 
 export default function Page() {
   return (
-    <FocusedMarketingPage
-      eyebrow="About Dugble"
-      title="Developer-first A2P messaging for teams building customer trust."
-      description="Dugble is focused on the infrastructure layer behind OTPs, alerts, receipts, delivery updates, and other product-critical customer messages."
-      checklist={[
-        "Built around developer experience.",
-        "Focused on A2P email and SMS workflows.",
-        "Designed for observability and clear debugging.",
-        "Shaped for teams building in African markets.",
-      ]}
-      note={{
-        title: "Why Dugble exists",
-        description:
-          "Customer messages are part of the product experience, and developers need better tools to operate them.",
-      }}
-      features={[
-        {
-          title: "Developer experience",
-          description: "Make APIs, errors, logs, and webhooks predictable.",
-        },
-        {
-          title: "A2P focus",
-          description:
-            "Prioritize product-triggered communication over generic messaging.",
-        },
-        {
-          title: "Operational clarity",
-          description: "Help teams understand what happened to every message.",
-        },
-        {
-          title: "Local context",
-          description:
-            "Design around sender identity, routing, and customer expectations.",
-        },
-        {
-          title: "Trust moments",
-          description:
-            "Support OTPs, receipts, alerts, and lifecycle notifications.",
-        },
-        {
-          title: "Platform path",
-          description:
-            "Grow from messaging primitives into a broader CPaaS surface.",
-        },
-      ]}
-    />
+    <main className="min-h-svh bg-background text-foreground">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-12 px-6 py-8 lg:px-8">
+        <MarketingNav />
+        <section className="space-y-6 py-16">
+          <p className="font-medium text-primary text-sm uppercase tracking-[0.2em]">
+            About Dugble
+          </p>
+          <h1 className="font-heading text-5xl font-semibold tracking-tight md:text-6xl">
+            Messaging infrastructure should be easier to debug.
+          </h1>
+          <p className="text-lg text-muted-foreground leading-8">
+            Dugble is being built for teams that send customer-critical messages
+            — OTPs, receipts, alerts, and updates — and need to know exactly
+            what happened after every API call.
+          </p>
+          <p className="text-lg text-muted-foreground leading-8">
+            The point of view is simple: send the message, keep the receipt, and
+            make every failure easier to explain.
+          </p>
+        </section>
+      </div>
+    </main>
   );
 }
