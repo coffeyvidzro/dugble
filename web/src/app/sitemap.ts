@@ -15,12 +15,6 @@ const routes = [
   "/security",
   "/sms-api",
   "/status",
-  "/use-cases/customer-notifications",
-  "/use-cases/delivery-updates",
-  "/use-cases/marketing-campaigns",
-  "/use-cases/otp",
-  "/use-cases/payment-receipts",
-  "/use-cases/transactional-email",
   "/webhooks",
 ];
 
