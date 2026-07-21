@@ -57,14 +57,29 @@ export function AppSidebar({ user }: { user: SessionUser }) {
   const displayName = user.name.trim() || user.email;
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" variant="inset">
       <SidebarHeader>
-        <div className="flex flex-col gap-1 px-2 py-1.5">
-          <span className="font-heading font-semibold text-base">Dugble</span>
-          <span className="text-muted-foreground text-xs">
-            Developer console
-          </span>
-        </div>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="lg"
+              tooltip="Dugble"
+              render={<a href="/dashboard" />}
+            >
+              <div className="flex aspect-square size-8 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+                D
+              </div>
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-heading font-semibold">
+                  Dugble
+                </span>
+                <span className="truncate text-muted-foreground text-xs">
+                  Developer console
+                </span>
+              </div>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
         {navigation.map((section) => (
@@ -88,10 +103,21 @@ export function AppSidebar({ user }: { user: SessionUser }) {
         ))}
       </SidebarContent>
       <SidebarFooter>
-        <div className="min-w-0 px-2 py-1.5 text-sm">
-          <p className="truncate font-medium">{displayName}</p>
-          <p className="truncate text-muted-foreground text-xs">{user.email}</p>
-        </div>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" tooltip={displayName}>
+              <div className="flex aspect-square size-8 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                {displayName.slice(0, 1).toUpperCase()}
+              </div>
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-medium">{displayName}</span>
+                <span className="truncate text-muted-foreground text-xs">
+                  {user.email}
+                </span>
+              </div>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
