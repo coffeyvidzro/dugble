@@ -1,4 +1,4 @@
-import { formatBlogDate, getBlogPosts } from "@/lib/blog";
+import { formatBlogDate, getBlogPostPath, getBlogPosts } from "@/lib/blog";
 
 export default function Page() {
   const posts = getBlogPosts();
@@ -38,7 +38,10 @@ export default function Page() {
                 </time>
               </div>
               <h2 className="font-heading text-2xl font-semibold tracking-tight">
-                <a href={`/blog/${post.slug}`} className="hover:underline">
+                <a
+                  href={getBlogPostPath(post.slug)}
+                  className="hover:underline"
+                >
                   {post.metadata.title}
                 </a>
               </h2>

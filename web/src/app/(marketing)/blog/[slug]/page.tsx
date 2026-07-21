@@ -4,6 +4,7 @@ import {
   formatBlogDate,
   getBlogParagraphs,
   getBlogPost,
+  getBlogPostPath,
   getBlogPosts,
 } from "@/lib/blog";
 import { baseUrl } from "@/lib/site";
@@ -24,7 +25,7 @@ export async function generateMetadata({
     return {};
   }
 
-  const url = `${baseUrl}/blog/${post.slug}`;
+  const url = `${baseUrl}${getBlogPostPath(post.slug)}`;
 
   return {
     title: post.metadata.title,

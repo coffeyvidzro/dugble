@@ -15,6 +15,21 @@ export type BlogPost = {
 };
 
 const postsDirectory = path.join(process.cwd(), "src", "posts");
+const postSlugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export function isBlogPostSlug(slug: string): boolean {
+  return postSlugPattern.test(slug);
+}
+
+function getPostSlug(file: string): string | undefined {
+  if (path.extname(file) !== ".mdx") {
+    return undefined;
+  }
+
+  const slug = path.basename(file, ".mdx");
+
+  return isBlogPostSlug(slug) ? slug : undefined;
+}
 
 function parseFrontmatter(fileContent: string): {
   metadata: BlogPostMetadata;
@@ -44,10 +59,13 @@ function parseFrontmatter(fileContent: string): {
   return { metadata, content };
 }
 
-function getPostFiles(): string[] {
+function getPostFiles(): Array<{ file: string; slug: string }> {
   return fs
     .readdirSync(postsDirectory)
-    .filter((file) => path.extname(file) === ".mdx");
+    .map((file) => ({ file, slug: getPostSlug(file) }))
+    .filter((post): post is { file: string; slug: string } =>
+      Boolean(post.slug),
+    );
 }
 
 function readPostFile(filePath: string): Omit<BlogPost, "slug"> {
@@ -56,8 +74,7 @@ function readPostFile(filePath: string): Omit<BlogPost, "slug"> {
 
 export function getBlogPosts(): BlogPost[] {
   return getPostFiles()
-    .map((file) => {
-      const slug = path.basename(file, path.extname(file));
+    .map(({ file, slug }) => {
       const post = readPostFile(path.join(postsDirectory, file));
 
       return { slug, ...post };
@@ -68,7 +85,19 @@ export function getBlogPosts(): BlogPost[] {
 }
 
 export function getBlogPost(slug: string): BlogPost | undefined {
+  if (!isBlogPostSlug(slug)) {
+    return undefined;
+  }
+
   return getBlogPosts().find((post) => post.slug === slug);
+}
+
+export function getBlogPostPath(slug: string): string {
+  if (!isBlogPostSlug(slug)) {
+    throw new Error("Invalid blog post slug.");
+  }
+
+  return `/blog/${encodeURIComponent(slug)}`;
 }
 
 export function getBlogParagraphs(content: string): string[] {
