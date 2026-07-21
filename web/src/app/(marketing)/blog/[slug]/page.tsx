@@ -2,16 +2,19 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
   formatBlogDate,
-  getBlogParagraphs,
   getBlogPost,
   getBlogPostPath,
   getBlogPosts,
 } from "@/lib/blog";
 import { baseUrl } from "@/lib/site";
 
-export function generateStaticParams() {
-  return getBlogPosts().map((post) => ({ slug: post.slug }));
+export async function generateStaticParams() {
+  const posts = await getBlogPosts();
+
+  return posts.map((post) => ({ slug: post.slug }));
 }
+
+export const dynamicParams = false;
 
 export async function generateMetadata({
   params,
@@ -19,7 +22,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const post = await getBlogPost(slug);
 
   if (!post) {
     return {};
@@ -57,13 +60,13 @@ export default async function Page({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const post = await getBlogPost(slug);
 
   if (!post) {
     notFound();
   }
 
-  const paragraphs = getBlogParagraphs(post.content);
+  const { Post } = post;
 
   return (
     <main className="min-h-svh bg-background text-foreground">
@@ -89,10 +92,8 @@ export default async function Page({
             {post.metadata.summary}
           </p>
         </header>
-        <div className="space-y-5 text-base leading-8 text-muted-foreground">
-          {paragraphs.map((paragraph) => (
-            <p key={paragraph}>{paragraph}</p>
-          ))}
+        <div className="space-y-5 text-base text-muted-foreground">
+          <Post />
         </div>
       </article>
     </main>

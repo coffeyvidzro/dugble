@@ -1,9 +1,10 @@
----
-title: "A2P API design principles for developer experience"
-summary: "A short set of principles for predictable request shapes, idempotency, errors, webhooks, and test-mode workflows."
-publishedAt: "2026-07-21"
-category: "Engineering"
----
+export const metadata = {
+  title: "A2P API design principles for developer experience",
+  summary: "A short set of principles for predictable request shapes, idempotency, errors, webhooks, and test-mode workflows.",
+  publishedAt: "2026-07-21",
+  category: "Engineering",
+};
+
 Developer-first A2P APIs should be boring in the best way. Request bodies should be predictable, authentication should be obvious, and responses should include the identifiers needed to trace every message.
 
 Idempotency matters for messaging because network retries should not accidentally send duplicate OTPs, receipts, or customer alerts. Error responses should explain whether the developer can fix the request or whether the platform will retry in the background.

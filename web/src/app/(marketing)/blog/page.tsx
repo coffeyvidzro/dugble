@@ -1,7 +1,7 @@
 import { formatBlogDate, getBlogPostPath, getBlogPosts } from "@/lib/blog";
 
-export default function Page() {
-  const posts = getBlogPosts();
+export default async function Page() {
+  const posts = await getBlogPosts();
 
   return (
     <main className="min-h-svh bg-background text-foreground">
