@@ -1,13 +1,18 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { ComponentType } from "react";
+import { z } from "zod";
 
-export type BlogPostMetadata = {
-  title: string;
-  summary: string;
-  publishedAt: string;
-  category: string;
-};
+const blogPostMetadataSchema = z
+  .object({
+    title: z.string().trim().min(1),
+    summary: z.string().trim().min(1),
+    publishedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    category: z.string().trim().min(1),
+  })
+  .strict();
+
+export type BlogPostMetadata = z.infer<typeof blogPostMetadataSchema>;
 
 export type BlogPost = {
   slug: string;
@@ -45,33 +50,15 @@ function getPostFiles(): Array<{ file: string; slug: string }> {
     );
 }
 
-function isBlogPostMetadata(value: unknown): value is BlogPostMetadata {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const metadata = value as Record<string, unknown>;
-
-  return (
-    typeof metadata.title === "string" &&
-    typeof metadata.summary === "string" &&
-    typeof metadata.publishedAt === "string" &&
-    typeof metadata.category === "string"
-  );
-}
-
 async function importBlogPost(slug: string): Promise<BlogPostModule> {
   if (!isBlogPostSlug(slug)) {
     throw new Error("Invalid blog post slug.");
   }
 
   const post = (await import(`@/posts/${slug}.mdx`)) as BlogPostModule;
+  const metadata = blogPostMetadataSchema.parse(post.metadata);
 
-  if (!isBlogPostMetadata(post.metadata)) {
-    throw new Error(`Invalid blog post metadata for ${slug}.`);
-  }
-
-  return post;
+  return { ...post, metadata };
 }
 
 export function getBlogPostSlugs(): string[] {
