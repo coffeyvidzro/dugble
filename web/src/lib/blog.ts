@@ -15,14 +15,7 @@ export type BlogPost = {
   content: string;
 };
 
-const postsDirectory = path.join(
-  process.cwd(),
-  "src",
-  "app",
-  "(marketing)",
-  "blog",
-  "posts",
-);
+const postsDirectory = path.join(process.cwd(), "src", "posts");
 
 function parseFrontmatter(fileContent: string): {
   metadata: BlogPostMetadata;
