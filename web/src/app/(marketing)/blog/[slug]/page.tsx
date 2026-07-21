@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getBlogPost, getBlogPosts } from "@/lib/blog";
+import {
+  formatBlogDate,
+  getBlogParagraphs,
+  getBlogPost,
+  getBlogPosts,
+} from "@/lib/blog";
 import { baseUrl } from "@/lib/site";
 
 export function generateStaticParams() {
@@ -22,19 +27,25 @@ export async function generateMetadata({
   const url = `${baseUrl}/blog/${post.slug}`;
 
   return {
-    title: post.title,
-    description: post.summary,
+    title: post.metadata.title,
+    description: post.metadata.summary,
     openGraph: {
-      title: post.title,
-      description: post.summary,
+      title: post.metadata.title,
+      description: post.metadata.summary,
       type: "article",
-      publishedTime: post.publishedAt,
+      publishedTime: post.metadata.publishedAt,
       url,
+      images: [
+        `${baseUrl}/og?title=${encodeURIComponent(post.metadata.title)}`,
+      ],
     },
     twitter: {
       card: "summary_large_image",
-      title: post.title,
-      description: post.summary,
+      title: post.metadata.title,
+      description: post.metadata.summary,
+      images: [
+        `${baseUrl}/og?title=${encodeURIComponent(post.metadata.title)}`,
+      ],
     },
   };
 }
@@ -51,6 +62,8 @@ export default async function Page({
     notFound();
   }
 
+  const paragraphs = getBlogParagraphs(post.content);
+
   return (
     <main className="min-h-svh bg-background text-foreground">
       <article className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-6 py-12 lg:px-8">
@@ -62,19 +75,23 @@ export default async function Page({
         </a>
         <header className="space-y-4">
           <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
-            <span>{post.category}</span>
+            <span>{post.metadata.category}</span>
             <span>•</span>
-            <time dateTime={post.publishedAt}>{post.publishedAt}</time>
+            <time dateTime={post.metadata.publishedAt}>
+              {formatBlogDate(post.metadata.publishedAt)}
+            </time>
             <span>•</span>
-            <span>{post.readingTime}</span>
+            <span>{post.metadata.readingTime}</span>
           </div>
           <h1 className="font-heading text-4xl font-semibold tracking-tight md:text-5xl">
-            {post.title}
+            {post.metadata.title}
           </h1>
-          <p className="text-lg text-muted-foreground">{post.summary}</p>
+          <p className="text-lg text-muted-foreground">
+            {post.metadata.summary}
+          </p>
         </header>
         <div className="space-y-5 text-base leading-8 text-muted-foreground">
-          {post.content.map((paragraph) => (
+          {paragraphs.map((paragraph) => (
             <p key={paragraph}>{paragraph}</p>
           ))}
         </div>

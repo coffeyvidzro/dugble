@@ -1,4 +1,4 @@
-import { getBlogPosts } from "@/lib/blog";
+import { formatBlogDate, getBlogPosts } from "@/lib/blog";
 
 export default function Page() {
   const posts = getBlogPosts();
@@ -31,18 +31,22 @@ export default function Page() {
               className="rounded-4xl border bg-card p-6 shadow-sm"
             >
               <div className="mb-4 flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
-                <span>{post.category}</span>
+                <span>{post.metadata.category}</span>
                 <span>•</span>
-                <time dateTime={post.publishedAt}>{post.publishedAt}</time>
+                <time dateTime={post.metadata.publishedAt}>
+                  {formatBlogDate(post.metadata.publishedAt)}
+                </time>
                 <span>•</span>
-                <span>{post.readingTime}</span>
+                <span>{post.metadata.readingTime}</span>
               </div>
               <h2 className="font-heading text-2xl font-semibold tracking-tight">
                 <a href={`/blog/${post.slug}`} className="hover:underline">
-                  {post.title}
+                  {post.metadata.title}
                 </a>
               </h2>
-              <p className="mt-3 text-muted-foreground">{post.summary}</p>
+              <p className="mt-3 text-muted-foreground">
+                {post.metadata.summary}
+              </p>
             </article>
           ))}
         </div>
