@@ -3,9 +3,10 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { serverCsrfFetch } from "@/lib/server-csrf-fetch";
+import { env } from "@/config/env";
 
 const SESSION_COOKIE_NAME = "dugble_session";
+const BACKEND_URL = env.BACKEND_URL.replace(/\/+$/, "");
 
 const sessionSchema = z.object({
   user: z.object({
@@ -39,7 +40,7 @@ export async function getSession(): Promise<Session | null> {
     return null;
   }
 
-  const response = await serverCsrfFetch("/api/v1/auth/user", {
+  const response = await fetch(`${BACKEND_URL}/auth/user`, {
     method: "GET",
     headers: {
       Accept: "application/json",
