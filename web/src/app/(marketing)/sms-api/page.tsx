@@ -4,7 +4,7 @@ export default function Page() {
   return (
     <MarketingPlaceholderPage
       title="SMS API"
-      description="Reach customers with OTPs, alerts, receipts, reminders, and SMS notifications."
+      description="Reach customers with A2P SMS for OTPs, alerts, receipts, reminders, and product notifications."
     />
   );
 }

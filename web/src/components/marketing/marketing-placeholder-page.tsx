@@ -76,13 +76,13 @@ export function MarketingPlaceholderPage({
             <CardHeader>
               <CardTitle>Coming soon</CardTitle>
               <CardDescription>
-                This marketing page is scaffolded and ready for detailed product
-                copy, visuals, and conversion sections.
+                This marketing page is scaffolded for Dugble's developer
+                experience and A2P messaging story.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <pre className="overflow-x-auto rounded-3xl bg-muted p-4 text-sm">
-                <code>{`curl https://api.dugble.com/v1/messages/sms \\
+                <code>{`curl https://api.dugble.com/v1/a2p/sms \\
   -H "Authorization: Bearer dug_live_xxx" \\
   -H "Content-Type: application/json" \\
   -d '{"to":"+233501234567","body":"Your code is 123456"}'`}</code>

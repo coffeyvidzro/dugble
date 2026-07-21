@@ -4,7 +4,7 @@ export default function Page() {
   return (
     <MarketingPlaceholderPage
       title="Quickstart"
-      description="Create an account, generate an API key, and send your first Dugble message."
+      description="Create an account, generate an API key, and send your first A2P message with Dugble."
     />
   );
 }

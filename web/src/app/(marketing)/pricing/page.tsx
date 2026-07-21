@@ -4,7 +4,7 @@ export default function Page() {
   return (
     <MarketingPlaceholderPage
       title="Pricing"
-      description="Simple, transparent pricing for email, SMS, and customer messaging workflows."
+      description="Simple, transparent pricing for developer-first A2P email and SMS messaging workflows."
     />
   );
 }

@@ -4,7 +4,7 @@ export default function Page() {
   return (
     <MarketingPlaceholderPage
       title="Customer Notifications"
-      description="Keep customers informed across email and SMS with one messaging API."
+      description="Keep customers informed across A2P email and SMS with one developer-friendly messaging API."
     />
   );
 }

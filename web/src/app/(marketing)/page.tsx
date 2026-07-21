@@ -3,9 +3,9 @@ import { MarketingPlaceholderPage } from "@/components/marketing/marketing-place
 export default function Home() {
   return (
     <MarketingPlaceholderPage
-      eyebrow="Customer messaging infrastructure"
-      title="Email and SMS APIs for African teams"
-      description="Send transactional email, SMS alerts, OTPs, receipts, and customer notifications through one developer-first API."
+      eyebrow="Developer-first A2P messaging"
+      title="A2P email and SMS APIs built for developer experience"
+      description="Send OTPs, alerts, receipts, and customer notifications with clean APIs, clear logs, and messaging workflows built for African teams."
     />
   );
 }

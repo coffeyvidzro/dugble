@@ -8,7 +8,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 export const metadata: Metadata = {
   title: "Dugble",
   description:
-    "Developer-first email and SMS API for African startups and teams.",
+    "Developer-first A2P email and SMS APIs for African startups and teams.",
 };
 
 export default function RootLayout({
