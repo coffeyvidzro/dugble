@@ -36,8 +36,6 @@ export default function Page() {
                 <time dateTime={post.metadata.publishedAt}>
                   {formatBlogDate(post.metadata.publishedAt)}
                 </time>
-                <span>•</span>
-                <span>{post.metadata.readingTime}</span>
               </div>
               <h2 className="font-heading text-2xl font-semibold tracking-tight">
                 <a href={`/blog/${post.slug}`} className="hover:underline">

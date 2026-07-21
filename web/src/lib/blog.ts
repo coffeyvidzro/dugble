@@ -6,7 +6,6 @@ export type BlogPostMetadata = {
   summary: string;
   publishedAt: string;
   category: string;
-  readingTime: string;
 };
 
 export type BlogPost = {

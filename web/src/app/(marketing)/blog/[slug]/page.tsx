@@ -80,8 +80,6 @@ export default async function Page({
             <time dateTime={post.metadata.publishedAt}>
               {formatBlogDate(post.metadata.publishedAt)}
             </time>
-            <span>•</span>
-            <span>{post.metadata.readingTime}</span>
           </div>
           <h1 className="font-heading text-4xl font-semibold tracking-tight md:text-5xl">
             {post.metadata.title}
