@@ -1,0 +1,12 @@
+export const metadata = {
+  title: "Designing email and SMS fallback flows",
+  summary: "How fallback messaging can help teams improve reachability without making customer communication noisy or hard to debug.",
+  publishedAt: "2026-07-21",
+  category: "Product",
+};
+
+Many customer journeys need more than one channel. A receipt may start as email, an OTP may start as SMS, and a critical account alert may need a fallback if the first channel fails.
+
+Fallbacks should be explicit and observable. Developers need rules for when to retry, when to switch channels, how to avoid duplicate messages, and how to preserve a clear audit trail.
+
+For Dugble, this means thinking about messaging as a workflow instead of a single API call. A good developer experience should make channel selection, fallback rules, and delivery history easy to reason about.

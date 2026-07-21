@@ -15,6 +15,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/modules/user"
 	"github.com/coffeyvidzro/dugble/server/internal/notifications"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
+	"github.com/coffeyvidzro/dugble/server/internal/transport/csrf"
 	"github.com/coffeyvidzro/dugble/server/internal/transport/health"
 	"github.com/coffeyvidzro/dugble/server/internal/transport/middlewares"
 )
@@ -66,6 +67,8 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 			TrustedOrigins: cfg.CORSOrigins,
 		},
 	)
+	csrfHandler := csrf.NewHandler()
+	router.GET("/csrf", csrfHandler.Token, csrfMiddleware)
 
 	auth.RegisterRoutes(
 		router,

@@ -1,36 +1,55 @@
-import { cookies } from "next/headers";
+type CSRFTokenResponse = {
+  success?: unknown;
+  data?: {
+    csrf_token?: unknown;
+  };
+};
 
-const CSRF_COOKIE_NAME = "dugble_csrf";
+const CSRF_ENDPOINT = "/api/v1/csrf";
+const unsafeMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-export async function getCsrfToken(): Promise<string> {
-  const store = await cookies();
-  const token = store.get(CSRF_COOKIE_NAME)?.value ?? null;
+export async function getCSRFToken(): Promise<string> {
+  const response = await fetch(CSRF_ENDPOINT, {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  });
 
-  if (!token || token.trim() === "") {
-    throw new Error(`Missing CSRF token cookie (${CSRF_COOKIE_NAME}).`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch CSRF token.");
   }
+
+  const payload = (await response
+    .json()
+    .catch(() => null)) as CSRFTokenResponse | null;
+  const token = payload?.data?.csrf_token;
+
+  if (typeof token !== "string" || token.trim() === "") {
+    throw new Error("Invalid CSRF token response.");
+  }
+
   return token;
 }
 
 export async function csrfFetch(
-  input: string,
+  path: string,
   init: RequestInit = {},
 ): Promise<Response> {
-  const store = await cookies();
-  const cookieHeader = store.toString();
+  const method = (init.method ?? "GET").toUpperCase();
+  const headers = new Headers(init.headers);
 
-  const token = store.get(CSRF_COOKIE_NAME)?.value ?? "";
-  if (!token.trim()) {
-    throw new Error(`Missing CSRF token cookie (${CSRF_COOKIE_NAME}).`);
+  if (unsafeMethods.has(method)) {
+    const token = await getCSRFToken();
+    headers.set("X-CSRF-Token", token);
   }
 
-  const headers = new Headers(init.headers);
-  headers.set("X-CSRF-Token", token);
-  headers.set("Cookie", cookieHeader);
-
-  return fetch(input, {
+  return fetch(path, {
     ...init,
+    method,
+    credentials: "include",
     headers,
-    cache: "no-store",
   });
 }

@@ -3,6 +3,7 @@ name: dugble
 x-app-env: &app-env
   APP_ENV: ${APP_ENV:-development}
   DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-dugble}?sslmode=disable
+  REDIS_URL: redis://redis:6379/0
   FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
   CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
   ARCJET_KEY: ${ARCJET_KEY}
