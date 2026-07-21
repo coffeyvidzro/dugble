@@ -1,10 +1,25 @@
-import { cookies } from "next/headers";
-
 const CSRF_COOKIE_NAME = "dugble_csrf";
 
-export async function getCsrfToken(): Promise<string> {
-  const store = await cookies();
-  const token = store.get(CSRF_COOKIE_NAME)?.value ?? null;
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const encodedName = `${encodeURIComponent(name)}=`;
+  const cookie = document.cookie
+    .split(";")
+    .map((value) => value.trim())
+    .find((value) => value.startsWith(encodedName));
+
+  if (!cookie) {
+    return null;
+  }
+
+  return decodeURIComponent(cookie.slice(encodedName.length));
+}
+
+export function getCsrfToken(): string {
+  const token = readCookie(CSRF_COOKIE_NAME);
 
   if (!token || token.trim() === "") {
     throw new Error(`Missing CSRF token cookie (${CSRF_COOKIE_NAME}).`);
@@ -16,21 +31,12 @@ export async function csrfFetch(
   input: string,
   init: RequestInit = {},
 ): Promise<Response> {
-  const store = await cookies();
-  const cookieHeader = store.toString();
-
-  const token = store.get(CSRF_COOKIE_NAME)?.value ?? "";
-  if (!token.trim()) {
-    throw new Error(`Missing CSRF token cookie (${CSRF_COOKIE_NAME}).`);
-  }
-
   const headers = new Headers(init.headers);
-  headers.set("X-CSRF-Token", token);
-  headers.set("Cookie", cookieHeader);
+  headers.set("X-CSRF-Token", getCsrfToken());
 
   return fetch(input, {
     ...init,
     headers,
-    cache: "no-store",
+    credentials: init.credentials ?? "same-origin",
   });
 }

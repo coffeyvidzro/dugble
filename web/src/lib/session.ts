@@ -3,7 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { csrfFetch } from "@/lib/csrf-fetch";
+import { serverCsrfFetch } from "@/lib/server-csrf-fetch";
 
 const SESSION_COOKIE_NAME = "dugble_session";
 
@@ -39,7 +39,7 @@ export async function getSession(): Promise<Session | null> {
     return null;
   }
 
-  const response = await csrfFetch("/api/v1/auth/user", {
+  const response = await serverCsrfFetch("/api/v1/auth/user", {
     method: "GET",
     headers: {
       Accept: "application/json",
