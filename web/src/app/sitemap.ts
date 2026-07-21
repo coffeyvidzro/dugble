@@ -1,11 +1,11 @@
 import type { MetadataRoute } from "next";
-import { env } from "@/config/env";
-
-const baseUrl = env.NEXT_PUBLIC_BASE_URL.replace(/\/+$/, "");
+import { getBlogPosts } from "@/lib/blog";
+import { baseUrl } from "@/lib/site";
 
 const routes = [
   "",
   "/about",
+  "/blog",
   "/contact",
   "/email-api",
   "/industries/ecommerce",
@@ -30,9 +30,18 @@ const routes = [
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return routes.map((route) => ({
+  const marketingRoutes = routes.map((route) => ({
     url: `${baseUrl}${route}`,
-    changeFrequency: route === "" ? "weekly" : "monthly",
+    changeFrequency: route === "" ? ("weekly" as const) : ("monthly" as const),
     priority: route === "" ? 1 : 0.7,
   }));
+
+  const blogRoutes = getBlogPosts().map((post) => ({
+    url: `${baseUrl}/blog/${post.slug}`,
+    lastModified: post.publishedAt,
+    changeFrequency: "monthly" as const,
+    priority: 0.6,
+  }));
+
+  return [...marketingRoutes, ...blogRoutes];
 }

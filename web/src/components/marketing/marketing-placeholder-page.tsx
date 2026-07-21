@@ -33,6 +33,9 @@ export function MarketingPlaceholderPage({
             <a href="/pricing" className="hover:text-foreground">
               Pricing
             </a>
+            <a href="/blog" className="hover:text-foreground">
+              Blog
+            </a>
             <a href="/quickstart" className="hover:text-foreground">
               Quickstart
             </a>
