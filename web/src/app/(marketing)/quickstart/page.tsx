@@ -38,7 +38,7 @@ export default function Page() {
           <p className="font-medium text-primary text-sm uppercase tracking-[0.2em]">
             Quickstart
           </p>
-          <h1 className="max-w-4xl font-heading text-5xl font-semibold tracking-tight md:text-6xl">
+          <h1 className="max-w-4xl font-heading text-3xl font-semibold tracking-tight md:text-4xl">
             From API key to traceable message.
           </h1>
           <p className="max-w-2xl text-lg text-muted-foreground leading-8">
@@ -66,12 +66,16 @@ export default function Page() {
             </div>
           ))}
         </section>
-        <pre className="overflow-x-auto rounded-[2rem] border bg-muted/50 p-6 text-sm leading-7">
-          <code>{`curl https://api.dugble.com/v1/messages/sms \
-  -H "Authorization: Bearer dug_live_xxx" \
-  -H "Content-Type: application/json" \
-  -d '{"to":"+233501234567","body":"Your code is 123456"}'`}</code>
-        </pre>
+        <section className="rounded-[2rem] border bg-muted/40 p-6">
+          <h2 className="font-heading text-2xl font-semibold tracking-tight">
+            What success looks like
+          </h2>
+          <p className="mt-3 text-muted-foreground leading-7">
+            After the first test message, you should have a message ID, an
+            initial queued state, a searchable log entry, and a webhook event
+            path ready for delivery updates.
+          </p>
+        </section>
       </div>
     </main>
   );

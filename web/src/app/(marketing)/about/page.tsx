@@ -9,7 +9,7 @@ export default function Page() {
           <p className="font-medium text-primary text-sm uppercase tracking-[0.2em]">
             About Dugble
           </p>
-          <h1 className="font-heading text-5xl font-semibold tracking-tight md:text-6xl">
+          <h1 className="font-heading text-3xl font-semibold tracking-tight md:text-4xl">
             Messaging infrastructure should be easier to debug.
           </h1>
           <p className="text-lg text-muted-foreground leading-8">

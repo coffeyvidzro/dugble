@@ -32,7 +32,7 @@ export default function Page() {
             <p className="font-medium text-primary text-sm uppercase tracking-[0.2em]">
               SMS API
             </p>
-            <h1 className="font-heading text-5xl font-semibold tracking-tight md:text-6xl">
+            <h1 className="font-heading text-3xl font-semibold tracking-tight md:text-4xl">
               SMS API for OTPs and product alerts.
             </h1>
             <p className="text-lg text-muted-foreground leading-8">
@@ -43,23 +43,26 @@ export default function Page() {
               Send a test SMS
             </Button>
           </div>
-          <pre className="overflow-x-auto rounded-[2rem] border bg-muted/50 p-6 text-sm leading-7">
-            <code>{`POST /v1/messages/sms
-Authorization: Bearer dug_live_xxx
-Idempotency-Key: otp_01J...
-
-{
-  "to": "+233501234567",
-  "template": "otp",
-  "data": { "code": "123456" }
-}
-
-202 Accepted
-{
-  "message_id": "msg_01J...",
-  "status": "queued"
-}`}</code>
-          </pre>
+          <div className="rounded-[2rem] border bg-muted/40 p-6">
+            <h2 className="font-heading text-2xl font-semibold tracking-tight">
+              SMS send contract
+            </h2>
+            <p className="mt-3 text-muted-foreground leading-7">
+              The request should include the recipient, template or body, and an
+              idempotency key. A successful response should return a message ID
+              and the first delivery state.
+            </p>
+            <div className="mt-6 grid gap-3 text-sm sm:grid-cols-2">
+              <div className="rounded-2xl bg-background p-4">
+                <span className="text-muted-foreground">Response</span>
+                <p className="mt-1 font-medium">message_id + queued status</p>
+              </div>
+              <div className="rounded-2xl bg-background p-4">
+                <span className="text-muted-foreground">Retry safety</span>
+                <p className="mt-1 font-medium">idempotency key required</p>
+              </div>
+            </div>
+          </div>
         </section>
         <Separator />
         <section className="grid gap-8 lg:grid-cols-[0.65fr_1fr]">
@@ -87,12 +90,12 @@ Idempotency-Key: otp_01J...
           <p className="mb-4 font-medium">Expected SMS states</p>
           <div className="flex flex-wrap gap-2">
             {statuses.map((status) => (
-              <code
+              <span
                 key={status}
                 className="rounded-full bg-muted px-3 py-1 text-sm"
               >
                 {status}
-              </code>
+              </span>
             ))}
           </div>
         </section>

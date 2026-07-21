@@ -12,7 +12,7 @@ export default function Page() {
             <p className="font-medium text-primary text-sm uppercase tracking-[0.2em]">
               Webhooks
             </p>
-            <h1 className="font-heading text-5xl font-semibold tracking-tight md:text-6xl">
+            <h1 className="font-heading text-3xl font-semibold tracking-tight md:text-4xl">
               Events for every message state change.
             </h1>
             <p className="text-lg text-muted-foreground leading-8">
@@ -21,17 +21,28 @@ export default function Page() {
               retry attempts.
             </p>
           </div>
-          <pre className="overflow-x-auto rounded-[2rem] border bg-muted/50 p-6 text-sm leading-7">
-            <code>{`X-Dugble-Signature: t=1784635200,v1=...
-
-{
-  "type": "message.delivered",
-  "message_id": "msg_01J...",
-  "channel": "sms",
-  "recipient": "+233501234567",
-  "delivered_at": "2026-07-21T12:00:00Z"
-}`}</code>
-          </pre>
+          <div className="rounded-[2rem] border bg-muted/40 p-6">
+            <h2 className="font-heading text-2xl font-semibold tracking-tight">
+              Webhook delivery contract
+            </h2>
+            <p className="mt-3 text-muted-foreground leading-7">
+              Every event should include the event type, message ID, channel,
+              recipient, timestamp, and a signature your backend can verify
+              before mutating state.
+            </p>
+            <div className="mt-6 space-y-3 text-sm">
+              {["message.delivered", "message.failed", "message.bounced"].map(
+                (event) => (
+                  <div
+                    key={event}
+                    className="rounded-2xl bg-background px-4 py-3 font-medium"
+                  >
+                    {event}
+                  </div>
+                ),
+              )}
+            </div>
+          </div>
         </section>
         <Separator />
         <section className="grid gap-5 md:grid-cols-3">

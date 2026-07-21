@@ -85,7 +85,7 @@ export default async function Page({
               {formatBlogDate(post.metadata.publishedAt)}
             </time>
           </div>
-          <h1 className="font-heading text-4xl font-semibold tracking-tight md:text-5xl">
+          <h1 className="font-heading text-3xl font-semibold tracking-tight md:text-4xl">
             {post.metadata.title}
           </h1>
           <p className="text-lg text-muted-foreground">

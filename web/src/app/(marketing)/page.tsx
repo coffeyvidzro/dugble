@@ -54,7 +54,7 @@ export default function Home() {
               <p className="font-medium text-primary text-sm uppercase tracking-[0.2em]">
                 Developer-first A2P messaging
               </p>
-              <h1 className="max-w-5xl font-heading text-5xl font-semibold tracking-tight md:text-7xl">
+              <h1 className="max-w-5xl font-heading text-3xl font-semibold tracking-tight md:text-4xl">
                 Email and SMS APIs for products that need messages delivered.
               </h1>
               <p className="max-w-2xl text-lg text-muted-foreground leading-8">
@@ -83,25 +83,31 @@ export default function Home() {
           </div>
 
           <div className="rounded-[2rem] border bg-muted/40 p-6">
-            <div className="mb-5 space-y-1">
+            <div className="mb-6 space-y-1">
               <h2 className="font-heading text-2xl font-semibold tracking-tight">
-                Send an OTP in one request
+                What every send should return
               </h2>
               <p className="text-muted-foreground text-sm">
-                A simple API surface for high-trust customer communication.
+                The important parts are simple: accept the request, return a
+                traceable ID, and tell the truth about delivery.
               </p>
             </div>
-            <pre className="overflow-x-auto text-sm leading-7">
-              <code>{`curl https://api.dugble.com/v1/messages/sms \
-  -H "Authorization: Bearer dug_live_xxx" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "to": "+233501234567",
-    "template": "otp",
-    "data": { "code": "123456" },
-    "idempotency_key": "otp_01J..."
-  }'`}</code>
-            </pre>
+            <div className="space-y-4">
+              {[
+                "message_id for every accepted send",
+                "status history from queued to delivered or failed",
+                "webhook events for backend workflows",
+                "request IDs for support and debugging",
+              ].map((item) => (
+                <div
+                  key={item}
+                  className="flex items-center gap-3 rounded-2xl bg-background px-4 py-3 text-sm"
+                >
+                  <span className="size-2 rounded-full bg-primary" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -110,7 +116,7 @@ export default function Home() {
             <p className="font-medium text-primary text-sm uppercase tracking-[0.2em]">
               Product surface
             </p>
-            <h2 className="font-heading text-3xl font-semibold tracking-tight md:text-5xl">
+            <h2 className="font-heading text-3xl font-semibold tracking-tight md:text-4xl">
               The messaging primitives your product team needs.
             </h2>
           </div>
@@ -133,7 +139,7 @@ export default function Home() {
             <p className="font-medium text-primary text-sm uppercase tracking-[0.2em]">
               Developer experience
             </p>
-            <h2 className="font-heading text-3xl font-semibold tracking-tight md:text-5xl">
+            <h2 className="font-heading text-3xl font-semibold tracking-tight md:text-4xl">
               Integration should feel predictable from the first API call.
             </h2>
             <p className="text-muted-foreground leading-8">
@@ -157,7 +163,7 @@ export default function Home() {
             <p className="font-medium text-primary text-sm uppercase tracking-[0.2em]">
               A2P use cases
             </p>
-            <h2 className="font-heading text-3xl font-semibold tracking-tight md:text-5xl">
+            <h2 className="font-heading text-3xl font-semibold tracking-tight md:text-4xl">
               Customer messages for critical product moments.
             </h2>
             <p className="text-muted-foreground leading-8">

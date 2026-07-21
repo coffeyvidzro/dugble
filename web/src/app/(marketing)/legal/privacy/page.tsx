@@ -9,7 +9,7 @@ export default function Page() {
           <p className="font-medium text-primary text-sm uppercase tracking-[0.2em]">
             Privacy
           </p>
-          <h1 className="font-heading text-5xl font-semibold tracking-tight">
+          <h1 className="font-heading text-3xl font-semibold tracking-tight">
             Privacy placeholder.
           </h1>
           <p className="text-muted-foreground leading-8">

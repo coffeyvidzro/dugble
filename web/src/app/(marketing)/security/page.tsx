@@ -19,7 +19,7 @@ export default function Page() {
           <p className="font-medium text-primary text-sm uppercase tracking-[0.2em]">
             Security
           </p>
-          <h1 className="max-w-4xl font-heading text-5xl font-semibold tracking-tight md:text-6xl">
+          <h1 className="max-w-4xl font-heading text-3xl font-semibold tracking-tight md:text-4xl">
             Security for message-sending infrastructure.
           </h1>
           <p className="max-w-2xl text-lg text-muted-foreground leading-8">

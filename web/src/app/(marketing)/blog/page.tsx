@@ -14,7 +14,7 @@ export default async function Page() {
             <p className="font-medium text-primary text-sm uppercase tracking-[0.2em]">
               Blog
             </p>
-            <h1 className="font-heading text-4xl font-semibold tracking-tight md:text-5xl">
+            <h1 className="font-heading text-3xl font-semibold tracking-tight md:text-4xl">
               Developer experience and A2P messaging notes
             </h1>
             <p className="text-lg text-muted-foreground">
