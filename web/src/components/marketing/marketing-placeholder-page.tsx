@@ -33,8 +33,8 @@ export function MarketingPlaceholderPage({
             <a href="/pricing" className="hover:text-foreground">
               Pricing
             </a>
-            <a href="/docs" className="hover:text-foreground">
-              Docs
+            <a href="/quickstart" className="hover:text-foreground">
+              Quickstart
             </a>
           </nav>
           <div className="flex items-center gap-2">
@@ -62,8 +62,12 @@ export function MarketingPlaceholderPage({
               <Button size="lg" render={<a href="/sign-up" />}>
                 Start building
               </Button>
-              <Button size="lg" variant="outline" render={<a href="/docs" />}>
-                Read the docs
+              <Button
+                size="lg"
+                variant="outline"
+                render={<a href="/quickstart" />}
+              >
+                View quickstart
               </Button>
             </div>
           </div>
