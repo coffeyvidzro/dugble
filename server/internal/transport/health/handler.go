@@ -26,7 +26,7 @@ func NewHandler(db *pgxpool.Pool, redisClient *redis.Client) *Handler {
 func (h *Handler) Live(c *echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{
 		"status":  "ok",
-		"service": "l0giant-server",
+		"service": "dugble-server",
 	})
 }
 
@@ -45,12 +45,18 @@ func (h *Handler) Ready(c *echo.Context) error {
 		"redis":    "ok",
 	}
 
-	if err := h.db.Ping(ctx); err != nil {
+	if h.db == nil {
+		checks["postgres"] = "unconfigured"
+		status = http.StatusServiceUnavailable
+	} else if err := h.db.Ping(ctx); err != nil {
 		checks["postgres"] = "unavailable"
 		status = http.StatusServiceUnavailable
 	}
 
-	if err := h.redis.Ping(ctx).Err(); err != nil {
+	if h.redis == nil {
+		checks["redis"] = "unconfigured"
+		status = http.StatusServiceUnavailable
+	} else if err := h.redis.Ping(ctx).Err(); err != nil {
 		checks["redis"] = "unavailable"
 		status = http.StatusServiceUnavailable
 	}

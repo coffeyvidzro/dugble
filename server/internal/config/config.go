@@ -21,6 +21,8 @@ type Config struct {
 
 	DatabaseURL string `env:"DATABASE_URL,required,notEmpty"`
 
+	RedisURL string `env:"REDIS_URL" envDefault:"redis://localhost:6379/0"`
+
 	CORSOrigins []string `env:"CORS_ORIGINS" envSeparator:"," envDefault:"http://localhost:3000,http://127.0.0.1:3000"`
 
 	ArcjetKey string `env:"ARCJET_KEY,required,notEmpty"`
@@ -51,6 +53,7 @@ func (c *Config) normalize() {
 	c.AppEnv = strings.TrimSpace(c.AppEnv)
 	c.HTTPPort = strings.TrimSpace(c.HTTPPort)
 	c.DatabaseURL = strings.TrimSpace(c.DatabaseURL)
+	c.RedisURL = strings.TrimSpace(c.RedisURL)
 	c.ArcjetKey = strings.TrimSpace(c.ArcjetKey)
 	c.FrontendURL = strings.TrimRight(strings.TrimSpace(c.FrontendURL), "/")
 	c.AWS.FromEmail = strings.TrimSpace(c.AWS.FromEmail)

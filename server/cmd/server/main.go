@@ -17,6 +17,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/integration/email"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/security"
 	"github.com/coffeyvidzro/dugble/server/internal/notifications"
+	"github.com/coffeyvidzro/dugble/server/internal/platform/cache"
 	"github.com/coffeyvidzro/dugble/server/internal/transport"
 )
 
@@ -55,6 +56,15 @@ func run() error {
 	}
 	defer db.Close()
 
+	redisClient, err := cache.NewRedis(
+		startupCtx,
+		cfg.RedisURL,
+	)
+	if err != nil {
+		return fmt.Errorf("initialize Redis: %w", err)
+	}
+	defer redisClient.Close()
+
 	arcjetClient, err := security.NewClient(cfg.ArcjetKey)
 	if err != nil {
 		return fmt.Errorf("initialize Arcjet: %w", err)
@@ -80,6 +90,7 @@ func run() error {
 		cfg,
 		transport.Dependencies{
 			DB:       db,
+			Redis:    redisClient,
 			Arcjet:   arcjetClient,
 			Sender:   notificationSender,
 			Renderer: renderer,
