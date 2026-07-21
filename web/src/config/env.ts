@@ -4,10 +4,10 @@ import { z } from "zod";
 export const env = createEnv({
   server: {
     NODE_ENV: z.enum(["development", "production"]).default("development"),
-    BACKEND_URL: z.url(),
+    BACKEND_URL: z.url().default("http://localhost:8080/api/v1"),
   },
   client: {
-    NEXT_PUBLIC_BASE_URL: z.string().min(1),
+    NEXT_PUBLIC_BASE_URL: z.string().min(1).default("http://localhost:3000"),
   },
   experimental__runtimeEnv: {
     NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL,
