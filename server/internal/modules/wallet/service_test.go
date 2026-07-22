@@ -15,8 +15,8 @@ func TestMergeMetadataIncludesFXAndCheckoutDetails(t *testing.T) {
 		json.RawMessage(`{"source":"test"}`),
 		hubtel.CheckoutData{CheckoutID: "checkout-123", CheckoutURL: "https://pay", CheckoutDirectURL: "https://pay/direct", ClientReference: "ref-123"},
 		fx.Rate{Date: "2026-07-22", Rate: 12.34},
-		1000,
-		12340,
+		10_000_000,
+		12_340,
 	)
 	if err != nil {
 		t.Fatalf("mergeMetadata returned error: %v", err)
@@ -29,10 +29,10 @@ func TestMergeMetadataIncludesFXAndCheckoutDetails(t *testing.T) {
 	assertEqual(t, values["source"], "test")
 	assertEqual(t, values["provider"], "hubtel")
 	assertEqual(t, values["wallet_currency"], CurrencyUSD)
-	assertEqual(t, values["wallet_amount_cents"], float64(1000))
+	assertEqual(t, values["wallet_amount_micros"], float64(10_000_000))
 	assertEqual(t, values["payment_currency"], "GHS")
 	assertEqual(t, values["payment_amount"], 123.40)
-	assertEqual(t, values["payment_amount_cents"], float64(12340))
+	assertEqual(t, values["payment_amount_pesewas"], float64(12_340))
 	assertEqual(t, values["exchange_rate"], "12.3400000000")
 	assertEqual(t, values["exchange_rate_date"], "2026-07-22")
 	assertEqual(t, values["exchange_rate_source"], "frankfurter")
@@ -42,23 +42,47 @@ func TestMergeMetadataIncludesFXAndCheckoutDetails(t *testing.T) {
 	assertEqual(t, values["client_reference"], "ref-123")
 }
 
-func TestConvertUSDCentsToGHSPesewas(t *testing.T) {
+func TestConvertUSDMicrosToGHSPesewas(t *testing.T) {
 	t.Parallel()
 
-	got, err := convertUSDCentsToGHSPesewas(1000, 12.34)
-	if err != nil {
-		t.Fatalf("convertUSDCentsToGHSPesewas returned error: %v", err)
-	}
-	if got != 12340 {
-		t.Fatalf("convertUSDCentsToGHSPesewas(1000, 12.34) = %v, want 12340", got)
+	tests := []struct {
+		name      string
+		usdMicros int64
+		rate      float64
+		want      int64
+	}{
+		{
+			name:      "ten dollar top-up",
+			usdMicros: 10_000_000,
+			rate:      12.34,
+			want:      12_340,
+		},
+		{
+			name:      "rounds to nearest pesewa",
+			usdMicros: 1_010_000,
+			rate:      10.555,
+			want:      1_066,
+		},
+		{
+			name:      "supports sub-cent SMS price",
+			usdMicros: 6_000,
+			rate:      11.64,
+			want:      7,
+		},
 	}
 
-	got, err = convertUSDCentsToGHSPesewas(101, 10.555)
-	if err != nil {
-		t.Fatalf("convertUSDCentsToGHSPesewas returned error: %v", err)
-	}
-	if got != 1066 {
-		t.Fatalf("convertUSDCentsToGHSPesewas(101, 10.555) = %v, want 1066", got)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := convertUSDMicrosToGHSPesewas(tt.usdMicros, tt.rate)
+			if err != nil {
+				t.Fatalf("convertUSDMicrosToGHSPesewas returned error: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("convertUSDMicrosToGHSPesewas(%d, %v) = %d, want %d", tt.usdMicros, tt.rate, got, tt.want)
+			}
+		})
 	}
 }
 
