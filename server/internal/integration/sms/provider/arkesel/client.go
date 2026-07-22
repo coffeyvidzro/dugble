@@ -31,6 +31,45 @@ type APIError struct {
 	Body       string
 }
 
+func (e *APIError) SafeToFallback() bool {
+	if e == nil {
+		return false
+	}
+
+	// These failures happen before Arkesel accepts the SMS, so trying the next
+	// provider cannot duplicate a previously accepted message. Authentication and
+	// server-side failures are intentionally excluded because they may represent a
+	// misconfigured integration or an ambiguous upstream outcome.
+	switch e.StatusCode {
+	case http.StatusBadRequest,
+		http.StatusNotFound,
+		http.StatusMethodNotAllowed,
+		http.StatusConflict,
+		http.StatusGone,
+		http.StatusLengthRequired,
+		http.StatusPreconditionFailed,
+		http.StatusRequestEntityTooLarge,
+		http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType,
+		http.StatusRequestedRangeNotSatisfiable,
+		http.StatusExpectationFailed,
+		http.StatusTeapot,
+		http.StatusMisdirectedRequest,
+		http.StatusUnprocessableEntity,
+		http.StatusLocked,
+		http.StatusFailedDependency,
+		http.StatusTooEarly,
+		http.StatusUpgradeRequired,
+		http.StatusPreconditionRequired,
+		http.StatusTooManyRequests,
+		http.StatusRequestHeaderFieldsTooLarge,
+		http.StatusUnavailableForLegalReasons:
+		return true
+	default:
+		return false
+	}
+}
+
 func (e *APIError) Error() string {
 	if e.Body == "" {
 		return fmt.Sprintf("arkesel api error: status code %d", e.StatusCode)
