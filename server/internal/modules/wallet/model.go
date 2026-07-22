@@ -57,6 +57,12 @@ type TopUpResponse struct {
 	CheckoutID        string      `json:"checkout_id"`
 	ClientReference   string      `json:"client_reference"`
 	CheckoutDirectURL string      `json:"checkout_direct_url"`
+	WalletCurrency    string      `json:"wallet_currency"`
+	WalletAmount      int64       `json:"wallet_amount"`
+	PaymentCurrency   string      `json:"payment_currency"`
+	PaymentAmount     float64     `json:"payment_amount"`
+	ExchangeRate      float64     `json:"exchange_rate"`
+	ExchangeRateDate  string      `json:"exchange_rate_date"`
 	Transaction       Transaction `json:"transaction"`
 }
 

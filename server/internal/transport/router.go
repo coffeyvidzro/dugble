@@ -8,6 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/coffeyvidzro/dugble/server/internal/config"
+	"github.com/coffeyvidzro/dugble/server/internal/integration/fx"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/hubtel"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/auth"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/domain"
@@ -92,6 +93,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	senderIDRepository := senderid.NewRepository(deps.DB)
 	walletRepository := wallet.NewRepository(deps.DB)
 	hubtelProvider := hubtel.NewProvider(hubtel.NewClient(cfg.Hubtel))
+	fxClient := fx.NewFrankfurterClient()
 	tenantMiddleware := func(permission tenant.Permission) echo.MiddlewareFunc {
 		return middlewares.Tenant(
 			middlewares.TenantConfig{Memberships: teamRepository, Required: permission},
@@ -136,6 +138,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		walletRepository,
 		wallet.ServiceConfig{FrontendURL: cfg.FrontendURL, BackendURL: cfg.BackendURL},
 		hubtelProvider,
+		fxClient,
 	)
 	wallet.RegisterRoutes(
 		router,

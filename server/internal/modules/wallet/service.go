@@ -4,14 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"strings"
 
 	"github.com/google/uuid"
 
+	"github.com/coffeyvidzro/dugble/server/internal/integration/fx"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/hubtel"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
+
+type RateProvider interface {
+	LatestRate(ctx context.Context, base string, quote string) (fx.Rate, error)
+}
 
 type PaymentProvider interface {
 	InitiateCheckout(ctx context.Context, req hubtel.InitiateCheckoutRequest) (hubtel.InitiateCheckoutResponse, error)
@@ -22,6 +28,7 @@ type PaymentProvider interface {
 type Service struct {
 	repository  *Repository
 	hubtel      PaymentProvider
+	rates       RateProvider
 	frontendURL string
 	backendURL  string
 }
@@ -31,15 +38,14 @@ type ServiceConfig struct {
 	BackendURL  string
 }
 
-func NewService(repository *Repository, cfg ServiceConfig, hubtelClient ...PaymentProvider) *Service {
+func NewService(repository *Repository, cfg ServiceConfig, hubtelClient PaymentProvider, rates RateProvider) *Service {
 	service := &Service{
 		repository:  repository,
 		frontendURL: strings.TrimRight(strings.TrimSpace(cfg.FrontendURL), "/"),
 		backendURL:  strings.TrimRight(strings.TrimSpace(cfg.BackendURL), "/"),
 	}
-	if len(hubtelClient) > 0 {
-		service.hubtel = hubtelClient[0]
-	}
+	service.hubtel = hubtelClient
+	service.rates = rates
 	return service
 }
 
@@ -89,6 +95,9 @@ func (s *Service) TopUp(ctx context.Context, req TopUpRequest) (TopUpResponse, e
 	if s.hubtel == nil {
 		return TopUpResponse{}, apperrors.NewInternal("Hubtel checkout is not configured", nil)
 	}
+	if s.rates == nil {
+		return TopUpResponse{}, apperrors.NewInternal("FX rates are not configured", nil)
+	}
 	if req.Amount <= 0 {
 		return TopUpResponse{}, apperrors.NewBadRequest("Amount must be greater than zero")
 	}
@@ -106,8 +115,14 @@ func (s *Service) TopUp(ctx context.Context, req TopUpRequest) (TopUpResponse, e
 		description = strings.TrimSpace(*req.Description)
 	}
 
+	rate, err := s.rates.LatestRate(ctx, CurrencyUSD, "GHS")
+	if err != nil {
+		return TopUpResponse{}, apperrors.NewInternal("Unable to fetch USD/GHS exchange rate", err)
+	}
+	paymentAmount := roundMoney((float64(req.Amount) / 100) * rate.Rate)
+
 	checkout, err := s.hubtel.InitiateCheckout(ctx, hubtel.InitiateCheckoutRequest{
-		TotalAmount:     req.Amount,
+		TotalAmount:     paymentAmount,
 		Description:     description,
 		CallbackURL:     s.backendURL + "/wallet/webhook/hubtel",
 		ReturnURL:       s.frontendURL + "/dashboard/usage",
@@ -121,7 +136,7 @@ func (s *Service) TopUp(ctx context.Context, req TopUpRequest) (TopUpResponse, e
 		return TopUpResponse{}, apperrors.NewBadRequest("Hubtel checkout was not accepted")
 	}
 
-	transactionMetadata, err := mergeMetadata(metadata, checkout.Data)
+	transactionMetadata, err := mergeMetadata(metadata, checkout.Data, rate, req.Amount, paymentAmount)
 	if err != nil {
 		return TopUpResponse{}, apperrors.NewInternal("Unable to prepare wallet metadata", err)
 	}
@@ -135,6 +150,12 @@ func (s *Service) TopUp(ctx context.Context, req TopUpRequest) (TopUpResponse, e
 		CheckoutID:        checkout.Data.CheckoutID,
 		ClientReference:   checkout.Data.ClientReference,
 		CheckoutDirectURL: checkout.Data.CheckoutDirectURL,
+		WalletCurrency:    CurrencyUSD,
+		WalletAmount:      req.Amount,
+		PaymentCurrency:   "GHS",
+		PaymentAmount:     paymentAmount,
+		ExchangeRate:      rate.Rate,
+		ExchangeRateDate:  rate.Date,
 		Transaction:       transaction,
 	}, nil
 }
@@ -179,7 +200,7 @@ func requireTenant(ctx context.Context, permission tenant.Permission) (tenant.Co
 	return tenantContext, nil
 }
 
-func mergeMetadata(metadata json.RawMessage, checkout hubtel.CheckoutData) (json.RawMessage, error) {
+func mergeMetadata(metadata json.RawMessage, checkout hubtel.CheckoutData, rate fx.Rate, walletAmount int64, paymentAmount float64) (json.RawMessage, error) {
 	values := map[string]any{}
 	if len(metadata) > 0 {
 		if err := json.Unmarshal(metadata, &values); err != nil {
@@ -187,6 +208,13 @@ func mergeMetadata(metadata json.RawMessage, checkout hubtel.CheckoutData) (json
 		}
 	}
 	values["provider"] = "hubtel"
+	values["wallet_currency"] = CurrencyUSD
+	values["wallet_amount"] = walletAmount
+	values["payment_currency"] = "GHS"
+	values["payment_amount"] = paymentAmount
+	values["exchange_rate"] = rate.Rate
+	values["exchange_rate_date"] = rate.Date
+	values["exchange_rate_source"] = "frankfurter"
 	values["checkout_id"] = checkout.CheckoutID
 	values["checkout_url"] = checkout.CheckoutURL
 	values["checkout_direct_url"] = checkout.CheckoutDirectURL
@@ -216,3 +244,5 @@ func mergeSettlementMetadata(callbackStatus hubtel.PaymentStatus, verifiedStatus
 	}
 	return json.Marshal(values)
 }
+
+func roundMoney(amount float64) float64 { return math.Round(amount*100) / 100 }

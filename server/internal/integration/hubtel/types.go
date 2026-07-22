@@ -1,13 +1,13 @@
 package hubtel
 
 type InitiateCheckoutRequest struct {
-	TotalAmount           int64  `json:"totalAmount"`
-	Description           string `json:"description"`
-	CallbackURL           string `json:"callbackUrl"`
-	ReturnURL             string `json:"returnUrl"`
-	MerchantAccountNumber string `json:"merchantAccountNumber"`
-	CancellationURL       string `json:"cancellationUrl"`
-	ClientReference       string `json:"clientReference"`
+	TotalAmount           float64 `json:"totalAmount"`
+	Description           string  `json:"description"`
+	CallbackURL           string  `json:"callbackUrl"`
+	ReturnURL             string  `json:"returnUrl"`
+	MerchantAccountNumber string  `json:"merchantAccountNumber"`
+	CancellationURL       string  `json:"cancellationUrl"`
+	ClientReference       string  `json:"clientReference"`
 }
 
 type InitiateCheckoutResponse struct {
@@ -54,17 +54,17 @@ type TransactionStatusResponse struct {
 }
 
 type TransactionStatusData struct {
-	Date                  string   `json:"date"`
-	Status                string   `json:"status"`
-	TransactionID         string   `json:"transactionId"`
-	ExternalTransactionID string   `json:"externalTransactionId"`
-	PaymentMethod         string   `json:"paymentMethod"`
-	ClientReference       string   `json:"clientReference"`
-	CurrencyCode          *string  `json:"currencyCode"`
-	Amount                float64  `json:"amount"`
-	Charges               float64  `json:"charges"`
-	AmountAfterCharges    float64  `json:"amountAfterCharges"`
-	IsFulfilled           *bool    `json:"isFulfilled"`
+	Date                  string  `json:"date"`
+	Status                string  `json:"status"`
+	TransactionID         string  `json:"transactionId"`
+	ExternalTransactionID string  `json:"externalTransactionId"`
+	PaymentMethod         string  `json:"paymentMethod"`
+	ClientReference       string  `json:"clientReference"`
+	CurrencyCode          *string `json:"currencyCode"`
+	Amount                float64 `json:"amount"`
+	Charges               float64 `json:"charges"`
+	AmountAfterCharges    float64 `json:"amountAfterCharges"`
+	IsFulfilled           *bool   `json:"isFulfilled"`
 }
 
 type PaymentStatus struct {
