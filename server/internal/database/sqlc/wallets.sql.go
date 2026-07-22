@@ -282,6 +282,36 @@ func (q *Queries) GetWalletTransaction(ctx context.Context, arg GetWalletTransac
 	return i, err
 }
 
+const getWalletTransactionByReferenceForUpdate = `-- name: GetWalletTransactionByReferenceForUpdate :one
+SELECT id, wallet_id, team_id, transaction_type, reference_id, amount, balance_after, status, description, metadata, created_at
+FROM wallet_transactions
+WHERE reference_id = $1
+FOR UPDATE
+`
+
+type GetWalletTransactionByReferenceForUpdateParams struct {
+	ReferenceID *uuid.UUID `db:"reference_id" json:"reference_id"`
+}
+
+func (q *Queries) GetWalletTransactionByReferenceForUpdate(ctx context.Context, arg GetWalletTransactionByReferenceForUpdateParams) (WalletTransaction, error) {
+	row := q.db.QueryRow(ctx, getWalletTransactionByReferenceForUpdate, arg.ReferenceID)
+	var i WalletTransaction
+	err := row.Scan(
+		&i.ID,
+		&i.WalletID,
+		&i.TeamID,
+		&i.TransactionType,
+		&i.ReferenceID,
+		&i.Amount,
+		&i.BalanceAfter,
+		&i.Status,
+		&i.Description,
+		&i.Metadata,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const listTeamWalletTransactions = `-- name: ListTeamWalletTransactions :many
 SELECT id, wallet_id, team_id, transaction_type, reference_id, amount, balance_after, status, description, metadata, created_at
 FROM wallet_transactions
@@ -407,6 +437,46 @@ func (q *Queries) UpdateWalletStatus(ctx context.Context, arg UpdateWalletStatus
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateWalletTransactionSettlement = `-- name: UpdateWalletTransactionSettlement :one
+UPDATE wallet_transactions
+SET status = $1,
+    balance_after = $2,
+    metadata = $3
+WHERE id = $4
+RETURNING id, wallet_id, team_id, transaction_type, reference_id, amount, balance_after, status, description, metadata, created_at
+`
+
+type UpdateWalletTransactionSettlementParams struct {
+	Status       string    `db:"status" json:"status"`
+	BalanceAfter int64     `db:"balance_after" json:"balance_after"`
+	Metadata     []byte    `db:"metadata" json:"metadata"`
+	ID           uuid.UUID `db:"id" json:"id"`
+}
+
+func (q *Queries) UpdateWalletTransactionSettlement(ctx context.Context, arg UpdateWalletTransactionSettlementParams) (WalletTransaction, error) {
+	row := q.db.QueryRow(ctx, updateWalletTransactionSettlement,
+		arg.Status,
+		arg.BalanceAfter,
+		arg.Metadata,
+		arg.ID,
+	)
+	var i WalletTransaction
+	err := row.Scan(
+		&i.ID,
+		&i.WalletID,
+		&i.TeamID,
+		&i.TransactionType,
+		&i.ReferenceID,
+		&i.Amount,
+		&i.BalanceAfter,
+		&i.Status,
+		&i.Description,
+		&i.Metadata,
+		&i.CreatedAt,
 	)
 	return i, err
 }

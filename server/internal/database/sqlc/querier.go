@@ -49,6 +49,7 @@ type Querier interface {
 	GetWalletByTeamAndCurrency(ctx context.Context, arg GetWalletByTeamAndCurrencyParams) (Wallet, error)
 	GetWalletByTeamAndCurrencyForUpdate(ctx context.Context, arg GetWalletByTeamAndCurrencyForUpdateParams) (Wallet, error)
 	GetWalletTransaction(ctx context.Context, arg GetWalletTransactionParams) (WalletTransaction, error)
+	GetWalletTransactionByReferenceForUpdate(ctx context.Context, arg GetWalletTransactionByReferenceForUpdateParams) (WalletTransaction, error)
 	ListOAuthIdentitiesByUserID(ctx context.Context, arg ListOAuthIdentitiesByUserIDParams) ([]OauthIdentity, error)
 	ListPendingTeamInvitations(ctx context.Context, arg ListPendingTeamInvitationsParams) ([]TeamInvitation, error)
 	ListSenderDomains(ctx context.Context, arg ListSenderDomainsParams) ([]SenderDomain, error)
@@ -76,6 +77,7 @@ type Querier interface {
 	UpdateUserPasswordByEmail(ctx context.Context, arg UpdateUserPasswordByEmailParams) (User, error)
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error)
 	UpdateWalletStatus(ctx context.Context, arg UpdateWalletStatusParams) (Wallet, error)
+	UpdateWalletTransactionSettlement(ctx context.Context, arg UpdateWalletTransactionSettlementParams) (WalletTransaction, error)
 }
 
 var _ Querier = (*Queries)(nil)

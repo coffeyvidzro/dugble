@@ -9,6 +9,8 @@ import (
 type TenantMiddleware func(permission tenant.Permission) echo.MiddlewareFunc
 
 func RegisterRoutes(router *echo.Echo, handler *Handler, authMiddleware echo.MiddlewareFunc, csrfMiddleware echo.MiddlewareFunc, tenantMiddleware TenantMiddleware) {
+	router.POST("/wallet/webhook/hubtel", handler.HubtelWebhook)
+
 	wallet := router.Group("/wallet")
 	wallet.Use(authMiddleware, csrfMiddleware)
 	wallet.GET("", handler.Get, tenantMiddleware(tenant.PermissionWalletRead))

@@ -100,3 +100,17 @@ WHERE team_id = sqlc.arg(team_id)
 ORDER BY created_at DESC
 LIMIT sqlc.arg(limit_count)
 OFFSET sqlc.arg(offset_count);
+
+-- name: GetWalletTransactionByReferenceForUpdate :one
+SELECT *
+FROM wallet_transactions
+WHERE reference_id = sqlc.arg(reference_id)
+FOR UPDATE;
+
+-- name: UpdateWalletTransactionSettlement :one
+UPDATE wallet_transactions
+SET status = sqlc.arg(status),
+    balance_after = sqlc.arg(balance_after),
+    metadata = sqlc.arg(metadata)
+WHERE id = sqlc.arg(id)
+RETURNING *;

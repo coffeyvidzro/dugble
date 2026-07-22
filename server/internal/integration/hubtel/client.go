@@ -16,12 +16,14 @@ import (
 
 const (
 	defaultBaseURL       = "https://payproxyapi.hubtel.com"
+	defaultTxnStatusURL  = "https://api-txnstatus.hubtel.com"
 	defaultClientTimeout = 30 * time.Second
 	maxResponseBodyBytes = 1 << 20
 )
 
 type Client struct {
 	BaseURL               string
+	TransactionStatusURL  string
 	APIID                 string
 	APIKey                string
 	MerchantAccountNumber string
@@ -45,8 +47,13 @@ func NewClient(cfg config.HubtelConfig) *Client {
 	if baseURL == "" {
 		baseURL = defaultBaseURL
 	}
+	txnStatusURL := strings.TrimSpace(cfg.TransactionStatusURL)
+	if txnStatusURL == "" {
+		txnStatusURL = defaultTxnStatusURL
+	}
 	return &Client{
 		BaseURL:               strings.TrimRight(baseURL, "/"),
+		TransactionStatusURL:  strings.TrimRight(txnStatusURL, "/"),
 		APIID:                 strings.TrimSpace(cfg.APIID),
 		APIKey:                strings.TrimSpace(cfg.APIKey),
 		MerchantAccountNumber: strings.TrimSpace(cfg.MerchantAccountNumber),
@@ -59,17 +66,26 @@ func (c *Client) InitiateCheckout(ctx context.Context, req InitiateCheckoutReque
 		req.MerchantAccountNumber = c.MerchantAccountNumber
 	}
 	var result InitiateCheckoutResponse
-	if err := c.doRequest(ctx, http.MethodPost, "/items/initiate", req, &result); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, c.BaseURL, "/items/initiate", req, &result); err != nil {
 		return InitiateCheckoutResponse{}, err
 	}
 	return result, nil
 }
 
-func (c *Client) doRequest(ctx context.Context, method string, path string, payload any, result any) error {
+func (c *Client) CheckTransactionStatus(ctx context.Context, clientReference string) (TransactionStatusResponse, error) {
+	var result TransactionStatusResponse
+	path := "/transactions/" + c.MerchantAccountNumber + "/status?clientReference=" + clientReference
+	if err := c.doRequest(ctx, http.MethodGet, c.TransactionStatusURL, path, nil, &result); err != nil {
+		return TransactionStatusResponse{}, err
+	}
+	return result, nil
+}
+
+func (c *Client) doRequest(ctx context.Context, method string, baseURL string, path string, payload any, result any) error {
 	if c == nil {
 		return errors.New("hubtel client is nil")
 	}
-	if strings.TrimSpace(c.BaseURL) == "" {
+	if strings.TrimSpace(baseURL) == "" {
 		return errors.New("hubtel base URL is required")
 	}
 	if strings.TrimSpace(c.APIID) == "" || strings.TrimSpace(c.APIKey) == "" {
@@ -78,11 +94,15 @@ func (c *Client) doRequest(ctx context.Context, method string, path string, payl
 	if c.HTTPClient == nil {
 		return errors.New("hubtel HTTP client is required")
 	}
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("encode hubtel request: %w", err)
+	var body io.Reader = http.NoBody
+	if payload != nil {
+		data, err := json.Marshal(payload)
+		if err != nil {
+			return fmt.Errorf("encode hubtel request: %w", err)
+		}
+		body = bytes.NewReader(data)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, strings.TrimRight(c.BaseURL, "/")+"/"+strings.TrimLeft(path, "/"), bytes.NewReader(data))
+	req, err := http.NewRequestWithContext(ctx, method, strings.TrimRight(baseURL, "/")+"/"+strings.TrimLeft(path, "/"), body)
 	if err != nil {
 		return fmt.Errorf("create hubtel request: %w", err)
 	}

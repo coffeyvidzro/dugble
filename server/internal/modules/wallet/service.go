@@ -12,13 +12,15 @@ import (
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
-type CheckoutInitiator interface {
+type PaymentProvider interface {
 	InitiateCheckout(ctx context.Context, req hubtel.InitiateCheckoutRequest) (hubtel.InitiateCheckoutResponse, error)
+	VerifyTransaction(ctx context.Context, clientReference string) (hubtel.PaymentStatus, error)
+	MapCallback(payload hubtel.CallbackPayload) (hubtel.PaymentStatus, error)
 }
 
 type Service struct {
 	repository  *Repository
-	hubtel      CheckoutInitiator
+	hubtel      PaymentProvider
 	frontendURL string
 	backendURL  string
 }
@@ -28,7 +30,7 @@ type ServiceConfig struct {
 	BackendURL  string
 }
 
-func NewService(repository *Repository, cfg ServiceConfig, hubtelClient ...CheckoutInitiator) *Service {
+func NewService(repository *Repository, cfg ServiceConfig, hubtelClient ...PaymentProvider) *Service {
 	service := &Service{
 		repository:  repository,
 		frontendURL: strings.TrimRight(strings.TrimSpace(cfg.FrontendURL), "/"),
@@ -132,6 +134,35 @@ func (s *Service) TopUp(ctx context.Context, req TopUpRequest) (TopUpResponse, e
 	}, nil
 }
 
+func (s *Service) HandleHubtelCallback(ctx context.Context, payload hubtel.CallbackPayload) (Transaction, error) {
+	if s.hubtel == nil {
+		return Transaction{}, apperrors.NewInternal("Hubtel checkout is not configured", nil)
+	}
+	callbackStatus, err := s.hubtel.MapCallback(payload)
+	if err != nil {
+		return Transaction{}, apperrors.NewBadRequest("Invalid Hubtel callback payload")
+	}
+	clientReference, err := uuid.Parse(strings.TrimSpace(callbackStatus.ClientReference))
+	if err != nil {
+		return Transaction{}, apperrors.NewBadRequest("Hubtel client reference must be a UUID")
+	}
+
+	verifiedStatus, err := s.hubtel.VerifyTransaction(ctx, callbackStatus.ClientReference)
+	if err != nil {
+		return Transaction{}, apperrors.NewInternal("Unable to verify Hubtel transaction", err)
+	}
+	paid := hubtel.IsPaidStatus(verifiedStatus.Status)
+	metadata, err := mergeSettlementMetadata(callbackStatus, verifiedStatus)
+	if err != nil {
+		return Transaction{}, apperrors.NewInternal("Unable to prepare Hubtel settlement metadata", err)
+	}
+	transaction, err := s.repository.SettleTopUp(ctx, clientReference, paid, metadata)
+	if err != nil {
+		return Transaction{}, apperrors.NewInternal("Unable to settle Hubtel top-up", err)
+	}
+	return transaction, nil
+}
+
 func requireTenant(ctx context.Context, permission tenant.Permission) (tenant.Context, error) {
 	tenantContext, ok := tenant.FromContext(ctx)
 	if !ok {
@@ -155,5 +186,28 @@ func mergeMetadata(metadata json.RawMessage, checkout hubtel.CheckoutData) (json
 	values["checkout_url"] = checkout.CheckoutURL
 	values["checkout_direct_url"] = checkout.CheckoutDirectURL
 	values["client_reference"] = checkout.ClientReference
+	return json.Marshal(values)
+}
+
+func mergeSettlementMetadata(callbackStatus hubtel.PaymentStatus, verifiedStatus hubtel.PaymentStatus) (json.RawMessage, error) {
+	values := map[string]any{
+		"provider":        "hubtel",
+		"callback_status": callbackStatus.Status,
+		"verified_status": verifiedStatus.Status,
+	}
+	if len(callbackStatus.Raw) > 0 {
+		var raw any
+		if err := json.Unmarshal(callbackStatus.Raw, &raw); err != nil {
+			return nil, err
+		}
+		values["callback"] = raw
+	}
+	if len(verifiedStatus.Raw) > 0 {
+		var raw any
+		if err := json.Unmarshal(verifiedStatus.Raw, &raw); err != nil {
+			return nil, err
+		}
+		values["status_check"] = raw
+	}
 	return json.Marshal(values)
 }

@@ -60,6 +60,47 @@ func (r *Repository) CreatePendingTopUp(ctx context.Context, teamID uuid.UUID, a
 	return transactionFromSQLC(transaction), nil
 }
 
+func (r *Repository) SettleTopUp(ctx context.Context, referenceID uuid.UUID, paid bool, metadata json.RawMessage) (Transaction, error) {
+	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return Transaction{}, fmt.Errorf("begin top-up settlement: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	q := r.queries.WithTx(tx)
+	pending, err := q.GetWalletTransactionByReferenceForUpdate(ctx, dbsqlc.GetWalletTransactionByReferenceForUpdateParams{ReferenceID: &referenceID})
+	if err != nil {
+		return Transaction{}, fmt.Errorf("get pending top-up: %w", err)
+	}
+	if pending.Status == TransactionStatusCompleted || pending.Status == TransactionStatusFailed {
+		return transactionFromSQLC(pending), nil
+	}
+
+	status := TransactionStatusPending
+	balanceAfter := pending.BalanceAfter
+	if paid {
+		updatedWallet, err := q.CreditWallet(ctx, dbsqlc.CreditWalletParams{ID: pending.WalletID, Amount: pending.Amount})
+		if err != nil {
+			return Transaction{}, fmt.Errorf("credit settled top-up: %w", err)
+		}
+		status = TransactionStatusCompleted
+		balanceAfter = updatedWallet.Balance
+	}
+	settled, err := q.UpdateWalletTransactionSettlement(ctx, dbsqlc.UpdateWalletTransactionSettlementParams{
+		ID:           pending.ID,
+		Status:       status,
+		BalanceAfter: balanceAfter,
+		Metadata:     metadata,
+	})
+	if err != nil {
+		return Transaction{}, fmt.Errorf("update top-up settlement: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Transaction{}, fmt.Errorf("commit top-up settlement: %w", err)
+	}
+	return transactionFromSQLC(settled), nil
+}
+
 func (r *Repository) Credit(ctx context.Context, teamID uuid.UUID, amount int64, referenceID *uuid.UUID, description *string, metadata json.RawMessage) (Wallet, Transaction, error) {
 	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {

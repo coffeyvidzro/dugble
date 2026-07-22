@@ -19,6 +19,7 @@ const (
 
 	TransactionStatusPending   = "pending"
 	TransactionStatusCompleted = "completed"
+	TransactionStatusFailed    = "failed"
 )
 
 type Wallet struct {

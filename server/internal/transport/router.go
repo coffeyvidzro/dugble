@@ -91,7 +91,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	domainRepository := domain.NewRepository(deps.DB)
 	senderIDRepository := senderid.NewRepository(deps.DB)
 	walletRepository := wallet.NewRepository(deps.DB)
-	hubtelClient := hubtel.NewClient(cfg.Hubtel)
+	hubtelProvider := hubtel.NewProvider(hubtel.NewClient(cfg.Hubtel))
 	tenantMiddleware := func(permission tenant.Permission) echo.MiddlewareFunc {
 		return middlewares.Tenant(
 			middlewares.TenantConfig{Memberships: teamRepository, Required: permission},
@@ -135,7 +135,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	walletService := wallet.NewService(
 		walletRepository,
 		wallet.ServiceConfig{FrontendURL: cfg.FrontendURL, BackendURL: cfg.BackendURL},
-		hubtelClient,
+		hubtelProvider,
 	)
 	wallet.RegisterRoutes(
 		router,
