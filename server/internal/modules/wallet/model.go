@@ -17,6 +17,7 @@ const (
 	TransactionRefund     = "refund"
 	TransactionAdjustment = "adjustment"
 
+	TransactionStatusPending   = "pending"
 	TransactionStatusCompleted = "completed"
 )
 
@@ -46,9 +47,16 @@ type Transaction struct {
 
 type TopUpRequest struct {
 	Amount      int64           `json:"amount"`
-	ReferenceID *string         `json:"reference_id,omitempty"`
 	Description *string         `json:"description,omitempty"`
 	Metadata    json.RawMessage `json:"metadata,omitempty"`
+}
+
+type TopUpResponse struct {
+	CheckoutURL       string      `json:"checkout_url"`
+	CheckoutID        string      `json:"checkout_id"`
+	ClientReference   string      `json:"client_reference"`
+	CheckoutDirectURL string      `json:"checkout_direct_url"`
+	Transaction       Transaction `json:"transaction"`
 }
 
 type ListTransactionsRequest struct {

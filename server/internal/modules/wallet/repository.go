@@ -35,6 +35,31 @@ func (r *Repository) GetByTeam(ctx context.Context, teamID uuid.UUID, currency s
 	return walletFromSQLC(row), nil
 }
 
+func (r *Repository) CreatePendingTopUp(ctx context.Context, teamID uuid.UUID, amount int64, referenceID uuid.UUID, description *string, metadata json.RawMessage) (Transaction, error) {
+	wallet, err := r.Create(ctx, teamID, CurrencyUSD)
+	if err != nil {
+		return Transaction{}, err
+	}
+	if len(metadata) == 0 {
+		metadata = json.RawMessage(`{}`)
+	}
+	transaction, err := r.queries.CreateWalletTransaction(ctx, dbsqlc.CreateWalletTransactionParams{
+		WalletID:        uuid.MustParse(wallet.ID),
+		TeamID:          teamID,
+		TransactionType: TransactionTopUp,
+		ReferenceID:     &referenceID,
+		Amount:          amount,
+		BalanceAfter:    wallet.Balance,
+		Status:          TransactionStatusPending,
+		Description:     description,
+		Metadata:        metadata,
+	})
+	if err != nil {
+		return Transaction{}, fmt.Errorf("create pending top-up transaction: %w", err)
+	}
+	return transactionFromSQLC(transaction), nil
+}
+
 func (r *Repository) Credit(ctx context.Context, teamID uuid.UUID, amount int64, referenceID *uuid.UUID, description *string, metadata json.RawMessage) (Wallet, Transaction, error) {
 	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {

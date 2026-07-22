@@ -12,6 +12,16 @@ type ProviderConfig struct {
 	APIKey  string `env:"API_KEY"`
 }
 
+type HubtelConfig struct {
+	BaseURL               string `env:"BASE_URL"`
+	APIID                 string `env:"API_ID"`
+	APIKey                string `env:"API_KEY"`
+	MerchantAccountNumber string `env:"MERCHANT_ACCOUNT_NUMBER"`
+	CallbackURL           string `env:"CALLBACK_URL"`
+	ReturnURL             string `env:"RETURN_URL"`
+	CancellationURL       string `env:"CANCELLATION_URL"`
+}
+
 type AWSConfig struct {
 	FromEmail string `env:"FROM_EMAIL,required,notEmpty"`
 	Region    string `env:"REGION,required,notEmpty"`
@@ -30,6 +40,7 @@ type Config struct {
 	AWS         AWSConfig      `envPrefix:"AWS_"`
 	Arkesel     ProviderConfig `envPrefix:"ARKESEL_"`
 	MNotify     ProviderConfig `envPrefix:"MNOTIFY_"`
+	Hubtel      HubtelConfig   `envPrefix:"HUBTEL_"`
 }
 
 func Load() (*Config, error) {
@@ -64,6 +75,13 @@ func (c *Config) normalize() {
 	c.Arkesel.BaseURL = strings.TrimRight(strings.TrimSpace(c.Arkesel.BaseURL), "/")
 	c.MNotify.APIKey = strings.TrimSpace(c.MNotify.APIKey)
 	c.MNotify.BaseURL = strings.TrimRight(strings.TrimSpace(c.MNotify.BaseURL), "/")
+	c.Hubtel.BaseURL = strings.TrimRight(strings.TrimSpace(c.Hubtel.BaseURL), "/")
+	c.Hubtel.APIID = strings.TrimSpace(c.Hubtel.APIID)
+	c.Hubtel.APIKey = strings.TrimSpace(c.Hubtel.APIKey)
+	c.Hubtel.MerchantAccountNumber = strings.TrimSpace(c.Hubtel.MerchantAccountNumber)
+	c.Hubtel.CallbackURL = strings.TrimSpace(c.Hubtel.CallbackURL)
+	c.Hubtel.ReturnURL = strings.TrimSpace(c.Hubtel.ReturnURL)
+	c.Hubtel.CancellationURL = strings.TrimSpace(c.Hubtel.CancellationURL)
 
 	origins := make([]string, 0, len(c.CORSOrigins))
 	for _, origin := range c.CORSOrigins {
