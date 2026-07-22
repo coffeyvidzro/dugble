@@ -8,6 +8,8 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/coffeyvidzro/dugble/server/internal/config"
+	"github.com/coffeyvidzro/dugble/server/internal/integration/fx"
+	"github.com/coffeyvidzro/dugble/server/internal/integration/hubtel"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/auth"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/domain"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/senderid"
@@ -15,6 +17,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/modules/team"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/teamtoken"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/user"
+	"github.com/coffeyvidzro/dugble/server/internal/modules/wallet"
 	"github.com/coffeyvidzro/dugble/server/internal/notifications"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 	"github.com/coffeyvidzro/dugble/server/internal/transport/csrf"
@@ -88,6 +91,9 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	teamTokenRepository := teamtoken.NewRepository(deps.DB)
 	domainRepository := domain.NewRepository(deps.DB)
 	senderIDRepository := senderid.NewRepository(deps.DB)
+	walletRepository := wallet.NewRepository(deps.DB)
+	hubtelProvider := hubtel.NewProvider(hubtel.NewClient(cfg.Hubtel))
+	fxClient := fx.NewFrankfurterClient()
 	tenantMiddleware := func(permission tenant.Permission) echo.MiddlewareFunc {
 		return middlewares.Tenant(
 			middlewares.TenantConfig{Memberships: teamRepository, Required: permission},
@@ -123,6 +129,20 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	domain.RegisterRoutes(
 		router,
 		domain.NewHandler(domainService),
+		authMiddleware,
+		csrfMiddleware,
+		tenantMiddleware,
+	)
+
+	walletService := wallet.NewService(
+		walletRepository,
+		wallet.ServiceConfig{FrontendURL: cfg.FrontendURL, BackendURL: cfg.BackendURL},
+		hubtelProvider,
+		fxClient,
+	)
+	wallet.RegisterRoutes(
+		router,
+		wallet.NewHandler(walletService),
 		authMiddleware,
 		csrfMiddleware,
 		tenantMiddleware,

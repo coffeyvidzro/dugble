@@ -127,3 +127,27 @@ type VerificationToken struct {
 	ExpiresAt  pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
 	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
+
+type Wallet struct {
+	ID        uuid.UUID          `db:"id" json:"id"`
+	TeamID    uuid.UUID          `db:"team_id" json:"team_id"`
+	Currency  string             `db:"currency" json:"currency"`
+	Balance   int64              `db:"balance" json:"balance"`
+	Status    string             `db:"status" json:"status"`
+	CreatedAt pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type WalletTransaction struct {
+	ID              uuid.UUID          `db:"id" json:"id"`
+	WalletID        uuid.UUID          `db:"wallet_id" json:"wallet_id"`
+	TeamID          uuid.UUID          `db:"team_id" json:"team_id"`
+	TransactionType string             `db:"transaction_type" json:"transaction_type"`
+	ReferenceID     *uuid.UUID         `db:"reference_id" json:"reference_id"`
+	Amount          int64              `db:"amount" json:"amount"`
+	BalanceAfter    int64              `db:"balance_after" json:"balance_after"`
+	Status          string             `db:"status" json:"status"`
+	Description     *string            `db:"description" json:"description"`
+	Metadata        []byte             `db:"metadata" json:"metadata"`
+	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
