@@ -2,7 +2,7 @@ package teamtoken
 
 import "time"
 
-const TokenPrefix = "l0g_team_"
+const TokenPrefix = "dgb_team_"
 
 type Token struct {
 	ID          string     `json:"id"`

@@ -101,7 +101,7 @@ func run() error {
 	}
 
 	server := echo.StartConfig{
-		Address:         ":8080",
+		Address:         ":" + cfg.HTTPPort,
 		HideBanner:      true,
 		HidePort:        true,
 		GracefulTimeout: 15 * time.Second,
