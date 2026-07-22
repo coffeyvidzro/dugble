@@ -16,6 +16,8 @@ import (
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
+const microsPerCent int64 = 10_000
+
 type RateProvider interface {
 	LatestRate(ctx context.Context, base string, quote string) (fx.Rate, error)
 }
@@ -99,7 +101,7 @@ func (s *Service) TopUp(ctx context.Context, req TopUpRequest) (TopUpResponse, e
 	if s.rates == nil {
 		return TopUpResponse{}, apperrors.NewInternal("FX rates are not configured", nil)
 	}
-	if req.AmountCents <= 0 {
+	if req.AmountMicros <= 0 {
 		return TopUpResponse{}, apperrors.NewBadRequest("Amount must be greater than zero")
 	}
 	metadata := req.Metadata
@@ -120,17 +122,17 @@ func (s *Service) TopUp(ctx context.Context, req TopUpRequest) (TopUpResponse, e
 	if err != nil {
 		return TopUpResponse{}, apperrors.NewInternal("Unable to fetch USD/GHS exchange rate", err)
 	}
-	paymentAmountCents, err := convertUSDCentsToGHSPesewas(req.AmountCents, rate.Rate)
+	paymentAmountPesewas, err := convertUSDMicrosToGHSPesewas(req.AmountMicros, rate.Rate)
 	if err != nil {
 		return TopUpResponse{}, apperrors.NewInternal("Unable to convert wallet top-up amount", err)
 	}
-	paymentAmount := minorToMajor(paymentAmountCents)
+	paymentAmount := pesewasToCedis(paymentAmountPesewas)
 
-	transactionMetadata, err := mergeMetadata(metadata, hubtel.CheckoutData{}, rate, req.AmountCents, paymentAmountCents)
+	transactionMetadata, err := mergeMetadata(metadata, hubtel.CheckoutData{}, rate, req.AmountMicros, paymentAmountPesewas)
 	if err != nil {
 		return TopUpResponse{}, apperrors.NewInternal("Unable to prepare wallet metadata", err)
 	}
-	transaction, err := s.repository.CreatePendingTopUp(ctx, tenantContext.TeamID, req.AmountCents, clientReference, &description, transactionMetadata)
+	transaction, err := s.repository.CreatePendingTopUp(ctx, tenantContext.TeamID, req.AmountMicros, clientReference, &description, transactionMetadata)
 	if err != nil {
 		return TopUpResponse{}, apperrors.NewInternal("Unable to create pending top-up", err)
 	}
@@ -148,15 +150,15 @@ func (s *Service) TopUp(ctx context.Context, req TopUpRequest) (TopUpResponse, e
 		ClientReference: clientReference.String(),
 	})
 	if err != nil {
-		_, _ = s.repository.MarkTopUpFailed(ctx, transactionID, transaction.BalanceAfter, transactionMetadata)
+		_, _ = s.repository.MarkTopUpFailed(ctx, transactionID, transaction.BalanceAfterMicros, transactionMetadata)
 		return TopUpResponse{}, apperrors.NewInternal("Unable to initiate Hubtel checkout", err)
 	}
 	if checkout.ResponseCode != "0000" || !strings.EqualFold(checkout.Status, "Success") {
-		_, _ = s.repository.MarkTopUpFailed(ctx, transactionID, transaction.BalanceAfter, transactionMetadata)
+		_, _ = s.repository.MarkTopUpFailed(ctx, transactionID, transaction.BalanceAfterMicros, transactionMetadata)
 		return TopUpResponse{}, apperrors.NewBadRequest("Hubtel checkout was not accepted")
 	}
 
-	transactionMetadata, err = mergeMetadata(metadata, checkout.Data, rate, req.AmountCents, paymentAmountCents)
+	transactionMetadata, err = mergeMetadata(metadata, checkout.Data, rate, req.AmountMicros, paymentAmountPesewas)
 	if err != nil {
 		return TopUpResponse{}, apperrors.NewInternal("Unable to prepare wallet metadata", err)
 	}
@@ -166,18 +168,18 @@ func (s *Service) TopUp(ctx context.Context, req TopUpRequest) (TopUpResponse, e
 	}
 
 	return TopUpResponse{
-		CheckoutURL:        checkout.Data.CheckoutURL,
-		CheckoutID:         checkout.Data.CheckoutID,
-		ClientReference:    checkout.Data.ClientReference,
-		CheckoutDirectURL:  checkout.Data.CheckoutDirectURL,
-		WalletCurrency:     CurrencyUSD,
-		WalletAmountCents:  req.AmountCents,
-		PaymentCurrency:    "GHS",
-		PaymentAmount:      paymentAmount,
-		PaymentAmountCents: paymentAmountCents,
-		ExchangeRate:       formatRate(rate.Rate),
-		ExchangeRateDate:   rate.Date,
-		Transaction:        transaction,
+		CheckoutURL:          checkout.Data.CheckoutURL,
+		CheckoutID:           checkout.Data.CheckoutID,
+		ClientReference:      checkout.Data.ClientReference,
+		CheckoutDirectURL:    checkout.Data.CheckoutDirectURL,
+		WalletCurrency:       CurrencyUSD,
+		WalletAmountMicros:   req.AmountMicros,
+		PaymentCurrency:      "GHS",
+		PaymentAmount:        paymentAmount,
+		PaymentAmountPesewas: paymentAmountPesewas,
+		ExchangeRate:         formatRate(rate.Rate),
+		ExchangeRateDate:     rate.Date,
+		Transaction:          transaction,
 	}, nil
 }
 
@@ -221,7 +223,7 @@ func requireTenant(ctx context.Context, permission tenant.Permission) (tenant.Co
 	return tenantContext, nil
 }
 
-func mergeMetadata(metadata json.RawMessage, checkout hubtel.CheckoutData, rate fx.Rate, walletAmountCents int64, paymentAmountCents int64) (json.RawMessage, error) {
+func mergeMetadata(metadata json.RawMessage, checkout hubtel.CheckoutData, rate fx.Rate, walletAmountMicros int64, paymentAmountPesewas int64) (json.RawMessage, error) {
 	values := map[string]any{}
 	if len(metadata) > 0 {
 		if err := json.Unmarshal(metadata, &values); err != nil {
@@ -230,10 +232,10 @@ func mergeMetadata(metadata json.RawMessage, checkout hubtel.CheckoutData, rate 
 	}
 	values["provider"] = "hubtel"
 	values["wallet_currency"] = CurrencyUSD
-	values["wallet_amount_cents"] = walletAmountCents
+	values["wallet_amount_micros"] = walletAmountMicros
 	values["payment_currency"] = "GHS"
-	values["payment_amount"] = minorToMajor(paymentAmountCents)
-	values["payment_amount_cents"] = paymentAmountCents
+	values["payment_amount"] = pesewasToCedis(paymentAmountPesewas)
+	values["payment_amount_pesewas"] = paymentAmountPesewas
 	values["exchange_rate"] = formatRate(rate.Rate)
 	values["exchange_rate_date"] = rate.Date
 	values["exchange_rate_source"] = "frankfurter"
@@ -267,9 +269,9 @@ func mergeSettlementMetadata(callbackStatus hubtel.PaymentStatus, verifiedStatus
 	return json.Marshal(values)
 }
 
-func convertUSDCentsToGHSPesewas(usdCents int64, rate float64) (int64, error) {
-	if usdCents <= 0 {
-		return 0, fmt.Errorf("usd cents must be positive")
+func convertUSDMicrosToGHSPesewas(usdMicros int64, rate float64) (int64, error) {
+	if usdMicros <= 0 {
+		return 0, fmt.Errorf("USD micros must be positive")
 	}
 	if rate <= 0 {
 		return 0, fmt.Errorf("exchange rate must be positive")
@@ -278,17 +280,22 @@ func convertUSDCentsToGHSPesewas(usdCents int64, rate float64) (int64, error) {
 	if !ok {
 		return 0, fmt.Errorf("parse exchange rate")
 	}
-	amount := new(big.Rat).SetInt64(usdCents)
+	amount := new(big.Rat).SetInt64(usdMicros)
 	amount.Mul(amount, rateRat)
+	amount.Quo(amount, new(big.Rat).SetInt64(microsPerCent))
+
 	numerator := new(big.Int).Set(amount.Num())
 	denominator := amount.Denom()
 	quotient, remainder := new(big.Int).QuoRem(numerator, denominator, new(big.Int))
 	if new(big.Int).Mul(remainder, big.NewInt(2)).Cmp(denominator) >= 0 {
 		quotient.Add(quotient, big.NewInt(1))
 	}
+	if !quotient.IsInt64() {
+		return 0, fmt.Errorf("converted payment amount exceeds int64")
+	}
 	return quotient.Int64(), nil
 }
 
-func minorToMajor(amountCents int64) float64 { return float64(amountCents) / 100 }
+func pesewasToCedis(amountPesewas int64) float64 { return float64(amountPesewas) / 100 }
 
 func formatRate(rate float64) string { return fmt.Sprintf("%.10f", rate) }
