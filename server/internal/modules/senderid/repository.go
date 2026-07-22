@@ -4,14 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
+	"github.com/coffeyvidzro/dugble/server/pkg/pgconv"
 )
 
 var ErrSenderIDAlreadyExists = errors.New("sender id already exists")
@@ -89,20 +88,13 @@ func senderIDFromSQLC(row dbsqlc.SenderID) SenderID {
 		Status:          row.Status,
 		Provider:        row.Provider,
 		RejectionReason: row.RejectionReason,
-		ApprovedAt:      timePtr(row.ApprovedAt),
-		RejectedAt:      timePtr(row.RejectedAt),
-		SuspendedAt:     timePtr(row.SuspendedAt),
+		ApprovedAt:      pgconv.TimestamptzToTimePtr(row.ApprovedAt),
+		RejectedAt:      pgconv.TimestamptzToTimePtr(row.RejectedAt),
+		SuspendedAt:     pgconv.TimestamptzToTimePtr(row.SuspendedAt),
 		CreatedBy:       createdBy,
 		CreatedAt:       row.CreatedAt.Time,
 		UpdatedAt:       row.UpdatedAt.Time,
 	}
-}
-
-func timePtr(value pgtype.Timestamptz) *time.Time {
-	if !value.Valid {
-		return nil
-	}
-	return &value.Time
 }
 
 func isUniqueViolation(err error) bool {
