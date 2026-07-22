@@ -37,6 +37,45 @@ type APIError struct {
 	Body       string
 }
 
+func (e *APIError) SafeToFallback() bool {
+	if e == nil {
+		return false
+	}
+
+	// These responses indicate mNotify did not accept the campaign. Retrying the
+	// next provider is safe from a duplicate-delivery perspective. 401/403 and
+	// 5xx responses remain non-fallback because they are either configuration
+	// problems or ambiguous upstream outcomes.
+	switch e.StatusCode {
+	case http.StatusBadRequest,
+		http.StatusNotFound,
+		http.StatusMethodNotAllowed,
+		http.StatusConflict,
+		http.StatusGone,
+		http.StatusLengthRequired,
+		http.StatusPreconditionFailed,
+		http.StatusRequestEntityTooLarge,
+		http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType,
+		http.StatusRequestedRangeNotSatisfiable,
+		http.StatusExpectationFailed,
+		http.StatusTeapot,
+		http.StatusMisdirectedRequest,
+		http.StatusUnprocessableEntity,
+		http.StatusLocked,
+		http.StatusFailedDependency,
+		http.StatusTooEarly,
+		http.StatusUpgradeRequired,
+		http.StatusPreconditionRequired,
+		http.StatusTooManyRequests,
+		http.StatusRequestHeaderFieldsTooLarge,
+		http.StatusUnavailableForLegalReasons:
+		return true
+	default:
+		return false
+	}
+}
+
 func (e *APIError) Error() string {
 	if strings.TrimSpace(e.Body) == "" {
 		return fmt.Sprintf("mnotify api returned status %d", e.StatusCode)
