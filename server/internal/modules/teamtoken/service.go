@@ -24,6 +24,7 @@ var allowedPermissions = map[tenant.Permission]struct{}{
 	tenant.PermissionTeamUpdate:       {},
 	tenant.PermissionTeamMembersRead:  {},
 	tenant.PermissionTeamMemberInvite: {},
+	tenant.PermissionSenderIDsRead:    {},
 }
 
 type Service struct {

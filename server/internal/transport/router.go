@@ -9,6 +9,7 @@ import (
 
 	"github.com/coffeyvidzro/dugble/server/internal/config"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/auth"
+	"github.com/coffeyvidzro/dugble/server/internal/modules/senderid"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/team"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/teamtoken"
@@ -84,6 +85,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	teamRepository := team.NewRepository(deps.DB)
 	teamService := team.NewService(teamRepository, emailService)
 	teamTokenRepository := teamtoken.NewRepository(deps.DB)
+	senderIDRepository := senderid.NewRepository(deps.DB)
 	tenantMiddleware := func(permission tenant.Permission) echo.MiddlewareFunc {
 		return middlewares.Tenant(
 			middlewares.TenantConfig{Memberships: teamRepository, Required: permission},
@@ -101,6 +103,15 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	teamtoken.RegisterRoutes(
 		router,
 		teamtoken.NewHandler(teamTokenService),
+		authMiddleware,
+		csrfMiddleware,
+		tenantMiddleware,
+	)
+
+	senderIDService := senderid.NewService(senderIDRepository)
+	senderid.RegisterRoutes(
+		router,
+		senderid.NewHandler(senderIDService),
 		authMiddleware,
 		csrfMiddleware,
 		tenantMiddleware,

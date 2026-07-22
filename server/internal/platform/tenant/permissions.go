@@ -16,6 +16,9 @@ const (
 	PermissionTeamTokensCreate Permission = "team_tokens:create"
 	PermissionTeamTokensUpdate Permission = "team_tokens:update"
 	PermissionTeamTokensRevoke Permission = "team_tokens:revoke"
+	PermissionSenderIDsRead    Permission = "sender_ids:read"
+	PermissionSenderIDsCreate  Permission = "sender_ids:create"
+	PermissionSenderIDsDelete  Permission = "sender_ids:delete"
 )
 
 var permissionsByRole = map[string]map[Permission]struct{}{
@@ -32,6 +35,9 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 		PermissionTeamTokensCreate: {},
 		PermissionTeamTokensUpdate: {},
 		PermissionTeamTokensRevoke: {},
+		PermissionSenderIDsRead:    {},
+		PermissionSenderIDsCreate:  {},
+		PermissionSenderIDsDelete:  {},
 	},
 	RoleAdmin: {
 		PermissionTeamRead:         {},
@@ -45,12 +51,16 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 		PermissionTeamTokensCreate: {},
 		PermissionTeamTokensUpdate: {},
 		PermissionTeamTokensRevoke: {},
+		PermissionSenderIDsRead:    {},
+		PermissionSenderIDsCreate:  {},
+		PermissionSenderIDsDelete:  {},
 	},
 	RoleMember: {
 		PermissionTeamRead:        {},
 		PermissionTeamCreate:      {},
 		PermissionTeamMembersRead: {},
 		PermissionTeamMemberLeave: {},
+		PermissionSenderIDsRead:   {},
 	},
 }
 
