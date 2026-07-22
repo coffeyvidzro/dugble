@@ -3,12 +3,12 @@ package mnotify
 import (
 	"testing"
 
-	"github.com/coffeyvidzro/dugble/server/internal/integration/sms"
+	"github.com/coffeyvidzro/dugble/server/internal/sms/provider"
 )
 
 func TestMapStatusAccepted(t *testing.T) {
-	if got := mapStatus(sendResponse{Code: "1000"}); got != sms.StatusAccepted {
-		t.Fatalf("mapStatus = %q, want %q", got, sms.StatusAccepted)
+	if got := mapStatus(sendResponse{Code: "1000"}); got != provider.StatusAccepted {
+		t.Fatalf("mapStatus = %q, want %q", got, provider.StatusAccepted)
 	}
 }
 

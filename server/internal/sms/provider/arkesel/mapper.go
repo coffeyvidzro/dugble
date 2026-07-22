@@ -4,38 +4,38 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/coffeyvidzro/dugble/server/internal/integration/sms"
+	"github.com/coffeyvidzro/dugble/server/internal/sms/provider"
 )
 
-func toSendRequest(req sms.SendRequest) sendRequest {
+func toSendRequest(req provider.SendRequest) sendRequest {
 	return sendRequest{Sender: req.From, Message: req.Body, Recipients: []string{req.To}}
 }
 
-func toSendResult(provider string, body []byte, res sendResponse) sms.SendResult {
+func toSendResult(providerName string, body []byte, res sendResponse) provider.SendResult {
 	messageID := strings.TrimSpace(res.MessageID)
 	if messageID == "" {
 		messageID = strings.TrimSpace(res.BatchID)
 	}
-	return sms.SendResult{
-		Provider:          provider,
+	return provider.SendResult{
+		Provider:          providerName,
 		ProviderMessageID: messageID,
 		Status:            mapStatus(res),
 		RawResponse:       json.RawMessage(body),
 	}
 }
 
-func mapStatus(res sendResponse) sms.Status {
+func mapStatus(res sendResponse) provider.Status {
 	status := strings.ToLower(strings.TrimSpace(res.Status))
 	code := strings.ToLower(strings.TrimSpace(res.Code))
 	message := strings.ToLower(strings.TrimSpace(res.Message))
 	if status == "success" || status == "ok" || code == "ok" || strings.Contains(message, "success") {
-		return sms.StatusAccepted
+		return provider.StatusAccepted
 	}
 	if status == "sent" || strings.Contains(message, "sent") {
-		return sms.StatusSent
+		return provider.StatusSent
 	}
 	if status == "failed" || status == "error" {
-		return sms.StatusFailed
+		return provider.StatusFailed
 	}
-	return sms.StatusUnknown
+	return provider.StatusUnknown
 }

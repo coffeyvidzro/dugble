@@ -4,29 +4,29 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/coffeyvidzro/dugble/server/internal/integration/sms"
+	"github.com/coffeyvidzro/dugble/server/internal/sms/provider"
 )
 
-func toSendResult(provider string, body []byte, res sendResponse) sms.SendResult {
+func toSendResult(providerName string, body []byte, res sendResponse) provider.SendResult {
 	messageID := strings.TrimSpace(res.MessageID)
 	if messageID == "" {
 		messageID = strings.TrimSpace(res.ID)
 	}
-	return sms.SendResult{Provider: provider, ProviderMessageID: messageID, Status: mapStatus(res), RawResponse: json.RawMessage(body)}
+	return provider.SendResult{Provider: providerName, ProviderMessageID: messageID, Status: mapStatus(res), RawResponse: json.RawMessage(body)}
 }
 
-func mapStatus(res sendResponse) sms.Status {
+func mapStatus(res sendResponse) provider.Status {
 	status := strings.ToLower(strings.TrimSpace(res.Status))
 	code := strings.ToLower(strings.TrimSpace(res.Code))
 	message := strings.ToLower(strings.TrimSpace(res.Message))
 	if code == "1000" || code == "1002" || status == "success" || strings.Contains(message, "sent") || strings.Contains(message, "success") {
-		return sms.StatusAccepted
+		return provider.StatusAccepted
 	}
 	if status == "sent" {
-		return sms.StatusSent
+		return provider.StatusSent
 	}
 	if status == "failed" || status == "error" || strings.HasPrefix(code, "4") {
-		return sms.StatusFailed
+		return provider.StatusFailed
 	}
-	return sms.StatusUnknown
+	return provider.StatusUnknown
 }

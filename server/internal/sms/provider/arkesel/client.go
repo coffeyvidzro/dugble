@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coffeyvidzro/dugble/server/internal/integration/sms"
+	"github.com/coffeyvidzro/dugble/server/internal/sms/provider"
 )
 
 const (
@@ -52,17 +52,17 @@ func WithHTTPClient(httpClient *http.Client) Option {
 
 func (c *Client) Name() string { return ProviderName }
 
-func (c *Client) Send(ctx context.Context, req sms.SendRequest) (sms.SendResult, error) {
+func (c *Client) Send(ctx context.Context, req provider.SendRequest) (provider.SendResult, error) {
 	if c.apiKey == "" {
-		return sms.SendResult{}, providerError("missing_api_key", "Arkesel API key is not configured", false, false, true, nil)
+		return provider.SendResult{}, providerError("missing_api_key", "Arkesel API key is not configured", false, false, true, nil)
 	}
 	payload, err := json.Marshal(toSendRequest(req))
 	if err != nil {
-		return sms.SendResult{}, providerError("encode_request", "Unable to encode Arkesel request", false, false, false, err)
+		return provider.SendResult{}, providerError("encode_request", "Unable to encode Arkesel request", false, false, false, err)
 	}
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.url, bytes.NewReader(payload))
 	if err != nil {
-		return sms.SendResult{}, providerError("build_request", "Unable to build Arkesel request", false, false, false, err)
+		return provider.SendResult{}, providerError("build_request", "Unable to build Arkesel request", false, false, false, err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Accept", "application/json")
@@ -70,29 +70,29 @@ func (c *Client) Send(ctx context.Context, req sms.SendRequest) (sms.SendResult,
 
 	httpRes, err := c.http.Do(httpReq)
 	if err != nil {
-		return sms.SendResult{}, providerError("request_failed", "Arkesel request failed", true, true, false, err)
+		return provider.SendResult{}, providerError("request_failed", "Arkesel request failed", true, true, false, err)
 	}
 	defer httpRes.Body.Close()
 	body, err := io.ReadAll(httpRes.Body)
 	if err != nil {
-		return sms.SendResult{}, providerError("read_response", "Unable to read Arkesel response", true, true, false, err)
+		return provider.SendResult{}, providerError("read_response", "Unable to read Arkesel response", true, true, false, err)
 	}
 	if httpRes.StatusCode < 200 || httpRes.StatusCode >= 300 {
-		return sms.SendResult{}, providerError(fmt.Sprintf("http_%d", httpRes.StatusCode), string(body), isTemporaryHTTPStatus(httpRes.StatusCode), isTemporaryHTTPStatus(httpRes.StatusCode), canFallbackHTTPStatus(httpRes.StatusCode), nil)
+		return provider.SendResult{}, providerError(fmt.Sprintf("http_%d", httpRes.StatusCode), string(body), isTemporaryHTTPStatus(httpRes.StatusCode), isTemporaryHTTPStatus(httpRes.StatusCode), canFallbackHTTPStatus(httpRes.StatusCode), nil)
 	}
 	var decoded sendResponse
 	if err := json.Unmarshal(body, &decoded); err != nil {
-		return sms.SendResult{}, providerError("decode_response", "Unable to decode Arkesel response", true, true, false, err)
+		return provider.SendResult{}, providerError("decode_response", "Unable to decode Arkesel response", true, true, false, err)
 	}
 	result := toSendResult(c.Name(), body, decoded)
-	if result.Status == sms.StatusFailed {
-		return sms.SendResult{}, providerError("provider_failed", decoded.Message, false, false, false, nil)
+	if result.Status == provider.StatusFailed {
+		return provider.SendResult{}, providerError("provider_failed", decoded.Message, false, false, false, nil)
 	}
 	return result, nil
 }
 
-func providerError(code, message string, temporary, retryable, fallbackOK bool, err error) *sms.ProviderError {
-	return &sms.ProviderError{Provider: ProviderName, Code: code, Message: strings.TrimSpace(message), Temporary: temporary, Retryable: retryable, FallbackOK: fallbackOK, Err: err}
+func providerError(code, message string, temporary, retryable, fallbackOK bool, err error) *provider.ProviderError {
+	return &provider.ProviderError{Provider: ProviderName, Code: code, Message: strings.TrimSpace(message), Temporary: temporary, Retryable: retryable, FallbackOK: fallbackOK, Err: err}
 }
 
 func isTemporaryHTTPStatus(status int) bool {

@@ -1,4 +1,4 @@
-package sms
+package provider
 
 import (
 	"context"
