@@ -77,6 +77,7 @@ type Querier interface {
 	UpdateUserPasswordByEmail(ctx context.Context, arg UpdateUserPasswordByEmailParams) (User, error)
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error)
 	UpdateWalletStatus(ctx context.Context, arg UpdateWalletStatusParams) (Wallet, error)
+	UpdateWalletTransactionMetadata(ctx context.Context, arg UpdateWalletTransactionMetadataParams) (WalletTransaction, error)
 	UpdateWalletTransactionSettlement(ctx context.Context, arg UpdateWalletTransactionSettlementParams) (WalletTransaction, error)
 }
 

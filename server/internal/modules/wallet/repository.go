@@ -66,6 +66,27 @@ func (r *Repository) CreatePendingTopUp(ctx context.Context, teamID uuid.UUID, a
 	return transactionFromSQLC(transaction), nil
 }
 
+func (r *Repository) UpdateTransactionMetadata(ctx context.Context, id uuid.UUID, metadata json.RawMessage) (Transaction, error) {
+	transaction, err := r.queries.UpdateWalletTransactionMetadata(ctx, dbsqlc.UpdateWalletTransactionMetadataParams{ID: id, Metadata: metadata})
+	if err != nil {
+		return Transaction{}, fmt.Errorf("update wallet transaction metadata: %w", err)
+	}
+	return transactionFromSQLC(transaction), nil
+}
+
+func (r *Repository) MarkTopUpFailed(ctx context.Context, id uuid.UUID, balanceAfter int64, metadata json.RawMessage) (Transaction, error) {
+	transaction, err := r.queries.UpdateWalletTransactionSettlement(ctx, dbsqlc.UpdateWalletTransactionSettlementParams{
+		ID:           id,
+		Status:       TransactionStatusFailed,
+		BalanceAfter: balanceAfter,
+		Metadata:     metadata,
+	})
+	if err != nil {
+		return Transaction{}, fmt.Errorf("mark top-up failed: %w", err)
+	}
+	return transactionFromSQLC(transaction), nil
+}
+
 func (r *Repository) SettleTopUp(ctx context.Context, referenceID uuid.UUID, paid bool, metadata json.RawMessage) (Transaction, error) {
 	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {

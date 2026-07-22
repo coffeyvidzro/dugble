@@ -121,6 +121,19 @@ func (s *Service) TopUp(ctx context.Context, req TopUpRequest) (TopUpResponse, e
 	}
 	paymentAmount := roundMoney((float64(req.Amount) / 100) * rate.Rate)
 
+	transactionMetadata, err := mergeMetadata(metadata, hubtel.CheckoutData{}, rate, req.Amount, paymentAmount)
+	if err != nil {
+		return TopUpResponse{}, apperrors.NewInternal("Unable to prepare wallet metadata", err)
+	}
+	transaction, err := s.repository.CreatePendingTopUp(ctx, tenantContext.TeamID, req.Amount, clientReference, &description, transactionMetadata)
+	if err != nil {
+		return TopUpResponse{}, apperrors.NewInternal("Unable to create pending top-up", err)
+	}
+	transactionID, err := uuid.Parse(transaction.ID)
+	if err != nil {
+		return TopUpResponse{}, apperrors.NewInternal("Unable to parse top-up transaction id", err)
+	}
+
 	checkout, err := s.hubtel.InitiateCheckout(ctx, hubtel.InitiateCheckoutRequest{
 		TotalAmount:     paymentAmount,
 		Description:     description,
@@ -130,19 +143,21 @@ func (s *Service) TopUp(ctx context.Context, req TopUpRequest) (TopUpResponse, e
 		ClientReference: clientReference.String(),
 	})
 	if err != nil {
+		_, _ = s.repository.MarkTopUpFailed(ctx, transactionID, transaction.BalanceAfter, transactionMetadata)
 		return TopUpResponse{}, apperrors.NewInternal("Unable to initiate Hubtel checkout", err)
 	}
 	if checkout.ResponseCode != "0000" || !strings.EqualFold(checkout.Status, "Success") {
+		_, _ = s.repository.MarkTopUpFailed(ctx, transactionID, transaction.BalanceAfter, transactionMetadata)
 		return TopUpResponse{}, apperrors.NewBadRequest("Hubtel checkout was not accepted")
 	}
 
-	transactionMetadata, err := mergeMetadata(metadata, checkout.Data, rate, req.Amount, paymentAmount)
+	transactionMetadata, err = mergeMetadata(metadata, checkout.Data, rate, req.Amount, paymentAmount)
 	if err != nil {
 		return TopUpResponse{}, apperrors.NewInternal("Unable to prepare wallet metadata", err)
 	}
-	transaction, err := s.repository.CreatePendingTopUp(ctx, tenantContext.TeamID, req.Amount, clientReference, &description, transactionMetadata)
+	transaction, err = s.repository.UpdateTransactionMetadata(ctx, transactionID, transactionMetadata)
 	if err != nil {
-		return TopUpResponse{}, apperrors.NewInternal("Unable to create pending top-up", err)
+		return TopUpResponse{}, apperrors.NewInternal("Unable to attach Hubtel checkout metadata", err)
 	}
 
 	return TopUpResponse{

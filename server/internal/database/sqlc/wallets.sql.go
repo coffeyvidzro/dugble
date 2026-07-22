@@ -441,6 +441,38 @@ func (q *Queries) UpdateWalletStatus(ctx context.Context, arg UpdateWalletStatus
 	return i, err
 }
 
+const updateWalletTransactionMetadata = `-- name: UpdateWalletTransactionMetadata :one
+UPDATE wallet_transactions
+SET metadata = $1
+WHERE id = $2
+  AND status = 'pending'
+RETURNING id, wallet_id, team_id, transaction_type, reference_id, amount, balance_after, status, description, metadata, created_at
+`
+
+type UpdateWalletTransactionMetadataParams struct {
+	Metadata []byte    `db:"metadata" json:"metadata"`
+	ID       uuid.UUID `db:"id" json:"id"`
+}
+
+func (q *Queries) UpdateWalletTransactionMetadata(ctx context.Context, arg UpdateWalletTransactionMetadataParams) (WalletTransaction, error) {
+	row := q.db.QueryRow(ctx, updateWalletTransactionMetadata, arg.Metadata, arg.ID)
+	var i WalletTransaction
+	err := row.Scan(
+		&i.ID,
+		&i.WalletID,
+		&i.TeamID,
+		&i.TransactionType,
+		&i.ReferenceID,
+		&i.Amount,
+		&i.BalanceAfter,
+		&i.Status,
+		&i.Description,
+		&i.Metadata,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const updateWalletTransactionSettlement = `-- name: UpdateWalletTransactionSettlement :one
 UPDATE wallet_transactions
 SET status = $1,

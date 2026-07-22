@@ -114,3 +114,10 @@ SET status = sqlc.arg(status),
     metadata = sqlc.arg(metadata)
 WHERE id = sqlc.arg(id)
 RETURNING *;
+
+-- name: UpdateWalletTransactionMetadata :one
+UPDATE wallet_transactions
+SET metadata = sqlc.arg(metadata)
+WHERE id = sqlc.arg(id)
+  AND status = 'pending'
+RETURNING *;
