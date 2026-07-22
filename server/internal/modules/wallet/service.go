@@ -3,6 +3,7 @@ package wallet
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 
 	"github.com/google/uuid"
@@ -48,11 +49,15 @@ func (s *Service) Get(ctx context.Context) (Wallet, error) {
 		return Wallet{}, err
 	}
 	wallet, err := s.repository.GetByTeam(ctx, tenantContext.TeamID, CurrencyUSD)
-	if err != nil {
-		wallet, err = s.repository.Create(ctx, tenantContext.TeamID, CurrencyUSD)
+	if err == nil {
+		return wallet, nil
 	}
-	if err != nil {
+	if !errors.Is(err, ErrWalletNotFound) {
 		return Wallet{}, apperrors.NewInternal("Unable to get wallet", err)
+	}
+	wallet, err = s.repository.Create(ctx, tenantContext.TeamID, CurrencyUSD)
+	if err != nil {
+		return Wallet{}, apperrors.NewInternal("Unable to create wallet", err)
 	}
 	return wallet, nil
 }

@@ -3,6 +3,7 @@ package wallet
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -11,6 +12,8 @@ import (
 
 	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
 )
+
+var ErrWalletNotFound = errors.New("wallet not found")
 
 type Repository struct {
 	db      *pgxpool.Pool
@@ -30,6 +33,9 @@ func (r *Repository) Create(ctx context.Context, teamID uuid.UUID, currency stri
 func (r *Repository) GetByTeam(ctx context.Context, teamID uuid.UUID, currency string) (Wallet, error) {
 	row, err := r.queries.GetWalletByTeamAndCurrency(ctx, dbsqlc.GetWalletByTeamAndCurrencyParams{TeamID: teamID, Currency: currency})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Wallet{}, ErrWalletNotFound
+		}
 		return Wallet{}, fmt.Errorf("get wallet: %w", err)
 	}
 	return walletFromSQLC(row), nil
