@@ -13,8 +13,6 @@ type ProviderConfig struct {
 }
 
 type HubtelConfig struct {
-	BaseURL               string `env:"BASE_URL"`
-	TransactionStatusURL  string `env:"TRANSACTION_STATUS_URL"`
 	APIID                 string `env:"API_ID"`
 	APIKey                string `env:"API_KEY"`
 	MerchantAccountNumber string `env:"MERCHANT_ACCOUNT_NUMBER"`
@@ -75,8 +73,6 @@ func (c *Config) normalize() {
 	c.Arkesel.BaseURL = strings.TrimRight(strings.TrimSpace(c.Arkesel.BaseURL), "/")
 	c.MNotify.APIKey = strings.TrimSpace(c.MNotify.APIKey)
 	c.MNotify.BaseURL = strings.TrimRight(strings.TrimSpace(c.MNotify.BaseURL), "/")
-	c.Hubtel.BaseURL = strings.TrimRight(strings.TrimSpace(c.Hubtel.BaseURL), "/")
-	c.Hubtel.TransactionStatusURL = strings.TrimRight(strings.TrimSpace(c.Hubtel.TransactionStatusURL), "/")
 	c.Hubtel.APIID = strings.TrimSpace(c.Hubtel.APIID)
 	c.Hubtel.APIKey = strings.TrimSpace(c.Hubtel.APIKey)
 	c.Hubtel.MerchantAccountNumber = strings.TrimSpace(c.Hubtel.MerchantAccountNumber)

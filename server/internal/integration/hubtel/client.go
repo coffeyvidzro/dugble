@@ -22,8 +22,6 @@ const (
 )
 
 type Client struct {
-	BaseURL               string
-	TransactionStatusURL  string
 	APIID                 string
 	APIKey                string
 	MerchantAccountNumber string
@@ -43,17 +41,7 @@ func (e *APIError) Error() string {
 }
 
 func NewClient(cfg config.HubtelConfig) *Client {
-	baseURL := strings.TrimSpace(cfg.BaseURL)
-	if baseURL == "" {
-		baseURL = defaultBaseURL
-	}
-	txnStatusURL := strings.TrimSpace(cfg.TransactionStatusURL)
-	if txnStatusURL == "" {
-		txnStatusURL = defaultTxnStatusURL
-	}
 	return &Client{
-		BaseURL:               strings.TrimRight(baseURL, "/"),
-		TransactionStatusURL:  strings.TrimRight(txnStatusURL, "/"),
 		APIID:                 strings.TrimSpace(cfg.APIID),
 		APIKey:                strings.TrimSpace(cfg.APIKey),
 		MerchantAccountNumber: strings.TrimSpace(cfg.MerchantAccountNumber),
@@ -66,7 +54,7 @@ func (c *Client) InitiateCheckout(ctx context.Context, req InitiateCheckoutReque
 		req.MerchantAccountNumber = c.MerchantAccountNumber
 	}
 	var result InitiateCheckoutResponse
-	if err := c.doRequest(ctx, http.MethodPost, c.BaseURL, "/items/initiate", req, &result); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, defaultBaseURL, "/items/initiate", req, &result); err != nil {
 		return InitiateCheckoutResponse{}, err
 	}
 	return result, nil
@@ -75,7 +63,7 @@ func (c *Client) InitiateCheckout(ctx context.Context, req InitiateCheckoutReque
 func (c *Client) CheckTransactionStatus(ctx context.Context, clientReference string) (TransactionStatusResponse, error) {
 	var result TransactionStatusResponse
 	path := "/transactions/" + c.MerchantAccountNumber + "/status?clientReference=" + clientReference
-	if err := c.doRequest(ctx, http.MethodGet, c.TransactionStatusURL, path, nil, &result); err != nil {
+	if err := c.doRequest(ctx, http.MethodGet, defaultTxnStatusURL, path, nil, &result); err != nil {
 		return TransactionStatusResponse{}, err
 	}
 	return result, nil
