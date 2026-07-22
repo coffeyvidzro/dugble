@@ -55,18 +55,18 @@ type TopUpRequest struct {
 }
 
 type TopUpResponse struct {
-	CheckoutURL           string      `json:"checkout_url"`
-	CheckoutID            string      `json:"checkout_id"`
-	ClientReference       string      `json:"client_reference"`
-	CheckoutDirectURL     string      `json:"checkout_direct_url"`
-	WalletCurrency        string      `json:"wallet_currency"`
-	WalletAmountMicros    int64       `json:"wallet_amount_micros"`
-	PaymentCurrency       string      `json:"payment_currency"`
-	PaymentAmount         float64     `json:"payment_amount"`
-	PaymentAmountPesewas  int64       `json:"payment_amount_pesewas"`
-	ExchangeRate          string      `json:"exchange_rate"`
-	ExchangeRateDate      string      `json:"exchange_rate_date"`
-	Transaction           Transaction `json:"transaction"`
+	CheckoutURL          string      `json:"checkout_url"`
+	CheckoutID           string      `json:"checkout_id"`
+	ClientReference      string      `json:"client_reference"`
+	CheckoutDirectURL    string      `json:"checkout_direct_url"`
+	WalletCurrency       string      `json:"wallet_currency"`
+	WalletAmountMicros   int64       `json:"wallet_amount_micros"`
+	PaymentCurrency      string      `json:"payment_currency"`
+	PaymentAmount        float64     `json:"payment_amount"`
+	PaymentAmountPesewas int64       `json:"payment_amount_pesewas"`
+	ExchangeRate         string      `json:"exchange_rate"`
+	ExchangeRateDate     string      `json:"exchange_rate_date"`
+	Transaction          Transaction `json:"transaction"`
 }
 
 type ListTransactionsRequest struct {
