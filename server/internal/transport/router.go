@@ -132,7 +132,11 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		tenantMiddleware,
 	)
 
-	walletService := wallet.NewService(walletRepository, hubtelClient)
+	walletService := wallet.NewService(
+		walletRepository,
+		wallet.ServiceConfig{FrontendURL: cfg.FrontendURL, BackendURL: cfg.BackendURL},
+		hubtelClient,
+	)
 	wallet.RegisterRoutes(
 		router,
 		wallet.NewHandler(walletService),

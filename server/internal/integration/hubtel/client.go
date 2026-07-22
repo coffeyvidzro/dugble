@@ -25,9 +25,6 @@ type Client struct {
 	APIID                 string
 	APIKey                string
 	MerchantAccountNumber string
-	CallbackURL           string
-	ReturnURL             string
-	CancellationURL       string
 	HTTPClient            *http.Client
 }
 
@@ -53,9 +50,6 @@ func NewClient(cfg config.HubtelConfig) *Client {
 		APIID:                 strings.TrimSpace(cfg.APIID),
 		APIKey:                strings.TrimSpace(cfg.APIKey),
 		MerchantAccountNumber: strings.TrimSpace(cfg.MerchantAccountNumber),
-		CallbackURL:           strings.TrimSpace(cfg.CallbackURL),
-		ReturnURL:             strings.TrimSpace(cfg.ReturnURL),
-		CancellationURL:       strings.TrimSpace(cfg.CancellationURL),
 		HTTPClient:            &http.Client{Timeout: defaultClientTimeout},
 	}
 }
@@ -63,15 +57,6 @@ func NewClient(cfg config.HubtelConfig) *Client {
 func (c *Client) InitiateCheckout(ctx context.Context, req InitiateCheckoutRequest) (InitiateCheckoutResponse, error) {
 	if req.MerchantAccountNumber == "" {
 		req.MerchantAccountNumber = c.MerchantAccountNumber
-	}
-	if req.CallbackURL == "" {
-		req.CallbackURL = c.CallbackURL
-	}
-	if req.ReturnURL == "" {
-		req.ReturnURL = c.ReturnURL
-	}
-	if req.CancellationURL == "" {
-		req.CancellationURL = c.CancellationURL
 	}
 	var result InitiateCheckoutResponse
 	if err := c.doRequest(ctx, http.MethodPost, "/items/initiate", req, &result); err != nil {

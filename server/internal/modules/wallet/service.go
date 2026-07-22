@@ -17,12 +17,23 @@ type CheckoutInitiator interface {
 }
 
 type Service struct {
-	repository *Repository
-	hubtel     CheckoutInitiator
+	repository  *Repository
+	hubtel      CheckoutInitiator
+	frontendURL string
+	backendURL  string
 }
 
-func NewService(repository *Repository, hubtelClient ...CheckoutInitiator) *Service {
-	service := &Service{repository: repository}
+type ServiceConfig struct {
+	FrontendURL string
+	BackendURL  string
+}
+
+func NewService(repository *Repository, cfg ServiceConfig, hubtelClient ...CheckoutInitiator) *Service {
+	service := &Service{
+		repository:  repository,
+		frontendURL: strings.TrimRight(strings.TrimSpace(cfg.FrontendURL), "/"),
+		backendURL:  strings.TrimRight(strings.TrimSpace(cfg.BackendURL), "/"),
+	}
 	if len(hubtelClient) > 0 {
 		service.hubtel = hubtelClient[0]
 	}
@@ -91,6 +102,9 @@ func (s *Service) TopUp(ctx context.Context, req TopUpRequest) (TopUpResponse, e
 	checkout, err := s.hubtel.InitiateCheckout(ctx, hubtel.InitiateCheckoutRequest{
 		TotalAmount:     req.Amount,
 		Description:     description,
+		CallbackURL:     s.backendURL + "/wallet/webhook/hubtel",
+		ReturnURL:       s.frontendURL + "/dashboard/usage",
+		CancellationURL: s.frontendURL + "/dashboard/usage",
 		ClientReference: clientReference.String(),
 	})
 	if err != nil {
