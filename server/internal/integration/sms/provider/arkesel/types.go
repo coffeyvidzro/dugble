@@ -26,7 +26,7 @@ type SendResponse struct {
 }
 
 type StatusData struct {
-	ID           string `json:"ID"`
+	ID           string `json:"id"`
 	Status       string `json:"status"`
 	Sender       string `json:"sender"`
 	Recipient    string `json:"recipient"`
