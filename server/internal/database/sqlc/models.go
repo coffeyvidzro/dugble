@@ -17,6 +17,23 @@ type OauthIdentity struct {
 	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
+type SenderDomain struct {
+	ID                  uuid.UUID          `db:"id" json:"id"`
+	TeamID              uuid.UUID          `db:"team_id" json:"team_id"`
+	Domain              string             `db:"domain" json:"domain"`
+	Provider            string             `db:"provider" json:"provider"`
+	ProviderRegion      string             `db:"provider_region" json:"provider_region"`
+	Status              string             `db:"status" json:"status"`
+	VerificationRecords []byte             `db:"verification_records" json:"verification_records"`
+	FailureReason       *string            `db:"failure_reason" json:"failure_reason"`
+	LastCheckedAt       pgtype.Timestamptz `db:"last_checked_at" json:"last_checked_at"`
+	VerifiedAt          pgtype.Timestamptz `db:"verified_at" json:"verified_at"`
+	DisabledAt          pgtype.Timestamptz `db:"disabled_at" json:"disabled_at"`
+	CreatedBy           *uuid.UUID         `db:"created_by" json:"created_by"`
+	CreatedAt           pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
 type SenderID struct {
 	ID              uuid.UUID          `db:"id" json:"id"`
 	TeamID          uuid.UUID          `db:"team_id" json:"team_id"`
