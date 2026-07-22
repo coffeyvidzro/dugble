@@ -4,7 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"math"
+	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/google/uuid"
@@ -98,7 +99,7 @@ func (s *Service) TopUp(ctx context.Context, req TopUpRequest) (TopUpResponse, e
 	if s.rates == nil {
 		return TopUpResponse{}, apperrors.NewInternal("FX rates are not configured", nil)
 	}
-	if req.Amount <= 0 {
+	if req.AmountCents <= 0 {
 		return TopUpResponse{}, apperrors.NewBadRequest("Amount must be greater than zero")
 	}
 	metadata := req.Metadata
@@ -119,13 +120,17 @@ func (s *Service) TopUp(ctx context.Context, req TopUpRequest) (TopUpResponse, e
 	if err != nil {
 		return TopUpResponse{}, apperrors.NewInternal("Unable to fetch USD/GHS exchange rate", err)
 	}
-	paymentAmount := roundMoney((float64(req.Amount) / 100) * rate.Rate)
+	paymentAmountCents, err := convertUSDCentsToGHSPesewas(req.AmountCents, rate.Rate)
+	if err != nil {
+		return TopUpResponse{}, apperrors.NewInternal("Unable to convert wallet top-up amount", err)
+	}
+	paymentAmount := minorToMajor(paymentAmountCents)
 
-	transactionMetadata, err := mergeMetadata(metadata, hubtel.CheckoutData{}, rate, req.Amount, paymentAmount)
+	transactionMetadata, err := mergeMetadata(metadata, hubtel.CheckoutData{}, rate, req.AmountCents, paymentAmountCents)
 	if err != nil {
 		return TopUpResponse{}, apperrors.NewInternal("Unable to prepare wallet metadata", err)
 	}
-	transaction, err := s.repository.CreatePendingTopUp(ctx, tenantContext.TeamID, req.Amount, clientReference, &description, transactionMetadata)
+	transaction, err := s.repository.CreatePendingTopUp(ctx, tenantContext.TeamID, req.AmountCents, clientReference, &description, transactionMetadata)
 	if err != nil {
 		return TopUpResponse{}, apperrors.NewInternal("Unable to create pending top-up", err)
 	}
@@ -151,7 +156,7 @@ func (s *Service) TopUp(ctx context.Context, req TopUpRequest) (TopUpResponse, e
 		return TopUpResponse{}, apperrors.NewBadRequest("Hubtel checkout was not accepted")
 	}
 
-	transactionMetadata, err = mergeMetadata(metadata, checkout.Data, rate, req.Amount, paymentAmount)
+	transactionMetadata, err = mergeMetadata(metadata, checkout.Data, rate, req.AmountCents, paymentAmountCents)
 	if err != nil {
 		return TopUpResponse{}, apperrors.NewInternal("Unable to prepare wallet metadata", err)
 	}
@@ -161,17 +166,18 @@ func (s *Service) TopUp(ctx context.Context, req TopUpRequest) (TopUpResponse, e
 	}
 
 	return TopUpResponse{
-		CheckoutURL:       checkout.Data.CheckoutURL,
-		CheckoutID:        checkout.Data.CheckoutID,
-		ClientReference:   checkout.Data.ClientReference,
-		CheckoutDirectURL: checkout.Data.CheckoutDirectURL,
-		WalletCurrency:    CurrencyUSD,
-		WalletAmount:      req.Amount,
-		PaymentCurrency:   "GHS",
-		PaymentAmount:     paymentAmount,
-		ExchangeRate:      rate.Rate,
-		ExchangeRateDate:  rate.Date,
-		Transaction:       transaction,
+		CheckoutURL:        checkout.Data.CheckoutURL,
+		CheckoutID:         checkout.Data.CheckoutID,
+		ClientReference:    checkout.Data.ClientReference,
+		CheckoutDirectURL:  checkout.Data.CheckoutDirectURL,
+		WalletCurrency:     CurrencyUSD,
+		WalletAmountCents:  req.AmountCents,
+		PaymentCurrency:    "GHS",
+		PaymentAmount:      paymentAmount,
+		PaymentAmountCents: paymentAmountCents,
+		ExchangeRate:       formatRate(rate.Rate),
+		ExchangeRateDate:   rate.Date,
+		Transaction:        transaction,
 	}, nil
 }
 
@@ -215,7 +221,7 @@ func requireTenant(ctx context.Context, permission tenant.Permission) (tenant.Co
 	return tenantContext, nil
 }
 
-func mergeMetadata(metadata json.RawMessage, checkout hubtel.CheckoutData, rate fx.Rate, walletAmount int64, paymentAmount float64) (json.RawMessage, error) {
+func mergeMetadata(metadata json.RawMessage, checkout hubtel.CheckoutData, rate fx.Rate, walletAmountCents int64, paymentAmountCents int64) (json.RawMessage, error) {
 	values := map[string]any{}
 	if len(metadata) > 0 {
 		if err := json.Unmarshal(metadata, &values); err != nil {
@@ -224,10 +230,11 @@ func mergeMetadata(metadata json.RawMessage, checkout hubtel.CheckoutData, rate 
 	}
 	values["provider"] = "hubtel"
 	values["wallet_currency"] = CurrencyUSD
-	values["wallet_amount"] = walletAmount
+	values["wallet_amount_cents"] = walletAmountCents
 	values["payment_currency"] = "GHS"
-	values["payment_amount"] = paymentAmount
-	values["exchange_rate"] = rate.Rate
+	values["payment_amount"] = minorToMajor(paymentAmountCents)
+	values["payment_amount_cents"] = paymentAmountCents
+	values["exchange_rate"] = formatRate(rate.Rate)
 	values["exchange_rate_date"] = rate.Date
 	values["exchange_rate_source"] = "frankfurter"
 	values["checkout_id"] = checkout.CheckoutID
@@ -260,4 +267,28 @@ func mergeSettlementMetadata(callbackStatus hubtel.PaymentStatus, verifiedStatus
 	return json.Marshal(values)
 }
 
-func roundMoney(amount float64) float64 { return math.Round(amount*100) / 100 }
+func convertUSDCentsToGHSPesewas(usdCents int64, rate float64) (int64, error) {
+	if usdCents <= 0 {
+		return 0, fmt.Errorf("usd cents must be positive")
+	}
+	if rate <= 0 {
+		return 0, fmt.Errorf("exchange rate must be positive")
+	}
+	rateRat, ok := new(big.Rat).SetString(formatRate(rate))
+	if !ok {
+		return 0, fmt.Errorf("parse exchange rate")
+	}
+	amount := new(big.Rat).SetInt64(usdCents)
+	amount.Mul(amount, rateRat)
+	numerator := new(big.Int).Set(amount.Num())
+	denominator := amount.Denom()
+	quotient, remainder := new(big.Int).QuoRem(numerator, denominator, new(big.Int))
+	if new(big.Int).Mul(remainder, big.NewInt(2)).Cmp(denominator) >= 0 {
+		quotient.Add(quotient, big.NewInt(1))
+	}
+	return quotient.Int64(), nil
+}
+
+func minorToMajor(amountCents int64) float64 { return float64(amountCents) / 100 }
+
+func formatRate(rate float64) string { return fmt.Sprintf("%.10f", rate) }

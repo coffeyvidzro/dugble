@@ -16,7 +16,7 @@ func TestMergeMetadataIncludesFXAndCheckoutDetails(t *testing.T) {
 		hubtel.CheckoutData{CheckoutID: "checkout-123", CheckoutURL: "https://pay", CheckoutDirectURL: "https://pay/direct", ClientReference: "ref-123"},
 		fx.Rate{Date: "2026-07-22", Rate: 12.34},
 		1000,
-		123.40,
+		12340,
 	)
 	if err != nil {
 		t.Fatalf("mergeMetadata returned error: %v", err)
@@ -29,10 +29,11 @@ func TestMergeMetadataIncludesFXAndCheckoutDetails(t *testing.T) {
 	assertEqual(t, values["source"], "test")
 	assertEqual(t, values["provider"], "hubtel")
 	assertEqual(t, values["wallet_currency"], CurrencyUSD)
-	assertEqual(t, values["wallet_amount"], float64(1000))
+	assertEqual(t, values["wallet_amount_cents"], float64(1000))
 	assertEqual(t, values["payment_currency"], "GHS")
 	assertEqual(t, values["payment_amount"], 123.40)
-	assertEqual(t, values["exchange_rate"], 12.34)
+	assertEqual(t, values["payment_amount_cents"], float64(12340))
+	assertEqual(t, values["exchange_rate"], "12.3400000000")
 	assertEqual(t, values["exchange_rate_date"], "2026-07-22")
 	assertEqual(t, values["exchange_rate_source"], "frankfurter")
 	assertEqual(t, values["checkout_id"], "checkout-123")
@@ -41,14 +42,23 @@ func TestMergeMetadataIncludesFXAndCheckoutDetails(t *testing.T) {
 	assertEqual(t, values["client_reference"], "ref-123")
 }
 
-func TestRoundMoney(t *testing.T) {
+func TestConvertUSDCentsToGHSPesewas(t *testing.T) {
 	t.Parallel()
 
-	if got := roundMoney(123.456); got != 123.46 {
-		t.Fatalf("roundMoney(123.456) = %v, want 123.46", got)
+	got, err := convertUSDCentsToGHSPesewas(1000, 12.34)
+	if err != nil {
+		t.Fatalf("convertUSDCentsToGHSPesewas returned error: %v", err)
 	}
-	if got := roundMoney(123.454); got != 123.45 {
-		t.Fatalf("roundMoney(123.454) = %v, want 123.45", got)
+	if got != 12340 {
+		t.Fatalf("convertUSDCentsToGHSPesewas(1000, 12.34) = %v, want 12340", got)
+	}
+
+	got, err = convertUSDCentsToGHSPesewas(101, 10.555)
+	if err != nil {
+		t.Fatalf("convertUSDCentsToGHSPesewas returned error: %v", err)
+	}
+	if got != 1066 {
+		t.Fatalf("convertUSDCentsToGHSPesewas(101, 10.555) = %v, want 1066", got)
 	}
 }
 
