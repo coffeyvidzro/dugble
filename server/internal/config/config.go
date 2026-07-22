@@ -12,6 +12,12 @@ type ProviderConfig struct {
 	APIKey  string `env:"API_KEY"`
 }
 
+type HubtelConfig struct {
+	APIID                 string `env:"API_ID"`
+	APIKey                string `env:"API_KEY"`
+	MerchantAccountNumber string `env:"MERCHANT_ACCOUNT_NUMBER"`
+}
+
 type AWSConfig struct {
 	FromEmail string `env:"FROM_EMAIL,required,notEmpty"`
 	Region    string `env:"REGION,required,notEmpty"`
@@ -27,9 +33,11 @@ type Config struct {
 	CORSOrigins []string       `env:"CORS_ORIGINS" envSeparator:"," envDefault:"http://localhost:3000,http://127.0.0.1:3000"`
 	ArcjetKey   string         `env:"ARCJET_KEY,required,notEmpty"`
 	FrontendURL string         `env:"FRONTEND_URL" envDefault:"http://localhost:3000"`
+	BackendURL  string         `env:"BACKEND_URL"  envDefault:"http://localhost:8080"`
 	AWS         AWSConfig      `envPrefix:"AWS_"`
 	Arkesel     ProviderConfig `envPrefix:"ARKESEL_"`
 	MNotify     ProviderConfig `envPrefix:"MNOTIFY_"`
+	Hubtel      HubtelConfig   `envPrefix:"HUBTEL_"`
 }
 
 func Load() (*Config, error) {
@@ -56,6 +64,7 @@ func (c *Config) normalize() {
 	c.RedisURL = strings.TrimSpace(c.RedisURL)
 	c.ArcjetKey = strings.TrimSpace(c.ArcjetKey)
 	c.FrontendURL = strings.TrimRight(strings.TrimSpace(c.FrontendURL), "/")
+	c.BackendURL = strings.TrimRight(strings.TrimSpace(c.BackendURL), "/")
 	c.AWS.FromEmail = strings.TrimSpace(c.AWS.FromEmail)
 	c.AWS.Region = strings.TrimSpace(c.AWS.Region)
 	c.AWS.AccessKey = strings.TrimSpace(c.AWS.AccessKey)
@@ -64,6 +73,9 @@ func (c *Config) normalize() {
 	c.Arkesel.BaseURL = strings.TrimRight(strings.TrimSpace(c.Arkesel.BaseURL), "/")
 	c.MNotify.APIKey = strings.TrimSpace(c.MNotify.APIKey)
 	c.MNotify.BaseURL = strings.TrimRight(strings.TrimSpace(c.MNotify.BaseURL), "/")
+	c.Hubtel.APIID = strings.TrimSpace(c.Hubtel.APIID)
+	c.Hubtel.APIKey = strings.TrimSpace(c.Hubtel.APIKey)
+	c.Hubtel.MerchantAccountNumber = strings.TrimSpace(c.Hubtel.MerchantAccountNumber)
 
 	origins := make([]string, 0, len(c.CORSOrigins))
 	for _, origin := range c.CORSOrigins {

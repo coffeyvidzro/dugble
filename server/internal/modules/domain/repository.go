@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
+	"github.com/coffeyvidzro/dugble/server/pkg/pgconv"
 )
 
 var ErrSenderDomainAlreadyExists = errors.New("sender domain already exists")
@@ -89,20 +88,13 @@ func senderDomainFromSQLC(row dbsqlc.SenderDomain) SenderDomain {
 		Status:              row.Status,
 		VerificationRecords: json.RawMessage(row.VerificationRecords),
 		FailureReason:       row.FailureReason,
-		LastCheckedAt:       timePtr(row.LastCheckedAt),
-		VerifiedAt:          timePtr(row.VerifiedAt),
-		DisabledAt:          timePtr(row.DisabledAt),
+		LastCheckedAt:       pgconv.TimestamptzToTimePtr(row.LastCheckedAt),
+		VerifiedAt:          pgconv.TimestamptzToTimePtr(row.VerifiedAt),
+		DisabledAt:          pgconv.TimestamptzToTimePtr(row.DisabledAt),
 		CreatedBy:           createdBy,
 		CreatedAt:           row.CreatedAt.Time,
 		UpdatedAt:           row.UpdatedAt.Time,
 	}
-}
-
-func timePtr(value pgtype.Timestamptz) *time.Time {
-	if !value.Valid {
-		return nil
-	}
-	return &value.Time
 }
 
 func isUniqueViolation(err error) bool {
