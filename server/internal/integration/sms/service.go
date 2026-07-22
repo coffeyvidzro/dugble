@@ -180,6 +180,9 @@ func validateStatusResponse(
 	response.ProviderMsgID = strings.TrimSpace(response.ProviderMsgID)
 	response.Status = strings.ToLower(strings.TrimSpace(response.Status))
 
+	if response.ProviderID == "" {
+		return fmt.Errorf("%w: provider ID is empty", ErrInvalidProviderReply)
+	}
 	if response.ProviderID != expectedProviderID {
 		return fmt.Errorf(
 			"%w: provider ID %q does not match requested provider %q",
