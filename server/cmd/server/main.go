@@ -16,6 +16,10 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/database"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/email"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/security"
+	smsintegration "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
+	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/arkesel"
+	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/mnotify"
+	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/routing"
 	"github.com/coffeyvidzro/dugble/server/internal/notifications"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/cache"
 	"github.com/coffeyvidzro/dugble/server/internal/transport"
@@ -86,14 +90,30 @@ func run() error {
 		return fmt.Errorf("initialize SES email sender: %w", err)
 	}
 
+	smsRouter, err := routing.NewService(
+		routing.DefaultConfig(),
+		routing.NewPriorityStrategy(),
+		arkesel.NewProvider(arkesel.NewClient(cfg.Arkesel)),
+		mnotify.NewProvider(mnotify.NewClient(cfg.MNotify)),
+	)
+	if err != nil {
+		return fmt.Errorf("initialize SMS router: %w", err)
+	}
+
+	smsSender, err := smsintegration.NewService(smsRouter)
+	if err != nil {
+		return fmt.Errorf("initialize SMS sender: %w", err)
+	}
+
 	router, err := transport.NewRouter(
 		cfg,
 		transport.Dependencies{
-			DB:       db,
-			Redis:    redisClient,
-			Arcjet:   arcjetClient,
-			Sender:   notificationSender,
-			Renderer: renderer,
+			DB:        db,
+			Redis:     redisClient,
+			Arcjet:    arcjetClient,
+			Sender:    notificationSender,
+			Renderer:  renderer,
+			SMSSender: smsSender,
 		},
 	)
 	if err != nil {
