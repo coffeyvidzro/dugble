@@ -15,7 +15,7 @@ func RegisterRoutes(
 	csrfMiddleware echo.MiddlewareFunc,
 	tenantMiddleware TenantMiddleware,
 ) {
-	domains := router.Group("/sender-domains")
+	domains := router.Group("/domains")
 	domains.Use(authMiddleware, csrfMiddleware)
 	domains.GET("", handler.List, tenantMiddleware(tenant.PermissionSenderDomainsRead))
 	domains.POST("", handler.Create, tenantMiddleware(tenant.PermissionSenderDomainsCreate))

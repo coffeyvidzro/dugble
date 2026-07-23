@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	defaultRefreshAfter = 2 * time.Hour
+	defaultRefreshAfter = 1 * time.Hour
 	defaultMaxStaleAge  = 36 * time.Hour
 	defaultCacheTTL     = 48 * time.Hour
 )
