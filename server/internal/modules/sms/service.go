@@ -40,14 +40,22 @@ type WalletLedger interface {
 	RefundSMSCharge(ctx context.Context, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
 }
 
+// DeliveryQueue enqueues durable SMS delivery work.
+//
+// Implementations should persist jobs durably before returning.
+type DeliveryQueue interface {
+	EnqueueSMSDelivery(ctx context.Context, messageID uuid.UUID, teamID uuid.UUID) error
+}
+
 type Service struct {
 	repository *Repository
 	sender     Sender
 	wallet     WalletLedger
+	delivery   DeliveryQueue
 }
 
-func NewService(repository *Repository, sender Sender, wallet WalletLedger) *Service {
-	return &Service{repository: repository, sender: sender, wallet: wallet}
+func NewService(repository *Repository, sender Sender, wallet WalletLedger, delivery DeliveryQueue) *Service {
+	return &Service{repository: repository, sender: sender, wallet: wallet, delivery: delivery}
 }
 
 func (s *Service) List(ctx context.Context, req ListRequest) ([]Message, error) {
@@ -93,11 +101,11 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	if err != nil {
 		return Message{}, err
 	}
-	if s.sender == nil {
-		return Message{}, apperrors.NewInternal("SMS sender is not configured", nil)
-	}
 	if s.wallet == nil {
 		return Message{}, apperrors.NewInternal("SMS wallet ledger is not configured", nil)
+	}
+	if s.delivery == nil {
+		return Message{}, apperrors.NewInternal("SMS delivery queue is not configured", nil)
 	}
 
 	normalized, err := validateSend(req)
@@ -139,23 +147,18 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 		return Message{}, apperrors.NewInternal("Unable to debit wallet for SMS", err)
 	}
 
-	response, err := s.sender.Send(ctx, smsapi.SendRequest{To: normalized.To, From: normalized.From, Message: normalized.Body})
-	if err != nil {
-		failed, updateErr := s.repository.MarkFailed(ctx, messageID, tenantContext.TeamID, err.Error())
+	if err := s.delivery.EnqueueSMSDelivery(ctx, messageID, tenantContext.TeamID); err != nil {
+		failed, updateErr := s.repository.MarkFailed(ctx, messageID, tenantContext.TeamID, "unable to enqueue SMS delivery")
 		if updateErr != nil {
-			return Message{}, apperrors.NewInternal("Unable to record SMS send failure", updateErr)
+			return Message{}, apperrors.NewInternal("Unable to record SMS queue failure", updateErr)
 		}
 		if _, refundErr := s.wallet.RefundSMSCharge(ctx, tenantContext.TeamID, created.CostMicros, messageID, normalized.Metadata); refundErr != nil {
-			return failed, apperrors.NewInternal("Unable to send SMS; additionally unable to refund failed SMS charge", errors.Join(err, refundErr))
+			return failed, apperrors.NewInternal("Unable to enqueue SMS delivery; additionally unable to refund SMS charge", errors.Join(err, refundErr))
 		}
-		return failed, apperrors.NewInternal("Unable to send SMS", err)
+		return failed, apperrors.NewInternal("Unable to enqueue SMS delivery", err)
 	}
 
-	submitted, err := s.repository.MarkSubmitted(ctx, messageID, tenantContext.TeamID, response.ProviderID, response.ProviderMsgID, mapProviderStatus(response.Status))
-	if err != nil {
-		return Message{}, apperrors.NewInternal("Unable to record SMS submission", err)
-	}
-	return submitted, nil
+	return created, nil
 }
 
 func (s *Service) SyncStatus(ctx context.Context, messageID string) (Message, error) {
@@ -184,7 +187,7 @@ func (s *Service) SyncStatus(ctx context.Context, messageID string) (Message, er
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to sync SMS status", err)
 	}
-	updated, err := s.repository.UpdateStatus(ctx, parsedID, tenantContext.TeamID, mapProviderStatus(status.Status))
+	updated, err := s.repository.UpdateStatus(ctx, parsedID, tenantContext.TeamID, MapProviderStatus(status.Status))
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to update SMS status", err)
 	}
@@ -264,10 +267,10 @@ func runeSet(values string) map[rune]bool {
 	return set
 }
 
-func mapProviderStatus(status string) string {
+func MapProviderStatus(status string) string {
 	status = strings.ToLower(strings.TrimSpace(status))
 	switch status {
-	case StatusQueued, StatusSubmitted, StatusSent, StatusDelivered, StatusUndelivered, StatusRejected, StatusFailed, StatusExpired, StatusUnknown:
+	case StatusQueued, StatusProcessing, StatusSubmitted, StatusSent, StatusDelivered, StatusUndelivered, StatusRejected, StatusFailed, StatusExpired, StatusUnknown:
 		return status
 	default:
 		return StatusUnknown

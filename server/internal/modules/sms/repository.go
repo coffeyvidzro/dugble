@@ -74,6 +74,17 @@ func (r *Repository) Get(ctx context.Context, id uuid.UUID, teamID uuid.UUID) (M
 	return messageFromSQLC(row), nil
 }
 
+func (r *Repository) MarkProcessing(ctx context.Context, id uuid.UUID, teamID uuid.UUID) (Message, error) {
+	row, err := r.queries.MarkSMSMessageProcessing(ctx, dbsqlc.MarkSMSMessageProcessingParams{ID: id, TeamID: teamID})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Message{}, ErrMessageNotFound
+		}
+		return Message{}, fmt.Errorf("mark sms message processing: %w", err)
+	}
+	return messageFromSQLC(row), nil
+}
+
 func (r *Repository) MarkSubmitted(ctx context.Context, id uuid.UUID, teamID uuid.UUID, providerID string, providerMessageID string, status string) (Message, error) {
 	row, err := r.queries.MarkSMSMessageSubmitted(ctx, dbsqlc.MarkSMSMessageSubmittedParams{
 		ID:                id,

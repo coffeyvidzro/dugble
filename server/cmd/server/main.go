@@ -14,6 +14,7 @@ import (
 
 	"github.com/coffeyvidzro/dugble/server/internal/config"
 	"github.com/coffeyvidzro/dugble/server/internal/database"
+	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/email"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/security"
 	smsintegration "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
@@ -23,6 +24,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/notifications"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/cache"
 	"github.com/coffeyvidzro/dugble/server/internal/transport"
+	"github.com/coffeyvidzro/dugble/server/internal/worker"
 )
 
 func main() {
@@ -59,6 +61,15 @@ func run() error {
 		return fmt.Errorf("initialize PostgreSQL: %w", err)
 	}
 	defer db.Close()
+
+	if err := worker.Migrate(startupCtx, db); err != nil {
+		return fmt.Errorf("migrate River schema: %w", err)
+	}
+
+	riverClient, err := worker.NewProducer(db)
+	if err != nil {
+		return fmt.Errorf("initialize River producer: %w", err)
+	}
 
 	redisClient, err := cache.NewRedis(
 		startupCtx,
@@ -108,12 +119,13 @@ func run() error {
 	router, err := transport.NewRouter(
 		cfg,
 		transport.Dependencies{
-			DB:        db,
-			Redis:     redisClient,
-			Arcjet:    arcjetClient,
-			Sender:    notificationSender,
-			Renderer:  renderer,
-			SMSSender: smsSender,
+			DB:          db,
+			Redis:       redisClient,
+			Arcjet:      arcjetClient,
+			Sender:      notificationSender,
+			Renderer:    renderer,
+			SMSSender:   smsSender,
+			SMSDelivery: smsdelivery.NewQueue(riverClient),
 		},
 	)
 	if err != nil {

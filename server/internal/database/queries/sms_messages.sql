@@ -82,3 +82,14 @@ WHERE team_id = sqlc.arg(team_id)
   AND status = 'approved'
 ORDER BY created_at DESC
 LIMIT 1;
+
+-- name: MarkSMSMessageProcessing :one
+UPDATE sms_messages
+SET status = 'processing',
+    error_message = NULL,
+    updated_at = now()
+WHERE id = sqlc.arg(id)
+  AND team_id = sqlc.arg(team_id)
+  AND status IN ('queued', 'processing')
+  AND provider_message_id IS NULL
+RETURNING *;

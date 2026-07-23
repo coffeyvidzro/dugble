@@ -7,6 +7,7 @@ import (
 
 const (
 	StatusQueued      = "queued"
+	StatusProcessing  = "processing"
 	StatusSubmitted   = "submitted"
 	StatusSent        = "sent"
 	StatusDelivered   = "delivered"
