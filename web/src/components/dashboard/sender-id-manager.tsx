@@ -71,9 +71,9 @@ export function SenderIDManager() {
         headers: { Accept: "application/json" },
         cache: "no-store",
       });
-      const payload = (await response
-        .json()
-        .catch(() => null)) as ApiEnvelope<Team[]> | null;
+      const payload = (await response.json().catch(() => null)) as ApiEnvelope<
+        Team[]
+      > | null;
       if (!response.ok || !payload?.success) {
         throw new Error(payload?.error?.message ?? "Unable to load teams.");
       }
@@ -105,9 +105,9 @@ export function SenderIDManager() {
         },
         cache: "no-store",
       });
-      const payload = (await response
-        .json()
-        .catch(() => null)) as ApiEnvelope<SenderID[]> | null;
+      const payload = (await response.json().catch(() => null)) as ApiEnvelope<
+        SenderID[]
+      > | null;
       if (!response.ok || !payload?.success) {
         throw new Error(
           payload?.error?.message ?? "Unable to load sender IDs.",
@@ -146,9 +146,7 @@ export function SenderIDManager() {
       toast.error("You can request a maximum of 50 sender IDs at once.");
       return;
     }
-    const invalidSenderID = parsedSenderIDs.find(
-      (value) => value.length > 11,
-    );
+    const invalidSenderID = parsedSenderIDs.find((value) => value.length > 11);
     if (invalidSenderID) {
       toast.error(`${invalidSenderID} is longer than 11 characters.`);
       return;
@@ -182,9 +180,9 @@ export function SenderIDManager() {
           provider: provider.trim() || undefined,
         }),
       });
-      const payload = (await response
-        .json()
-        .catch(() => null)) as ApiEnvelope<SenderID[]> | null;
+      const payload = (await response.json().catch(() => null)) as ApiEnvelope<
+        SenderID[]
+      > | null;
       if (!response.ok || !payload?.success) {
         throw new Error(
           payload?.error?.message ?? "Unable to submit sender ID requests.",
@@ -238,9 +236,7 @@ export function SenderIDManager() {
                     id="sender-team"
                     className={selectClassName}
                     value={selectedTeamID}
-                    onChange={(event) =>
-                      setSelectedTeamID(event.target.value)
-                    }
+                    onChange={(event) => setSelectedTeamID(event.target.value)}
                     disabled={loadingTeams || teams.length === 0}
                   >
                     {teams.length === 0 ? (
