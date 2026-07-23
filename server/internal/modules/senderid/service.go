@@ -3,6 +3,7 @@ package senderid
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -13,9 +14,10 @@ import (
 )
 
 const (
-	maxSenderIDLength = 11
-	maxPurposeLength  = 500
-	maxProviderLength = 120
+	maxSenderIDLength  = 11
+	maxPurposeLength   = 500
+	maxProviderLength  = 120
+	maxBulkSenderIDs   = 50
 )
 
 var countryCodePattern = regexp.MustCompile(`^[A-Z]{2}$`)
@@ -81,6 +83,34 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (SenderID, erro
 	return senderID, nil
 }
 
+func (s *Service) CreateBulk(ctx context.Context, req BulkCreateRequest) ([]SenderID, error) {
+	tenantContext, err := requireTenantPermission(ctx, tenant.PermissionSenderIDsCreate)
+	if err != nil {
+		return nil, err
+	}
+
+	requests, err := validateBulkCreate(req)
+	if err != nil {
+		return nil, err
+	}
+
+	senderIDs, err := s.repository.CreateBulk(
+		ctx,
+		tenantContext.TeamID,
+		requests,
+		tenantContext.UserID,
+	)
+	if err != nil {
+		if errors.Is(err, ErrSenderIDAlreadyExists) {
+			return nil, apperrors.NewConflict(
+				"One or more sender IDs already exist for this team and country",
+			)
+		}
+		return nil, apperrors.NewInternal("Unable to create sender IDs", err)
+	}
+	return senderIDs, nil
+}
+
 func (s *Service) Delete(ctx context.Context, senderID string) (SenderID, error) {
 	tenantContext, err := requireTenantPermission(ctx, tenant.PermissionSenderIDsDelete)
 	if err != nil {
@@ -122,6 +152,42 @@ func validateCreate(req CreateRequest) (string, string, string, *string, error) 
 		return "", "", "", nil, apperrors.NewBadRequest("Sender ID provider must be at most 120 characters")
 	}
 	return name, countryCode, purpose, provider, nil
+}
+
+func validateBulkCreate(req BulkCreateRequest) ([]CreateRequest, error) {
+	if len(req.SenderIDs) == 0 {
+		return nil, apperrors.NewBadRequest("At least one sender ID is required")
+	}
+	if len(req.SenderIDs) > maxBulkSenderIDs {
+		return nil, apperrors.NewBadRequest("A maximum of 50 sender IDs can be requested at once")
+	}
+
+	requests := make([]CreateRequest, 0, len(req.SenderIDs))
+	seen := make(map[string]struct{}, len(req.SenderIDs))
+	for _, senderID := range req.SenderIDs {
+		name, countryCode, purpose, provider, err := validateCreate(CreateRequest{
+			Name:        senderID,
+			CountryCode: req.CountryCode,
+			Purpose:     req.Purpose,
+			Provider:    req.Provider,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		key := strings.ToLower(name)
+		if _, exists := seen[key]; exists {
+			return nil, apperrors.NewBadRequest(fmt.Sprintf("Sender ID %q is duplicated in the request", name))
+		}
+		seen[key] = struct{}{}
+		requests = append(requests, CreateRequest{
+			Name:        name,
+			CountryCode: countryCode,
+			Purpose:     purpose,
+			Provider:    provider,
+		})
+	}
+	return requests, nil
 }
 
 func normalizeOptional(value *string) *string {
