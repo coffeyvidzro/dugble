@@ -9,7 +9,7 @@ import (
 type TenantMiddleware func(permission tenant.Permission) echo.MiddlewareFunc
 
 func RegisterRoutes(router *echo.Echo, handler *Handler, authMiddleware echo.MiddlewareFunc, csrfMiddleware echo.MiddlewareFunc, tenantMiddleware TenantMiddleware) {
-	messages := router.Group("/sms/messages")
+	messages := router.Group("/sms")
 	messages.Use(authMiddleware, csrfMiddleware)
 	messages.GET("", handler.List, tenantMiddleware(tenant.PermissionSMSRead))
 	messages.POST("", handler.Send, tenantMiddleware(tenant.PermissionSMSSend))
