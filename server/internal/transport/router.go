@@ -93,7 +93,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	senderIDRepository := senderid.NewRepository(deps.DB)
 	walletRepository := wallet.NewRepository(deps.DB)
 	hubtelProvider := hubtel.NewProvider(hubtel.NewClient(cfg.Hubtel))
-	fxClient := fx.NewFrankfurterClient()
+	fxClient := fx.NewCachedProvider(fx.NewFrankfurterClient(), deps.Redis)
 	tenantMiddleware := func(permission tenant.Permission) echo.MiddlewareFunc {
 		return middlewares.Tenant(
 			middlewares.TenantConfig{Memberships: teamRepository, Required: permission},
