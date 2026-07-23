@@ -33,3 +33,10 @@ type CreateRequest struct {
 	Purpose     string  `json:"purpose"`
 	Provider    *string `json:"provider,omitempty"`
 }
+
+type BulkCreateRequest struct {
+	SenderIDs   []string `json:"sender_ids"`
+	CountryCode string   `json:"country_code"`
+	Purpose     string   `json:"purpose"`
+	Provider    *string  `json:"provider,omitempty"`
+}
