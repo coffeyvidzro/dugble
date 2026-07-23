@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	smsapi "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
+	"github.com/coffeyvidzro/dugble/server/internal/modules/wallet"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
@@ -28,13 +29,19 @@ type Sender interface {
 	CheckStatus(ctx context.Context, providerID string, providerMessageID string) (*smsapi.StatusResponse, error)
 }
 
+type WalletLedger interface {
+	DebitSMSCharge(ctx context.Context, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
+	RefundSMSCharge(ctx context.Context, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
+}
+
 type Service struct {
 	repository *Repository
 	sender     Sender
+	wallet     WalletLedger
 }
 
-func NewService(repository *Repository, sender Sender) *Service {
-	return &Service{repository: repository, sender: sender}
+func NewService(repository *Repository, sender Sender, wallet WalletLedger) *Service {
+	return &Service{repository: repository, sender: sender, wallet: wallet}
 }
 
 func (s *Service) List(ctx context.Context, req ListRequest) ([]Message, error) {
@@ -83,6 +90,9 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	if s.sender == nil {
 		return Message{}, apperrors.NewInternal("SMS sender is not configured", nil)
 	}
+	if s.wallet == nil {
+		return Message{}, apperrors.NewInternal("SMS wallet ledger is not configured", nil)
+	}
 
 	normalized, err := validateSend(req)
 	if err != nil {
@@ -96,10 +106,12 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 		return Message{}, apperrors.NewBadRequest("SMS sender ID must be approved before use")
 	}
 
+	segments := countSegments(normalized.Body)
+	costMicros := int64(segments) * defaultCostMicrosPerSegment
 	created, err := s.repository.Create(ctx, createMessageParams{
 		TeamID: tenantContext.TeamID, SenderID: senderID, To: normalized.To, From: normalized.From,
-		Body: normalized.Body, Status: StatusQueued, Segments: countSegments(normalized.Body),
-		CostMicros:      int64(countSegments(normalized.Body)) * defaultCostMicrosPerSegment,
+		Body: normalized.Body, Status: StatusQueued, Segments: segments,
+		CostMicros:      costMicros,
 		ClientReference: normalized.ClientReference, Metadata: normalized.Metadata,
 	})
 	if err != nil {
@@ -109,16 +121,31 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 		return created, nil
 	}
 
+	messageID := uuid.MustParse(created.ID)
+	if _, err := s.wallet.DebitSMSCharge(ctx, tenantContext.TeamID, created.CostMicros, messageID, normalized.Metadata); err != nil {
+		if errors.Is(err, wallet.ErrInsufficientBalance) {
+			failed, updateErr := s.repository.MarkFailed(ctx, messageID, tenantContext.TeamID, "insufficient wallet balance")
+			if updateErr != nil {
+				return Message{}, apperrors.NewInternal("Unable to record SMS wallet failure", updateErr)
+			}
+			return failed, apperrors.NewBadRequest("Insufficient wallet balance")
+		}
+		return Message{}, apperrors.NewInternal("Unable to debit wallet for SMS", err)
+	}
+
 	response, err := s.sender.Send(ctx, smsapi.SendRequest{To: normalized.To, From: normalized.From, Message: normalized.Body})
 	if err != nil {
-		failed, updateErr := s.repository.MarkFailed(ctx, uuid.MustParse(created.ID), tenantContext.TeamID, err.Error())
+		failed, updateErr := s.repository.MarkFailed(ctx, messageID, tenantContext.TeamID, err.Error())
 		if updateErr != nil {
 			return Message{}, apperrors.NewInternal("Unable to record SMS send failure", updateErr)
+		}
+		if _, refundErr := s.wallet.RefundSMSCharge(ctx, tenantContext.TeamID, created.CostMicros, messageID, normalized.Metadata); refundErr != nil {
+			return Message{}, apperrors.NewInternal("Unable to refund failed SMS charge", refundErr)
 		}
 		return failed, apperrors.NewInternal("Unable to send SMS", err)
 	}
 
-	submitted, err := s.repository.MarkSubmitted(ctx, uuid.MustParse(created.ID), tenantContext.TeamID, response.ProviderID, response.ProviderMsgID, mapProviderStatus(response.Status))
+	submitted, err := s.repository.MarkSubmitted(ctx, messageID, tenantContext.TeamID, response.ProviderID, response.ProviderMsgID, mapProviderStatus(response.Status))
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to record SMS submission", err)
 	}

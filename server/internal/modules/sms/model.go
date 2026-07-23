@@ -16,7 +16,7 @@ const (
 	StatusExpired     = "expired"
 	StatusUnknown     = "unknown"
 
-	defaultCostMicrosPerSegment int64 = 15_000
+	defaultCostMicrosPerSegment int64 = 9_000
 )
 
 type Message struct {

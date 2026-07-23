@@ -31,3 +31,9 @@ func TestCountSegments(t *testing.T) {
 		t.Fatalf("countSegments long = %d, want 2", got)
 	}
 }
+
+func TestDefaultCostMicrosPerSegment(t *testing.T) {
+	if defaultCostMicrosPerSegment != 9_000 {
+		t.Fatalf("defaultCostMicrosPerSegment = %d, want 9000", defaultCostMicrosPerSegment)
+	}
+}

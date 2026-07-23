@@ -151,7 +151,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		tenantMiddleware,
 	)
 
-	smsService := smsmodule.NewService(smsRepository, deps.SMSSender)
+	smsService := smsmodule.NewService(smsRepository, deps.SMSSender, walletRepository)
 	smsmodule.RegisterRoutes(
 		router,
 		smsmodule.NewHandler(smsService),
