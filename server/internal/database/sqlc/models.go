@@ -9,6 +9,24 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type IdempotencyKey struct {
+	Scope               string             `db:"scope" json:"scope"`
+	IdempotencyKey      string             `db:"idempotency_key" json:"idempotency_key"`
+	Method              string             `db:"method" json:"method"`
+	Path                string             `db:"path" json:"path"`
+	RequestHash         string             `db:"request_hash" json:"request_hash"`
+	Status              string             `db:"status" json:"status"`
+	ResponseStatus      *int32             `db:"response_status" json:"response_status"`
+	ResponseBody        []byte             `db:"response_body" json:"response_body"`
+	ResponseContentType *string            `db:"response_content_type" json:"response_content_type"`
+	ResponseHeaders     []byte             `db:"response_headers" json:"response_headers"`
+	LockedUntil         pgtype.Timestamptz `db:"locked_until" json:"locked_until"`
+	CompletedAt         pgtype.Timestamptz `db:"completed_at" json:"completed_at"`
+	ExpiresAt           pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+	CreatedAt           pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
 type OauthIdentity struct {
 	ID          uuid.UUID          `db:"id" json:"id"`
 	UserID      uuid.UUID          `db:"user_id" json:"user_id"`

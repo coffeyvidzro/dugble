@@ -20,6 +20,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/modules/user"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/wallet"
 	"github.com/coffeyvidzro/dugble/server/internal/notifications"
+	"github.com/coffeyvidzro/dugble/server/internal/platform/idempotency"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 	"github.com/coffeyvidzro/dugble/server/internal/transport/csrf"
 	"github.com/coffeyvidzro/dugble/server/internal/transport/health"
@@ -49,6 +50,11 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	router.Use(middlewares.NewCORS(cfg.CORSOrigins, cfg.IsDevelopment()))
 	router.Use(middlewares.NewSecure(cfg.IsDevelopment()))
 	router.Use(middlewares.Arcjet(deps.Arcjet))
+	if deps.DB != nil {
+		router.Use(middlewares.Idempotency(middlewares.IdempotencyConfig{
+			Repository: idempotency.NewRepository(deps.DB),
+		}))
+	}
 
 	// Public infrastructure routes.
 	healthHandler := health.NewHandler(deps.DB, deps.Redis)
