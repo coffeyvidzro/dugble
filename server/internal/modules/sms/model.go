@@ -52,8 +52,15 @@ type BatchSendRequest struct {
 	Messages []SendRequest `json:"messages"`
 }
 
+type BatchSendFailure struct {
+	Index   int      `json:"index"`
+	Message *Message `json:"message,omitempty"`
+	Error   string   `json:"error"`
+}
+
 type BatchSendResponse struct {
-	Messages []Message `json:"messages"`
+	Messages []Message          `json:"messages"`
+	Failures []BatchSendFailure `json:"failures,omitempty"`
 }
 
 type ListRequest struct {
