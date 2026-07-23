@@ -42,6 +42,18 @@ func (h *Handler) Send(c *echo.Context) error {
 	return httputil.Created(c, message)
 }
 
+func (h *Handler) BatchSend(c *echo.Context) error {
+	var req BatchSendRequest
+	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
+		return httputil.Error(c, apperrors.NewBadRequest("Invalid JSON request body"))
+	}
+	message, err := h.service.BatchSend(c.Request().Context(), req)
+	if err != nil {
+		return httputil.Error(c, err)
+	}
+	return httputil.Created(c, message)
+}
+
 func (h *Handler) SyncStatus(c *echo.Context) error {
 	message, err := h.service.SyncStatus(c.Request().Context(), c.Param("message_id"))
 	if err != nil {

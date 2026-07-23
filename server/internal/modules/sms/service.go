@@ -19,7 +19,10 @@ import (
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
-const maxBodyCharacters = 1600
+const (
+	maxBodyCharacters = 1600
+	maxBatchMessages  = 50
+)
 
 var e164Pattern = regexp.MustCompile(`^\+[1-9]\d{7,14}$`)
 
@@ -168,6 +171,48 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	}
 
 	return created, nil
+}
+
+func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) (BatchSendResponse, error) {
+	if err := validateBatchSend(req); err != nil {
+		return BatchSendResponse{}, err
+	}
+
+	normalized := normalizeBatchMessages(req.Messages)
+	messages := make([]Message, 0, len(normalized))
+	for _, message := range normalized {
+		created, err := s.Send(ctx, message)
+		if err != nil {
+			return BatchSendResponse{}, err
+		}
+		messages = append(messages, created)
+	}
+
+	return BatchSendResponse{Messages: messages}, nil
+}
+
+func validateBatchSend(req BatchSendRequest) error {
+	if len(req.Messages) == 0 {
+		return apperrors.NewBadRequest("At least one SMS message is required")
+	}
+	if len(req.Messages) > maxBatchMessages {
+		return apperrors.NewBadRequest(fmt.Sprintf("Batch SMS requests can include at most %d messages", maxBatchMessages))
+	}
+	for index, message := range req.Messages {
+		if _, err := validateSend(message); err != nil {
+			return apperrors.NewBadRequest(fmt.Sprintf("Message %d is invalid: %s", index+1, err.Error()))
+		}
+	}
+	return nil
+}
+
+func normalizeBatchMessages(messages []SendRequest) []SendRequest {
+	normalized := make([]SendRequest, len(messages))
+	for index, message := range messages {
+		validated, _ := validateSend(message)
+		normalized[index] = validated
+	}
+	return normalized
 }
 
 func (s *Service) SyncStatus(ctx context.Context, messageID string) (Message, error) {

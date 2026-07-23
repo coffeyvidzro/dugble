@@ -48,6 +48,14 @@ type SendRequest struct {
 	Metadata json.RawMessage `json:"metadata,omitempty"`
 }
 
+type BatchSendRequest struct {
+	Messages []SendRequest `json:"messages"`
+}
+
+type BatchSendResponse struct {
+	Messages []Message `json:"messages"`
+}
+
 type ListRequest struct {
 	Limit  int32
 	Offset int32

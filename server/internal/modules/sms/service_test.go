@@ -19,6 +19,32 @@ func TestValidateSendDefaultsMetadata(t *testing.T) {
 	}
 }
 
+func TestValidateBatchSendRequiresMessages(t *testing.T) {
+	if err := validateBatchSend(BatchSendRequest{}); err == nil {
+		t.Fatal("validateBatchSend returned nil error for empty batch")
+	}
+}
+
+func TestValidateBatchSendLimitsMessages(t *testing.T) {
+	messages := make([]SendRequest, maxBatchMessages+1)
+	for i := range messages {
+		messages[i] = SendRequest{To: "+233241234567", From: "DUGBLE", Body: "hello"}
+	}
+	if err := validateBatchSend(BatchSendRequest{Messages: messages}); err == nil {
+		t.Fatal("validateBatchSend returned nil error for oversized batch")
+	}
+}
+
+func TestValidateBatchSendValidatesEachMessage(t *testing.T) {
+	err := validateBatchSend(BatchSendRequest{Messages: []SendRequest{
+		{To: "+233241234567", From: "DUGBLE", Body: "hello"},
+		{To: "0241234567", From: "DUGBLE", Body: "hello"},
+	}})
+	if err == nil {
+		t.Fatal("validateBatchSend returned nil error for invalid message")
+	}
+}
+
 func TestCountSegments(t *testing.T) {
 	if got := countSegments("hello"); got != 1 {
 		t.Fatalf("countSegments short = %d, want 1", got)
