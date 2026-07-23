@@ -180,14 +180,18 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) (BatchSen
 
 	normalized := normalizeBatchMessages(req.Messages)
 	messages := make([]Message, 0, len(normalized))
-	for _, message := range normalized {
+	failures := make([]BatchSendFailure, 0, 1)
+	for index, message := range normalized {
 		created, err := s.Send(ctx, message)
-		if created.ID != "" {
-			messages = append(messages, created)
-		}
 		if err != nil {
-			return BatchSendResponse{Messages: messages}, err
+			failure := BatchSendFailure{Index: index, Error: err.Error()}
+			if created.ID != "" {
+				failure.Message = &created
+			}
+			failures = append(failures, failure)
+			return BatchSendResponse{Messages: messages, Failures: failures}, err
 		}
+		messages = append(messages, created)
 	}
 
 	return BatchSendResponse{Messages: messages}, nil
