@@ -48,3 +48,54 @@ func TestValidateCreateRejectsInvalidCountryCode(t *testing.T) {
 		t.Fatal("validateCreate returned nil error for invalid country code")
 	}
 }
+
+func TestValidateBulkCreateNormalizesSharedFields(t *testing.T) {
+	provider := "  Arkesel  "
+	requests, err := validateBulkCreate(BulkCreateRequest{
+		SenderIDs:   []string{" Dugble ", "DugPay"},
+		CountryCode: " gh ",
+		Purpose:     " OTP and transaction alerts ",
+		Provider:    &provider,
+	})
+	if err != nil {
+		t.Fatalf("validateBulkCreate returned error: %v", err)
+	}
+	if len(requests) != 2 {
+		t.Fatalf("len(requests) = %d, want 2", len(requests))
+	}
+	if requests[0].Name != "Dugble" || requests[1].Name != "DugPay" {
+		t.Fatalf("unexpected normalized names: %#v", requests)
+	}
+	if requests[0].CountryCode != "GH" || requests[0].Purpose != "OTP and transaction alerts" {
+		t.Fatalf("unexpected normalized shared fields: %#v", requests[0])
+	}
+	if requests[0].Provider == nil || *requests[0].Provider != "Arkesel" {
+		t.Fatalf("provider = %v, want Arkesel", requests[0].Provider)
+	}
+}
+
+func TestValidateBulkCreateRejectsCaseInsensitiveDuplicates(t *testing.T) {
+	_, err := validateBulkCreate(BulkCreateRequest{
+		SenderIDs:   []string{"Dugble", "dugble"},
+		CountryCode: "GH",
+		Purpose:     "Transactional alerts",
+	})
+	if err == nil {
+		t.Fatal("validateBulkCreate returned nil error for duplicate sender IDs")
+	}
+}
+
+func TestValidateBulkCreateRejectsMoreThanMaximum(t *testing.T) {
+	senderIDs := make([]string, maxBulkSenderIDs+1)
+	for index := range senderIDs {
+		senderIDs[index] = "Dugble"
+	}
+	_, err := validateBulkCreate(BulkCreateRequest{
+		SenderIDs:   senderIDs,
+		CountryCode: "GH",
+		Purpose:     "Transactional alerts",
+	})
+	if err == nil {
+		t.Fatal("validateBulkCreate returned nil error for oversized request")
+	}
+}
