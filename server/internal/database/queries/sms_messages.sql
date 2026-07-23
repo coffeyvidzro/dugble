@@ -90,6 +90,17 @@ SET status = 'processing',
     updated_at = now()
 WHERE id = sqlc.arg(id)
   AND team_id = sqlc.arg(team_id)
-  AND status IN ('queued', 'processing')
+  AND status = 'queued'
+  AND provider_message_id IS NULL
+RETURNING *;
+
+
+-- name: MarkSMSMessageRefundPending :one
+UPDATE sms_messages
+SET status = 'refund_pending',
+    error_message = sqlc.arg(error_message),
+    updated_at = now()
+WHERE id = sqlc.arg(id)
+  AND team_id = sqlc.arg(team_id)
   AND provider_message_id IS NULL
 RETURNING *;

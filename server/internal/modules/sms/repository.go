@@ -100,6 +100,14 @@ func (r *Repository) MarkProcessing(ctx context.Context, id uuid.UUID, teamID uu
 	return messageFromSQLC(row), nil
 }
 
+func (r *Repository) MarkRefundPending(ctx context.Context, id uuid.UUID, teamID uuid.UUID, message string) (Message, error) {
+	row, err := r.queries.MarkSMSMessageRefundPending(ctx, dbsqlc.MarkSMSMessageRefundPendingParams{ID: id, TeamID: teamID, ErrorMessage: &message})
+	if err != nil {
+		return Message{}, fmt.Errorf("mark sms message refund pending: %w", err)
+	}
+	return messageFromSQLC(row), nil
+}
+
 func (r *Repository) MarkSubmitted(ctx context.Context, id uuid.UUID, teamID uuid.UUID, providerID string, providerMessageID string, status string) (Message, error) {
 	row, err := r.queries.MarkSMSMessageSubmitted(ctx, dbsqlc.MarkSMSMessageSubmittedParams{
 		ID:                id,

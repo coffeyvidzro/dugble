@@ -283,7 +283,7 @@ func runeSet(values string) map[rune]bool {
 func MapProviderStatus(status string) string {
 	status = strings.ToLower(strings.TrimSpace(status))
 	switch status {
-	case StatusQueued, StatusProcessing, StatusSubmitted, StatusSent, StatusDelivered, StatusUndelivered, StatusRejected, StatusFailed, StatusExpired, StatusUnknown:
+	case StatusQueued, StatusProcessing, StatusRefundPending, StatusSubmitted, StatusSent, StatusDelivered, StatusUndelivered, StatusRejected, StatusFailed, StatusExpired, StatusUnknown:
 		return status
 	default:
 		return StatusUnknown

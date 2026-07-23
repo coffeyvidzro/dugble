@@ -6,16 +6,17 @@ import (
 )
 
 const (
-	StatusQueued      = "queued"
-	StatusProcessing  = "processing"
-	StatusSubmitted   = "submitted"
-	StatusSent        = "sent"
-	StatusDelivered   = "delivered"
-	StatusUndelivered = "undelivered"
-	StatusRejected    = "rejected"
-	StatusFailed      = "failed"
-	StatusExpired     = "expired"
-	StatusUnknown     = "unknown"
+	StatusQueued        = "queued"
+	StatusProcessing    = "processing"
+	StatusRefundPending = "refund_pending"
+	StatusSubmitted     = "submitted"
+	StatusSent          = "sent"
+	StatusDelivered     = "delivered"
+	StatusUndelivered   = "undelivered"
+	StatusRejected      = "rejected"
+	StatusFailed        = "failed"
+	StatusExpired       = "expired"
+	StatusUnknown       = "unknown"
 
 	defaultCostMicrosPerSegment int64 = 9_000
 )

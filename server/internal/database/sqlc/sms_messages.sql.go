@@ -253,7 +253,7 @@ SET status = 'processing',
     updated_at = now()
 WHERE id = $1
   AND team_id = $2
-  AND status IN ('queued', 'processing')
+  AND status = 'queued'
   AND provider_message_id IS NULL
 RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, client_reference, error_message, metadata, submitted_at, delivered_at, created_at, updated_at
 `
@@ -265,6 +265,49 @@ type MarkSMSMessageProcessingParams struct {
 
 func (q *Queries) MarkSMSMessageProcessing(ctx context.Context, arg MarkSMSMessageProcessingParams) (SmsMessage, error) {
 	row := q.db.QueryRow(ctx, markSMSMessageProcessing, arg.ID, arg.TeamID)
+	var i SmsMessage
+	err := row.Scan(
+		&i.ID,
+		&i.TeamID,
+		&i.SenderID,
+		&i.ToNumber,
+		&i.FromName,
+		&i.Body,
+		&i.Status,
+		&i.ProviderID,
+		&i.ProviderMessageID,
+		&i.Segments,
+		&i.CostMicros,
+		&i.ClientReference,
+		&i.ErrorMessage,
+		&i.Metadata,
+		&i.SubmittedAt,
+		&i.DeliveredAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const markSMSMessageRefundPending = `-- name: MarkSMSMessageRefundPending :one
+UPDATE sms_messages
+SET status = 'refund_pending',
+    error_message = $1,
+    updated_at = now()
+WHERE id = $2
+  AND team_id = $3
+  AND provider_message_id IS NULL
+RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, client_reference, error_message, metadata, submitted_at, delivered_at, created_at, updated_at
+`
+
+type MarkSMSMessageRefundPendingParams struct {
+	ErrorMessage *string   `db:"error_message" json:"error_message"`
+	ID           uuid.UUID `db:"id" json:"id"`
+	TeamID       uuid.UUID `db:"team_id" json:"team_id"`
+}
+
+func (q *Queries) MarkSMSMessageRefundPending(ctx context.Context, arg MarkSMSMessageRefundPendingParams) (SmsMessage, error) {
+	row := q.db.QueryRow(ctx, markSMSMessageRefundPending, arg.ErrorMessage, arg.ID, arg.TeamID)
 	var i SmsMessage
 	err := row.Scan(
 		&i.ID,
