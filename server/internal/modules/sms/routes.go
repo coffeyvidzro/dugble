@@ -13,6 +13,7 @@ func RegisterRoutes(router *echo.Echo, handler *Handler, authMiddleware echo.Mid
 	messages.Use(authMiddleware, csrfMiddleware)
 	messages.GET("", handler.List, tenantMiddleware(tenant.PermissionSMSRead))
 	messages.POST("", handler.Send, tenantMiddleware(tenant.PermissionSMSSend))
+	messages.POST("/batch", handler.BatchSend, tenantMiddleware(tenant.PermissionSMSSend))
 	messages.GET("/:message_id", handler.Get, tenantMiddleware(tenant.PermissionSMSRead))
 	messages.POST("/:message_id/sync-status", handler.SyncStatus, tenantMiddleware(tenant.PermissionSMSSend))
 }
