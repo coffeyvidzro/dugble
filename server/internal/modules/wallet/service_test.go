@@ -86,6 +86,51 @@ func TestConvertUSDMicrosToGHSPesewas(t *testing.T) {
 	}
 }
 
+func TestVerifyHubtelPayment(t *testing.T) {
+	t.Parallel()
+
+	transaction := Transaction{Metadata: json.RawMessage(`{"payment_currency":"GHS","payment_amount_pesewas":12340}`)}
+	verified := hubtel.PaymentStatus{
+		ClientReference: "11111111-1111-1111-1111-111111111111",
+		Status:          "Paid",
+		AmountPesewas:   12_340,
+		Currency:        "GHS",
+		IsFulfilled:     true,
+	}
+	if err := verifyHubtelPayment(transaction, verified.ClientReference, verified); err != nil {
+		t.Fatalf("verifyHubtelPayment returned error: %v", err)
+	}
+
+	verified.AmountPesewas = 12_339
+	if err := verifyHubtelPayment(transaction, verified.ClientReference, verified); err == nil {
+		t.Fatal("verifyHubtelPayment accepted a mismatched amount")
+	}
+}
+
+func TestVerifyHubtelPaymentRejectsPaidButUnfulfilled(t *testing.T) {
+	t.Parallel()
+
+	transaction := Transaction{Metadata: json.RawMessage(`{"payment_currency":"GHS","payment_amount_pesewas":12340}`)}
+	verified := hubtel.PaymentStatus{
+		ClientReference: "11111111-1111-1111-1111-111111111111",
+		Status:          "Paid",
+		AmountPesewas:   12_340,
+		Currency:        "GHS",
+		IsFulfilled:     false,
+	}
+	if err := verifyHubtelPayment(transaction, verified.ClientReference, verified); err == nil {
+		t.Fatal("verifyHubtelPayment accepted an unfulfilled paid transaction")
+	}
+}
+
+func TestMinimumTopUpIsTenDollars(t *testing.T) {
+	t.Parallel()
+
+	if MinimumTopUpMicros != 10_000_000 {
+		t.Fatalf("MinimumTopUpMicros = %d, want 10000000", MinimumTopUpMicros)
+	}
+}
+
 func assertEqual(t *testing.T, got any, want any) {
 	t.Helper()
 	if got != want {
