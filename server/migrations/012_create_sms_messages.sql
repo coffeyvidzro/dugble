@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS sms_messages (
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_sms_messages_team_client_reference
     ON sms_messages (team_id, client_reference)
-    WHERE client_reference IS NOT NULL;
+    WHERE client_reference IS NOT NULL AND status <> 'failed';
 
 CREATE INDEX IF NOT EXISTS idx_sms_messages_team_created
     ON sms_messages (team_id, created_at DESC);

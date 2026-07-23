@@ -35,7 +35,7 @@ INSERT INTO sms_messages (
     $9,
     $10
 )
-ON CONFLICT (team_id, client_reference) WHERE client_reference IS NOT NULL
+ON CONFLICT (team_id, client_reference) WHERE client_reference IS NOT NULL AND status <> 'failed'
 DO UPDATE SET updated_at = sms_messages.updated_at
 RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, client_reference, error_message, metadata, submitted_at, delivered_at, created_at, updated_at
 `

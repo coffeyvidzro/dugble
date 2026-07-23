@@ -146,7 +146,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 			return Message{}, apperrors.NewInternal("Unable to record SMS send failure", updateErr)
 		}
 		if _, refundErr := s.wallet.RefundSMSCharge(ctx, tenantContext.TeamID, created.CostMicros, messageID, normalized.Metadata); refundErr != nil {
-			return Message{}, apperrors.NewInternal("Unable to refund failed SMS charge", refundErr)
+			return failed, apperrors.NewInternal("Unable to send SMS; additionally unable to refund failed SMS charge", errors.Join(err, refundErr))
 		}
 		return failed, apperrors.NewInternal("Unable to send SMS", err)
 	}
