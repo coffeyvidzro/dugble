@@ -41,6 +41,18 @@ func (h *Handler) Create(c *echo.Context) error {
 	return httputil.Created(c, senderID)
 }
 
+func (h *Handler) CreateBulk(c *echo.Context) error {
+	var req BulkCreateRequest
+	if err := decodeJSON(c, &req); err != nil {
+		return err
+	}
+	senderIDs, err := h.service.CreateBulk(c.Request().Context(), req)
+	if err != nil {
+		return httputil.Error(c, err)
+	}
+	return httputil.Created(c, senderIDs)
+}
+
 func (h *Handler) Delete(c *echo.Context) error {
 	senderID, err := h.service.Delete(c.Request().Context(), c.Param("sender_id"))
 	if err != nil {
