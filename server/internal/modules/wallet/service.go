@@ -16,7 +16,10 @@ import (
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
-const microsPerCent int64 = 10_000
+const (
+	microsPerCent        int64 = 10_000
+	MinimumTopUpMicros   int64 = 10 * MicrosPerUSD
+)
 
 type RateProvider interface {
 	LatestRate(ctx context.Context, base string, quote string) (fx.Rate, error)
@@ -101,8 +104,8 @@ func (s *Service) TopUp(ctx context.Context, req TopUpRequest) (TopUpResponse, e
 	if s.rates == nil {
 		return TopUpResponse{}, apperrors.NewInternal("FX rates are not configured", nil)
 	}
-	if req.AmountMicros <= 0 {
-		return TopUpResponse{}, apperrors.NewBadRequest("Amount must be greater than zero")
+	if req.AmountMicros < MinimumTopUpMicros {
+		return TopUpResponse{}, apperrors.NewBadRequest("Minimum wallet top-up is $10.00")
 	}
 	metadata := req.Metadata
 	if len(metadata) == 0 {
@@ -195,12 +198,19 @@ func (s *Service) HandleHubtelCallback(ctx context.Context, payload hubtel.Callb
 	if err != nil {
 		return Transaction{}, apperrors.NewBadRequest("Hubtel client reference must be a UUID")
 	}
+	pending, err := s.repository.GetTopUpByReference(ctx, clientReference)
+	if err != nil {
+		return Transaction{}, apperrors.NewInternal("Unable to load pending wallet top-up", err)
+	}
 
 	verifiedStatus, err := s.hubtel.VerifyTransaction(ctx, callbackStatus.ClientReference)
 	if err != nil {
 		return Transaction{}, apperrors.NewInternal("Unable to verify Hubtel transaction", err)
 	}
-	paid := hubtel.IsPaidStatus(verifiedStatus.Status)
+	if err := verifyHubtelPayment(pending, clientReference.String(), verifiedStatus); err != nil {
+		return Transaction{}, apperrors.NewInternal("Hubtel payment verification mismatch", err)
+	}
+	paid := hubtel.IsPaidStatus(verifiedStatus.Status) && verifiedStatus.IsFulfilled
 	metadata, err := mergeSettlementMetadata(callbackStatus, verifiedStatus)
 	if err != nil {
 		return Transaction{}, apperrors.NewInternal("Unable to prepare Hubtel settlement metadata", err)
@@ -248,9 +258,12 @@ func mergeMetadata(metadata json.RawMessage, checkout hubtel.CheckoutData, rate 
 
 func mergeSettlementMetadata(callbackStatus hubtel.PaymentStatus, verifiedStatus hubtel.PaymentStatus) (json.RawMessage, error) {
 	values := map[string]any{
-		"provider":        "hubtel",
-		"callback_status": callbackStatus.Status,
-		"verified_status": verifiedStatus.Status,
+		"provider":                "hubtel",
+		"callback_status":         callbackStatus.Status,
+		"verified_status":         verifiedStatus.Status,
+		"verified_amount_pesewas": verifiedStatus.AmountPesewas,
+		"verified_currency":       verifiedStatus.Currency,
+		"verified_fulfilled":      verifiedStatus.IsFulfilled,
 	}
 	if len(callbackStatus.Raw) > 0 {
 		var raw any
@@ -267,6 +280,32 @@ func mergeSettlementMetadata(callbackStatus hubtel.PaymentStatus, verifiedStatus
 		values["status_check"] = raw
 	}
 	return json.Marshal(values)
+}
+
+func verifyHubtelPayment(transaction Transaction, clientReference string, verified hubtel.PaymentStatus) error {
+	if strings.TrimSpace(verified.ClientReference) != clientReference {
+		return fmt.Errorf("client reference %q does not match %q", verified.ClientReference, clientReference)
+	}
+	var expected struct {
+		PaymentCurrency      string `json:"payment_currency"`
+		PaymentAmountPesewas int64  `json:"payment_amount_pesewas"`
+	}
+	if err := json.Unmarshal(transaction.Metadata, &expected); err != nil {
+		return fmt.Errorf("decode pending top-up metadata: %w", err)
+	}
+	if expected.PaymentAmountPesewas <= 0 {
+		return fmt.Errorf("pending top-up has no valid expected payment amount")
+	}
+	if verified.AmountPesewas != expected.PaymentAmountPesewas {
+		return fmt.Errorf("verified amount %d does not match expected %d", verified.AmountPesewas, expected.PaymentAmountPesewas)
+	}
+	if !strings.EqualFold(strings.TrimSpace(verified.Currency), strings.TrimSpace(expected.PaymentCurrency)) {
+		return fmt.Errorf("verified currency %q does not match expected %q", verified.Currency, expected.PaymentCurrency)
+	}
+	if hubtel.IsPaidStatus(verified.Status) && !verified.IsFulfilled {
+		return fmt.Errorf("paid Hubtel transaction is not fulfilled")
+	}
+	return nil
 }
 
 func convertUSDMicrosToGHSPesewas(usdMicros int64, rate float64) (int64, error) {
