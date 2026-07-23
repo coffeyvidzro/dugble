@@ -8,7 +8,6 @@ INSERT INTO sms_messages (
     status,
     segments,
     cost_micros,
-    client_reference,
     metadata
 ) VALUES (
     sqlc.arg(team_id),
@@ -19,11 +18,8 @@ INSERT INTO sms_messages (
     sqlc.arg(status),
     sqlc.arg(segments),
     sqlc.arg(cost_micros),
-    sqlc.narg(client_reference),
     sqlc.arg(metadata)
 )
-ON CONFLICT (team_id, client_reference) WHERE client_reference IS NOT NULL AND status <> 'failed'
-DO UPDATE SET updated_at = sms_messages.updated_at
 RETURNING *;
 
 -- name: ListSMSMessages :many

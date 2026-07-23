@@ -33,7 +33,6 @@ type Message struct {
 	ProviderMessageID *string         `json:"provider_message_id,omitempty"`
 	Segments          int32           `json:"segments"`
 	CostMicros        int64           `json:"cost_micros"`
-	ClientReference   *string         `json:"client_reference,omitempty"`
 	ErrorMessage      *string         `json:"error_message,omitempty"`
 	Metadata          json.RawMessage `json:"metadata"`
 	SubmittedAt       *time.Time      `json:"submitted_at,omitempty"`
@@ -43,11 +42,10 @@ type Message struct {
 }
 
 type SendRequest struct {
-	To              string          `json:"to"`
-	From            string          `json:"from"`
-	Body            string          `json:"body"`
-	ClientReference *string         `json:"client_reference,omitempty"`
-	Metadata        json.RawMessage `json:"metadata,omitempty"`
+	To       string          `json:"to"`
+	From     string          `json:"from"`
+	Body     string          `json:"body"`
+	Metadata json.RawMessage `json:"metadata,omitempty"`
 }
 
 type ListRequest struct {

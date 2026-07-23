@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS sms_messages (
     provider_message_id TEXT,
     segments INTEGER NOT NULL DEFAULT 1,
     cost_micros BIGINT NOT NULL DEFAULT 0,
-    client_reference TEXT,
     error_message TEXT,
     metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
     submitted_at TIMESTAMPTZ,
@@ -32,9 +31,6 @@ CREATE TABLE IF NOT EXISTS sms_messages (
         CHECK (status IN ('queued', 'processing', 'refund_pending', 'submitted', 'sent', 'delivered', 'undelivered', 'rejected', 'failed', 'expired', 'unknown'))
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_sms_messages_team_client_reference
-    ON sms_messages (team_id, client_reference)
-    WHERE client_reference IS NOT NULL AND status <> 'failed';
 
 CREATE INDEX IF NOT EXISTS idx_sms_messages_team_created
     ON sms_messages (team_id, created_at DESC);

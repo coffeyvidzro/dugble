@@ -21,7 +21,6 @@ INSERT INTO sms_messages (
     status,
     segments,
     cost_micros,
-    client_reference,
     metadata
 ) VALUES (
     $1,
@@ -32,25 +31,21 @@ INSERT INTO sms_messages (
     $6,
     $7,
     $8,
-    $9,
-    $10
+    $9
 )
-ON CONFLICT (team_id, client_reference) WHERE client_reference IS NOT NULL AND status <> 'failed'
-DO UPDATE SET updated_at = sms_messages.updated_at
-RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, client_reference, error_message, metadata, submitted_at, delivered_at, created_at, updated_at
+RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, submitted_at, delivered_at, created_at, updated_at
 `
 
 type CreateSMSMessageParams struct {
-	TeamID          uuid.UUID  `db:"team_id" json:"team_id"`
-	SenderID        *uuid.UUID `db:"sender_id" json:"sender_id"`
-	ToNumber        string     `db:"to_number" json:"to_number"`
-	FromName        string     `db:"from_name" json:"from_name"`
-	Body            string     `db:"body" json:"body"`
-	Status          string     `db:"status" json:"status"`
-	Segments        int32      `db:"segments" json:"segments"`
-	CostMicros      int64      `db:"cost_micros" json:"cost_micros"`
-	ClientReference *string    `db:"client_reference" json:"client_reference"`
-	Metadata        []byte     `db:"metadata" json:"metadata"`
+	TeamID     uuid.UUID  `db:"team_id" json:"team_id"`
+	SenderID   *uuid.UUID `db:"sender_id" json:"sender_id"`
+	ToNumber   string     `db:"to_number" json:"to_number"`
+	FromName   string     `db:"from_name" json:"from_name"`
+	Body       string     `db:"body" json:"body"`
+	Status     string     `db:"status" json:"status"`
+	Segments   int32      `db:"segments" json:"segments"`
+	CostMicros int64      `db:"cost_micros" json:"cost_micros"`
+	Metadata   []byte     `db:"metadata" json:"metadata"`
 }
 
 func (q *Queries) CreateSMSMessage(ctx context.Context, arg CreateSMSMessageParams) (SmsMessage, error) {
@@ -63,7 +58,6 @@ func (q *Queries) CreateSMSMessage(ctx context.Context, arg CreateSMSMessagePara
 		arg.Status,
 		arg.Segments,
 		arg.CostMicros,
-		arg.ClientReference,
 		arg.Metadata,
 	)
 	var i SmsMessage
@@ -79,7 +73,6 @@ func (q *Queries) CreateSMSMessage(ctx context.Context, arg CreateSMSMessagePara
 		&i.ProviderMessageID,
 		&i.Segments,
 		&i.CostMicros,
-		&i.ClientReference,
 		&i.ErrorMessage,
 		&i.Metadata,
 		&i.SubmittedAt,
@@ -113,7 +106,7 @@ func (q *Queries) FindApprovedSMSSender(ctx context.Context, arg FindApprovedSMS
 }
 
 const getSMSMessage = `-- name: GetSMSMessage :one
-SELECT id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, client_reference, error_message, metadata, submitted_at, delivered_at, created_at, updated_at
+SELECT id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, submitted_at, delivered_at, created_at, updated_at
 FROM sms_messages
 WHERE id = $1
   AND team_id = $2
@@ -139,7 +132,6 @@ func (q *Queries) GetSMSMessage(ctx context.Context, arg GetSMSMessageParams) (S
 		&i.ProviderMessageID,
 		&i.Segments,
 		&i.CostMicros,
-		&i.ClientReference,
 		&i.ErrorMessage,
 		&i.Metadata,
 		&i.SubmittedAt,
@@ -151,7 +143,7 @@ func (q *Queries) GetSMSMessage(ctx context.Context, arg GetSMSMessageParams) (S
 }
 
 const listSMSMessages = `-- name: ListSMSMessages :many
-SELECT id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, client_reference, error_message, metadata, submitted_at, delivered_at, created_at, updated_at
+SELECT id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, submitted_at, delivered_at, created_at, updated_at
 FROM sms_messages
 WHERE team_id = $1
 ORDER BY created_at DESC
@@ -186,7 +178,6 @@ func (q *Queries) ListSMSMessages(ctx context.Context, arg ListSMSMessagesParams
 			&i.ProviderMessageID,
 			&i.Segments,
 			&i.CostMicros,
-			&i.ClientReference,
 			&i.ErrorMessage,
 			&i.Metadata,
 			&i.SubmittedAt,
@@ -211,7 +202,7 @@ SET status = 'failed',
     updated_at = now()
 WHERE id = $2
   AND team_id = $3
-RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, client_reference, error_message, metadata, submitted_at, delivered_at, created_at, updated_at
+RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, submitted_at, delivered_at, created_at, updated_at
 `
 
 type MarkSMSMessageFailedParams struct {
@@ -235,7 +226,6 @@ func (q *Queries) MarkSMSMessageFailed(ctx context.Context, arg MarkSMSMessageFa
 		&i.ProviderMessageID,
 		&i.Segments,
 		&i.CostMicros,
-		&i.ClientReference,
 		&i.ErrorMessage,
 		&i.Metadata,
 		&i.SubmittedAt,
@@ -255,7 +245,7 @@ WHERE id = $1
   AND team_id = $2
   AND status = 'queued'
   AND provider_message_id IS NULL
-RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, client_reference, error_message, metadata, submitted_at, delivered_at, created_at, updated_at
+RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, submitted_at, delivered_at, created_at, updated_at
 `
 
 type MarkSMSMessageProcessingParams struct {
@@ -278,7 +268,6 @@ func (q *Queries) MarkSMSMessageProcessing(ctx context.Context, arg MarkSMSMessa
 		&i.ProviderMessageID,
 		&i.Segments,
 		&i.CostMicros,
-		&i.ClientReference,
 		&i.ErrorMessage,
 		&i.Metadata,
 		&i.SubmittedAt,
@@ -297,7 +286,7 @@ SET status = 'refund_pending',
 WHERE id = $2
   AND team_id = $3
   AND provider_message_id IS NULL
-RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, client_reference, error_message, metadata, submitted_at, delivered_at, created_at, updated_at
+RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, submitted_at, delivered_at, created_at, updated_at
 `
 
 type MarkSMSMessageRefundPendingParams struct {
@@ -321,7 +310,6 @@ func (q *Queries) MarkSMSMessageRefundPending(ctx context.Context, arg MarkSMSMe
 		&i.ProviderMessageID,
 		&i.Segments,
 		&i.CostMicros,
-		&i.ClientReference,
 		&i.ErrorMessage,
 		&i.Metadata,
 		&i.SubmittedAt,
@@ -342,7 +330,7 @@ SET provider_id = $1,
     updated_at = now()
 WHERE id = $4
   AND team_id = $5
-RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, client_reference, error_message, metadata, submitted_at, delivered_at, created_at, updated_at
+RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, submitted_at, delivered_at, created_at, updated_at
 `
 
 type MarkSMSMessageSubmittedParams struct {
@@ -374,7 +362,6 @@ func (q *Queries) MarkSMSMessageSubmitted(ctx context.Context, arg MarkSMSMessag
 		&i.ProviderMessageID,
 		&i.Segments,
 		&i.CostMicros,
-		&i.ClientReference,
 		&i.ErrorMessage,
 		&i.Metadata,
 		&i.SubmittedAt,
@@ -396,7 +383,7 @@ SET status = $1,
     updated_at = now()
 WHERE id = $2
   AND team_id = $3
-RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, client_reference, error_message, metadata, submitted_at, delivered_at, created_at, updated_at
+RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, submitted_at, delivered_at, created_at, updated_at
 `
 
 type UpdateSMSMessageStatusParams struct {
@@ -420,7 +407,6 @@ func (q *Queries) UpdateSMSMessageStatus(ctx context.Context, arg UpdateSMSMessa
 		&i.ProviderMessageID,
 		&i.Segments,
 		&i.CostMicros,
-		&i.ClientReference,
 		&i.ErrorMessage,
 		&i.Metadata,
 		&i.SubmittedAt,

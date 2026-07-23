@@ -19,10 +19,7 @@ import (
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
-const (
-	maxBodyCharacters  = 1600
-	maxReferenceLength = 120
-)
+const maxBodyCharacters = 1600
 
 var e164Pattern = regexp.MustCompile(`^\+[1-9]\d{7,14}$`)
 
@@ -136,8 +133,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	created, err := txRepository.Create(ctx, createMessageParams{
 		TeamID: tenantContext.TeamID, SenderID: senderID, To: normalized.To, From: normalized.From,
 		Body: normalized.Body, Status: StatusQueued, Segments: segments,
-		CostMicros:      costMicros,
-		ClientReference: normalized.ClientReference, Metadata: normalized.Metadata,
+		CostMicros: costMicros, Metadata: normalized.Metadata,
 	})
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to create SMS message", err)
@@ -210,14 +206,6 @@ func (s *Service) SyncStatus(ctx context.Context, messageID string) (Message, er
 func validateSend(req SendRequest) (SendRequest, error) {
 	req.To = strings.TrimSpace(req.To)
 	req.From = strings.TrimSpace(req.From)
-	if req.ClientReference != nil {
-		ref := strings.TrimSpace(*req.ClientReference)
-		if ref == "" {
-			req.ClientReference = nil
-		} else {
-			req.ClientReference = &ref
-		}
-	}
 	if req.To == "" {
 		return SendRequest{}, apperrors.NewBadRequest("SMS recipient is required")
 	}
@@ -235,9 +223,6 @@ func validateSend(req SendRequest) (SendRequest, error) {
 	}
 	if utf8.RuneCountInString(req.Body) > maxBodyCharacters {
 		return SendRequest{}, apperrors.NewBadRequest(fmt.Sprintf("SMS body must be at most %d characters", maxBodyCharacters))
-	}
-	if req.ClientReference != nil && len(*req.ClientReference) > maxReferenceLength {
-		return SendRequest{}, apperrors.NewBadRequest("Client reference must be at most 120 characters")
 	}
 	if len(req.Metadata) == 0 {
 		req.Metadata = json.RawMessage(`{}`)

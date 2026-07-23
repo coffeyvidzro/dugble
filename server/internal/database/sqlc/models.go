@@ -93,7 +93,6 @@ type SmsMessage struct {
 	ProviderMessageID *string            `db:"provider_message_id" json:"provider_message_id"`
 	Segments          int32              `db:"segments" json:"segments"`
 	CostMicros        int64              `db:"cost_micros" json:"cost_micros"`
-	ClientReference   *string            `db:"client_reference" json:"client_reference"`
 	ErrorMessage      *string            `db:"error_message" json:"error_message"`
 	Metadata          []byte             `db:"metadata" json:"metadata"`
 	SubmittedAt       pgtype.Timestamptz `db:"submitted_at" json:"submitted_at"`

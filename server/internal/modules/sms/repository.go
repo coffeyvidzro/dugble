@@ -35,30 +35,28 @@ func (r *Repository) WithTx(tx pgx.Tx) *Repository {
 }
 
 type createMessageParams struct {
-	TeamID          uuid.UUID
-	SenderID        *uuid.UUID
-	To              string
-	From            string
-	Body            string
-	Status          string
-	Segments        int32
-	CostMicros      int64
-	ClientReference *string
-	Metadata        json.RawMessage
+	TeamID     uuid.UUID
+	SenderID   *uuid.UUID
+	To         string
+	From       string
+	Body       string
+	Status     string
+	Segments   int32
+	CostMicros int64
+	Metadata   json.RawMessage
 }
 
 func (r *Repository) Create(ctx context.Context, params createMessageParams) (Message, error) {
 	row, err := r.queries.CreateSMSMessage(ctx, dbsqlc.CreateSMSMessageParams{
-		TeamID:          params.TeamID,
-		SenderID:        params.SenderID,
-		ToNumber:        params.To,
-		FromName:        params.From,
-		Body:            params.Body,
-		Status:          params.Status,
-		Segments:        params.Segments,
-		CostMicros:      params.CostMicros,
-		ClientReference: params.ClientReference,
-		Metadata:        ensureMetadata(params.Metadata),
+		TeamID:     params.TeamID,
+		SenderID:   params.SenderID,
+		ToNumber:   params.To,
+		FromName:   params.From,
+		Body:       params.Body,
+		Status:     params.Status,
+		Segments:   params.Segments,
+		CostMicros: params.CostMicros,
+		Metadata:   ensureMetadata(params.Metadata),
 	})
 	if err != nil {
 		return Message{}, fmt.Errorf("create sms message: %w", err)
@@ -161,7 +159,6 @@ func messageFromSQLC(row dbsqlc.SmsMessage) Message {
 		ProviderMessageID: row.ProviderMessageID,
 		Segments:          row.Segments,
 		CostMicros:        row.CostMicros,
-		ClientReference:   row.ClientReference,
 		ErrorMessage:      row.ErrorMessage,
 		Metadata:          ensureMetadata(row.Metadata),
 		CreatedAt:         row.CreatedAt.Time,
