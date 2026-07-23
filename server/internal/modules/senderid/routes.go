@@ -19,6 +19,7 @@ func RegisterRoutes(
 	senderIDs.Use(authMiddleware, csrfMiddleware)
 	senderIDs.GET("", handler.List, tenantMiddleware(tenant.PermissionSenderIDsRead))
 	senderIDs.POST("", handler.Create, tenantMiddleware(tenant.PermissionSenderIDsCreate))
+	senderIDs.POST("/bulk", handler.CreateBulk, tenantMiddleware(tenant.PermissionSenderIDsCreate))
 	senderIDs.GET("/:sender_id", handler.Get, tenantMiddleware(tenant.PermissionSenderIDsRead))
 	senderIDs.DELETE("/:sender_id", handler.Delete, tenantMiddleware(tenant.PermissionSenderIDsDelete))
 }
