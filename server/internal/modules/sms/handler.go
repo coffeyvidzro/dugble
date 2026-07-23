@@ -2,6 +2,7 @@ package sms
 
 import (
 	"encoding/json"
+	"net/http"
 	"strconv"
 
 	"github.com/labstack/echo/v5"
@@ -49,6 +50,9 @@ func (h *Handler) BatchSend(c *echo.Context) error {
 	}
 	message, err := h.service.BatchSend(c.Request().Context(), req)
 	if err != nil {
+		if len(message.Messages) > 0 {
+			return httputil.Partial(c, http.StatusMultiStatus, message, err)
+		}
 		return httputil.Error(c, err)
 	}
 	return httputil.Created(c, message)

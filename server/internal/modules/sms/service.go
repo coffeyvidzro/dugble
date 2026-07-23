@@ -182,10 +182,12 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) (BatchSen
 	messages := make([]Message, 0, len(normalized))
 	for _, message := range normalized {
 		created, err := s.Send(ctx, message)
-		if err != nil {
-			return BatchSendResponse{}, err
+		if created.ID != "" {
+			messages = append(messages, created)
 		}
-		messages = append(messages, created)
+		if err != nil {
+			return BatchSendResponse{Messages: messages}, err
+		}
 	}
 
 	return BatchSendResponse{Messages: messages}, nil
