@@ -229,17 +229,36 @@ func (r *Repository) DebitSMSChargeTx(ctx context.Context, tx pgx.Tx, teamID uui
 }
 
 func (r *Repository) RefundSMSCharge(ctx context.Context, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (Transaction, error) {
-	if amountMicros <= 0 {
-		return Transaction{}, ErrInvalidWalletAmount
-	}
-
 	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return Transaction{}, fmt.Errorf("begin SMS wallet refund: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	transaction, err := r.RefundSMSChargeTx(ctx, tx, teamID, amountMicros, referenceID, metadata)
+	if err != nil {
+		return Transaction{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Transaction{}, fmt.Errorf("commit SMS wallet refund: %w", err)
+	}
+	return transaction, nil
+}
+
+func (r *Repository) RefundSMSChargeTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (Transaction, error) {
+	if amountMicros <= 0 {
+		return Transaction{}, ErrInvalidWalletAmount
+	}
+
 	q := r.queries.WithTx(tx)
+	existing, err := q.GetCompletedWalletRefundByReference(ctx, dbsqlc.GetCompletedWalletRefundByReferenceParams{TeamID: teamID, ReferenceID: &referenceID})
+	if err == nil {
+		return transactionFromSQLC(existing), nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return Transaction{}, fmt.Errorf("get existing SMS refund transaction: %w", err)
+	}
+
 	wallet, err := q.CreateWallet(ctx, dbsqlc.CreateWalletParams{TeamID: teamID, Currency: CurrencyUSD})
 	if err != nil {
 		return Transaction{}, fmt.Errorf("create SMS refund wallet: %w", err)
@@ -263,9 +282,6 @@ func (r *Repository) RefundSMSCharge(ctx context.Context, teamID uuid.UUID, amou
 	})
 	if err != nil {
 		return Transaction{}, fmt.Errorf("create SMS refund transaction: %w", err)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return Transaction{}, fmt.Errorf("commit SMS wallet refund: %w", err)
 	}
 	return transactionFromSQLC(transaction), nil
 }
