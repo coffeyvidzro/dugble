@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -82,7 +82,9 @@ export function SenderIDManager() {
       setTeams(nextTeams);
       setSelectedTeamID((current) => current || nextTeams[0]?.id || "");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to load teams.");
+      toast.error(
+        error instanceof Error ? error.message : "Unable to load teams.",
+      );
     } finally {
       setLoadingTeams(false);
     }
@@ -107,7 +109,9 @@ export function SenderIDManager() {
         .json()
         .catch(() => null)) as ApiEnvelope<SenderID[]> | null;
       if (!response.ok || !payload?.success) {
-        throw new Error(payload?.error?.message ?? "Unable to load sender IDs.");
+        throw new Error(
+          payload?.error?.message ?? "Unable to load sender IDs.",
+        );
       }
       setSenderIDs(payload.data ?? []);
     } catch (error) {
@@ -142,7 +146,9 @@ export function SenderIDManager() {
       toast.error("You can request a maximum of 50 sender IDs at once.");
       return;
     }
-    const invalidSenderID = parsedSenderIDs.find((value) => value.length > 11);
+    const invalidSenderID = parsedSenderIDs.find(
+      (value) => value.length > 11,
+    );
     if (invalidSenderID) {
       toast.error(`${invalidSenderID} is longer than 11 characters.`);
       return;
@@ -232,12 +238,16 @@ export function SenderIDManager() {
                     id="sender-team"
                     className={selectClassName}
                     value={selectedTeamID}
-                    onChange={(event) => setSelectedTeamID(event.target.value)}
+                    onChange={(event) =>
+                      setSelectedTeamID(event.target.value)
+                    }
                     disabled={loadingTeams || teams.length === 0}
                   >
                     {teams.length === 0 ? (
                       <option value="">
-                        {loadingTeams ? "Loading teams..." : "No teams available"}
+                        {loadingTeams
+                          ? "Loading teams..."
+                          : "No teams available"}
                       </option>
                     ) : null}
                     {teams.map((team) => (
@@ -333,10 +343,16 @@ export function SenderIDManager() {
             </CardHeader>
             <CardContent>
               <ol className="list-decimal space-y-2 pl-5 text-sm leading-6 text-muted-foreground">
-                <li>List every sender ID exactly as entered in this request.</li>
+                <li>
+                  List every sender ID exactly as entered in this request.
+                </li>
                 <li>Explain the shared purpose, such as OTPs or alerts.</li>
-                <li>Include the requester&apos;s name, role, email, and phone.</li>
-                <li>Sign the letter and attach a valid government-issued ID.</li>
+                <li>
+                  Include the requester&apos;s name, role, email, and phone.
+                </li>
+                <li>
+                  Sign the letter and attach a valid government-issued ID.
+                </li>
               </ol>
             </CardContent>
           </Card>
@@ -352,7 +368,9 @@ export function SenderIDManager() {
             </CardHeader>
             <CardContent>
               {loadingSenderIDs ? (
-                <p className="text-sm text-muted-foreground">Loading requests...</p>
+                <p className="text-sm text-muted-foreground">
+                  Loading requests...
+                </p>
               ) : senderIDs.length === 0 ? (
                 <div className="rounded-3xl border border-dashed p-6 text-center text-sm text-muted-foreground">
                   No sender ID requests yet.
@@ -360,7 +378,10 @@ export function SenderIDManager() {
               ) : (
                 <div className="divide-y">
                   {senderIDs.map((senderID) => (
-                    <div key={senderID.id} className="space-y-2 py-4 first:pt-0 last:pb-0">
+                    <div
+                      key={senderID.id}
+                      className="space-y-2 py-4 first:pt-0 last:pb-0"
+                    >
                       <div className="flex items-center justify-between gap-3">
                         <span className="font-mono font-semibold">
                           {senderID.name}
@@ -392,7 +413,7 @@ function Field({
   htmlFor,
   hint,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   label: string;
   htmlFor: string;
   hint?: string;
@@ -403,7 +424,9 @@ function Field({
         <label htmlFor={htmlFor} className="text-sm font-medium">
           {label}
         </label>
-        {hint ? <span className="text-xs text-muted-foreground">{hint}</span> : null}
+        {hint ? (
+          <span className="text-xs text-muted-foreground">{hint}</span>
+        ) : null}
       </div>
       {children}
     </div>
