@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS sms_messages (
     CONSTRAINT chk_sms_messages_cost_non_negative
         CHECK (cost_micros >= 0),
     CONSTRAINT chk_sms_messages_status
-        CHECK (status IN ('queued', 'submitted', 'sent', 'delivered', 'undelivered', 'rejected', 'failed', 'expired', 'unknown'))
+        CHECK (status IN ('queued', 'processing', 'submitted', 'sent', 'delivered', 'undelivered', 'rejected', 'failed', 'expired', 'unknown'))
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_sms_messages_team_client_reference
