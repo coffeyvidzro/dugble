@@ -1,0 +1,12 @@
+{{template "layout_start" .}}
+<table>
+  <thead><tr><th>Name</th><th>Status</th><th>Created</th><th>ID</th></tr></thead>
+  <tbody>
+  {{range .Data}}
+    <tr><td>{{.Name}}</td><td>{{.Status}}</td><td>{{.CreatedAt.Format "2006-01-02 15:04"}}</td><td><code>{{.ID}}</code></td></tr>
+  {{else}}
+    <tr><td colspan="4">No teams found.</td></tr>
+  {{end}}
+  </tbody>
+</table>
+{{template "layout_end" .}}

@@ -1,0 +1,12 @@
+{{template "layout_start" .}}
+<table>
+  <thead><tr><th>Team</th><th>Domain</th><th>Provider</th><th>Status</th><th>Created</th><th>ID</th></tr></thead>
+  <tbody>
+  {{range .Data}}
+    <tr><td>{{.TeamName}}</td><td>{{.Domain}}</td><td>{{.Provider}}</td><td>{{.Status}}</td><td>{{.CreatedAt.Format "2006-01-02 15:04"}}</td><td><code>{{.ID}}</code></td></tr>
+  {{else}}
+    <tr><td colspan="6">No domains found.</td></tr>
+  {{end}}
+  </tbody>
+</table>
+{{template "layout_end" .}}

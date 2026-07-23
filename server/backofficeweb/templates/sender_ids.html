@@ -1,0 +1,12 @@
+{{template "layout_start" .}}
+<table>
+  <thead><tr><th>Team</th><th>Name</th><th>Country</th><th>Status</th><th>Created</th><th>ID</th></tr></thead>
+  <tbody>
+  {{range .Data}}
+    <tr><td>{{.TeamName}}</td><td>{{.Name}}</td><td>{{.CountryCode}}</td><td>{{.Status}}</td><td>{{.CreatedAt.Format "2006-01-02 15:04"}}</td><td><code>{{.ID}}</code></td></tr>
+  {{else}}
+    <tr><td colspan="6">No sender IDs found.</td></tr>
+  {{end}}
+  </tbody>
+</table>
+{{template "layout_end" .}}
