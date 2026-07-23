@@ -15,9 +15,24 @@ import (
 
 var ErrMessageNotFound = errors.New("sms message not found")
 
-type Repository struct{ queries *dbsqlc.Queries }
+type Repository struct {
+	db      *pgxpool.Pool
+	queries *dbsqlc.Queries
+}
 
-func NewRepository(db *pgxpool.Pool) *Repository { return &Repository{queries: dbsqlc.New(db)} }
+func NewRepository(db *pgxpool.Pool) *Repository { return &Repository{db: db, queries: dbsqlc.New(db)} }
+
+func (r *Repository) BeginTx(ctx context.Context) (pgx.Tx, error) {
+	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("begin sms transaction: %w", err)
+	}
+	return tx, nil
+}
+
+func (r *Repository) WithTx(tx pgx.Tx) *Repository {
+	return &Repository{db: r.db, queries: r.queries.WithTx(tx)}
+}
 
 type createMessageParams struct {
 	TeamID          uuid.UUID

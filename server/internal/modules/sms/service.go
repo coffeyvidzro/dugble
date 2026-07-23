@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	smsapi "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/wallet"
@@ -37,6 +38,7 @@ type Sender interface {
 
 type WalletLedger interface {
 	DebitSMSCharge(ctx context.Context, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
+	DebitSMSChargeTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
 	RefundSMSCharge(ctx context.Context, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
 }
 
@@ -45,6 +47,7 @@ type WalletLedger interface {
 // Implementations should persist jobs durably before returning.
 type DeliveryQueue interface {
 	EnqueueSMSDelivery(ctx context.Context, messageID uuid.UUID, teamID uuid.UUID) error
+	EnqueueSMSDeliveryTx(ctx context.Context, tx pgx.Tx, messageID uuid.UUID, teamID uuid.UUID) error
 }
 
 type Service struct {
@@ -122,7 +125,15 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 
 	segments := countSegments(normalized.Body)
 	costMicros := int64(segments) * defaultCostMicrosPerSegment
-	created, err := s.repository.Create(ctx, createMessageParams{
+
+	tx, err := s.repository.BeginTx(ctx)
+	if err != nil {
+		return Message{}, apperrors.NewInternal("Unable to begin SMS send transaction", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	txRepository := s.repository.WithTx(tx)
+	created, err := txRepository.Create(ctx, createMessageParams{
 		TeamID: tenantContext.TeamID, SenderID: senderID, To: normalized.To, From: normalized.From,
 		Body: normalized.Body, Status: StatusQueued, Segments: segments,
 		CostMicros:      costMicros,
@@ -132,30 +143,32 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 		return Message{}, apperrors.NewInternal("Unable to create SMS message", err)
 	}
 	if created.ProviderMessageID != nil || created.Status != StatusQueued {
+		if err := tx.Commit(ctx); err != nil {
+			return Message{}, apperrors.NewInternal("Unable to commit SMS send transaction", err)
+		}
 		return created, nil
 	}
 
 	messageID := uuid.MustParse(created.ID)
-	if _, err := s.wallet.DebitSMSCharge(ctx, tenantContext.TeamID, created.CostMicros, messageID, normalized.Metadata); err != nil {
+	if _, err := s.wallet.DebitSMSChargeTx(ctx, tx, tenantContext.TeamID, created.CostMicros, messageID, normalized.Metadata); err != nil {
 		if errors.Is(err, wallet.ErrInsufficientBalance) {
-			failed, updateErr := s.repository.MarkFailed(ctx, messageID, tenantContext.TeamID, "insufficient wallet balance")
+			failed, updateErr := txRepository.MarkFailed(ctx, messageID, tenantContext.TeamID, "insufficient wallet balance")
 			if updateErr != nil {
 				return Message{}, apperrors.NewInternal("Unable to record SMS wallet failure", updateErr)
+			}
+			if err := tx.Commit(ctx); err != nil {
+				return Message{}, apperrors.NewInternal("Unable to commit SMS wallet failure", err)
 			}
 			return failed, apperrors.NewBadRequest("Insufficient wallet balance")
 		}
 		return Message{}, apperrors.NewInternal("Unable to debit wallet for SMS", err)
 	}
 
-	if err := s.delivery.EnqueueSMSDelivery(ctx, messageID, tenantContext.TeamID); err != nil {
-		failed, updateErr := s.repository.MarkFailed(ctx, messageID, tenantContext.TeamID, "unable to enqueue SMS delivery")
-		if updateErr != nil {
-			return Message{}, apperrors.NewInternal("Unable to record SMS queue failure", updateErr)
-		}
-		if _, refundErr := s.wallet.RefundSMSCharge(ctx, tenantContext.TeamID, created.CostMicros, messageID, normalized.Metadata); refundErr != nil {
-			return failed, apperrors.NewInternal("Unable to enqueue SMS delivery; additionally unable to refund SMS charge", errors.Join(err, refundErr))
-		}
-		return failed, apperrors.NewInternal("Unable to enqueue SMS delivery", err)
+	if err := s.delivery.EnqueueSMSDeliveryTx(ctx, tx, messageID, tenantContext.TeamID); err != nil {
+		return Message{}, apperrors.NewInternal("Unable to enqueue SMS delivery", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Message{}, apperrors.NewInternal("Unable to commit SMS send transaction", err)
 	}
 
 	return created, nil

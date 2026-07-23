@@ -15,6 +15,15 @@ type Queue struct {
 func NewQueue(client *river.Client[pgx.Tx]) *Queue { return &Queue{client: client} }
 
 func (q *Queue) EnqueueSMSDelivery(ctx context.Context, messageID uuid.UUID, teamID uuid.UUID) error {
-	_, err := q.client.Insert(ctx, DeliverArgs{MessageID: messageID, TeamID: teamID}, &river.InsertOpts{Queue: DeliverQueue, UniqueOpts: river.UniqueOpts{ByArgs: true}})
+	_, err := q.client.Insert(ctx, DeliverArgs{MessageID: messageID, TeamID: teamID}, deliveryInsertOpts())
 	return err
+}
+
+func (q *Queue) EnqueueSMSDeliveryTx(ctx context.Context, tx pgx.Tx, messageID uuid.UUID, teamID uuid.UUID) error {
+	_, err := q.client.InsertTx(ctx, tx, DeliverArgs{MessageID: messageID, TeamID: teamID}, deliveryInsertOpts())
+	return err
+}
+
+func deliveryInsertOpts() *river.InsertOpts {
+	return &river.InsertOpts{Queue: DeliverQueue, UniqueOpts: river.UniqueOpts{ByArgs: true}}
 }
