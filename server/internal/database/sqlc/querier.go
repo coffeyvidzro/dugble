@@ -6,11 +6,14 @@ package sqlc
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 type Querier interface {
 	AcceptTeamInvitation(ctx context.Context, arg AcceptTeamInvitationParams) (TeamInvitation, error)
 	CreateOAuthIdentity(ctx context.Context, arg CreateOAuthIdentityParams) (OauthIdentity, error)
+	CreateSMSMessage(ctx context.Context, arg CreateSMSMessageParams) (SmsMessage, error)
 	CreateSenderDomain(ctx context.Context, arg CreateSenderDomainParams) (SenderDomain, error)
 	CreateSenderID(ctx context.Context, arg CreateSenderIDParams) (SenderID, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
@@ -32,8 +35,10 @@ type Querier interface {
 	DeleteVerificationToken(ctx context.Context, arg DeleteVerificationTokenParams) error
 	DeleteVerificationTokensByIdentifier(ctx context.Context, arg DeleteVerificationTokensByIdentifierParams) error
 	DisableTeam(ctx context.Context, arg DisableTeamParams) (Team, error)
+	FindApprovedSMSSender(ctx context.Context, arg FindApprovedSMSSenderParams) (uuid.UUID, error)
 	GetActiveTeamTokenByHash(ctx context.Context, arg GetActiveTeamTokenByHashParams) (TeamToken, error)
 	GetOAuthIdentity(ctx context.Context, arg GetOAuthIdentityParams) (OauthIdentity, error)
+	GetSMSMessage(ctx context.Context, arg GetSMSMessageParams) (SmsMessage, error)
 	GetSenderDomain(ctx context.Context, arg GetSenderDomainParams) (SenderDomain, error)
 	GetSenderDomainByDomain(ctx context.Context, arg GetSenderDomainByDomainParams) (SenderDomain, error)
 	GetSenderID(ctx context.Context, arg GetSenderIDParams) (SenderID, error)
@@ -52,6 +57,7 @@ type Querier interface {
 	GetWalletTransactionByReferenceForUpdate(ctx context.Context, arg GetWalletTransactionByReferenceForUpdateParams) (WalletTransaction, error)
 	ListOAuthIdentitiesByUserID(ctx context.Context, arg ListOAuthIdentitiesByUserIDParams) ([]OauthIdentity, error)
 	ListPendingTeamInvitations(ctx context.Context, arg ListPendingTeamInvitationsParams) ([]TeamInvitation, error)
+	ListSMSMessages(ctx context.Context, arg ListSMSMessagesParams) ([]SmsMessage, error)
 	ListSenderDomains(ctx context.Context, arg ListSenderDomainsParams) ([]SenderDomain, error)
 	ListSenderIDs(ctx context.Context, arg ListSenderIDsParams) ([]SenderID, error)
 	ListSessionsByUserID(ctx context.Context, arg ListSessionsByUserIDParams) ([]Session, error)
@@ -60,6 +66,8 @@ type Querier interface {
 	ListTeamWalletTransactions(ctx context.Context, arg ListTeamWalletTransactionsParams) ([]WalletTransaction, error)
 	ListTeamsForUser(ctx context.Context, arg ListTeamsForUserParams) ([]Team, error)
 	ListWalletTransactions(ctx context.Context, arg ListWalletTransactionsParams) ([]WalletTransaction, error)
+	MarkSMSMessageFailed(ctx context.Context, arg MarkSMSMessageFailedParams) (SmsMessage, error)
+	MarkSMSMessageSubmitted(ctx context.Context, arg MarkSMSMessageSubmittedParams) (SmsMessage, error)
 	MarkUserEmailVerifiedByEmail(ctx context.Context, arg MarkUserEmailVerifiedByEmailParams) (User, error)
 	RemoveTeamMember(ctx context.Context, arg RemoveTeamMemberParams) error
 	RevokeOtherUserSessions(ctx context.Context, arg RevokeOtherUserSessionsParams) error
@@ -68,6 +76,7 @@ type Querier interface {
 	RevokeUserSessions(ctx context.Context, arg RevokeUserSessionsParams) error
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
 	TouchTeamToken(ctx context.Context, arg TouchTeamTokenParams) error
+	UpdateSMSMessageStatus(ctx context.Context, arg UpdateSMSMessageStatusParams) (SmsMessage, error)
 	UpdateSenderDomainVerification(ctx context.Context, arg UpdateSenderDomainVerificationParams) (SenderDomain, error)
 	UpdateTeam(ctx context.Context, arg UpdateTeamParams) (Team, error)
 	UpdateTeamMemberRole(ctx context.Context, arg UpdateTeamMemberRoleParams) (TeamMember, error)
