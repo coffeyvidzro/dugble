@@ -13,7 +13,11 @@ import (
 	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
 )
 
-var ErrWalletNotFound = errors.New("wallet not found")
+var (
+	ErrWalletNotFound      = errors.New("wallet not found")
+	ErrInsufficientBalance = errors.New("insufficient wallet balance")
+	ErrInvalidWalletAmount = errors.New("invalid wallet amount")
+)
 
 type Repository struct {
 	db      *pgxpool.Pool
@@ -171,6 +175,93 @@ func (r *Repository) Credit(ctx context.Context, teamID uuid.UUID, amountMicros 
 	return walletFromSQLC(updated), transactionFromSQLC(transaction), nil
 }
 
+func (r *Repository) DebitSMSCharge(ctx context.Context, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (Transaction, error) {
+	if amountMicros <= 0 {
+		return Transaction{}, ErrInvalidWalletAmount
+	}
+
+	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return Transaction{}, fmt.Errorf("begin SMS wallet debit: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	q := r.queries.WithTx(tx)
+	wallet, err := q.CreateWallet(ctx, dbsqlc.CreateWalletParams{TeamID: teamID, Currency: CurrencyUSD})
+	if err != nil {
+		return Transaction{}, fmt.Errorf("create SMS wallet: %w", err)
+	}
+	updated, err := q.DebitWallet(ctx, dbsqlc.DebitWalletParams{ID: wallet.ID, Amount: amountMicros})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Transaction{}, ErrInsufficientBalance
+		}
+		return Transaction{}, fmt.Errorf("debit SMS wallet: %w", err)
+	}
+	metadata = ensureMetadata(metadata)
+	description := "SMS charge"
+	transaction, err := q.CreateWalletTransaction(ctx, dbsqlc.CreateWalletTransactionParams{
+		WalletID:        updated.ID,
+		TeamID:          teamID,
+		TransactionType: TransactionSMSCharge,
+		ReferenceID:     &referenceID,
+		Amount:          -amountMicros,
+		BalanceAfter:    updated.Balance,
+		Status:          TransactionStatusCompleted,
+		Description:     &description,
+		Metadata:        metadata,
+	})
+	if err != nil {
+		return Transaction{}, fmt.Errorf("create SMS charge transaction: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Transaction{}, fmt.Errorf("commit SMS wallet debit: %w", err)
+	}
+	return transactionFromSQLC(transaction), nil
+}
+
+func (r *Repository) RefundSMSCharge(ctx context.Context, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (Transaction, error) {
+	if amountMicros <= 0 {
+		return Transaction{}, ErrInvalidWalletAmount
+	}
+
+	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return Transaction{}, fmt.Errorf("begin SMS wallet refund: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	q := r.queries.WithTx(tx)
+	wallet, err := q.CreateWallet(ctx, dbsqlc.CreateWalletParams{TeamID: teamID, Currency: CurrencyUSD})
+	if err != nil {
+		return Transaction{}, fmt.Errorf("create SMS refund wallet: %w", err)
+	}
+	updated, err := q.CreditWallet(ctx, dbsqlc.CreditWalletParams{ID: wallet.ID, Amount: amountMicros})
+	if err != nil {
+		return Transaction{}, fmt.Errorf("credit SMS refund: %w", err)
+	}
+	metadata = ensureMetadata(metadata)
+	description := "SMS refund"
+	transaction, err := q.CreateWalletTransaction(ctx, dbsqlc.CreateWalletTransactionParams{
+		WalletID:        updated.ID,
+		TeamID:          teamID,
+		TransactionType: TransactionRefund,
+		ReferenceID:     &referenceID,
+		Amount:          amountMicros,
+		BalanceAfter:    updated.Balance,
+		Status:          TransactionStatusCompleted,
+		Description:     &description,
+		Metadata:        metadata,
+	})
+	if err != nil {
+		return Transaction{}, fmt.Errorf("create SMS refund transaction: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Transaction{}, fmt.Errorf("commit SMS wallet refund: %w", err)
+	}
+	return transactionFromSQLC(transaction), nil
+}
+
 func (r *Repository) ListTransactions(ctx context.Context, teamID uuid.UUID, limit, offset int32) ([]Transaction, error) {
 	rows, err := r.queries.ListTeamWalletTransactions(ctx, dbsqlc.ListTeamWalletTransactionsParams{TeamID: teamID, LimitCount: limit, OffsetCount: offset})
 	if err != nil {
@@ -198,4 +289,11 @@ func transactionFromSQLC(row dbsqlc.WalletTransaction) Transaction {
 		metadata = json.RawMessage(`{}`)
 	}
 	return Transaction{ID: row.ID.String(), WalletID: row.WalletID.String(), TeamID: row.TeamID.String(), TransactionType: row.TransactionType, ReferenceID: ref, AmountMicros: row.Amount, BalanceAfterMicros: row.BalanceAfter, Status: row.Status, Description: row.Description, Metadata: metadata, CreatedAt: row.CreatedAt.Time}
+}
+
+func ensureMetadata(metadata json.RawMessage) json.RawMessage {
+	if len(metadata) == 0 {
+		return json.RawMessage(`{}`)
+	}
+	return metadata
 }
