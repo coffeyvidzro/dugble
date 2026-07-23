@@ -29,12 +29,13 @@ import (
 
 // Dependencies contains infrastructure required by the HTTP transport.
 type Dependencies struct {
-	DB        *pgxpool.Pool
-	Redis     *redis.Client
-	Arcjet    *arcjet.Client
-	Sender    notifications.EmailSender
-	Renderer  *notifications.Renderer
-	SMSSender smsmodule.Sender
+	DB          *pgxpool.Pool
+	Redis       *redis.Client
+	Arcjet      *arcjet.Client
+	Sender      notifications.EmailSender
+	Renderer    *notifications.Renderer
+	SMSSender   smsmodule.Sender
+	SMSDelivery smsmodule.DeliveryQueue
 }
 
 // NewRouter creates and configures the HTTP router.
@@ -157,7 +158,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		tenantMiddleware,
 	)
 
-	smsService := smsmodule.NewService(smsRepository, deps.SMSSender, walletRepository)
+	smsService := smsmodule.NewService(smsRepository, deps.SMSSender, walletRepository, deps.SMSDelivery)
 	smsmodule.RegisterRoutes(
 		router,
 		smsmodule.NewHandler(smsService),

@@ -40,6 +40,7 @@ type Querier interface {
 	DisableTeam(ctx context.Context, arg DisableTeamParams) (Team, error)
 	FindApprovedSMSSender(ctx context.Context, arg FindApprovedSMSSenderParams) (uuid.UUID, error)
 	GetActiveTeamTokenByHash(ctx context.Context, arg GetActiveTeamTokenByHashParams) (TeamToken, error)
+	GetCompletedWalletRefundByReference(ctx context.Context, arg GetCompletedWalletRefundByReferenceParams) (WalletTransaction, error)
 	GetIdempotencyKey(ctx context.Context, arg GetIdempotencyKeyParams) (IdempotencyKey, error)
 	GetOAuthIdentity(ctx context.Context, arg GetOAuthIdentityParams) (OauthIdentity, error)
 	GetSMSMessage(ctx context.Context, arg GetSMSMessageParams) (SmsMessage, error)
@@ -71,6 +72,8 @@ type Querier interface {
 	ListTeamsForUser(ctx context.Context, arg ListTeamsForUserParams) ([]Team, error)
 	ListWalletTransactions(ctx context.Context, arg ListWalletTransactionsParams) ([]WalletTransaction, error)
 	MarkSMSMessageFailed(ctx context.Context, arg MarkSMSMessageFailedParams) (SmsMessage, error)
+	MarkSMSMessageProcessing(ctx context.Context, arg MarkSMSMessageProcessingParams) (SmsMessage, error)
+	MarkSMSMessageRefundPending(ctx context.Context, arg MarkSMSMessageRefundPendingParams) (SmsMessage, error)
 	MarkSMSMessageSubmitted(ctx context.Context, arg MarkSMSMessageSubmittedParams) (SmsMessage, error)
 	MarkUserEmailVerifiedByEmail(ctx context.Context, arg MarkUserEmailVerifiedByEmailParams) (User, error)
 	RemoveTeamMember(ctx context.Context, arg RemoveTeamMemberParams) error

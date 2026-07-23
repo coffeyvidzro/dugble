@@ -15,35 +15,48 @@ import (
 
 var ErrMessageNotFound = errors.New("sms message not found")
 
-type Repository struct{ queries *dbsqlc.Queries }
+type Repository struct {
+	db      *pgxpool.Pool
+	queries *dbsqlc.Queries
+}
 
-func NewRepository(db *pgxpool.Pool) *Repository { return &Repository{queries: dbsqlc.New(db)} }
+func NewRepository(db *pgxpool.Pool) *Repository { return &Repository{db: db, queries: dbsqlc.New(db)} }
+
+func (r *Repository) BeginTx(ctx context.Context) (pgx.Tx, error) {
+	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("begin sms transaction: %w", err)
+	}
+	return tx, nil
+}
+
+func (r *Repository) WithTx(tx pgx.Tx) *Repository {
+	return &Repository{db: r.db, queries: r.queries.WithTx(tx)}
+}
 
 type createMessageParams struct {
-	TeamID          uuid.UUID
-	SenderID        *uuid.UUID
-	To              string
-	From            string
-	Body            string
-	Status          string
-	Segments        int32
-	CostMicros      int64
-	ClientReference *string
-	Metadata        json.RawMessage
+	TeamID     uuid.UUID
+	SenderID   *uuid.UUID
+	To         string
+	From       string
+	Body       string
+	Status     string
+	Segments   int32
+	CostMicros int64
+	Metadata   json.RawMessage
 }
 
 func (r *Repository) Create(ctx context.Context, params createMessageParams) (Message, error) {
 	row, err := r.queries.CreateSMSMessage(ctx, dbsqlc.CreateSMSMessageParams{
-		TeamID:          params.TeamID,
-		SenderID:        params.SenderID,
-		ToNumber:        params.To,
-		FromName:        params.From,
-		Body:            params.Body,
-		Status:          params.Status,
-		Segments:        params.Segments,
-		CostMicros:      params.CostMicros,
-		ClientReference: params.ClientReference,
-		Metadata:        ensureMetadata(params.Metadata),
+		TeamID:     params.TeamID,
+		SenderID:   params.SenderID,
+		ToNumber:   params.To,
+		FromName:   params.From,
+		Body:       params.Body,
+		Status:     params.Status,
+		Segments:   params.Segments,
+		CostMicros: params.CostMicros,
+		Metadata:   ensureMetadata(params.Metadata),
 	})
 	if err != nil {
 		return Message{}, fmt.Errorf("create sms message: %w", err)
@@ -70,6 +83,25 @@ func (r *Repository) Get(ctx context.Context, id uuid.UUID, teamID uuid.UUID) (M
 			return Message{}, ErrMessageNotFound
 		}
 		return Message{}, fmt.Errorf("get sms message: %w", err)
+	}
+	return messageFromSQLC(row), nil
+}
+
+func (r *Repository) MarkProcessing(ctx context.Context, id uuid.UUID, teamID uuid.UUID) (Message, error) {
+	row, err := r.queries.MarkSMSMessageProcessing(ctx, dbsqlc.MarkSMSMessageProcessingParams{ID: id, TeamID: teamID})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Message{}, ErrMessageNotFound
+		}
+		return Message{}, fmt.Errorf("mark sms message processing: %w", err)
+	}
+	return messageFromSQLC(row), nil
+}
+
+func (r *Repository) MarkRefundPending(ctx context.Context, id uuid.UUID, teamID uuid.UUID, message string) (Message, error) {
+	row, err := r.queries.MarkSMSMessageRefundPending(ctx, dbsqlc.MarkSMSMessageRefundPendingParams{ID: id, TeamID: teamID, ErrorMessage: &message})
+	if err != nil {
+		return Message{}, fmt.Errorf("mark sms message refund pending: %w", err)
 	}
 	return messageFromSQLC(row), nil
 }
@@ -127,7 +159,6 @@ func messageFromSQLC(row dbsqlc.SmsMessage) Message {
 		ProviderMessageID: row.ProviderMessageID,
 		Segments:          row.Segments,
 		CostMicros:        row.CostMicros,
-		ClientReference:   row.ClientReference,
 		ErrorMessage:      row.ErrorMessage,
 		Metadata:          ensureMetadata(row.Metadata),
 		CreatedAt:         row.CreatedAt.Time,

@@ -121,3 +121,13 @@ SET metadata = sqlc.arg(metadata)
 WHERE id = sqlc.arg(id)
   AND status = 'pending'
 RETURNING *;
+
+-- name: GetCompletedWalletRefundByReference :one
+SELECT *
+FROM wallet_transactions
+WHERE team_id = sqlc.arg(team_id)
+  AND transaction_type = 'refund'
+  AND reference_id = sqlc.arg(reference_id)
+  AND status = 'completed'
+ORDER BY created_at DESC
+LIMIT 1;

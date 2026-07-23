@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	smsapi "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/wallet"
@@ -18,10 +19,7 @@ import (
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
-const (
-	maxBodyCharacters  = 1600
-	maxReferenceLength = 120
-)
+const maxBodyCharacters = 1600
 
 var e164Pattern = regexp.MustCompile(`^\+[1-9]\d{7,14}$`)
 
@@ -37,17 +35,27 @@ type Sender interface {
 
 type WalletLedger interface {
 	DebitSMSCharge(ctx context.Context, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
+	DebitSMSChargeTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
 	RefundSMSCharge(ctx context.Context, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
+}
+
+// DeliveryQueue enqueues durable SMS delivery work.
+//
+// Implementations should persist jobs durably before returning.
+type DeliveryQueue interface {
+	EnqueueSMSDelivery(ctx context.Context, messageID uuid.UUID, teamID uuid.UUID) error
+	EnqueueSMSDeliveryTx(ctx context.Context, tx pgx.Tx, messageID uuid.UUID, teamID uuid.UUID) error
 }
 
 type Service struct {
 	repository *Repository
 	sender     Sender
 	wallet     WalletLedger
+	delivery   DeliveryQueue
 }
 
-func NewService(repository *Repository, sender Sender, wallet WalletLedger) *Service {
-	return &Service{repository: repository, sender: sender, wallet: wallet}
+func NewService(repository *Repository, sender Sender, wallet WalletLedger, delivery DeliveryQueue) *Service {
+	return &Service{repository: repository, sender: sender, wallet: wallet, delivery: delivery}
 }
 
 func (s *Service) List(ctx context.Context, req ListRequest) ([]Message, error) {
@@ -93,11 +101,11 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	if err != nil {
 		return Message{}, err
 	}
-	if s.sender == nil {
-		return Message{}, apperrors.NewInternal("SMS sender is not configured", nil)
-	}
 	if s.wallet == nil {
 		return Message{}, apperrors.NewInternal("SMS wallet ledger is not configured", nil)
+	}
+	if s.delivery == nil {
+		return Message{}, apperrors.NewInternal("SMS delivery queue is not configured", nil)
 	}
 
 	normalized, err := validateSend(req)
@@ -114,48 +122,52 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 
 	segments := countSegments(normalized.Body)
 	costMicros := int64(segments) * defaultCostMicrosPerSegment
-	created, err := s.repository.Create(ctx, createMessageParams{
+
+	tx, err := s.repository.BeginTx(ctx)
+	if err != nil {
+		return Message{}, apperrors.NewInternal("Unable to begin SMS send transaction", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	txRepository := s.repository.WithTx(tx)
+	created, err := txRepository.Create(ctx, createMessageParams{
 		TeamID: tenantContext.TeamID, SenderID: senderID, To: normalized.To, From: normalized.From,
 		Body: normalized.Body, Status: StatusQueued, Segments: segments,
-		CostMicros:      costMicros,
-		ClientReference: normalized.ClientReference, Metadata: normalized.Metadata,
+		CostMicros: costMicros, Metadata: normalized.Metadata,
 	})
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to create SMS message", err)
 	}
 	if created.ProviderMessageID != nil || created.Status != StatusQueued {
+		if err := tx.Commit(ctx); err != nil {
+			return Message{}, apperrors.NewInternal("Unable to commit SMS send transaction", err)
+		}
 		return created, nil
 	}
 
 	messageID := uuid.MustParse(created.ID)
-	if _, err := s.wallet.DebitSMSCharge(ctx, tenantContext.TeamID, created.CostMicros, messageID, normalized.Metadata); err != nil {
+	if _, err := s.wallet.DebitSMSChargeTx(ctx, tx, tenantContext.TeamID, created.CostMicros, messageID, normalized.Metadata); err != nil {
 		if errors.Is(err, wallet.ErrInsufficientBalance) {
-			failed, updateErr := s.repository.MarkFailed(ctx, messageID, tenantContext.TeamID, "insufficient wallet balance")
+			failed, updateErr := txRepository.MarkFailed(ctx, messageID, tenantContext.TeamID, "insufficient wallet balance")
 			if updateErr != nil {
 				return Message{}, apperrors.NewInternal("Unable to record SMS wallet failure", updateErr)
+			}
+			if err := tx.Commit(ctx); err != nil {
+				return Message{}, apperrors.NewInternal("Unable to commit SMS wallet failure", err)
 			}
 			return failed, apperrors.NewBadRequest("Insufficient wallet balance")
 		}
 		return Message{}, apperrors.NewInternal("Unable to debit wallet for SMS", err)
 	}
 
-	response, err := s.sender.Send(ctx, smsapi.SendRequest{To: normalized.To, From: normalized.From, Message: normalized.Body})
-	if err != nil {
-		failed, updateErr := s.repository.MarkFailed(ctx, messageID, tenantContext.TeamID, err.Error())
-		if updateErr != nil {
-			return Message{}, apperrors.NewInternal("Unable to record SMS send failure", updateErr)
-		}
-		if _, refundErr := s.wallet.RefundSMSCharge(ctx, tenantContext.TeamID, created.CostMicros, messageID, normalized.Metadata); refundErr != nil {
-			return failed, apperrors.NewInternal("Unable to send SMS; additionally unable to refund failed SMS charge", errors.Join(err, refundErr))
-		}
-		return failed, apperrors.NewInternal("Unable to send SMS", err)
+	if err := s.delivery.EnqueueSMSDeliveryTx(ctx, tx, messageID, tenantContext.TeamID); err != nil {
+		return Message{}, apperrors.NewInternal("Unable to enqueue SMS delivery", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Message{}, apperrors.NewInternal("Unable to commit SMS send transaction", err)
 	}
 
-	submitted, err := s.repository.MarkSubmitted(ctx, messageID, tenantContext.TeamID, response.ProviderID, response.ProviderMsgID, mapProviderStatus(response.Status))
-	if err != nil {
-		return Message{}, apperrors.NewInternal("Unable to record SMS submission", err)
-	}
-	return submitted, nil
+	return created, nil
 }
 
 func (s *Service) SyncStatus(ctx context.Context, messageID string) (Message, error) {
@@ -184,7 +196,7 @@ func (s *Service) SyncStatus(ctx context.Context, messageID string) (Message, er
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to sync SMS status", err)
 	}
-	updated, err := s.repository.UpdateStatus(ctx, parsedID, tenantContext.TeamID, mapProviderStatus(status.Status))
+	updated, err := s.repository.UpdateStatus(ctx, parsedID, tenantContext.TeamID, MapProviderStatus(status.Status))
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to update SMS status", err)
 	}
@@ -194,14 +206,6 @@ func (s *Service) SyncStatus(ctx context.Context, messageID string) (Message, er
 func validateSend(req SendRequest) (SendRequest, error) {
 	req.To = strings.TrimSpace(req.To)
 	req.From = strings.TrimSpace(req.From)
-	if req.ClientReference != nil {
-		ref := strings.TrimSpace(*req.ClientReference)
-		if ref == "" {
-			req.ClientReference = nil
-		} else {
-			req.ClientReference = &ref
-		}
-	}
 	if req.To == "" {
 		return SendRequest{}, apperrors.NewBadRequest("SMS recipient is required")
 	}
@@ -219,9 +223,6 @@ func validateSend(req SendRequest) (SendRequest, error) {
 	}
 	if utf8.RuneCountInString(req.Body) > maxBodyCharacters {
 		return SendRequest{}, apperrors.NewBadRequest(fmt.Sprintf("SMS body must be at most %d characters", maxBodyCharacters))
-	}
-	if req.ClientReference != nil && len(*req.ClientReference) > maxReferenceLength {
-		return SendRequest{}, apperrors.NewBadRequest("Client reference must be at most 120 characters")
 	}
 	if len(req.Metadata) == 0 {
 		req.Metadata = json.RawMessage(`{}`)
@@ -264,10 +265,10 @@ func runeSet(values string) map[rune]bool {
 	return set
 }
 
-func mapProviderStatus(status string) string {
+func MapProviderStatus(status string) string {
 	status = strings.ToLower(strings.TrimSpace(status))
 	switch status {
-	case StatusQueued, StatusSubmitted, StatusSent, StatusDelivered, StatusUndelivered, StatusRejected, StatusFailed, StatusExpired, StatusUnknown:
+	case StatusQueued, StatusProcessing, StatusRefundPending, StatusSubmitted, StatusSent, StatusDelivered, StatusUndelivered, StatusRejected, StatusFailed, StatusExpired, StatusUnknown:
 		return status
 	default:
 		return StatusUnknown

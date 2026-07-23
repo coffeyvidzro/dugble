@@ -8,7 +8,6 @@ INSERT INTO sms_messages (
     status,
     segments,
     cost_micros,
-    client_reference,
     metadata
 ) VALUES (
     sqlc.arg(team_id),
@@ -19,11 +18,8 @@ INSERT INTO sms_messages (
     sqlc.arg(status),
     sqlc.arg(segments),
     sqlc.arg(cost_micros),
-    sqlc.narg(client_reference),
     sqlc.arg(metadata)
 )
-ON CONFLICT (team_id, client_reference) WHERE client_reference IS NOT NULL AND status <> 'failed'
-DO UPDATE SET updated_at = sms_messages.updated_at
 RETURNING *;
 
 -- name: ListSMSMessages :many
@@ -82,3 +78,25 @@ WHERE team_id = sqlc.arg(team_id)
   AND status = 'approved'
 ORDER BY created_at DESC
 LIMIT 1;
+
+-- name: MarkSMSMessageProcessing :one
+UPDATE sms_messages
+SET status = 'processing',
+    error_message = NULL,
+    updated_at = now()
+WHERE id = sqlc.arg(id)
+  AND team_id = sqlc.arg(team_id)
+  AND status = 'queued'
+  AND provider_message_id IS NULL
+RETURNING *;
+
+
+-- name: MarkSMSMessageRefundPending :one
+UPDATE sms_messages
+SET status = 'refund_pending',
+    error_message = sqlc.arg(error_message),
+    updated_at = now()
+WHERE id = sqlc.arg(id)
+  AND team_id = sqlc.arg(team_id)
+  AND provider_message_id IS NULL
+RETURNING *;

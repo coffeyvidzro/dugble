@@ -171,6 +171,41 @@ func (q *Queries) DebitWallet(ctx context.Context, arg DebitWalletParams) (Walle
 	return i, err
 }
 
+const getCompletedWalletRefundByReference = `-- name: GetCompletedWalletRefundByReference :one
+SELECT id, wallet_id, team_id, transaction_type, reference_id, amount, balance_after, status, description, metadata, created_at
+FROM wallet_transactions
+WHERE team_id = $1
+  AND transaction_type = 'refund'
+  AND reference_id = $2
+  AND status = 'completed'
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+type GetCompletedWalletRefundByReferenceParams struct {
+	TeamID      uuid.UUID  `db:"team_id" json:"team_id"`
+	ReferenceID *uuid.UUID `db:"reference_id" json:"reference_id"`
+}
+
+func (q *Queries) GetCompletedWalletRefundByReference(ctx context.Context, arg GetCompletedWalletRefundByReferenceParams) (WalletTransaction, error) {
+	row := q.db.QueryRow(ctx, getCompletedWalletRefundByReference, arg.TeamID, arg.ReferenceID)
+	var i WalletTransaction
+	err := row.Scan(
+		&i.ID,
+		&i.WalletID,
+		&i.TeamID,
+		&i.TransactionType,
+		&i.ReferenceID,
+		&i.Amount,
+		&i.BalanceAfter,
+		&i.Status,
+		&i.Description,
+		&i.Metadata,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getWallet = `-- name: GetWallet :one
 SELECT id, team_id, currency, balance, status, created_at, updated_at
 FROM wallets
