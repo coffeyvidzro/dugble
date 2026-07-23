@@ -22,7 +22,7 @@ INSERT INTO sms_messages (
     sqlc.narg(client_reference),
     sqlc.arg(metadata)
 )
-ON CONFLICT (team_id, client_reference) WHERE client_reference IS NOT NULL
+ON CONFLICT (team_id, client_reference) WHERE client_reference IS NOT NULL AND status <> 'failed'
 DO UPDATE SET updated_at = sms_messages.updated_at
 RETURNING *;
 
