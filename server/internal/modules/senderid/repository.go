@@ -15,9 +15,14 @@ import (
 
 var ErrSenderIDAlreadyExists = errors.New("sender id already exists")
 
-type Repository struct{ queries *dbsqlc.Queries }
+type Repository struct {
+	db      *pgxpool.Pool
+	queries *dbsqlc.Queries
+}
 
-func NewRepository(db *pgxpool.Pool) *Repository { return &Repository{queries: dbsqlc.New(db)} }
+func NewRepository(db *pgxpool.Pool) *Repository {
+	return &Repository{db: db, queries: dbsqlc.New(db)}
+}
 
 func (r *Repository) Create(
 	ctx context.Context,
@@ -28,7 +33,66 @@ func (r *Repository) Create(
 	provider *string,
 	createdBy uuid.UUID,
 ) (SenderID, error) {
-	row, err := r.queries.CreateSenderID(ctx, dbsqlc.CreateSenderIDParams{
+	return createSenderID(
+		ctx,
+		r.queries,
+		teamID,
+		name,
+		countryCode,
+		purpose,
+		provider,
+		createdBy,
+	)
+}
+
+func (r *Repository) CreateBulk(
+	ctx context.Context,
+	teamID uuid.UUID,
+	requests []CreateRequest,
+	createdBy uuid.UUID,
+) ([]SenderID, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin bulk sender id transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	queries := r.queries.WithTx(tx)
+	created := make([]SenderID, 0, len(requests))
+	for _, request := range requests {
+		senderID, err := createSenderID(
+			ctx,
+			queries,
+			teamID,
+			request.Name,
+			request.CountryCode,
+			request.Purpose,
+			request.Provider,
+			createdBy,
+		)
+		if err != nil {
+			return nil, err
+		}
+		created = append(created, senderID)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit bulk sender id transaction: %w", err)
+	}
+	return created, nil
+}
+
+func createSenderID(
+	ctx context.Context,
+	queries *dbsqlc.Queries,
+	teamID uuid.UUID,
+	name string,
+	countryCode string,
+	purpose string,
+	provider *string,
+	createdBy uuid.UUID,
+) (SenderID, error) {
+	row, err := queries.CreateSenderID(ctx, dbsqlc.CreateSenderIDParams{
 		TeamID:      teamID,
 		Name:        name,
 		CountryCode: countryCode,
