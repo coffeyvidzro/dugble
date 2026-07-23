@@ -14,10 +14,10 @@ import (
 )
 
 const (
-	maxSenderIDLength  = 11
-	maxPurposeLength   = 500
-	maxProviderLength  = 120
-	maxBulkSenderIDs   = 50
+	maxSenderIDLength = 11
+	maxPurposeLength  = 500
+	maxProviderLength = 120
+	maxBulkSenderIDs  = 50
 )
 
 var countryCodePattern = regexp.MustCompile(`^[A-Z]{2}$`)
