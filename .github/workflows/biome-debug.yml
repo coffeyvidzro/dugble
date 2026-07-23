@@ -28,11 +28,14 @@ jobs:
       - name: Bun install
         run: bun install --frozen-lockfile
 
-      - name: Capture Biome diagnostics
-        run: bunx biome check --reporter=json . > ../biome-report.json 2>&1 || true
+      - name: Format sender ID manager
+        run: bunx biome format --write src/components/dashboard/sender-id-manager.tsx
 
-      - name: Upload Biome report
+      - name: Stage formatted file
+        run: cp src/components/dashboard/sender-id-manager.tsx ../sender-id-manager.tsx
+
+      - name: Upload formatted file
         uses: actions/upload-artifact@v4
         with:
-          name: biome-report
-          path: biome-report.json
+          name: biome-formatted
+          path: sender-id-manager.tsx
