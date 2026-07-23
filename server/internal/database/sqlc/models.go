@@ -63,6 +63,27 @@ type Session struct {
 	LastSeenAt pgtype.Timestamptz `db:"last_seen_at" json:"last_seen_at"`
 }
 
+type SmsMessage struct {
+	ID                uuid.UUID          `db:"id" json:"id"`
+	TeamID            uuid.UUID          `db:"team_id" json:"team_id"`
+	SenderID          *uuid.UUID         `db:"sender_id" json:"sender_id"`
+	ToNumber          string             `db:"to_number" json:"to_number"`
+	FromName          string             `db:"from_name" json:"from_name"`
+	Body              string             `db:"body" json:"body"`
+	Status            string             `db:"status" json:"status"`
+	ProviderID        *string            `db:"provider_id" json:"provider_id"`
+	ProviderMessageID *string            `db:"provider_message_id" json:"provider_message_id"`
+	Segments          int32              `db:"segments" json:"segments"`
+	CostMicros        int64              `db:"cost_micros" json:"cost_micros"`
+	ClientReference   *string            `db:"client_reference" json:"client_reference"`
+	ErrorMessage      *string            `db:"error_message" json:"error_message"`
+	Metadata          []byte             `db:"metadata" json:"metadata"`
+	SubmittedAt       pgtype.Timestamptz `db:"submitted_at" json:"submitted_at"`
+	DeliveredAt       pgtype.Timestamptz `db:"delivered_at" json:"delivered_at"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
 type Team struct {
 	ID        uuid.UUID          `db:"id" json:"id"`
 	Name      string             `db:"name" json:"name"`

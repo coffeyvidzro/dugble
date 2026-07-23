@@ -14,6 +14,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/modules/domain"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/senderid"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
+	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/team"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/teamtoken"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/user"
@@ -27,11 +28,12 @@ import (
 
 // Dependencies contains infrastructure required by the HTTP transport.
 type Dependencies struct {
-	DB       *pgxpool.Pool
-	Redis    *redis.Client
-	Arcjet   *arcjet.Client
-	Sender   notifications.EmailSender
-	Renderer *notifications.Renderer
+	DB        *pgxpool.Pool
+	Redis     *redis.Client
+	Arcjet    *arcjet.Client
+	Sender    notifications.EmailSender
+	Renderer  *notifications.Renderer
+	SMSSender smsmodule.Sender
 }
 
 // NewRouter creates and configures the HTTP router.
@@ -91,6 +93,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	teamTokenRepository := teamtoken.NewRepository(deps.DB)
 	domainRepository := domain.NewRepository(deps.DB)
 	senderIDRepository := senderid.NewRepository(deps.DB)
+	smsRepository := smsmodule.NewRepository(deps.DB)
 	walletRepository := wallet.NewRepository(deps.DB)
 	hubtelProvider := hubtel.NewProvider(hubtel.NewClient(cfg.Hubtel))
 	fxClient := fx.NewCachedProvider(fx.NewFrankfurterClient(), deps.Redis)
@@ -143,6 +146,15 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	wallet.RegisterRoutes(
 		router,
 		wallet.NewHandler(walletService),
+		authMiddleware,
+		csrfMiddleware,
+		tenantMiddleware,
+	)
+
+	smsService := smsmodule.NewService(smsRepository, deps.SMSSender, walletRepository)
+	smsmodule.RegisterRoutes(
+		router,
+		smsmodule.NewHandler(smsService),
 		authMiddleware,
 		csrfMiddleware,
 		tenantMiddleware,
