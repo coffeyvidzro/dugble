@@ -10,10 +10,15 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/config"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/fx"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/hubtel"
+	smsintegration "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
+	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/arkesel"
+	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/mnotify"
+	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/routing"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/auth"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/domain"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/senderid"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
+	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/team"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/teamtoken"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/user"
@@ -91,9 +96,23 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	teamTokenRepository := teamtoken.NewRepository(deps.DB)
 	domainRepository := domain.NewRepository(deps.DB)
 	senderIDRepository := senderid.NewRepository(deps.DB)
+	smsRepository := smsmodule.NewRepository(deps.DB)
 	walletRepository := wallet.NewRepository(deps.DB)
 	hubtelProvider := hubtel.NewProvider(hubtel.NewClient(cfg.Hubtel))
 	fxClient := fx.NewCachedProvider(fx.NewFrankfurterClient(), deps.Redis)
+	smsRouter, err := routing.NewService(
+		routing.DefaultConfig(),
+		routing.NewPriorityStrategy(),
+		arkesel.NewProvider(arkesel.NewClient(cfg.Arkesel)),
+		mnotify.NewProvider(mnotify.NewClient(cfg.MNotify)),
+	)
+	if err != nil {
+		return nil, err
+	}
+	smsIntegration, err := smsintegration.NewService(smsRouter)
+	if err != nil {
+		return nil, err
+	}
 	tenantMiddleware := func(permission tenant.Permission) echo.MiddlewareFunc {
 		return middlewares.Tenant(
 			middlewares.TenantConfig{Memberships: teamRepository, Required: permission},
@@ -143,6 +162,15 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	wallet.RegisterRoutes(
 		router,
 		wallet.NewHandler(walletService),
+		authMiddleware,
+		csrfMiddleware,
+		tenantMiddleware,
+	)
+
+	smsService := smsmodule.NewService(smsRepository, smsIntegration)
+	smsmodule.RegisterRoutes(
+		router,
+		smsmodule.NewHandler(smsService),
 		authMiddleware,
 		csrfMiddleware,
 		tenantMiddleware,
