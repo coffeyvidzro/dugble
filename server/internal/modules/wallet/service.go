@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	microsPerCent        int64 = 10_000
-	MinimumTopUpMicros   int64 = 10 * MicrosPerUSD
+	microsPerCent      int64 = 10_000
+	MinimumTopUpMicros int64 = 10 * MicrosPerUSD
 )
 
 type RateProvider interface {
@@ -211,7 +211,7 @@ func (s *Service) HandleHubtelCallback(ctx context.Context, payload hubtel.Callb
 		return Transaction{}, apperrors.NewInternal("Hubtel payment verification mismatch", err)
 	}
 	paid := hubtel.IsPaidStatus(verifiedStatus.Status) && verifiedStatus.IsFulfilled
-	metadata, err := mergeSettlementMetadata(callbackStatus, verifiedStatus)
+	metadata, err := mergeSettlementMetadata(pending.Metadata, callbackStatus, verifiedStatus)
 	if err != nil {
 		return Transaction{}, apperrors.NewInternal("Unable to prepare Hubtel settlement metadata", err)
 	}
@@ -256,15 +256,19 @@ func mergeMetadata(metadata json.RawMessage, checkout hubtel.CheckoutData, rate 
 	return json.Marshal(values)
 }
 
-func mergeSettlementMetadata(callbackStatus hubtel.PaymentStatus, verifiedStatus hubtel.PaymentStatus) (json.RawMessage, error) {
-	values := map[string]any{
-		"provider":                "hubtel",
-		"callback_status":         callbackStatus.Status,
-		"verified_status":         verifiedStatus.Status,
-		"verified_amount_pesewas": verifiedStatus.AmountPesewas,
-		"verified_currency":       verifiedStatus.Currency,
-		"verified_fulfilled":      verifiedStatus.IsFulfilled,
+func mergeSettlementMetadata(existing json.RawMessage, callbackStatus hubtel.PaymentStatus, verifiedStatus hubtel.PaymentStatus) (json.RawMessage, error) {
+	values := map[string]any{}
+	if len(existing) > 0 {
+		if err := json.Unmarshal(existing, &values); err != nil {
+			return nil, err
+		}
 	}
+	values["provider"] = "hubtel"
+	values["callback_status"] = callbackStatus.Status
+	values["verified_status"] = verifiedStatus.Status
+	values["verified_amount_pesewas"] = verifiedStatus.AmountPesewas
+	values["verified_currency"] = verifiedStatus.Currency
+	values["verified_fulfilled"] = verifiedStatus.IsFulfilled
 	if len(callbackStatus.Raw) > 0 {
 		var raw any
 		if err := json.Unmarshal(callbackStatus.Raw, &raw); err != nil {
@@ -287,17 +291,22 @@ func verifyHubtelPayment(transaction Transaction, clientReference string, verifi
 		return fmt.Errorf("client reference %q does not match %q", verified.ClientReference, clientReference)
 	}
 	var expected struct {
-		PaymentCurrency      string `json:"payment_currency"`
-		PaymentAmountPesewas int64  `json:"payment_amount_pesewas"`
+		PaymentCurrency          string `json:"payment_currency"`
+		PaymentAmountPesewas     int64  `json:"payment_amount_pesewas"`
+		LegacyPaymentAmountCents int64  `json:"payment_amount_cents"`
 	}
 	if err := json.Unmarshal(transaction.Metadata, &expected); err != nil {
 		return fmt.Errorf("decode pending top-up metadata: %w", err)
 	}
-	if expected.PaymentAmountPesewas <= 0 {
+	expectedAmount := expected.PaymentAmountPesewas
+	if expectedAmount <= 0 {
+		expectedAmount = expected.LegacyPaymentAmountCents
+	}
+	if expectedAmount <= 0 {
 		return fmt.Errorf("pending top-up has no valid expected payment amount")
 	}
-	if verified.AmountPesewas != expected.PaymentAmountPesewas {
-		return fmt.Errorf("verified amount %d does not match expected %d", verified.AmountPesewas, expected.PaymentAmountPesewas)
+	if verified.AmountPesewas != expectedAmount {
+		return fmt.Errorf("verified amount %d does not match expected %d", verified.AmountPesewas, expectedAmount)
 	}
 	if !strings.EqualFold(strings.TrimSpace(verified.Currency), strings.TrimSpace(expected.PaymentCurrency)) {
 		return fmt.Errorf("verified currency %q does not match expected %q", verified.Currency, expected.PaymentCurrency)
