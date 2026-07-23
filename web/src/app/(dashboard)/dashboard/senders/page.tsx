@@ -1,10 +1,5 @@
-import { PlaceholderPage } from "@/components/dashboard/placeholder-page";
+import { SenderIDManager } from "@/components/dashboard/sender-id-manager";
 
 export default function Page() {
-  return (
-    <PlaceholderPage
-      title="Senders"
-      description="Manage verified email domains, sender emails, and SMS sender IDs."
-    />
-  );
+  return <SenderIDManager />;
 }
