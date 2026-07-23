@@ -37,7 +37,7 @@ type CallbackData struct {
 	SalesInvoiceID      string         `json:"SalesInvoiceId"`
 	ClientReference     string         `json:"ClientReference"`
 	Status              string         `json:"Status"`
-	Amount              json.Number    `json:"Amount"`
+	Amount              float64        `json:"Amount"`
 	CustomerPhoneNumber string         `json:"CustomerPhoneNumber"`
 	PaymentDetails      PaymentDetails `json:"PaymentDetails"`
 	Description         string         `json:"Description"`
@@ -64,8 +64,8 @@ type TransactionStatusData struct {
 	ClientReference       string      `json:"clientReference"`
 	CurrencyCode          *string     `json:"currencyCode"`
 	Amount                json.Number `json:"amount"`
-	Charges               json.Number `json:"charges"`
-	AmountAfterCharges    json.Number `json:"amountAfterCharges"`
+	Charges               float64     `json:"charges"`
+	AmountAfterCharges    float64     `json:"amountAfterCharges"`
 	IsFulfilled           *bool       `json:"isFulfilled"`
 }
 
