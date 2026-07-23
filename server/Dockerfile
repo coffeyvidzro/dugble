@@ -24,7 +24,12 @@ RUN set -eux; \
         -trimpath \
         -ldflags="-s -w" \
         -o /out/worker \
-        ./cmd/worker;
+        ./cmd/worker; \
+    CGO_ENABLED=0 GOOS=linux go build \
+        -trimpath \
+        -ldflags="-s -w" \
+        -o /out/backoffice \
+        ./cmd/backoffice    
 
 
 FROM alpine:3.22
@@ -39,9 +44,10 @@ RUN apk add --no-cache \
 
 COPY --from=build /out/server /dugble/server
 COPY --from=build /out/worker /dugble/worker
+COPY --from=build /out/backoffice /dugble/backoffice
 
 USER dugble
 
-EXPOSE 8080
+EXPOSE 8080 1502
 
 CMD ["/dugble/server"]

@@ -102,6 +102,24 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+        
+  backoffice:
+    <<: *app-build
+    container_name: dugble-backoffice
+    restart: unless-stopped
+    command: ["/dugble/backoffice"]
+    environment:
+      <<: *app-env
+    expose:
+      - "1502"
+    networks:
+      - dugble-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 
 networks:
   dugble-network:
