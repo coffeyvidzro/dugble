@@ -41,7 +41,7 @@ func (r *Repository) GetByTeam(ctx context.Context, teamID uuid.UUID, currency s
 	return walletFromSQLC(row), nil
 }
 
-func (r *Repository) CreatePendingTopUp(ctx context.Context, teamID uuid.UUID, amount int64, referenceID uuid.UUID, description *string, metadata json.RawMessage) (Transaction, error) {
+func (r *Repository) CreatePendingTopUp(ctx context.Context, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, description *string, metadata json.RawMessage) (Transaction, error) {
 	wallet, err := r.Create(ctx, teamID, CurrencyUSD)
 	if err != nil {
 		return Transaction{}, err
@@ -54,8 +54,8 @@ func (r *Repository) CreatePendingTopUp(ctx context.Context, teamID uuid.UUID, a
 		TeamID:          teamID,
 		TransactionType: TransactionTopUp,
 		ReferenceID:     &referenceID,
-		Amount:          amount,
-		BalanceAfter:    wallet.Balance,
+		Amount:          amountMicros,
+		BalanceAfter:    wallet.BalanceMicros,
 		Status:          TransactionStatusPending,
 		Description:     description,
 		Metadata:        metadata,
@@ -74,11 +74,22 @@ func (r *Repository) UpdateTransactionMetadata(ctx context.Context, id uuid.UUID
 	return transactionFromSQLC(transaction), nil
 }
 
-func (r *Repository) MarkTopUpFailed(ctx context.Context, id uuid.UUID, balanceAfter int64, metadata json.RawMessage) (Transaction, error) {
+func (r *Repository) GetTopUpByReference(ctx context.Context, referenceID uuid.UUID) (Transaction, error) {
+	transaction, err := r.queries.GetWalletTransactionByReferenceForUpdate(ctx, dbsqlc.GetWalletTransactionByReferenceForUpdateParams{ReferenceID: &referenceID})
+	if err != nil {
+		return Transaction{}, fmt.Errorf("get wallet top-up by reference: %w", err)
+	}
+	if transaction.TransactionType != TransactionTopUp {
+		return Transaction{}, fmt.Errorf("wallet transaction %s is not a top-up", transaction.ID)
+	}
+	return transactionFromSQLC(transaction), nil
+}
+
+func (r *Repository) MarkTopUpFailed(ctx context.Context, id uuid.UUID, balanceAfterMicros int64, metadata json.RawMessage) (Transaction, error) {
 	transaction, err := r.queries.UpdateWalletTransactionSettlement(ctx, dbsqlc.UpdateWalletTransactionSettlementParams{
 		ID:           id,
 		Status:       TransactionStatusFailed,
-		BalanceAfter: balanceAfter,
+		BalanceAfter: balanceAfterMicros,
 		Metadata:     metadata,
 	})
 	if err != nil {
@@ -128,7 +139,7 @@ func (r *Repository) SettleTopUp(ctx context.Context, referenceID uuid.UUID, pai
 	return transactionFromSQLC(settled), nil
 }
 
-func (r *Repository) Credit(ctx context.Context, teamID uuid.UUID, amount int64, referenceID *uuid.UUID, description *string, metadata json.RawMessage) (Wallet, Transaction, error) {
+func (r *Repository) Credit(ctx context.Context, teamID uuid.UUID, amountMicros int64, referenceID *uuid.UUID, description *string, metadata json.RawMessage) (Wallet, Transaction, error) {
 	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return Wallet{}, Transaction{}, fmt.Errorf("begin wallet transaction: %w", err)
@@ -140,7 +151,7 @@ func (r *Repository) Credit(ctx context.Context, teamID uuid.UUID, amount int64,
 	if err != nil {
 		return Wallet{}, Transaction{}, fmt.Errorf("create wallet: %w", err)
 	}
-	updated, err := q.CreditWallet(ctx, dbsqlc.CreditWalletParams{ID: wallet.ID, Amount: amount})
+	updated, err := q.CreditWallet(ctx, dbsqlc.CreditWalletParams{ID: wallet.ID, Amount: amountMicros})
 	if err != nil {
 		return Wallet{}, Transaction{}, fmt.Errorf("credit wallet: %w", err)
 	}
@@ -149,7 +160,7 @@ func (r *Repository) Credit(ctx context.Context, teamID uuid.UUID, amount int64,
 	}
 	transaction, err := q.CreateWalletTransaction(ctx, dbsqlc.CreateWalletTransactionParams{
 		WalletID: updated.ID, TeamID: teamID, TransactionType: TransactionTopUp, ReferenceID: referenceID,
-		Amount: amount, BalanceAfter: updated.Balance, Status: TransactionStatusCompleted, Description: description, Metadata: metadata,
+		Amount: amountMicros, BalanceAfter: updated.Balance, Status: TransactionStatusCompleted, Description: description, Metadata: metadata,
 	})
 	if err != nil {
 		return Wallet{}, Transaction{}, fmt.Errorf("create wallet transaction: %w", err)
@@ -173,7 +184,7 @@ func (r *Repository) ListTransactions(ctx context.Context, teamID uuid.UUID, lim
 }
 
 func walletFromSQLC(row dbsqlc.Wallet) Wallet {
-	return Wallet{ID: row.ID.String(), TeamID: row.TeamID.String(), Currency: row.Currency, Balance: row.Balance, Status: row.Status, CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time}
+	return Wallet{ID: row.ID.String(), TeamID: row.TeamID.String(), Currency: row.Currency, BalanceMicros: row.Balance, Status: row.Status, CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time}
 }
 
 func transactionFromSQLC(row dbsqlc.WalletTransaction) Transaction {
@@ -186,5 +197,5 @@ func transactionFromSQLC(row dbsqlc.WalletTransaction) Transaction {
 	if len(metadata) == 0 {
 		metadata = json.RawMessage(`{}`)
 	}
-	return Transaction{ID: row.ID.String(), WalletID: row.WalletID.String(), TeamID: row.TeamID.String(), TransactionType: row.TransactionType, ReferenceID: ref, Amount: row.Amount, BalanceAfter: row.BalanceAfter, Status: row.Status, Description: row.Description, Metadata: metadata, CreatedAt: row.CreatedAt.Time}
+	return Transaction{ID: row.ID.String(), WalletID: row.WalletID.String(), TeamID: row.TeamID.String(), TransactionType: row.TransactionType, ReferenceID: ref, AmountMicros: row.Amount, BalanceAfterMicros: row.BalanceAfter, Status: row.Status, Description: row.Description, Metadata: metadata, CreatedAt: row.CreatedAt.Time}
 }

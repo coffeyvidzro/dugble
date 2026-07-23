@@ -1,5 +1,7 @@
 package hubtel
 
+import "encoding/json"
+
 type InitiateCheckoutRequest struct {
 	TotalAmount           float64 `json:"totalAmount"`
 	Description           string  `json:"description"`
@@ -54,22 +56,25 @@ type TransactionStatusResponse struct {
 }
 
 type TransactionStatusData struct {
-	Date                  string  `json:"date"`
-	Status                string  `json:"status"`
-	TransactionID         string  `json:"transactionId"`
-	ExternalTransactionID string  `json:"externalTransactionId"`
-	PaymentMethod         string  `json:"paymentMethod"`
-	ClientReference       string  `json:"clientReference"`
-	CurrencyCode          *string `json:"currencyCode"`
-	Amount                float64 `json:"amount"`
-	Charges               float64 `json:"charges"`
-	AmountAfterCharges    float64 `json:"amountAfterCharges"`
-	IsFulfilled           *bool   `json:"isFulfilled"`
+	Date                  string      `json:"date"`
+	Status                string      `json:"status"`
+	TransactionID         string      `json:"transactionId"`
+	ExternalTransactionID string      `json:"externalTransactionId"`
+	PaymentMethod         string      `json:"paymentMethod"`
+	ClientReference       string      `json:"clientReference"`
+	CurrencyCode          *string     `json:"currencyCode"`
+	Amount                json.Number `json:"amount"`
+	Charges               float64     `json:"charges"`
+	AmountAfterCharges    float64     `json:"amountAfterCharges"`
+	IsFulfilled           *bool       `json:"isFulfilled"`
 }
 
 type PaymentStatus struct {
 	ClientReference string
 	Status          string
+	AmountPesewas   int64
+	Currency        string
+	IsFulfilled     bool
 	Provider        string
 	Raw             []byte
 }

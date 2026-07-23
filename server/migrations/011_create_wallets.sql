@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS wallets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     currency CHAR(3) NOT NULL DEFAULT 'USD',
+
     balance BIGINT NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'active',
 
@@ -10,6 +11,9 @@ CREATE TABLE IF NOT EXISTS wallets (
 
     CONSTRAINT uq_wallets_team_currency
         UNIQUE (team_id, currency),
+
+    CONSTRAINT uq_wallets_id_team
+        UNIQUE (id, team_id),
 
     CONSTRAINT chk_wallets_balance
         CHECK (balance >= 0),
@@ -24,16 +28,15 @@ CREATE TABLE IF NOT EXISTS wallets (
 CREATE INDEX IF NOT EXISTS idx_wallets_team_id
     ON wallets (team_id);
 
-
 CREATE TABLE IF NOT EXISTS wallet_transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    wallet_id UUID NOT NULL REFERENCES wallets(id) ON DELETE CASCADE,
+    wallet_id UUID NOT NULL,
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     transaction_type TEXT NOT NULL,
     reference_id UUID,
 
-    -- Positive for credits, negative for debits.
     amount BIGINT NOT NULL,
+
     balance_after BIGINT NOT NULL,
     status TEXT NOT NULL DEFAULT 'completed',
 
@@ -41,6 +44,11 @@ CREATE TABLE IF NOT EXISTS wallet_transactions (
     metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_wallet_transactions_wallet_team
+        FOREIGN KEY (wallet_id, team_id)
+        REFERENCES wallets (id, team_id)
+        ON DELETE CASCADE,
 
     CONSTRAINT chk_wallet_transactions_type
         CHECK (transaction_type IN ('topup', 'sms_charge', 'refund', 'adjustment')),
