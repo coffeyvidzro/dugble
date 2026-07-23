@@ -74,6 +74,17 @@ func (r *Repository) UpdateTransactionMetadata(ctx context.Context, id uuid.UUID
 	return transactionFromSQLC(transaction), nil
 }
 
+func (r *Repository) GetTopUpByReference(ctx context.Context, referenceID uuid.UUID) (Transaction, error) {
+	transaction, err := r.queries.GetWalletTransactionByReferenceForUpdate(ctx, dbsqlc.GetWalletTransactionByReferenceForUpdateParams{ReferenceID: &referenceID})
+	if err != nil {
+		return Transaction{}, fmt.Errorf("get wallet top-up by reference: %w", err)
+	}
+	if transaction.TransactionType != TransactionTopUp {
+		return Transaction{}, fmt.Errorf("wallet transaction %s is not a top-up", transaction.ID)
+	}
+	return transactionFromSQLC(transaction), nil
+}
+
 func (r *Repository) MarkTopUpFailed(ctx context.Context, id uuid.UUID, balanceAfterMicros int64, metadata json.RawMessage) (Transaction, error) {
 	transaction, err := r.queries.UpdateWalletTransactionSettlement(ctx, dbsqlc.UpdateWalletTransactionSettlementParams{
 		ID:           id,
