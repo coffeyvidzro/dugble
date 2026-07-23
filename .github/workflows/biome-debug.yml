@@ -1,9 +1,10 @@
 name: Biome Debug
 
 on:
-  push:
-    branches:
-      - agent/bulk-sender-id-requests
+  pull_request:
+    paths:
+      - "web/**"
+      - ".github/workflows/biome-debug.yml"
 
 permissions:
   contents: read
