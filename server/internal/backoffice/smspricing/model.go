@@ -51,6 +51,7 @@ type AuditRow struct {
 
 type PlanDetail struct {
 	Plan              PlanRow
+	Rates             []RateRow
 	LocalRates        []RateRow
 	A2PRates          []RateRow
 	Audits            []AuditRow
