@@ -76,6 +76,9 @@ ORDER BY rule.effective_from DESC, rule.created_at DESC
 LIMIT 1
 `
 
+// QuoteSMS resolves the team's authorized traffic class and active rate. Call
+// it on a transaction-bound repository so the quote, message snapshot, and
+// wallet debit remain consistent.
 func (r *Repository) QuoteSMS(
 	ctx context.Context,
 	teamID uuid.UUID,
