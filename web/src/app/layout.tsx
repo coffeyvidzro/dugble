@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { CommandPalette } from "@/components/command-palette/command-palette";
 import { fontHeading, fontMono, fontSans } from "@/utils/fonts";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -27,6 +28,7 @@ export default function RootLayout({
                 <ThemeProvider>
                     <TooltipProvider>
                         {children}
+                        <CommandPalette />
                         <Toaster richColors closeButton />
                     </TooltipProvider>
                 </ThemeProvider>
