@@ -197,3 +197,181 @@ func (r *Repository) Domains(ctx context.Context, filter DomainFilter) ([]Domain
 
 	return domains, rows.Err()
 }
+
+func (r *Repository) UserDetail(ctx context.Context, id string) (UserDetail, error) {
+	var detail UserDetail
+	if err := r.db.QueryRow(ctx, `
+		SELECT id::text, email, name, email_verified, created_at
+		FROM users
+		WHERE id = $1::uuid
+	`, id).Scan(&detail.User.ID, &detail.User.Email, &detail.User.Name, &detail.User.EmailVerified, &detail.User.CreatedAt); err != nil {
+		return UserDetail{}, fmt.Errorf("get user detail: %w", err)
+	}
+
+	rows, err := r.db.Query(ctx, `
+		SELECT t.id::text, t.name, tm.role, tm.status
+		FROM team_members tm
+		JOIN teams t ON t.id = tm.team_id
+		WHERE tm.user_id = $1::uuid
+		ORDER BY t.created_at DESC
+	`, id)
+	if err != nil {
+		return UserDetail{}, fmt.Errorf("list user teams: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var row TeamMembershipRow
+		if err := rows.Scan(&row.ID, &row.Name, &row.Role, &row.Status); err != nil {
+			return UserDetail{}, fmt.Errorf("scan user team: %w", err)
+		}
+		detail.Teams = append(detail.Teams, row)
+	}
+	if err := rows.Err(); err != nil {
+		return UserDetail{}, err
+	}
+
+	return detail, nil
+}
+
+func (r *Repository) TeamDetail(ctx context.Context, id string) (TeamDetail, error) {
+	var detail TeamDetail
+	if err := r.db.QueryRow(ctx, `
+		SELECT id::text, name, status, created_at
+		FROM teams
+		WHERE id = $1::uuid
+	`, id).Scan(&detail.Team.ID, &detail.Team.Name, &detail.Team.Status, &detail.Team.CreatedAt); err != nil {
+		return TeamDetail{}, fmt.Errorf("get team detail: %w", err)
+	}
+
+	members, err := r.db.Query(ctx, `
+		SELECT u.id::text, u.email, u.name, tm.role, tm.status, tm.created_at
+		FROM team_members tm
+		JOIN users u ON u.id = tm.user_id
+		WHERE tm.team_id = $1::uuid
+		ORDER BY tm.created_at DESC
+	`, id)
+	if err != nil {
+		return TeamDetail{}, fmt.Errorf("list team members: %w", err)
+	}
+	defer members.Close()
+
+	for members.Next() {
+		var row TeamMemberRow
+		if err := members.Scan(&row.UserID, &row.Email, &row.Name, &row.Role, &row.Status, &row.CreatedAt); err != nil {
+			return TeamDetail{}, fmt.Errorf("scan team member: %w", err)
+		}
+		detail.Members = append(detail.Members, row)
+	}
+	if err := members.Err(); err != nil {
+		return TeamDetail{}, err
+	}
+
+	walletRows, err := r.db.Query(ctx, `
+		SELECT w.id::text, t.name, w.currency, w.balance, w.status, w.updated_at
+		FROM wallets w
+		JOIN teams t ON t.id = w.team_id
+		WHERE w.team_id = $1::uuid
+		ORDER BY w.updated_at DESC
+	`, id)
+	if err != nil {
+		return TeamDetail{}, fmt.Errorf("list team wallets: %w", err)
+	}
+	defer walletRows.Close()
+
+	for walletRows.Next() {
+		var row WalletRow
+		if err := walletRows.Scan(&row.ID, &row.TeamName, &row.Currency, &row.Balance, &row.Status, &row.UpdatedAt); err != nil {
+			return TeamDetail{}, fmt.Errorf("scan team wallet: %w", err)
+		}
+		detail.Wallets = append(detail.Wallets, row)
+	}
+	if err := walletRows.Err(); err != nil {
+		return TeamDetail{}, err
+	}
+
+	smsRows, err := r.db.Query(ctx, `
+		SELECT
+			s.id::text,
+			t.name,
+			s.to_number,
+			s.from_name,
+			s.status,
+			coalesce(s.provider_id, ''),
+			coalesce(s.error_message, ''),
+			s.created_at
+		FROM sms_messages s
+		JOIN teams t ON t.id = s.team_id
+		WHERE s.team_id = $1::uuid
+		ORDER BY s.created_at DESC
+		LIMIT 25
+	`, id)
+	if err != nil {
+		return TeamDetail{}, fmt.Errorf("list team sms messages: %w", err)
+	}
+	defer smsRows.Close()
+
+	for smsRows.Next() {
+		var row SMSRow
+		if err := smsRows.Scan(&row.ID, &row.TeamName, &row.ToNumber, &row.FromName, &row.Status, &row.ProviderID, &row.ErrorMessage, &row.CreatedAt); err != nil {
+			return TeamDetail{}, fmt.Errorf("scan team sms message: %w", err)
+		}
+		detail.SMS = append(detail.SMS, row)
+	}
+	if err := smsRows.Err(); err != nil {
+		return TeamDetail{}, err
+	}
+
+	return detail, nil
+}
+
+func (r *Repository) SMSDetail(ctx context.Context, id string) (SMSDetail, error) {
+	var detail SMSDetail
+	if err := r.db.QueryRow(ctx, `
+		SELECT
+			s.id::text,
+			t.id::text,
+			t.name,
+			coalesce(s.sender_id::text, ''),
+			s.to_number,
+			s.from_name,
+			s.body,
+			s.status,
+			coalesce(s.provider_id, ''),
+			coalesce(s.provider_message_id, ''),
+			s.segments,
+			s.cost_micros,
+			coalesce(s.error_message, ''),
+			coalesce(s.metadata::text, '{}'),
+			coalesce(to_char(s.submitted_at, 'YYYY-MM-DD HH24:MI'), ''),
+			coalesce(to_char(s.delivered_at, 'YYYY-MM-DD HH24:MI'), ''),
+			s.created_at,
+			s.updated_at
+		FROM sms_messages s
+		JOIN teams t ON t.id = s.team_id
+		WHERE s.id = $1::uuid
+	`, id).Scan(
+		&detail.ID,
+		&detail.TeamID,
+		&detail.TeamName,
+		&detail.SenderID,
+		&detail.ToNumber,
+		&detail.FromName,
+		&detail.Body,
+		&detail.Status,
+		&detail.ProviderID,
+		&detail.ProviderMessageID,
+		&detail.Segments,
+		&detail.CostMicros,
+		&detail.ErrorMessage,
+		&detail.Metadata,
+		&detail.SubmittedAt,
+		&detail.DeliveredAt,
+		&detail.CreatedAt,
+		&detail.UpdatedAt,
+	); err != nil {
+		return SMSDetail{}, fmt.Errorf("get sms detail: %w", err)
+	}
+
+	return detail, nil
+}

@@ -54,8 +54,11 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 
 	protected.GET("/", handler.Dashboard)
 	protected.GET("/users", handler.Users)
+	protected.GET("/users/:id", handler.UserDetail)
 	protected.GET("/teams", handler.Teams)
+	protected.GET("/teams/:id", handler.TeamDetail)
 	protected.GET("/sms", handler.SMSMessages)
+	protected.GET("/sms/:id", handler.SMSDetail)
 	protected.GET("/wallets", handler.Wallets)
 	protected.GET("/sender-ids", handler.SenderIDs)
 	protected.GET("/domains", handler.Domains)

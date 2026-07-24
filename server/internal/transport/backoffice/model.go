@@ -97,3 +97,52 @@ type PageData struct {
 	Data   any
 	Filter any
 }
+
+type UserDetail struct {
+	User  UserRow
+	Teams []TeamMembershipRow
+}
+
+type TeamMembershipRow struct {
+	ID     string
+	Name   string
+	Role   string
+	Status string
+}
+
+type TeamDetail struct {
+	Team    TeamRow
+	Members []TeamMemberRow
+	Wallets []WalletRow
+	SMS     []SMSRow
+}
+
+type TeamMemberRow struct {
+	UserID    string
+	Email     string
+	Name      string
+	Role      string
+	Status    string
+	CreatedAt time.Time
+}
+
+type SMSDetail struct {
+	ID                string
+	TeamID            string
+	TeamName          string
+	SenderID          string
+	ToNumber          string
+	FromName          string
+	Body              string
+	Status            string
+	ProviderID        string
+	ProviderMessageID string
+	Segments          int32
+	CostMicros        int64
+	ErrorMessage      string
+	Metadata          string
+	SubmittedAt       string
+	DeliveredAt       string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
