@@ -67,6 +67,7 @@ type SMSRow struct {
 
 type WalletRow struct {
 	ID        string
+	TeamID    string
 	TeamName  string
 	Currency  string
 	Balance   int64
@@ -146,4 +147,21 @@ type SMSDetail struct {
 	DeliveredAt       string
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
+}
+
+type WalletDetail struct {
+	Wallet       WalletRow
+	Transactions []WalletTransactionRow
+}
+
+type WalletTransactionRow struct {
+	ID              string
+	TransactionType string
+	ReferenceID     string
+	Amount          int64
+	BalanceAfter    int64
+	Status          string
+	Description     string
+	Metadata        string
+	CreatedAt       time.Time
 }

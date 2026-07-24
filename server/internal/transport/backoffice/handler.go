@@ -3,6 +3,7 @@ package backoffice
 import (
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -118,6 +119,93 @@ func (h *Handler) Wallets(c *echo.Context) error {
 	return h.render(c, "wallets.html", "Wallets", wallets, filter)
 }
 
+func (h *Handler) WalletDetail(c *echo.Context) error {
+	id, ok := validID(c)
+	if !ok {
+		return c.String(http.StatusBadRequest, "invalid wallet id")
+	}
+
+	detail, err := h.repository.WalletDetail(c.Request().Context(), id)
+	if err != nil {
+		return handleDetailError(c, err)
+	}
+
+	return h.render(c, "wallet_detail.html", "Wallet "+detail.Wallet.ID, detail, nil)
+}
+
+func (h *Handler) WalletTransactions(c *echo.Context) error {
+	id, ok := validID(c)
+	if !ok {
+		return c.String(http.StatusBadRequest, "invalid wallet id")
+	}
+
+	detail, err := h.repository.WalletDetail(c.Request().Context(), id)
+	if err != nil {
+		return handleDetailError(c, err)
+	}
+
+	return h.render(c, "wallet_transactions.html", "Wallet transactions", detail, nil)
+}
+
+func (h *Handler) AdjustWallet(c *echo.Context) error {
+	id, ok := validID(c)
+	if !ok {
+		return c.String(http.StatusBadRequest, "invalid wallet id")
+	}
+
+	amountMicros, err := parseUSDMicros(c.Request().FormValue("amount_usd"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, err.Error())
+	}
+
+	switch cleanQuery(c.Request().FormValue("direction")) {
+	case "credit":
+	case "debit":
+		amountMicros = -amountMicros
+	default:
+		return c.String(http.StatusBadRequest, "direction must be credit or debit")
+	}
+
+	reason := cleanQuery(c.Request().FormValue("reason"))
+	if reason == "" {
+		return c.String(http.StatusBadRequest, "adjustment reason is required")
+	}
+
+	if err := h.repository.AdjustWallet(c.Request().Context(), id, amountMicros, reason); err != nil {
+		return handleDetailError(c, err)
+	}
+
+	return c.Redirect(http.StatusSeeOther, "/wallets/"+id)
+}
+
+func (h *Handler) UpdateWalletStatus(c *echo.Context) error {
+	id, ok := validID(c)
+	if !ok {
+		return c.String(http.StatusBadRequest, "invalid wallet id")
+	}
+
+	var status string
+	switch cleanQuery(c.Request().FormValue("action")) {
+	case "freeze":
+		status = "frozen"
+	case "unfreeze":
+		status = "active"
+	default:
+		return c.String(http.StatusBadRequest, "action must be freeze or unfreeze")
+	}
+
+	reason := cleanQuery(c.Request().FormValue("reason"))
+	if reason == "" {
+		return c.String(http.StatusBadRequest, "status change reason is required")
+	}
+
+	if err := h.repository.UpdateWalletStatus(c.Request().Context(), id, status); err != nil {
+		return handleDetailError(c, err)
+	}
+
+	return c.Redirect(http.StatusSeeOther, "/wallets/"+id)
+}
+
 func (h *Handler) SenderIDs(c *echo.Context) error {
 	filter := SenderIDFilter{
 		Query:  cleanQuery(c.QueryParam("q")),
@@ -206,6 +294,46 @@ func (h *Handler) FailDomain(c *echo.Context) error {
 
 func cleanQuery(value string) string {
 	return strings.TrimSpace(value)
+}
+
+func parseUSDMicros(value string) (int64, error) {
+	value = strings.TrimSpace(strings.TrimPrefix(value, "$"))
+	if value == "" {
+		return 0, errors.New("amount is required")
+	}
+	if strings.Contains(value, "-") {
+		return 0, errors.New("amount must be positive")
+	}
+
+	whole, fraction, ok := strings.Cut(value, ".")
+	if !ok {
+		fraction = ""
+	}
+	if whole == "" {
+		whole = "0"
+	}
+	if len(fraction) > 6 {
+		return 0, errors.New("amount can have at most 6 decimal places")
+	}
+
+	dollars, err := strconv.ParseInt(whole, 10, 64)
+	if err != nil {
+		return 0, errors.New("amount must be a valid USD value")
+	}
+	for len(fraction) < 6 {
+		fraction += "0"
+	}
+	micros, err := strconv.ParseInt(fraction, 10, 64)
+	if err != nil {
+		return 0, errors.New("amount must be a valid USD value")
+	}
+
+	amount := dollars*1_000_000 + micros
+	if amount <= 0 {
+		return 0, errors.New("amount must be greater than zero")
+	}
+
+	return amount, nil
 }
 
 func validID(c *echo.Context) (string, bool) {

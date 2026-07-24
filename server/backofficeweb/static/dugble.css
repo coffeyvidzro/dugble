@@ -31,3 +31,7 @@ pre { background: white; border: 1px solid #e2e8f0; border-radius: .75rem; overf
 .actions input { border: 1px solid #cbd5e1; border-radius: .5rem; font: inherit; padding: .4rem .6rem; }
 .actions button { background: #16a34a; border: 0; border-radius: .5rem; color: white; cursor: pointer; font: inherit; padding: .45rem .7rem; }
 .actions button.danger { background: #dc2626; }
+.control-panel { align-items: end; background: white; border: 1px solid #e2e8f0; border-radius: .75rem; display: flex; flex-wrap: wrap; gap: .75rem; margin-bottom: 1rem; padding: 1rem; }
+.control-panel label { color: #475569; display: grid; font-size: .875rem; gap: .25rem; }
+.control-panel input, .control-panel select { border: 1px solid #cbd5e1; border-radius: .5rem; font: inherit; padding: .5rem .75rem; }
+.control-panel button { background: #2563eb; border: 0; border-radius: .5rem; color: white; cursor: pointer; font: inherit; padding: .55rem .9rem; }

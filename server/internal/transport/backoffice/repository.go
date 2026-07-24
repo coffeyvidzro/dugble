@@ -122,7 +122,7 @@ func (r *Repository) SMSMessages(ctx context.Context, filter SMSFilter) ([]SMSRo
 
 func (r *Repository) Wallets(ctx context.Context, filter WalletFilter) ([]WalletRow, error) {
 	rows, err := r.db.Query(ctx, `
-		SELECT w.id::text, t.name, w.currency, w.balance, w.status, w.updated_at
+		SELECT w.id::text, w.team_id::text, t.name, w.currency, w.balance, w.status, w.updated_at
 		FROM wallets w
 		JOIN teams t ON t.id = w.team_id
 		WHERE ($1 = '' OR t.name ILIKE '%' || $1 || '%')
@@ -138,13 +138,156 @@ func (r *Repository) Wallets(ctx context.Context, filter WalletFilter) ([]Wallet
 	var wallets []WalletRow
 	for rows.Next() {
 		var row WalletRow
-		if err := rows.Scan(&row.ID, &row.TeamName, &row.Currency, &row.Balance, &row.Status, &row.UpdatedAt); err != nil {
+		if err := rows.Scan(&row.ID, &row.TeamID, &row.TeamName, &row.Currency, &row.Balance, &row.Status, &row.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan wallet: %w", err)
 		}
 		wallets = append(wallets, row)
 	}
 
 	return wallets, rows.Err()
+}
+
+func (r *Repository) WalletDetail(ctx context.Context, id string) (WalletDetail, error) {
+	wallet, err := r.getWallet(ctx, id)
+	if err != nil {
+		return WalletDetail{}, err
+	}
+
+	transactions, err := r.WalletTransactions(ctx, id)
+	if err != nil {
+		return WalletDetail{}, err
+	}
+
+	return WalletDetail{Wallet: wallet, Transactions: transactions}, nil
+}
+
+func (r *Repository) WalletTransactions(ctx context.Context, id string) ([]WalletTransactionRow, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT
+			id::text,
+			transaction_type,
+			coalesce(reference_id::text, ''),
+			amount,
+			balance_after,
+			status,
+			coalesce(description, ''),
+			coalesce(metadata::text, '{}'),
+			created_at
+		FROM wallet_transactions
+		WHERE wallet_id = $1::uuid
+		ORDER BY created_at DESC
+		LIMIT 100
+	`, id)
+	if err != nil {
+		return nil, fmt.Errorf("list wallet transactions: %w", err)
+	}
+	defer rows.Close()
+
+	var transactions []WalletTransactionRow
+	for rows.Next() {
+		var row WalletTransactionRow
+		if err := rows.Scan(&row.ID, &row.TransactionType, &row.ReferenceID, &row.Amount, &row.BalanceAfter, &row.Status, &row.Description, &row.Metadata, &row.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan wallet transaction: %w", err)
+		}
+		transactions = append(transactions, row)
+	}
+
+	return transactions, rows.Err()
+}
+
+func (r *Repository) AdjustWallet(ctx context.Context, id string, amountMicros int64, reason string) error {
+	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return fmt.Errorf("begin wallet adjustment: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var walletID string
+	var teamID string
+	var balance int64
+	if err := tx.QueryRow(ctx, `
+		SELECT id::text, team_id::text, balance
+		FROM wallets
+		WHERE id = $1::uuid
+		FOR UPDATE
+	`, id).Scan(&walletID, &teamID, &balance); err != nil {
+		return fmt.Errorf("get wallet for adjustment: %w", err)
+	}
+
+	balanceAfter := balance + amountMicros
+	if balanceAfter < 0 {
+		return fmt.Errorf("adjust wallet: insufficient wallet balance")
+	}
+
+	if _, err := tx.Exec(ctx, `
+		UPDATE wallets
+		SET balance = $2,
+			updated_at = now()
+		WHERE id = $1::uuid
+	`, id, balanceAfter); err != nil {
+		return fmt.Errorf("update wallet balance: %w", err)
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO wallet_transactions (
+			wallet_id,
+			team_id,
+			transaction_type,
+			amount,
+			balance_after,
+			status,
+			description,
+			metadata
+		) VALUES (
+			$1::uuid,
+			$2::uuid,
+			'adjustment',
+			$3,
+			$4,
+			'completed',
+			$5,
+			'{}'::jsonb
+		)
+	`, walletID, teamID, amountMicros, balanceAfter, reason); err != nil {
+		return fmt.Errorf("create wallet adjustment transaction: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit wallet adjustment: %w", err)
+	}
+
+	return nil
+}
+
+func (r *Repository) UpdateWalletStatus(ctx context.Context, id string, status string) error {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE wallets
+		SET status = $2,
+			updated_at = now()
+		WHERE id = $1::uuid
+	`, id, status)
+	if err != nil {
+		return fmt.Errorf("update wallet status: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("update wallet status: %w", errNotFound)
+	}
+
+	return nil
+}
+
+func (r *Repository) getWallet(ctx context.Context, id string) (WalletRow, error) {
+	var wallet WalletRow
+	if err := r.db.QueryRow(ctx, `
+		SELECT w.id::text, w.team_id::text, t.name, w.currency, w.balance, w.status, w.updated_at
+		FROM wallets w
+		JOIN teams t ON t.id = w.team_id
+		WHERE w.id = $1::uuid
+	`, id).Scan(&wallet.ID, &wallet.TeamID, &wallet.TeamName, &wallet.Currency, &wallet.Balance, &wallet.Status, &wallet.UpdatedAt); err != nil {
+		return WalletRow{}, fmt.Errorf("get wallet: %w", err)
+	}
+
+	return wallet, nil
 }
 
 func (r *Repository) SenderIDs(ctx context.Context, filter SenderIDFilter) ([]SenderIDRow, error) {
@@ -348,7 +491,7 @@ func (r *Repository) TeamDetail(ctx context.Context, id string) (TeamDetail, err
 	}
 
 	walletRows, err := r.db.Query(ctx, `
-		SELECT w.id::text, t.name, w.currency, w.balance, w.status, w.updated_at
+		SELECT w.id::text, w.team_id::text, t.name, w.currency, w.balance, w.status, w.updated_at
 		FROM wallets w
 		JOIN teams t ON t.id = w.team_id
 		WHERE w.team_id = $1::uuid
@@ -361,7 +504,7 @@ func (r *Repository) TeamDetail(ctx context.Context, id string) (TeamDetail, err
 
 	for walletRows.Next() {
 		var row WalletRow
-		if err := walletRows.Scan(&row.ID, &row.TeamName, &row.Currency, &row.Balance, &row.Status, &row.UpdatedAt); err != nil {
+		if err := walletRows.Scan(&row.ID, &row.TeamID, &row.TeamName, &row.Currency, &row.Balance, &row.Status, &row.UpdatedAt); err != nil {
 			return TeamDetail{}, fmt.Errorf("scan team wallet: %w", err)
 		}
 		detail.Wallets = append(detail.Wallets, row)
