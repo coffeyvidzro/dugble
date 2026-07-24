@@ -53,7 +53,7 @@ export function DeliveryAttemptPreview() {
     const showResult = phase === "result";
 
     return (
-        <Reveal className="space-y-6 overflow-hidden rounded-2xl border bg-card p-6 shadow-2xl shadow-black/40">
+        <Reveal className="space-y-6 overflow-hidden rounded-2xl border bg-card p-6 shadow-lg shadow-black/5 dark:shadow-2xl dark:shadow-black/40">
             <div className="flex items-center gap-3">
                 <Node label="Dugble" sub="event source" tone="neutral" />
 
