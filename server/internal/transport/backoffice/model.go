@@ -20,16 +20,6 @@ type SMSFilter struct {
 	Status string
 }
 
-type SenderIDFilter struct {
-	Query  string
-	Status string
-}
-
-type DomainFilter struct {
-	Query  string
-	Status string
-}
-
 type UserRow struct {
 	ID            string
 	Email         string
@@ -47,24 +37,6 @@ type SMSRow struct {
 	ProviderID   string
 	ErrorMessage string
 	CreatedAt    time.Time
-}
-
-type SenderIDRow struct {
-	ID          string
-	TeamName    string
-	Name        string
-	CountryCode string
-	Status      string
-	CreatedAt   time.Time
-}
-
-type DomainRow struct {
-	ID        string
-	TeamName  string
-	Domain    string
-	Provider  string
-	Status    string
-	CreatedAt time.Time
 }
 
 type PageData struct {

@@ -8,6 +8,8 @@ import (
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
 
+	backofficedomains "github.com/coffeyvidzro/dugble/server/internal/backoffice/domains"
+	backofficesenderids "github.com/coffeyvidzro/dugble/server/internal/backoffice/senderids"
 	backofficeteams "github.com/coffeyvidzro/dugble/server/internal/backoffice/teams"
 	backofficewallets "github.com/coffeyvidzro/dugble/server/internal/backoffice/wallets"
 	"github.com/coffeyvidzro/dugble/server/internal/config"
@@ -63,6 +65,8 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		NewRepository(deps.DB),
 		backofficeteams.NewService(backofficeteams.NewRepository(deps.DB)),
 		backofficewallets.NewService(backofficewallets.NewRepository(deps.DB)),
+		backofficesenderids.NewService(backofficesenderids.NewRepository(deps.DB)),
+		backofficedomains.NewService(backofficedomains.NewRepository(deps.DB)),
 	)
 
 	protected := router.Group("")

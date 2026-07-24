@@ -10,6 +10,8 @@ import (
 
 	"github.com/google/uuid"
 
+	backofficedomains "github.com/coffeyvidzro/dugble/server/internal/backoffice/domains"
+	backofficesenderids "github.com/coffeyvidzro/dugble/server/internal/backoffice/senderids"
 	backofficeteams "github.com/coffeyvidzro/dugble/server/internal/backoffice/teams"
 	backofficewallets "github.com/coffeyvidzro/dugble/server/internal/backoffice/wallets"
 	"github.com/coffeyvidzro/dugble/server/internal/transport/middlewares"
@@ -19,10 +21,18 @@ type Handler struct {
 	repository *Repository
 	teams      *backofficeteams.Service
 	wallets    *backofficewallets.Service
+	senderIDs  *backofficesenderids.Service
+	domains    *backofficedomains.Service
 }
 
-func NewHandler(repository *Repository, teams *backofficeteams.Service, wallets *backofficewallets.Service) *Handler {
-	return &Handler{repository: repository, teams: teams, wallets: wallets}
+func NewHandler(
+	repository *Repository,
+	teams *backofficeteams.Service,
+	wallets *backofficewallets.Service,
+	senderIDs *backofficesenderids.Service,
+	domains *backofficedomains.Service,
+) *Handler {
+	return &Handler{repository: repository, teams: teams, wallets: wallets, senderIDs: senderIDs, domains: domains}
 }
 
 func (h *Handler) Dashboard(c *echo.Context) error {
@@ -200,11 +210,11 @@ func (h *Handler) UpdateWalletStatus(c *echo.Context) error {
 }
 
 func (h *Handler) SenderIDs(c *echo.Context) error {
-	filter := SenderIDFilter{
+	filter := backofficesenderids.Filter{
 		Query:  cleanQuery(c.QueryParam("q")),
 		Status: cleanQuery(c.QueryParam("status")),
 	}
-	senderIDs, err := h.repository.SenderIDs(c.Request().Context(), filter)
+	senderIDs, err := h.senderIDs.List(c.Request().Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -218,32 +228,22 @@ func (h *Handler) UpdateSenderIDStatus(c *echo.Context) error {
 		return c.String(http.StatusBadRequest, "invalid sender id")
 	}
 
-	switch cleanQuery(c.Request().FormValue("action")) {
-	case "approve":
-		if err := h.repository.ApproveSenderID(c.Request().Context(), id); err != nil {
-			return handleDetailError(c, err)
-		}
-	case "reject":
-		reason := cleanQuery(c.Request().FormValue("reason"))
-		if reason == "" {
-			return c.String(http.StatusBadRequest, "rejection reason is required")
-		}
-		if err := h.repository.RejectSenderID(c.Request().Context(), id, reason); err != nil {
-			return handleDetailError(c, err)
-		}
-	default:
-		return c.String(http.StatusBadRequest, "action must be approve or reject")
+	if err := h.senderIDs.UpdateStatus(c.Request().Context(), id, backofficesenderids.StatusRequest{
+		Action: c.Request().FormValue("action"),
+		Reason: c.Request().FormValue("reason"),
+	}); err != nil {
+		return handleSenderIDCommandError(c, err)
 	}
 
 	return c.Redirect(http.StatusSeeOther, "/sender-ids?status=pending")
 }
 
 func (h *Handler) Domains(c *echo.Context) error {
-	filter := DomainFilter{
+	filter := backofficedomains.Filter{
 		Query:  cleanQuery(c.QueryParam("q")),
 		Status: cleanQuery(c.QueryParam("status")),
 	}
-	domains, err := h.repository.Domains(c.Request().Context(), filter)
+	domains, err := h.domains.List(c.Request().Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -257,21 +257,11 @@ func (h *Handler) UpdateDomainStatus(c *echo.Context) error {
 		return c.String(http.StatusBadRequest, "invalid domain id")
 	}
 
-	switch cleanQuery(c.Request().FormValue("action")) {
-	case "verify":
-		if err := h.repository.VerifyDomain(c.Request().Context(), id); err != nil {
-			return handleDetailError(c, err)
-		}
-	case "fail":
-		reason := cleanQuery(c.Request().FormValue("reason"))
-		if reason == "" {
-			return c.String(http.StatusBadRequest, "failure reason is required")
-		}
-		if err := h.repository.FailDomain(c.Request().Context(), id, reason); err != nil {
-			return handleDetailError(c, err)
-		}
-	default:
-		return c.String(http.StatusBadRequest, "action must be verify or fail")
+	if err := h.domains.UpdateStatus(c.Request().Context(), id, backofficedomains.StatusRequest{
+		Action: c.Request().FormValue("action"),
+		Reason: c.Request().FormValue("reason"),
+	}); err != nil {
+		return handleDomainCommandError(c, err)
 	}
 
 	return c.Redirect(http.StatusSeeOther, "/domains?status=pending")
@@ -288,6 +278,22 @@ func validID(c *echo.Context) (string, bool) {
 	}
 
 	return id, true
+}
+
+func handleSenderIDCommandError(c *echo.Context, err error) error {
+	if errors.Is(err, backofficesenderids.ErrInvalidRequest) {
+		return c.String(http.StatusBadRequest, strings.TrimPrefix(err.Error(), backofficesenderids.ErrInvalidRequest.Error()+": "))
+	}
+
+	return handleDetailError(c, err)
+}
+
+func handleDomainCommandError(c *echo.Context, err error) error {
+	if errors.Is(err, backofficedomains.ErrInvalidRequest) {
+		return c.String(http.StatusBadRequest, strings.TrimPrefix(err.Error(), backofficedomains.ErrInvalidRequest.Error()+": "))
+	}
+
+	return handleDetailError(c, err)
 }
 
 func handleTeamCommandError(c *echo.Context, err error) error {
