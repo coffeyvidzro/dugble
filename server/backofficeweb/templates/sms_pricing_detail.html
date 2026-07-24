@@ -1,0 +1,58 @@
+{{template "layout_start" .}}
+{{$detail := .Data}}
+<p><a href="/sms-pricing">← Back to SMS pricing</a></p>
+<section class="detail-grid">
+  <article><span>Plan</span><strong>{{$detail.Plan.Name}}</strong></article>
+  <article><span>Currency</span><strong>{{$detail.Plan.Currency}}</strong></article>
+  <article><span>Default</span><strong>{{if $detail.Plan.IsDefault}}Yes{{else}}No{{end}}</strong></article>
+  <article><span>Status</span><strong>{{$detail.Plan.Status}}</strong></article>
+  <article><span>Current local rate</span><strong>{{if $detail.Plan.HasCurrentLocalRate}}{{money $detail.Plan.LocalRateMicros}} / segment{{else}}Not configured{{end}}</strong></article>
+  <article><span>Current A2P rate</span><strong>{{if $detail.Plan.HasCurrentA2PRate}}{{money $detail.Plan.A2PRateMicros}} / segment{{else}}Not configured{{end}}</strong></article>
+</section>
+{{if not $detail.Plan.IsDefault}}
+<form class="control-panel" method="post" action="/sms-pricing/{{$detail.Plan.ID}}/default">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <p class="muted">Making this plan the default changes the inherited plan for teams without explicit SMS settings. A current A2P rate is required.</p>
+  <button type="submit">Make default plan</button>
+</form>
+{{end}}
+<h2>Add effective-dated rate</h2>
+<form class="control-panel" method="post" action="/sms-pricing/{{$detail.Plan.ID}}/rates">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <label>Traffic class
+    <select name="traffic_class" required>
+      <option value="a2p">A2P</option>
+      <option value="local">Local</option>
+    </select>
+  </label>
+  <label>USD per segment
+    <input type="number" name="unit_cost_usd" min="0.000001" step="0.000001" placeholder="0.009" required>
+  </label>
+  <label>Effective from
+    <input type="datetime-local" name="effective_from">
+  </label>
+  <label>Effective until
+    <input type="datetime-local" name="effective_until">
+  </label>
+  <button type="submit">Add rate</button>
+</form>
+<p class="muted">Leave “effective from” blank to start immediately. Active ranges for the same traffic class cannot overlap.</p>
+<h2>Rate history</h2>
+<table>
+  <thead><tr><th>Traffic class</th><th>Unit price</th><th>Effective from</th><th>Effective until</th><th>Status</th><th>ID</th></tr></thead>
+  <tbody>
+  {{range $detail.Rates}}
+    <tr>
+      <td>{{.TrafficClass}}</td>
+      <td>{{money .UnitCostMicros}} / segment</td>
+      <td>{{.EffectiveFrom.Format "2006-01-02 15:04"}}</td>
+      <td>{{if .EffectiveUntil}}{{.EffectiveUntil.Format "2006-01-02 15:04"}}{{else}}Open-ended{{end}}</td>
+      <td>{{.Status}}</td>
+      <td><code>{{.ID}}</code></td>
+    </tr>
+  {{else}}
+    <tr><td colspan="6">No rates have been added.</td></tr>
+  {{end}}
+  </tbody>
+</table>
+{{template "layout_end" .}}
