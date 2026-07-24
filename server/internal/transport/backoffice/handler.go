@@ -10,33 +10,40 @@ import (
 
 	"github.com/google/uuid"
 
+	backofficedashboard "github.com/coffeyvidzro/dugble/server/internal/backoffice/dashboard"
 	backofficedomains "github.com/coffeyvidzro/dugble/server/internal/backoffice/domains"
+	backofficemessages "github.com/coffeyvidzro/dugble/server/internal/backoffice/messages"
 	backofficesenderids "github.com/coffeyvidzro/dugble/server/internal/backoffice/senderids"
 	backofficeteams "github.com/coffeyvidzro/dugble/server/internal/backoffice/teams"
+	backofficeusers "github.com/coffeyvidzro/dugble/server/internal/backoffice/users"
 	backofficewallets "github.com/coffeyvidzro/dugble/server/internal/backoffice/wallets"
 	"github.com/coffeyvidzro/dugble/server/internal/transport/middlewares"
 )
 
 type Handler struct {
-	repository *Repository
-	teams      *backofficeteams.Service
-	wallets    *backofficewallets.Service
-	senderIDs  *backofficesenderids.Service
-	domains    *backofficedomains.Service
+	dashboard *backofficedashboard.Service
+	users     *backofficeusers.Service
+	messages  *backofficemessages.Service
+	teams     *backofficeteams.Service
+	wallets   *backofficewallets.Service
+	senderIDs *backofficesenderids.Service
+	domains   *backofficedomains.Service
 }
 
 func NewHandler(
-	repository *Repository,
+	dashboard *backofficedashboard.Service,
+	users *backofficeusers.Service,
+	messages *backofficemessages.Service,
 	teams *backofficeteams.Service,
 	wallets *backofficewallets.Service,
 	senderIDs *backofficesenderids.Service,
 	domains *backofficedomains.Service,
 ) *Handler {
-	return &Handler{repository: repository, teams: teams, wallets: wallets, senderIDs: senderIDs, domains: domains}
+	return &Handler{dashboard: dashboard, users: users, messages: messages, teams: teams, wallets: wallets, senderIDs: senderIDs, domains: domains}
 }
 
 func (h *Handler) Dashboard(c *echo.Context) error {
-	stats, err := h.repository.DashboardStats(c.Request().Context())
+	stats, err := h.dashboard.Stats(c.Request().Context())
 	if err != nil {
 		return err
 	}
@@ -45,8 +52,8 @@ func (h *Handler) Dashboard(c *echo.Context) error {
 }
 
 func (h *Handler) Users(c *echo.Context) error {
-	filter := UserFilter{Query: cleanQuery(c.QueryParam("q"))}
-	users, err := h.repository.Users(c.Request().Context(), filter)
+	filter := backofficeusers.Filter{Query: cleanQuery(c.QueryParam("q"))}
+	users, err := h.users.List(c.Request().Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -60,7 +67,7 @@ func (h *Handler) UserDetail(c *echo.Context) error {
 		return c.String(http.StatusBadRequest, "invalid user id")
 	}
 
-	detail, err := h.repository.UserDetail(c.Request().Context(), id)
+	detail, err := h.users.Detail(c.Request().Context(), id)
 	if err != nil {
 		return handleDetailError(c, err)
 	}
@@ -109,11 +116,11 @@ func (h *Handler) UpdateTeamStatus(c *echo.Context) error {
 }
 
 func (h *Handler) SMSMessages(c *echo.Context) error {
-	filter := SMSFilter{
+	filter := backofficemessages.Filter{
 		Query:  cleanQuery(c.QueryParam("q")),
 		Status: cleanQuery(c.QueryParam("status")),
 	}
-	messages, err := h.repository.SMSMessages(c.Request().Context(), filter)
+	messages, err := h.messages.List(c.Request().Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -127,7 +134,7 @@ func (h *Handler) SMSDetail(c *echo.Context) error {
 		return c.String(http.StatusBadRequest, "invalid sms id")
 	}
 
-	detail, err := h.repository.SMSDetail(c.Request().Context(), id)
+	detail, err := h.messages.Detail(c.Request().Context(), id)
 	if err != nil {
 		return handleDetailError(c, err)
 	}
