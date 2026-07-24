@@ -19,11 +19,13 @@ INSERT INTO team_tokens (
 RETURNING *;
 
 -- name: GetActiveTeamTokenByHash :one
-SELECT *
-FROM team_tokens
-WHERE token_hash = sqlc.arg(token_hash)
-  AND revoked_at IS NULL
-  AND (expires_at IS NULL OR expires_at > now());
+SELECT tt.*
+FROM team_tokens tt
+JOIN teams t ON t.id = tt.team_id
+WHERE tt.token_hash = sqlc.arg(token_hash)
+  AND tt.revoked_at IS NULL
+  AND (tt.expires_at IS NULL OR tt.expires_at > now())
+  AND t.status = 'active';
 
 -- name: ListTeamTokens :many
 SELECT *

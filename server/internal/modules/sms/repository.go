@@ -174,7 +174,25 @@ func messageFromSQLC(row dbsqlc.SmsMessage) Message {
 	if row.DeliveredAt.Valid {
 		message.DeliveredAt = &row.DeliveredAt.Time
 	}
+	message.Billing = billingFromCost(message.Segments, message.CostMicros)
 	return message
+}
+
+func billingFromCost(segments int32, costMicros int64) Billing {
+	var unitMicros int64
+	if segments > 0 {
+		unitMicros = costMicros / int64(segments)
+	}
+
+	return Billing{
+		UnitCost:  microsToUSD(unitMicros),
+		TotalCost: microsToUSD(costMicros),
+		Currency:  "USD",
+	}
+}
+
+func microsToUSD(micros int64) float64 {
+	return float64(micros) / 1_000_000
 }
 
 func ensureMetadata(metadata json.RawMessage) json.RawMessage {

@@ -92,6 +92,31 @@ make down
 go run ./cmd/server
 ```
 
+### Backoffice
+
+The backoffice is a separate, intentionally simple internal web server for
+read-only operational checks. It reuses the normal Dugble session cookie and
+then restricts access to emails listed in `BACKOFFICE_ADMIN_EMAILS`.
+
+To run it locally:
+
+```sh
+BACKOFFICE_ADMIN_EMAILS=you@example.com go run ./server/cmd/backoffice
+```
+
+Then sign in as that user through the normal Dugble app/API flow and open:
+
+```text
+http://localhost:8081
+```
+
+Useful configuration:
+
+```env
+BACKOFFICE_HTTP_PORT=8081
+BACKOFFICE_ADMIN_EMAILS=you@example.com
+```
+
 ### Checks
 
 ```sh

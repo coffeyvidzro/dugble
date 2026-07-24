@@ -33,12 +33,43 @@ type Message struct {
 	ProviderMessageID *string         `json:"provider_message_id,omitempty"`
 	Segments          int32           `json:"segments"`
 	CostMicros        int64           `json:"cost_micros"`
+	Billing           Billing         `json:"billing"`
 	ErrorMessage      *string         `json:"error_message,omitempty"`
 	Metadata          json.RawMessage `json:"metadata"`
 	SubmittedAt       *time.Time      `json:"submitted_at,omitempty"`
 	DeliveredAt       *time.Time      `json:"delivered_at,omitempty"`
 	CreatedAt         time.Time       `json:"created_at"`
 	UpdatedAt         time.Time       `json:"updated_at"`
+}
+
+type SMSResponse struct {
+	ID        string          `json:"id"`
+	To        string          `json:"to"`
+	From      string          `json:"from"`
+	Body      string          `json:"body"`
+	Status    string          `json:"status"`
+	Metadata  json.RawMessage `json:"metadata,omitempty"`
+	Billing   Billing         `json:"billing"`
+	CreatedAt time.Time       `json:"created_at"`
+}
+
+func (m Message) Response() SMSResponse {
+	return SMSResponse{
+		ID:        m.ID,
+		To:        m.To,
+		From:      m.From,
+		Body:      m.Body,
+		Status:    m.Status,
+		Metadata:  m.Metadata,
+		Billing:   m.Billing,
+		CreatedAt: m.CreatedAt,
+	}
+}
+
+type Billing struct {
+	UnitCost  float64 `json:"unitCost"`
+	TotalCost float64 `json:"totalCost"`
+	Currency  string  `json:"currency"`
 }
 
 type SendRequest struct {

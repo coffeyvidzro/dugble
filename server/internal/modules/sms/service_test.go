@@ -1,6 +1,10 @@
 package sms
 
-import "testing"
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+)
 
 func TestValidateSendRequiresE164Recipient(t *testing.T) {
 	_, err := validateSend(SendRequest{To: "0241234567", From: "DUGBLE", Body: "hello"})
@@ -85,5 +89,38 @@ func TestCountSegments(t *testing.T) {
 func TestDefaultCostMicrosPerSegment(t *testing.T) {
 	if defaultCostMicrosPerSegment != 9_000 {
 		t.Fatalf("defaultCostMicrosPerSegment = %d, want 9000", defaultCostMicrosPerSegment)
+	}
+}
+
+func TestBillingFromCost(t *testing.T) {
+	billing := billingFromCost(2, 18_000)
+	if billing.UnitCost != 0.009 {
+		t.Fatalf("UnitCost = %v, want 0.009", billing.UnitCost)
+	}
+	if billing.TotalCost != 0.018 {
+		t.Fatalf("TotalCost = %v, want 0.018", billing.TotalCost)
+	}
+	if billing.Currency != "USD" {
+		t.Fatalf("Currency = %q, want USD", billing.Currency)
+	}
+}
+
+func TestSMSResponseJSONUsesPublicBillingRepresentation(t *testing.T) {
+	message := Message{Segments: 1, CostMicros: 9_000, Metadata: json.RawMessage(`{"campaign":"welcome"}`), Billing: billingFromCost(1, 9_000)}
+	payload, err := json.Marshal(message.Response())
+	if err != nil {
+		t.Fatalf("Marshal returned error: %v", err)
+	}
+	body := string(payload)
+	for _, hidden := range []string{"cost_micros", "team_id", "sender_id", "segments", "updated_at", "units", "pricing"} {
+		if strings.Contains(body, hidden) {
+			t.Fatalf("SMS response JSON should not expose %s: %s", hidden, body)
+		}
+	}
+	if !strings.Contains(body, `"metadata":{"campaign":"welcome"}`) {
+		t.Fatalf("SMS response JSON missing metadata: %s", body)
+	}
+	if !strings.Contains(body, `"billing"`) || !strings.Contains(body, `"unitCost":0.009`) || !strings.Contains(body, `"totalCost":0.009`) {
+		t.Fatalf("SMS response JSON missing billing money representation: %s", body)
 	}
 }
