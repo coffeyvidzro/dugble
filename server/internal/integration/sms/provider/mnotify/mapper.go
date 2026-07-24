@@ -96,8 +96,10 @@ func CampaignStatusToInternal(
 
 func NormalizeStatus(status string) string {
 	switch strings.ToUpper(strings.TrimSpace(status)) {
-	case "SUCCESS", "2000", "QUEUED", "PENDING", "SUBMITTED", "SENT":
+	case "SUCCESS", "2000", "QUEUED", "PENDING", "SUBMITTED":
 		return "submitted"
+	case "SENT":
+		return "sent"
 	case "DELIVERED", "DELIVRD":
 		return "delivered"
 	case "UNDELIVERED", "UNDELIV":

@@ -2,8 +2,12 @@ package sms
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
+	"time"
+
+	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
 func TestValidateSendRequiresE164Recipient(t *testing.T) {
@@ -39,13 +43,13 @@ func TestValidateBatchSendLimitsMessages(t *testing.T) {
 	}
 }
 
-func TestValidateBatchSendValidatesEachMessage(t *testing.T) {
+func TestValidateBatchSendDefersItemValidation(t *testing.T) {
 	err := validateBatchSend(BatchSendRequest{Messages: []SendRequest{
 		{To: "+233241234567", From: "DUGBLE", Body: "hello"},
 		{To: "0241234567", From: "DUGBLE", Body: "hello"},
 	}})
-	if err == nil {
-		t.Fatal("validateBatchSend returned nil error for invalid message")
+	if err != nil {
+		t.Fatalf("validateBatchSend returned error for item-level validation: %v", err)
 	}
 }
 
@@ -105,22 +109,93 @@ func TestBillingFromCost(t *testing.T) {
 	}
 }
 
-func TestSMSResponseJSONUsesPublicBillingRepresentation(t *testing.T) {
-	message := Message{Segments: 1, CostMicros: 9_000, Metadata: json.RawMessage(`{"campaign":"welcome"}`), Billing: billingFromCost(1, 9_000)}
+func TestSMSResponseJSONUsesPublicRepresentation(t *testing.T) {
+	now := time.Date(2026, time.July, 24, 12, 0, 0, 0, time.UTC)
+	providerID := "arkesel"
+	providerMessageID := "provider-secret"
+	internalError := "upstream payload that must not be exposed"
+	message := Message{
+		ID:                "message-id",
+		TeamID:            "team-id",
+		To:                "+233241234567",
+		From:              "DUGBLE",
+		Body:              "hello",
+		Status:            StatusFailed,
+		ProviderID:        &providerID,
+		ProviderMessageID: &providerMessageID,
+		Segments:          1,
+		CostMicros:        9_000,
+		Billing:           billingFromCost(1, 9_000),
+		ErrorMessage:      &internalError,
+		Metadata:          json.RawMessage(`{"campaign":"welcome"}`),
+		SubmittedAt:       &now,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
 	payload, err := json.Marshal(message.Response())
 	if err != nil {
 		t.Fatalf("Marshal returned error: %v", err)
 	}
 	body := string(payload)
-	for _, hidden := range []string{"cost_micros", "team_id", "sender_id", "segments", "updated_at", "units", "pricing"} {
+	for _, hidden := range []string{"cost_micros", "team_id", "sender_id", "provider_id", "provider_message_id", "error_message", internalError} {
 		if strings.Contains(body, hidden) {
 			t.Fatalf("SMS response JSON should not expose %s: %s", hidden, body)
 		}
 	}
-	if !strings.Contains(body, `"metadata":{"campaign":"welcome"}`) {
-		t.Fatalf("SMS response JSON missing metadata: %s", body)
+	for _, expected := range []string{
+		`"metadata":{"campaign":"welcome"}`,
+		`"segments":1`,
+		`"unit_cost":0.009`,
+		`"total_cost":0.009`,
+		`"submitted_at":"2026-07-24T12:00:00Z"`,
+		`"updated_at":"2026-07-24T12:00:00Z"`,
+		`"failure":{"code":"SMS_FAILED","message":"SMS delivery failed"}`,
+	} {
+		if !strings.Contains(body, expected) {
+			t.Fatalf("SMS response JSON missing %s: %s", expected, body)
+		}
 	}
-	if !strings.Contains(body, `"billing"`) || !strings.Contains(body, `"unitCost":0.009`) || !strings.Contains(body, `"totalCost":0.009`) {
-		t.Fatalf("SMS response JSON missing billing money representation: %s", body)
+}
+
+func TestResponsesMapsEveryMessageToPublicDTO(t *testing.T) {
+	responses := Responses([]Message{{ID: "first"}, {ID: "second"}})
+	if len(responses) != 2 || responses[0].ID != "first" || responses[1].ID != "second" {
+		t.Fatalf("Responses() = %#v", responses)
+	}
+}
+
+func TestNewBatchSendErrorDoesNotExposeWrappedCause(t *testing.T) {
+	err := apperrors.NewInternal("Unable to enqueue SMS delivery", errors.New("postgres password leaked here"))
+	result := newBatchSendError(err)
+	if result.Code != "INTERNAL_ERROR" || result.Message != "Unable to enqueue SMS delivery" {
+		t.Fatalf("newBatchSendError() = %#v", result)
+	}
+	if strings.Contains(result.Message, "postgres") {
+		t.Fatalf("newBatchSendError exposed wrapped cause: %#v", result)
+	}
+}
+
+func TestResolveProviderStatusPreventsRegression(t *testing.T) {
+	tests := []struct {
+		name     string
+		current  string
+		provider string
+		want     string
+	}{
+		{name: "unknown does not replace submitted", current: StatusSubmitted, provider: StatusUnknown, want: StatusSubmitted},
+		{name: "submitted does not replace sent", current: StatusSent, provider: StatusSubmitted, want: StatusSent},
+		{name: "submitted does not replace delivered", current: StatusDelivered, provider: StatusSubmitted, want: StatusDelivered},
+		{name: "failure does not replace delivered", current: StatusDelivered, provider: StatusFailed, want: StatusDelivered},
+		{name: "sent advances submitted", current: StatusSubmitted, provider: StatusSent, want: StatusSent},
+		{name: "delivered advances sent", current: StatusSent, provider: StatusDelivered, want: StatusDelivered},
+		{name: "rejected closes submitted", current: StatusSubmitted, provider: StatusRejected, want: StatusRejected},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := resolveProviderStatus(test.current, test.provider); got != test.want {
+				t.Fatalf("resolveProviderStatus(%q, %q) = %q, want %q", test.current, test.provider, got, test.want)
+			}
+		})
 	}
 }

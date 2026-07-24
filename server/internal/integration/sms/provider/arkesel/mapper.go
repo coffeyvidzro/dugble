@@ -81,21 +81,20 @@ func isSuccess(status string) bool {
 
 func NormalizeStatus(status string) string {
 	switch strings.ToUpper(strings.TrimSpace(status)) {
-	case "SUCCESS", "OK", "ACCEPTED", "QUEUED", "SUBMITTED", "SENT", "PENDING":
+	case "SUCCESS", "OK", "ACCEPTED", "QUEUED", "SUBMITTED", "PENDING":
 		return "submitted"
-
+	case "SENT":
+		return "sent"
 	case "DELIVERED", "DELIVRD":
 		return "delivered"
-
 	case "UNDELIVERED", "UNDELIV":
 		return "undelivered"
-
-	case "FAILED", "FAILURE", "REJECTED", "ERROR":
+	case "REJECTED":
+		return "rejected"
+	case "FAILED", "FAILURE", "ERROR":
 		return "failed"
-
 	case "EXPIRED":
 		return "expired"
-
 	default:
 		return "unknown"
 	}

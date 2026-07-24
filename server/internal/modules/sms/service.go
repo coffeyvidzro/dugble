@@ -177,24 +177,53 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) (BatchSen
 	if err := validateBatchSend(req); err != nil {
 		return BatchSendResponse{}, err
 	}
-
-	normalized := normalizeBatchMessages(req.Messages)
-	messages := make([]Message, 0, len(normalized))
-	failures := make([]BatchSendFailure, 0, 1)
-	for index, message := range normalized {
-		created, err := s.Send(ctx, message)
-		if err != nil {
-			failure := BatchSendFailure{Index: index, Error: err.Error()}
-			if created.ID != "" {
-				failure.Message = &created
-			}
-			failures = append(failures, failure)
-			return BatchSendResponse{Messages: messages, Failures: failures}, err
-		}
-		messages = append(messages, created)
+	if _, err := requireTenant(ctx, tenant.PermissionSMSSend); err != nil {
+		return BatchSendResponse{}, err
+	}
+	if s.wallet == nil {
+		return BatchSendResponse{}, apperrors.NewInternal("SMS wallet ledger is not configured", nil)
+	}
+	if s.delivery == nil {
+		return BatchSendResponse{}, apperrors.NewInternal("SMS delivery queue is not configured", nil)
 	}
 
-	return BatchSendResponse{Messages: messages}, nil
+	response := BatchSendResponse{
+		Results: make([]BatchSendResult, 0, len(req.Messages)),
+		Summary: BatchSendSummary{Requested: len(req.Messages)},
+	}
+
+	for index, message := range req.Messages {
+		created, err := s.Send(ctx, message)
+		result := BatchSendResult{Index: index}
+		if created.ID != "" {
+			publicMessage := created.Response()
+			result.Message = &publicMessage
+		}
+		if err != nil {
+			publicError := newBatchSendError(err)
+			result.Error = &publicError
+			response.Summary.Failed++
+		} else {
+			result.Success = true
+			response.Summary.Succeeded++
+		}
+		response.Results = append(response.Results, result)
+	}
+
+	return response, nil
+}
+
+func newBatchSendError(err error) BatchSendError {
+	result := BatchSendError{
+		Code:    "INTERNAL_ERROR",
+		Message: "An unexpected error occurred",
+	}
+	var appErr *apperrors.AppError
+	if errors.As(err, &appErr) {
+		result.Code = appErr.Code
+		result.Message = appErr.Message
+	}
+	return result
 }
 
 func validateBatchSend(req BatchSendRequest) error {
@@ -204,21 +233,7 @@ func validateBatchSend(req BatchSendRequest) error {
 	if len(req.Messages) > maxBatchMessages {
 		return apperrors.NewBadRequest(fmt.Sprintf("Batch SMS requests can include at most %d messages", maxBatchMessages))
 	}
-	for index, message := range req.Messages {
-		if _, err := validateSend(message); err != nil {
-			return apperrors.NewBadRequest(fmt.Sprintf("Message %d is invalid: %s", index+1, err.Error()))
-		}
-	}
 	return nil
-}
-
-func normalizeBatchMessages(messages []SendRequest) []SendRequest {
-	normalized := make([]SendRequest, len(messages))
-	for index, message := range messages {
-		validated, _ := validateSend(message)
-		normalized[index] = validated
-	}
-	return normalized
 }
 
 func (s *Service) SyncStatus(ctx context.Context, messageID string) (Message, error) {
@@ -247,11 +262,54 @@ func (s *Service) SyncStatus(ctx context.Context, messageID string) (Message, er
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to sync SMS status", err)
 	}
-	updated, err := s.repository.UpdateStatus(ctx, parsedID, tenantContext.TeamID, MapProviderStatus(status.Status))
+	nextStatus := resolveProviderStatus(message.Status, status.Status)
+	if nextStatus == message.Status {
+		return message, nil
+	}
+	updated, err := s.repository.UpdateStatus(ctx, parsedID, tenantContext.TeamID, nextStatus)
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to update SMS status", err)
 	}
 	return updated, nil
+}
+
+func resolveProviderStatus(current string, providerStatus string) string {
+	current = strings.ToLower(strings.TrimSpace(current))
+	next := MapProviderStatus(providerStatus)
+	if next == StatusUnknown || isTerminalStatus(current) {
+		return current
+	}
+
+	currentRank, currentIsProgress := statusProgressRank(current)
+	nextRank, nextIsProgress := statusProgressRank(next)
+	if currentIsProgress && nextIsProgress && nextRank < currentRank {
+		return current
+	}
+	return next
+}
+
+func isTerminalStatus(status string) bool {
+	switch status {
+	case StatusRefundPending, StatusDelivered, StatusUndelivered, StatusRejected, StatusFailed, StatusExpired:
+		return true
+	default:
+		return false
+	}
+}
+
+func statusProgressRank(status string) (int, bool) {
+	switch status {
+	case StatusQueued:
+		return 0, true
+	case StatusProcessing:
+		return 1, true
+	case StatusSubmitted:
+		return 2, true
+	case StatusSent:
+		return 3, true
+	default:
+		return 0, false
+	}
 }
 
 func validateSend(req SendRequest) (SendRequest, error) {
