@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"time"
 
 	"github.com/labstack/echo/v5"
 
@@ -17,7 +18,9 @@ type Renderer struct {
 func NewRenderer() (*Renderer, error) {
 	tmpl, err := template.New("").
 		Funcs(template.FuncMap{
-			"money": formatMoney,
+			"money":         formatMoney,
+			"microsInput":   formatMicrosInput,
+			"datetimeLocal": formatDatetimeLocal,
 		}).
 		ParseFS(backofficeweb.Files, "templates/*.html")
 	if err != nil {
@@ -47,6 +50,13 @@ func formatMoney(micros int64) string {
 	if negative {
 		return fmt.Sprintf("-$%d.%s", whole, fractionText)
 	}
-
 	return fmt.Sprintf("$%d.%s", whole, fractionText)
+}
+
+func formatMicrosInput(micros int64) string {
+	return fmt.Sprintf("%d.%06d", micros/1_000_000, micros%1_000_000)
+}
+
+func formatDatetimeLocal(value time.Time) string {
+	return value.UTC().Format("2006-01-02T15:04")
 }
