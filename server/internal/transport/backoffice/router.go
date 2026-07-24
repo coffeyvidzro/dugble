@@ -8,6 +8,7 @@ import (
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
 
+	backofficewallets "github.com/coffeyvidzro/dugble/server/internal/backoffice/wallets"
 	"github.com/coffeyvidzro/dugble/server/internal/config"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/auth"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
@@ -57,7 +58,10 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		CookieSameSite: http.SameSiteLaxMode,
 	})
 
-	handler := NewHandler(NewRepository(deps.DB))
+	handler := NewHandler(
+		NewRepository(deps.DB),
+		backofficewallets.NewService(backofficewallets.NewRepository(deps.DB)),
+	)
 
 	protected := router.Group("")
 	protected.Use(authMiddleware)

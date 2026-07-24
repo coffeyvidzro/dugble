@@ -1,4 +1,4 @@
-package backoffice
+package wallets
 
 import "testing"
 
@@ -20,12 +20,12 @@ func TestParseUSDMicros(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := parseUSDMicros(tt.value)
+			got, err := ParseUSDMicros(tt.value)
 			if err != nil {
-				t.Fatalf("parseUSDMicros(%q) returned error: %v", tt.value, err)
+				t.Fatalf("ParseUSDMicros(%q) returned error: %v", tt.value, err)
 			}
 			if got != tt.want {
-				t.Fatalf("parseUSDMicros(%q) = %d, want %d", tt.value, got, tt.want)
+				t.Fatalf("ParseUSDMicros(%q) = %d, want %d", tt.value, got, tt.want)
 			}
 		})
 	}
@@ -39,8 +39,8 @@ func TestParseUSDMicrosRejectsInvalidAmounts(t *testing.T) {
 		t.Run(value, func(t *testing.T) {
 			t.Parallel()
 
-			if _, err := parseUSDMicros(value); err == nil {
-				t.Fatalf("parseUSDMicros(%q) returned nil error", value)
+			if _, err := ParseUSDMicros(value); err == nil {
+				t.Fatalf("ParseUSDMicros(%q) returned nil error", value)
 			}
 		})
 	}
