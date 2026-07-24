@@ -105,19 +105,22 @@ func TestBillingFromCost(t *testing.T) {
 	}
 }
 
-func TestMessageJSONUsesBillingRepresentation(t *testing.T) {
-	message := Message{Segments: 1, CostMicros: 9_000, Billing: billingFromCost(1, 9_000)}
-	payload, err := json.Marshal(message)
+func TestSMSResponseJSONUsesPublicBillingRepresentation(t *testing.T) {
+	message := Message{Segments: 1, CostMicros: 9_000, Metadata: json.RawMessage(`{"campaign":"welcome"}`), Billing: billingFromCost(1, 9_000)}
+	payload, err := json.Marshal(message.Response())
 	if err != nil {
 		t.Fatalf("Marshal returned error: %v", err)
 	}
 	body := string(payload)
-	for _, hidden := range []string{"cost_micros", "team_id", "sender_id", "metadata", "updated_at", "units", "pricing"} {
+	for _, hidden := range []string{"cost_micros", "team_id", "sender_id", "segments", "updated_at", "units", "pricing"} {
 		if strings.Contains(body, hidden) {
-			t.Fatalf("Message JSON should not expose %s: %s", hidden, body)
+			t.Fatalf("SMS response JSON should not expose %s: %s", hidden, body)
 		}
 	}
+	if !strings.Contains(body, `"metadata":{"campaign":"welcome"}`) {
+		t.Fatalf("SMS response JSON missing metadata: %s", body)
+	}
 	if !strings.Contains(body, `"billing"`) || !strings.Contains(body, `"unitCost":0.009`) || !strings.Contains(body, `"totalCost":0.009`) {
-		t.Fatalf("Message JSON missing billing money representation: %s", body)
+		t.Fatalf("SMS response JSON missing billing money representation: %s", body)
 	}
 }

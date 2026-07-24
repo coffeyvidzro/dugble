@@ -23,8 +23,8 @@ const (
 
 type Message struct {
 	ID                string          `json:"id"`
-	TeamID            string          `json:"-"`
-	SenderID          *string         `json:"-"`
+	TeamID            string          `json:"team_id"`
+	SenderID          *string         `json:"sender_id,omitempty"`
 	To                string          `json:"to"`
 	From              string          `json:"from"`
 	Body              string          `json:"body"`
@@ -32,14 +32,46 @@ type Message struct {
 	ProviderID        *string         `json:"provider_id,omitempty"`
 	ProviderMessageID *string         `json:"provider_message_id,omitempty"`
 	Segments          int32           `json:"segments"`
-	CostMicros        int64           `json:"-"`
+	CostMicros        int64           `json:"cost_micros"`
 	Billing           Billing         `json:"billing"`
 	ErrorMessage      *string         `json:"error_message,omitempty"`
-	Metadata          json.RawMessage `json:"-"`
+	Metadata          json.RawMessage `json:"metadata"`
 	SubmittedAt       *time.Time      `json:"submitted_at,omitempty"`
 	DeliveredAt       *time.Time      `json:"delivered_at,omitempty"`
 	CreatedAt         time.Time       `json:"created_at"`
-	UpdatedAt         time.Time       `json:"-"`
+	UpdatedAt         time.Time       `json:"updated_at"`
+}
+
+type SMSResponse struct {
+	ID        string          `json:"id"`
+	To        string          `json:"to"`
+	From      string          `json:"from"`
+	Body      string          `json:"body"`
+	Status    string          `json:"status"`
+	Metadata  json.RawMessage `json:"metadata,omitempty"`
+	Billing   Billing         `json:"billing"`
+	CreatedAt time.Time       `json:"created_at"`
+}
+
+func (m Message) Response() SMSResponse {
+	return SMSResponse{
+		ID:        m.ID,
+		To:        m.To,
+		From:      m.From,
+		Body:      m.Body,
+		Status:    m.Status,
+		Metadata:  m.Metadata,
+		Billing:   m.Billing,
+		CreatedAt: m.CreatedAt,
+	}
+}
+
+func MessagesResponse(messages []Message) []SMSResponse {
+	responses := make([]SMSResponse, len(messages))
+	for index, message := range messages {
+		responses[index] = message.Response()
+	}
+	return responses
 }
 
 type Billing struct {
@@ -68,6 +100,34 @@ type BatchSendFailure struct {
 type BatchSendResponse struct {
 	Messages []Message          `json:"messages"`
 	Failures []BatchSendFailure `json:"failures,omitempty"`
+}
+
+type BatchSendAPIResponse struct {
+	Messages []SMSResponse         `json:"messages"`
+	Failures []BatchSendAPIFailure `json:"failures,omitempty"`
+}
+
+type BatchSendAPIFailure struct {
+	Index   int          `json:"index"`
+	Message *SMSResponse `json:"message,omitempty"`
+	Error   string       `json:"error"`
+}
+
+func (r BatchSendResponse) APIResponse() BatchSendAPIResponse {
+	response := BatchSendAPIResponse{Messages: MessagesResponse(r.Messages)}
+	if len(r.Failures) == 0 {
+		return response
+	}
+	response.Failures = make([]BatchSendAPIFailure, 0, len(r.Failures))
+	for _, failure := range r.Failures {
+		apiFailure := BatchSendAPIFailure{Index: failure.Index, Error: failure.Error}
+		if failure.Message != nil {
+			message := failure.Message.Response()
+			apiFailure.Message = &message
+		}
+		response.Failures = append(response.Failures, apiFailure)
+	}
+	return response
 }
 
 type ListRequest struct {

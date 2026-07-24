@@ -20,7 +20,7 @@ func (h *Handler) List(c *echo.Context) error {
 	if err != nil {
 		return httputil.Error(c, err)
 	}
-	return httputil.OK(c, messages)
+	return httputil.OK(c, MessagesResponse(messages))
 }
 
 func (h *Handler) Get(c *echo.Context) error {
@@ -28,7 +28,7 @@ func (h *Handler) Get(c *echo.Context) error {
 	if err != nil {
 		return httputil.Error(c, err)
 	}
-	return httputil.OK(c, message)
+	return httputil.OK(c, message.Response())
 }
 
 func (h *Handler) Send(c *echo.Context) error {
@@ -40,7 +40,7 @@ func (h *Handler) Send(c *echo.Context) error {
 	if err != nil {
 		return httputil.Error(c, err)
 	}
-	return httputil.Created(c, message)
+	return httputil.Created(c, message.Response())
 }
 
 func (h *Handler) BatchSend(c *echo.Context) error {
@@ -51,11 +51,11 @@ func (h *Handler) BatchSend(c *echo.Context) error {
 	message, err := h.service.BatchSend(c.Request().Context(), req)
 	if err != nil {
 		if len(message.Messages) > 0 || len(message.Failures) > 0 {
-			return httputil.Partial(c, http.StatusMultiStatus, message, err)
+			return httputil.Partial(c, http.StatusMultiStatus, message.APIResponse(), err)
 		}
 		return httputil.Error(c, err)
 	}
-	return httputil.Created(c, message)
+	return httputil.Created(c, message.APIResponse())
 }
 
 func (h *Handler) SyncStatus(c *echo.Context) error {
@@ -63,7 +63,7 @@ func (h *Handler) SyncStatus(c *echo.Context) error {
 	if err != nil {
 		return httputil.Error(c, err)
 	}
-	return httputil.OK(c, message)
+	return httputil.OK(c, message.Response())
 }
 
 func parseInt32(value string) int32 {
