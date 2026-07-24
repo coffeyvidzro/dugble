@@ -57,6 +57,18 @@ func formatMicrosInput(micros int64) string {
 	return fmt.Sprintf("%d.%06d", micros/1_000_000, micros%1_000_000)
 }
 
-func formatDatetimeLocal(value time.Time) string {
-	return value.UTC().Format("2006-01-02T15:04")
+func formatDatetimeLocal(value any) string {
+	var timestamp time.Time
+	switch typed := value.(type) {
+	case time.Time:
+		timestamp = typed
+	case *time.Time:
+		if typed == nil {
+			return ""
+		}
+		timestamp = *typed
+	default:
+		return ""
+	}
+	return timestamp.UTC().Format("2006-01-02T15:04")
 }
