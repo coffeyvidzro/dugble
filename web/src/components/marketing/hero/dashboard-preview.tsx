@@ -59,7 +59,7 @@ export function DashboardPreview() {
 
             <Reveal
                 delay={150}
-                className="overflow-hidden rounded-2xl border bg-card shadow-2xl shadow-black/30"
+                className="overflow-hidden rounded-2xl border bg-card shadow-lg shadow-black/5 dark:shadow-2xl dark:shadow-black/30"
             >
                 <div className="flex items-center justify-between border-b bg-muted/30 px-5 py-3">
                     <div className="flex items-center gap-1.5">

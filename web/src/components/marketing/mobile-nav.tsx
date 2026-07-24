@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { SearchTrigger } from "@/components/command-palette/search-trigger";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,11 @@ export function MobileNav({
     featuresLinks,
     resourceLinks,
 }: MobileNavProps) {
+    const productStart = 1;
+    const resourcesStart = productStart + featuresLinks.length + 1;
+    const contactIndex = resourcesStart + resourceLinks.length + 1;
+    const bottomIndex = contactIndex + 1;
+
     return (
         <div
             role="dialog"
@@ -35,24 +41,25 @@ export function MobileNav({
             )}
         >
             <nav className="flex-1 space-y-10 px-6 pb-10">
+                <StaggerItem open={open} index={0}>
+                    <SearchTrigger className="w-full justify-center" />
+                </StaggerItem>
+
                 <NavGroup
                     title="Product"
                     links={featuresLinks}
                     open={open}
                     onNavigate={onNavigate}
-                    delayStart={0}
+                    delayStart={productStart}
                 />
                 <NavGroup
                     title="Resources"
                     links={resourceLinks}
                     open={open}
                     onNavigate={onNavigate}
-                    delayStart={featuresLinks.length}
+                    delayStart={resourcesStart}
                 />
-                <StaggerItem
-                    open={open}
-                    index={featuresLinks.length + resourceLinks.length}
-                >
+                <StaggerItem open={open} index={contactIndex}>
                     <Link
                         href="/contact"
                         onClick={onNavigate}
@@ -65,7 +72,7 @@ export function MobileNav({
 
             <StaggerItem
                 open={open}
-                index={featuresLinks.length + resourceLinks.length + 1}
+                index={bottomIndex}
                 className="flex flex-row items-center gap-3 border-t px-6 py-6"
             >
                 <Link

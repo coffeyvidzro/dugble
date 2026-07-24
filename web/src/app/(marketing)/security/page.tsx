@@ -173,7 +173,7 @@ export default function Page() {
                     </div>
                     <Link
                         href="mailto:security@dugble.com"
-                        className="group/button relative inline-flex h-11 shrink-0 items-center gap-2 overflow-hidden rounded-full border bg-background px-4 font-mono text-sm text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:text-foreground hover:shadow-lg hover:shadow-black/20"
+                        className="group/button relative inline-flex h-11 shrink-0 items-center gap-2 overflow-hidden rounded-full border bg-background px-4 font-mono text-sm text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:text-foreground hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
                     >
                         <Mail className="size-4 text-signal" />
                         security@dugble.com

@@ -6,6 +6,7 @@ import { FloatingOrbs } from "@/components/marketing/hero/floating-orbs";
 import { buttonVariants } from "@/components/ui/button";
 import { SmsPhonePreview } from "./sms-phone-preview";
 import { AnimatedGrid } from "../hero/animated-grid";
+import { TerminalLink } from "../terminal-link";
 import { cn } from "@/lib/utils";
 
 export function SmsHero() {
@@ -38,17 +39,7 @@ export function SmsHero() {
                             Send a test SMS
                             <ArrowRight className="ml-1.5 size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                         </Link>
-                        <Link
-                            href="/docs/sms"
-                            className="group/button relative inline-flex h-10 items-center gap-2 overflow-hidden rounded-full border bg-background px-4 font-mono text-sm text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:text-foreground hover:shadow-lg hover:shadow-black/20"
-                        >
-                            <span className="text-signal">$</span>
-                            view docs
-                            <span
-                                aria-hidden
-                                className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-foreground/10 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-                            />
-                        </Link>
+                        <TerminalLink href="/docs/sms">view docs</TerminalLink>
                     </div>
                 </div>
 

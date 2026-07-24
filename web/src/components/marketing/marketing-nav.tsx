@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { SearchTrigger } from "../command-palette/search-trigger";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -149,9 +150,10 @@ export function MarketingNav() {
                     </NavigationMenu>
 
                     <div className="hidden items-center gap-2 md:flex">
+                        <SearchTrigger className="mr-1" />
                         <Link
                             href="/login"
-                            className="group/button relative inline-flex h-9 shrink-0 items-center gap-2 overflow-hidden rounded-full border bg-background px-4 font-mono text-sm text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:text-foreground hover:shadow-lg hover:shadow-black/20"
+                            className="group/button relative inline-flex h-9 shrink-0 items-center gap-2 overflow-hidden rounded-full border bg-background px-4 font-mono text-sm text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:text-foreground hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
                         >
                             Sign in
                             <span

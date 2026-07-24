@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { SocialLinks } from "./social-links";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Reveal } from "@/components/marketing/reveal";
 
 const columns = [
@@ -17,8 +19,8 @@ const columns = [
         links: [
             { label: "Documentation", href: "/docs" },
             { label: "Quickstart", href: "/quickstart" },
-            { label: "API reference", href: "/quickstart" },
-            { label: "Security", href: "/security" },
+            { label: "API reference", href: "/docs/api" },
+            { label: "Changelog", href: "/changelog" },
             { label: "Status", href: "/status" },
         ],
     },
@@ -27,9 +29,9 @@ const columns = [
         links: [
             { label: "About", href: "/about" },
             { label: "Blog", href: "/blog" },
+            // { label: "Brand", href: "/brand" },
             { label: "Contact", href: "/contact" },
-            { label: "Terms", href: "/legal/terms" },
-            { label: "Privacy", href: "/legal/privacy" },
+            { label: "Security", href: "/security" },
         ],
     },
 ];
@@ -38,7 +40,7 @@ export function Footer() {
     return (
         <Reveal as="footer" className="space-y-10 border-t pt-10">
             <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="space-y-3">
+                <div className="space-y-4">
                     <Link
                         href="/"
                         className="inline-block font-heading text-lg font-semibold tracking-tight transition-opacity hover:opacity-90"
@@ -49,6 +51,7 @@ export function Footer() {
                         Email and SMS APIs for products that need messages
                         delivered and proven.
                     </p>
+                    <SocialLinks />
                 </div>
                 {columns.map((col) => (
                     <div key={col.title} className="space-y-3">
@@ -68,10 +71,26 @@ export function Footer() {
                     </div>
                 ))}
             </div>
-            <div className="flex flex-col gap-3 border-t pb-8 pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-                <span>
-                    © {new Date().getFullYear()} Dugble. All rights reserved.
-                </span>
+            <div className="flex flex-col items-center justify-between gap-4 border-t pb-8 pt-6 text-xs text-muted-foreground sm:flex-row">
+                <div className="flex items-center gap-4">
+                    <span>
+                        © {new Date().getFullYear()} Dugble. All rights
+                        reserved.
+                    </span>
+                    <Link
+                        href="/legal/terms"
+                        className="hover:text-foreground transition-colors"
+                    >
+                        Terms
+                    </Link>
+                    <Link
+                        href="/legal/privacy"
+                        className="hover:text-foreground transition-colors"
+                    >
+                        Privacy
+                    </Link>
+                </div>
+                <ThemeToggle />
             </div>
         </Reveal>
     );

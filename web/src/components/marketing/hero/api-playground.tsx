@@ -62,7 +62,7 @@ export function ApiPlayground() {
     }, [cycle]);
 
     return (
-        <div className="relative overflow-hidden rounded-2xl border bg-card shadow-2xl shadow-black/40">
+        <div className="relative overflow-hidden rounded-2xl border bg-card shadow-lg shadow-black/5 dark:shadow-2xl dark:shadow-black/40">
             <div className="flex items-center gap-1.5 border-b bg-muted/30 px-4 py-3">
                 <span className="size-2.5 rounded-full bg-danger/70" />
                 <span className="size-2.5 rounded-full bg-pending/70" />

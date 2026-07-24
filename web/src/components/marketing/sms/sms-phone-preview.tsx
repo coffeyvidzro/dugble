@@ -46,10 +46,9 @@ export function SmsPhonePreview() {
 
     return (
         <Reveal className="relative mx-auto w-full max-w-70">
-            <div className="relative overflow-hidden rounded-[2.5rem] border-[6px] border-card bg-background shadow-2xl shadow-black/40">
-                <div className="absolute left-1/2 top-0 z-10 h-5 w-28 -translate-x-1/2 rounded-b-2xl bg-card" />
-
-                <div className="flex flex-col gap-4 px-5 pb-8 pt-11">
+            <div className="relative overflow-hidden rounded-[2.5rem] border-10 border-border dark:border-muted bg-background shadow-lg shadow-black/5 dark:shadow-2xl dark:shadow-black/40">
+                <div className="absolute left-1/2 top-0 z-10 h-5 w-28 -translate-x-1/2 rounded-b-2xl bg-border dark:bg-muted" />
+                <div className="flex flex-col gap-10 px-5 pb-8 pt-11">
                     <div className="flex items-center gap-2.5 border-b pb-3">
                         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted font-heading text-xs font-semibold">
                             D

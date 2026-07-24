@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
+import { TerminalLink } from "../terminal-link";
 import { cn } from "@/lib/utils";
 
 export function HeroActions() {
@@ -18,17 +19,14 @@ export function HeroActions() {
                 Start building
                 <ArrowRight className="ml-1.5 size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
             </Link>
-            <Link
+            <TerminalLink
                 href="/quickstart"
-                className="group/button relative inline-flex h-11 flex-1 items-center justify-center gap-2 overflow-hidden rounded-full border bg-background px-4 font-mono text-sm text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:text-foreground hover:shadow-lg hover:shadow-black/20 sm:flex-none"
+                size="lg"
+                className="flex-1 sm:flex-none"
+                truncateLabel
             >
-                <span className="text-signal">$</span>
-                <span className="truncate">curl dugble.com/send</span>
-                <span
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-foreground/10 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-                />
-            </Link>
+                curl dugble.com/sen
+            </TerminalLink>
         </div>
     );
 }
