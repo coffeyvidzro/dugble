@@ -23,6 +23,10 @@ func (s *Service) List(ctx context.Context, filter Filter) ([]Row, error) {
 	return s.repository.List(ctx, filter)
 }
 
+func (s *Service) Detail(ctx context.Context, id string) (Detail, error) {
+	return s.repository.Detail(ctx, strings.TrimSpace(id))
+}
+
 func (s *Service) UpdateStatus(ctx context.Context, id string, req StatusRequest) error {
 	switch strings.TrimSpace(req.Action) {
 	case "approve":

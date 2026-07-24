@@ -93,8 +93,10 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	protected.POST("/wallets/:id/adjust", handler.AdjustWallet)
 	protected.POST("/wallets/:id/status", handler.UpdateWalletStatus)
 	protected.GET("/sender-ids", handler.SenderIDs)
+	protected.GET("/sender-ids/:id", handler.SenderIDDetail)
 	protected.POST("/sender-ids/:id/status", handler.UpdateSenderIDStatus)
 	protected.GET("/domains", handler.Domains)
+	protected.GET("/domains/:id", handler.DomainDetail)
 	protected.POST("/domains/:id/status", handler.UpdateDomainStatus)
 
 	return router, nil

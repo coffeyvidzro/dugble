@@ -229,6 +229,20 @@ func (h *Handler) SenderIDs(c *echo.Context) error {
 	return h.render(c, "sender_ids.html", "Sender IDs", senderIDs, filter)
 }
 
+func (h *Handler) SenderIDDetail(c *echo.Context) error {
+	id, ok := validID(c)
+	if !ok {
+		return c.String(http.StatusBadRequest, "invalid sender id")
+	}
+
+	detail, err := h.senderIDs.Detail(c.Request().Context(), id)
+	if err != nil {
+		return handleDetailError(c, err)
+	}
+
+	return h.render(c, "sender_id_detail.html", "Sender ID "+detail.Name, detail, nil)
+}
+
 func (h *Handler) UpdateSenderIDStatus(c *echo.Context) error {
 	id, ok := validID(c)
 	if !ok {
@@ -242,7 +256,7 @@ func (h *Handler) UpdateSenderIDStatus(c *echo.Context) error {
 		return handleSenderIDCommandError(c, err)
 	}
 
-	return c.Redirect(http.StatusSeeOther, "/sender-ids?status=pending")
+	return c.Redirect(http.StatusSeeOther, "/sender-ids/"+id)
 }
 
 func (h *Handler) Domains(c *echo.Context) error {
@@ -258,6 +272,20 @@ func (h *Handler) Domains(c *echo.Context) error {
 	return h.render(c, "domains.html", "Domains", domains, filter)
 }
 
+func (h *Handler) DomainDetail(c *echo.Context) error {
+	id, ok := validID(c)
+	if !ok {
+		return c.String(http.StatusBadRequest, "invalid domain id")
+	}
+
+	detail, err := h.domains.Detail(c.Request().Context(), id)
+	if err != nil {
+		return handleDetailError(c, err)
+	}
+
+	return h.render(c, "domain_detail.html", detail.Domain, detail, nil)
+}
+
 func (h *Handler) UpdateDomainStatus(c *echo.Context) error {
 	id, ok := validID(c)
 	if !ok {
@@ -271,7 +299,7 @@ func (h *Handler) UpdateDomainStatus(c *echo.Context) error {
 		return handleDomainCommandError(c, err)
 	}
 
-	return c.Redirect(http.StatusSeeOther, "/domains?status=pending")
+	return c.Redirect(http.StatusSeeOther, "/domains/"+id)
 }
 
 func cleanQuery(value string) string {

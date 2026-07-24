@@ -43,6 +43,51 @@ func (r *Repository) List(ctx context.Context, filter Filter) ([]Row, error) {
 	return domains, rows.Err()
 }
 
+func (r *Repository) Detail(ctx context.Context, id string) (Detail, error) {
+	var detail Detail
+	if err := r.db.QueryRow(ctx, `
+		SELECT
+			d.id::text,
+			d.team_id::text,
+			t.name,
+			d.domain,
+			d.provider,
+			d.provider_region,
+			d.status,
+			coalesce(d.verification_records::text, '{}'),
+			coalesce(d.failure_reason, ''),
+			coalesce(to_char(d.last_checked_at, 'YYYY-MM-DD HH24:MI'), ''),
+			coalesce(to_char(d.verified_at, 'YYYY-MM-DD HH24:MI'), ''),
+			coalesce(to_char(d.disabled_at, 'YYYY-MM-DD HH24:MI'), ''),
+			coalesce(d.created_by::text, ''),
+			d.created_at,
+			d.updated_at
+		FROM sender_domains d
+		JOIN teams t ON t.id = d.team_id
+		WHERE d.id = $1::uuid
+	`, id).Scan(
+		&detail.ID,
+		&detail.TeamID,
+		&detail.TeamName,
+		&detail.Domain,
+		&detail.Provider,
+		&detail.ProviderRegion,
+		&detail.Status,
+		&detail.VerificationRecords,
+		&detail.FailureReason,
+		&detail.LastCheckedAt,
+		&detail.VerifiedAt,
+		&detail.DisabledAt,
+		&detail.CreatedBy,
+		&detail.CreatedAt,
+		&detail.UpdatedAt,
+	); err != nil {
+		return Detail{}, fmt.Errorf("get domain detail: %w", err)
+	}
+
+	return detail, nil
+}
+
 func (r *Repository) Verify(ctx context.Context, id string) error {
 	tag, err := r.db.Exec(ctx, `
 		UPDATE sender_domains

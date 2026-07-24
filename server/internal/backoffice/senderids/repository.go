@@ -43,6 +43,51 @@ func (r *Repository) List(ctx context.Context, filter Filter) ([]Row, error) {
 	return senderIDs, rows.Err()
 }
 
+func (r *Repository) Detail(ctx context.Context, id string) (Detail, error) {
+	var detail Detail
+	if err := r.db.QueryRow(ctx, `
+		SELECT
+			s.id::text,
+			s.team_id::text,
+			t.name,
+			s.name,
+			s.country_code,
+			s.purpose,
+			s.status,
+			coalesce(s.provider, ''),
+			coalesce(s.rejection_reason, ''),
+			coalesce(to_char(s.approved_at, 'YYYY-MM-DD HH24:MI'), ''),
+			coalesce(to_char(s.rejected_at, 'YYYY-MM-DD HH24:MI'), ''),
+			coalesce(to_char(s.suspended_at, 'YYYY-MM-DD HH24:MI'), ''),
+			coalesce(s.created_by::text, ''),
+			s.created_at,
+			s.updated_at
+		FROM sender_ids s
+		JOIN teams t ON t.id = s.team_id
+		WHERE s.id = $1::uuid
+	`, id).Scan(
+		&detail.ID,
+		&detail.TeamID,
+		&detail.TeamName,
+		&detail.Name,
+		&detail.CountryCode,
+		&detail.Purpose,
+		&detail.Status,
+		&detail.Provider,
+		&detail.RejectionReason,
+		&detail.ApprovedAt,
+		&detail.RejectedAt,
+		&detail.SuspendedAt,
+		&detail.CreatedBy,
+		&detail.CreatedAt,
+		&detail.UpdatedAt,
+	); err != nil {
+		return Detail{}, fmt.Errorf("get sender id detail: %w", err)
+	}
+
+	return detail, nil
+}
+
 func (r *Repository) Approve(ctx context.Context, id string) error {
 	tag, err := r.db.Exec(ctx, `
 		UPDATE sender_ids
