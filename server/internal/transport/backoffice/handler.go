@@ -12,8 +12,8 @@ import (
 
 	backofficedashboard "github.com/coffeyvidzro/dugble/server/internal/backoffice/dashboard"
 	backofficedomains "github.com/coffeyvidzro/dugble/server/internal/backoffice/domains"
-	backofficemessages "github.com/coffeyvidzro/dugble/server/internal/backoffice/messages"
 	backofficesenderids "github.com/coffeyvidzro/dugble/server/internal/backoffice/senderids"
+	backofficesms "github.com/coffeyvidzro/dugble/server/internal/backoffice/sms"
 	backofficeteams "github.com/coffeyvidzro/dugble/server/internal/backoffice/teams"
 	backofficeusers "github.com/coffeyvidzro/dugble/server/internal/backoffice/users"
 	backofficewallets "github.com/coffeyvidzro/dugble/server/internal/backoffice/wallets"
@@ -23,7 +23,7 @@ import (
 type Handler struct {
 	dashboard *backofficedashboard.Service
 	users     *backofficeusers.Service
-	messages  *backofficemessages.Service
+	sms       *backofficesms.Service
 	teams     *backofficeteams.Service
 	wallets   *backofficewallets.Service
 	senderIDs *backofficesenderids.Service
@@ -33,13 +33,13 @@ type Handler struct {
 func NewHandler(
 	dashboard *backofficedashboard.Service,
 	users *backofficeusers.Service,
-	messages *backofficemessages.Service,
+	sms *backofficesms.Service,
 	teams *backofficeteams.Service,
 	wallets *backofficewallets.Service,
 	senderIDs *backofficesenderids.Service,
 	domains *backofficedomains.Service,
 ) *Handler {
-	return &Handler{dashboard: dashboard, users: users, messages: messages, teams: teams, wallets: wallets, senderIDs: senderIDs, domains: domains}
+	return &Handler{dashboard: dashboard, users: users, sms: sms, teams: teams, wallets: wallets, senderIDs: senderIDs, domains: domains}
 }
 
 func (h *Handler) Dashboard(c *echo.Context) error {
@@ -116,11 +116,11 @@ func (h *Handler) UpdateTeamStatus(c *echo.Context) error {
 }
 
 func (h *Handler) SMSMessages(c *echo.Context) error {
-	filter := backofficemessages.Filter{
+	filter := backofficesms.Filter{
 		Query:  cleanQuery(c.QueryParam("q")),
 		Status: cleanQuery(c.QueryParam("status")),
 	}
-	messages, err := h.messages.List(c.Request().Context(), filter)
+	messages, err := h.sms.List(c.Request().Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (h *Handler) SMSDetail(c *echo.Context) error {
 		return c.String(http.StatusBadRequest, "invalid sms id")
 	}
 
-	detail, err := h.messages.Detail(c.Request().Context(), id)
+	detail, err := h.sms.Detail(c.Request().Context(), id)
 	if err != nil {
 		return handleDetailError(c, err)
 	}
