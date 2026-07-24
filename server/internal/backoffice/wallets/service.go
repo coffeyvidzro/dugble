@@ -48,21 +48,3 @@ func (s *Service) Adjust(ctx context.Context, id string, req AdjustmentRequest) 
 
 	return s.repository.Adjust(ctx, strings.TrimSpace(id), amountMicros, reason)
 }
-
-func (s *Service) UpdateStatus(ctx context.Context, id string, req StatusRequest) error {
-	var status string
-	switch strings.TrimSpace(req.Action) {
-	case "freeze":
-		status = "frozen"
-	case "unfreeze":
-		status = "active"
-	default:
-		return fmt.Errorf("%w: action must be freeze or unfreeze", ErrInvalidRequest)
-	}
-
-	if strings.TrimSpace(req.Reason) == "" {
-		return fmt.Errorf("%w: status change reason is required", ErrInvalidRequest)
-	}
-
-	return s.repository.UpdateStatus(ctx, strings.TrimSpace(id), status)
-}

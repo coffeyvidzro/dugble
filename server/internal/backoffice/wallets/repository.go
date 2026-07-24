@@ -158,23 +158,6 @@ func (r *Repository) Adjust(ctx context.Context, id string, amountMicros int64, 
 	return nil
 }
 
-func (r *Repository) UpdateStatus(ctx context.Context, id string, status string) error {
-	tag, err := r.db.Exec(ctx, `
-		UPDATE wallets
-		SET status = $2,
-			updated_at = now()
-		WHERE id = $1::uuid
-	`, id, status)
-	if err != nil {
-		return fmt.Errorf("update wallet status: %w", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("update wallet status: %w", pgx.ErrNoRows)
-	}
-
-	return nil
-}
-
 func (r *Repository) get(ctx context.Context, id string) (Row, error) {
 	var wallet Row
 	if err := r.db.QueryRow(ctx, `

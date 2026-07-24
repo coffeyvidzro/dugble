@@ -91,7 +91,6 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	protected.GET("/wallets/:id", handler.WalletDetail)
 	protected.GET("/wallets/:id/transactions", handler.WalletTransactions)
 	protected.POST("/wallets/:id/adjust", handler.AdjustWallet)
-	protected.POST("/wallets/:id/status", handler.UpdateWalletStatus)
 	protected.GET("/sender-ids", handler.SenderIDs)
 	protected.GET("/sender-ids/:id", handler.SenderIDDetail)
 	protected.POST("/sender-ids/:id/status", handler.UpdateSenderIDStatus)

@@ -27,20 +27,6 @@
   </label>
   <button type="submit">Apply adjustment</button>
 </form>
-<h2>Status</h2>
-<form class="control-panel" method="post" action="/wallets/{{$wallet.ID}}/status">
-  <input type="hidden" name="csrf" value="{{.CSRF}}">
-  <label>Action
-    <select name="action" required>
-      <option value="freeze">Freeze</option>
-      <option value="unfreeze">Unfreeze</option>
-    </select>
-  </label>
-  <label>Reason
-    <input type="text" name="reason" placeholder="Risk review" required>
-  </label>
-  <button type="submit">Update status</button>
-</form>
 <h2>Recent transactions</h2>
 {{template "wallet_transactions_table" $detail.Transactions}}
 {{template "layout_end" .}}

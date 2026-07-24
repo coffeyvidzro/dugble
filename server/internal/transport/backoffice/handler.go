@@ -200,22 +200,6 @@ func (h *Handler) AdjustWallet(c *echo.Context) error {
 	return c.Redirect(http.StatusSeeOther, "/wallets/"+id)
 }
 
-func (h *Handler) UpdateWalletStatus(c *echo.Context) error {
-	id, ok := validID(c)
-	if !ok {
-		return c.String(http.StatusBadRequest, "invalid wallet id")
-	}
-
-	if err := h.wallets.UpdateStatus(c.Request().Context(), id, backofficewallets.StatusRequest{
-		Action: c.Request().FormValue("action"),
-		Reason: c.Request().FormValue("reason"),
-	}); err != nil {
-		return handleWalletCommandError(c, err)
-	}
-
-	return c.Redirect(http.StatusSeeOther, "/wallets/"+id)
-}
-
 func (h *Handler) SenderIDs(c *echo.Context) error {
 	filter := backofficesenderids.Filter{
 		Query:  cleanQuery(c.QueryParam("q")),

@@ -39,8 +39,3 @@ type AdjustmentRequest struct {
 	AmountUSD string
 	Reason    string
 }
-
-type StatusRequest struct {
-	Action string
-	Reason string
-}
