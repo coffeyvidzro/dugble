@@ -8,6 +8,7 @@ import (
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
 
+	backofficeteams "github.com/coffeyvidzro/dugble/server/internal/backoffice/teams"
 	backofficewallets "github.com/coffeyvidzro/dugble/server/internal/backoffice/wallets"
 	"github.com/coffeyvidzro/dugble/server/internal/config"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/auth"
@@ -60,6 +61,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 
 	handler := NewHandler(
 		NewRepository(deps.DB),
+		backofficeteams.NewService(backofficeteams.NewRepository(deps.DB)),
 		backofficewallets.NewService(backofficewallets.NewRepository(deps.DB)),
 	)
 

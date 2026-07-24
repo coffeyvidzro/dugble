@@ -10,17 +10,19 @@ import (
 
 	"github.com/google/uuid"
 
+	backofficeteams "github.com/coffeyvidzro/dugble/server/internal/backoffice/teams"
 	backofficewallets "github.com/coffeyvidzro/dugble/server/internal/backoffice/wallets"
 	"github.com/coffeyvidzro/dugble/server/internal/transport/middlewares"
 )
 
 type Handler struct {
 	repository *Repository
+	teams      *backofficeteams.Service
 	wallets    *backofficewallets.Service
 }
 
-func NewHandler(repository *Repository, wallets *backofficewallets.Service) *Handler {
-	return &Handler{repository: repository, wallets: wallets}
+func NewHandler(repository *Repository, teams *backofficeteams.Service, wallets *backofficewallets.Service) *Handler {
+	return &Handler{repository: repository, teams: teams, wallets: wallets}
 }
 
 func (h *Handler) Dashboard(c *echo.Context) error {
@@ -57,8 +59,8 @@ func (h *Handler) UserDetail(c *echo.Context) error {
 }
 
 func (h *Handler) Teams(c *echo.Context) error {
-	filter := TeamFilter{Query: cleanQuery(c.QueryParam("q"))}
-	teams, err := h.repository.Teams(c.Request().Context(), filter)
+	filter := backofficeteams.Filter{Query: cleanQuery(c.QueryParam("q"))}
+	teams, err := h.teams.List(c.Request().Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -72,7 +74,7 @@ func (h *Handler) TeamDetail(c *echo.Context) error {
 		return c.String(http.StatusBadRequest, "invalid team id")
 	}
 
-	detail, err := h.repository.TeamDetail(c.Request().Context(), id)
+	detail, err := h.teams.Detail(c.Request().Context(), id)
 	if err != nil {
 		return handleDetailError(c, err)
 	}
@@ -86,23 +88,11 @@ func (h *Handler) UpdateTeamStatus(c *echo.Context) error {
 		return c.String(http.StatusBadRequest, "invalid team id")
 	}
 
-	var status string
-	switch cleanQuery(c.Request().FormValue("action")) {
-	case "enable":
-		status = "active"
-	case "disable":
-		status = "disabled"
-	default:
-		return c.String(http.StatusBadRequest, "action must be enable or disable")
-	}
-
-	reason := cleanQuery(c.Request().FormValue("reason"))
-	if reason == "" {
-		return c.String(http.StatusBadRequest, "status change reason is required")
-	}
-
-	if err := h.repository.UpdateTeamStatus(c.Request().Context(), id, status); err != nil {
-		return handleDetailError(c, err)
+	if err := h.teams.UpdateStatus(c.Request().Context(), id, backofficeteams.StatusRequest{
+		Action: c.Request().FormValue("action"),
+		Reason: c.Request().FormValue("reason"),
+	}); err != nil {
+		return handleTeamCommandError(c, err)
 	}
 
 	return c.Redirect(http.StatusSeeOther, "/teams/"+id)
@@ -298,6 +288,14 @@ func validID(c *echo.Context) (string, bool) {
 	}
 
 	return id, true
+}
+
+func handleTeamCommandError(c *echo.Context, err error) error {
+	if errors.Is(err, backofficeteams.ErrInvalidRequest) {
+		return c.String(http.StatusBadRequest, strings.TrimPrefix(err.Error(), backofficeteams.ErrInvalidRequest.Error()+": "))
+	}
+
+	return handleDetailError(c, err)
 }
 
 func handleWalletCommandError(c *echo.Context, err error) error {

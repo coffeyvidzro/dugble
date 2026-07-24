@@ -1,10 +1,6 @@
 package backoffice
 
-import (
-	"time"
-
-	backofficewallets "github.com/coffeyvidzro/dugble/server/internal/backoffice/wallets"
-)
+import "time"
 
 type DashboardStats struct {
 	Users            int64
@@ -16,10 +12,6 @@ type DashboardStats struct {
 }
 
 type UserFilter struct {
-	Query string
-}
-
-type TeamFilter struct {
 	Query string
 }
 
@@ -44,13 +36,6 @@ type UserRow struct {
 	Name          string
 	EmailVerified bool
 	CreatedAt     time.Time
-}
-
-type TeamRow struct {
-	ID        string
-	Name      string
-	Status    string
-	CreatedAt time.Time
 }
 
 type SMSRow struct {
@@ -99,22 +84,6 @@ type TeamMembershipRow struct {
 	Name   string
 	Role   string
 	Status string
-}
-
-type TeamDetail struct {
-	Team    TeamRow
-	Members []TeamMemberRow
-	Wallets []backofficewallets.Row
-	SMS     []SMSRow
-}
-
-type TeamMemberRow struct {
-	UserID    string
-	Email     string
-	Name      string
-	Role      string
-	Status    string
-	CreatedAt time.Time
 }
 
 type SMSDetail struct {
