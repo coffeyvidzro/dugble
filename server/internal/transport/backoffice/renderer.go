@@ -31,12 +31,13 @@ func (r *Renderer) Render(_ *echo.Context, w io.Writer, templateName string, dat
 	return r.templates.ExecuteTemplate(w, templateName, data)
 }
 
-func formatMoney(cents int64) string {
-	negative := cents < 0
+func formatMoney(micros int64) string {
+	negative := micros < 0
 	if negative {
-		cents = -cents
+		micros = -micros
 	}
 
+	cents := (micros + 5_000) / 10_000
 	whole := cents / 100
 	fraction := cents % 100
 	if negative {
