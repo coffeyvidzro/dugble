@@ -19,12 +19,14 @@
       <td>
         {{if eq .Status "pending"}}
         <div class="actions">
-          <form method="post" action="/domains/{{.ID}}/verify">
+          <form method="post" action="/domains/{{.ID}}/status">
             <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <input type="hidden" name="action" value="verify">
             <button type="submit">Verify</button>
           </form>
-          <form method="post" action="/domains/{{.ID}}/fail">
+          <form method="post" action="/domains/{{.ID}}/status">
             <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <input type="hidden" name="action" value="fail">
             <input type="text" name="reason" placeholder="Reason" required>
             <button class="danger" type="submit">Fail</button>
           </form>

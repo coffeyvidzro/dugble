@@ -247,31 +247,27 @@ func (h *Handler) SenderIDs(c *echo.Context) error {
 	return h.render(c, "sender_ids.html", "Sender IDs", senderIDs, filter)
 }
 
-func (h *Handler) ApproveSenderID(c *echo.Context) error {
-	id, ok := validID(c)
-	if !ok {
-		return c.String(http.StatusBadRequest, "invalid sender id")
-	}
-	if err := h.repository.ApproveSenderID(c.Request().Context(), id); err != nil {
-		return handleDetailError(c, err)
-	}
-
-	return c.Redirect(http.StatusSeeOther, "/sender-ids?status=pending")
-}
-
-func (h *Handler) RejectSenderID(c *echo.Context) error {
+func (h *Handler) UpdateSenderIDStatus(c *echo.Context) error {
 	id, ok := validID(c)
 	if !ok {
 		return c.String(http.StatusBadRequest, "invalid sender id")
 	}
 
-	reason := cleanQuery(c.Request().FormValue("reason"))
-	if reason == "" {
-		return c.String(http.StatusBadRequest, "rejection reason is required")
-	}
-
-	if err := h.repository.RejectSenderID(c.Request().Context(), id, reason); err != nil {
-		return handleDetailError(c, err)
+	switch cleanQuery(c.Request().FormValue("action")) {
+	case "approve":
+		if err := h.repository.ApproveSenderID(c.Request().Context(), id); err != nil {
+			return handleDetailError(c, err)
+		}
+	case "reject":
+		reason := cleanQuery(c.Request().FormValue("reason"))
+		if reason == "" {
+			return c.String(http.StatusBadRequest, "rejection reason is required")
+		}
+		if err := h.repository.RejectSenderID(c.Request().Context(), id, reason); err != nil {
+			return handleDetailError(c, err)
+		}
+	default:
+		return c.String(http.StatusBadRequest, "action must be approve or reject")
 	}
 
 	return c.Redirect(http.StatusSeeOther, "/sender-ids?status=pending")
@@ -290,31 +286,27 @@ func (h *Handler) Domains(c *echo.Context) error {
 	return h.render(c, "domains.html", "Domains", domains, filter)
 }
 
-func (h *Handler) VerifyDomain(c *echo.Context) error {
-	id, ok := validID(c)
-	if !ok {
-		return c.String(http.StatusBadRequest, "invalid domain id")
-	}
-	if err := h.repository.VerifyDomain(c.Request().Context(), id); err != nil {
-		return handleDetailError(c, err)
-	}
-
-	return c.Redirect(http.StatusSeeOther, "/domains?status=pending")
-}
-
-func (h *Handler) FailDomain(c *echo.Context) error {
+func (h *Handler) UpdateDomainStatus(c *echo.Context) error {
 	id, ok := validID(c)
 	if !ok {
 		return c.String(http.StatusBadRequest, "invalid domain id")
 	}
 
-	reason := cleanQuery(c.Request().FormValue("reason"))
-	if reason == "" {
-		return c.String(http.StatusBadRequest, "failure reason is required")
-	}
-
-	if err := h.repository.FailDomain(c.Request().Context(), id, reason); err != nil {
-		return handleDetailError(c, err)
+	switch cleanQuery(c.Request().FormValue("action")) {
+	case "verify":
+		if err := h.repository.VerifyDomain(c.Request().Context(), id); err != nil {
+			return handleDetailError(c, err)
+		}
+	case "fail":
+		reason := cleanQuery(c.Request().FormValue("reason"))
+		if reason == "" {
+			return c.String(http.StatusBadRequest, "failure reason is required")
+		}
+		if err := h.repository.FailDomain(c.Request().Context(), id, reason); err != nil {
+			return handleDetailError(c, err)
+		}
+	default:
+		return c.String(http.StatusBadRequest, "action must be verify or fail")
 	}
 
 	return c.Redirect(http.StatusSeeOther, "/domains?status=pending")
