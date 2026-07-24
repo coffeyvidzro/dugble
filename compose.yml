@@ -5,8 +5,20 @@ x-app-env: &app-env
   DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-dugble}?sslmode=disable
   REDIS_URL: redis://redis:6379/0
   FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+  BACKEND_URL: ${BACKEND_URL:-http://localhost:8080}
   CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
   ARCJET_KEY: ${ARCJET_KEY}
+  AWS_FROM_EMAIL: ${AWS_FROM_EMAIL}
+  AWS_REGION: ${AWS_REGION:-us-east-1}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+  ARKESEL_BASE_URL: ${ARKESEL_BASE_URL:-https://sms.arkesel.com}
+  ARKESEL_API_KEY: ${ARKESEL_API_KEY}
+  MNOTIFY_BASE_URL: ${MNOTIFY_BASE_URL:-https://api.mnotify.com}
+  MNOTIFY_API_KEY: ${MNOTIFY_API_KEY}
+  HUBTEL_API_ID: ${HUBTEL_API_ID}
+  HUBTEL_API_KEY: ${HUBTEL_API_KEY}
+  HUBTEL_MERCHANT_ACCOUNT_NUMBER: ${HUBTEL_MERCHANT_ACCOUNT_NUMBER}
 
 x-app-build: &app-build
   build:
@@ -78,6 +90,7 @@ services:
     command: ["/dugble/server"]
     environment:
       <<: *app-env
+      HTTP_PORT: "8080"
     expose:
       - "8080"
     networks:
@@ -102,7 +115,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-        
+
   backoffice:
     <<: *app-build
     container_name: dugble-backoffice
@@ -110,8 +123,10 @@ services:
     command: ["/dugble/backoffice"]
     environment:
       <<: *app-env
+      BACKOFFICE_HTTP_PORT: "8081"
+      BACKOFFICE_ADMIN_EMAILS: ${BACKOFFICE_ADMIN_EMAILS}
     expose:
-      - "1502"
+      - "8081"
     networks:
       - dugble-network
     depends_on:
@@ -119,7 +134,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-
 
 networks:
   dugble-network:
