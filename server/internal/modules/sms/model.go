@@ -66,14 +66,6 @@ func (m Message) Response() SMSResponse {
 	}
 }
 
-func MessagesResponse(messages []Message) []SMSResponse {
-	responses := make([]SMSResponse, len(messages))
-	for index, message := range messages {
-		responses[index] = message.Response()
-	}
-	return responses
-}
-
 type Billing struct {
 	UnitCost  float64 `json:"unitCost"`
 	TotalCost float64 `json:"totalCost"`
@@ -100,34 +92,6 @@ type BatchSendFailure struct {
 type BatchSendResponse struct {
 	Messages []Message          `json:"messages"`
 	Failures []BatchSendFailure `json:"failures,omitempty"`
-}
-
-type BatchSendAPIResponse struct {
-	Messages []SMSResponse         `json:"messages"`
-	Failures []BatchSendAPIFailure `json:"failures,omitempty"`
-}
-
-type BatchSendAPIFailure struct {
-	Index   int          `json:"index"`
-	Message *SMSResponse `json:"message,omitempty"`
-	Error   string       `json:"error"`
-}
-
-func (r BatchSendResponse) APIResponse() BatchSendAPIResponse {
-	response := BatchSendAPIResponse{Messages: MessagesResponse(r.Messages)}
-	if len(r.Failures) == 0 {
-		return response
-	}
-	response.Failures = make([]BatchSendAPIFailure, 0, len(r.Failures))
-	for _, failure := range r.Failures {
-		apiFailure := BatchSendAPIFailure{Index: failure.Index, Error: failure.Error}
-		if failure.Message != nil {
-			message := failure.Message.Response()
-			apiFailure.Message = &message
-		}
-		response.Failures = append(response.Failures, apiFailure)
-	}
-	return response
 }
 
 type ListRequest struct {

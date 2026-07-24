@@ -1,4 +1,4 @@
-h1:GIJ+3ZuVDOeeIViHEcSwAGEpYwX11L9ByZFVyXwmEdA=
+h1:Sk6yWcs9GnGdtZVH1UUAGwIpwUQPDjh5DE+UWSRwGxQ=
 001_create_users.sql h1:q5P9+8Gtd75ml6n0671QvUUZ4S0iBKAgURRdPAwwf+4=
 003_create_sessions.sql h1:M9YbeeWvKdTb9yiJMnJJo1wpgPK8BE9S3ceoUdOrMq8=
 004_create_oauth_identities.sql h1:m4I0QHJrFsNMD2EJlHdYqamScJYt0KqX2VBFpqVeN8k=
@@ -8,4 +8,6 @@ h1:GIJ+3ZuVDOeeIViHEcSwAGEpYwX11L9ByZFVyXwmEdA=
 008_create_team_tokens.sql h1:kSw04WsGpb+fFDPdB45g7/ZxRNVfunSyIpEAf8dfuDY=
 009_create_sender_ids.sql h1:UDAdBZoRqyVJf5250ymVNhUJaamPD0KY5pBDI66Bw7g=
 010_create_sender_domains.sql h1:VpMW83y4mRZAn0WOy3j3iXXuPwP9uzt6QCYeUbHfX8E=
-011_create_wallets.sql h1:p4Yjsbz87KPlcorSLE7W/wFYfqkxCPe3NC5AVQccADM=
+011_create_wallets.sql h1:Tl6DJxc3616M4SueRa+GRzvVTWkYjmbtB9Tb4ScfS3U=
+012_create_sms_messages.sql h1:9mjZiJcmPbc2wQuA3DT4VCdcC90L85v98HFb4zvelg4=
+013_create_idempotency_keys.sql h1:3E5iCafbk/FVi+IqmGxiQr6Q0prejkH9WfdIQ711skA=
