@@ -99,6 +99,31 @@ type SmsMessage struct {
 	DeliveredAt       pgtype.Timestamptz `db:"delivered_at" json:"delivered_at"`
 	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	TrafficClass      string             `db:"traffic_class" json:"traffic_class"`
+	PricingRuleID     uuid.UUID          `db:"pricing_rule_id" json:"pricing_rule_id"`
+	UnitCostMicros    int64              `db:"unit_cost_micros" json:"unit_cost_micros"`
+}
+
+type SmsPricingPlan struct {
+	ID        uuid.UUID          `db:"id" json:"id"`
+	Name      string             `db:"name" json:"name"`
+	Currency  string             `db:"currency" json:"currency"`
+	IsDefault bool               `db:"is_default" json:"is_default"`
+	Status    string             `db:"status" json:"status"`
+	CreatedAt pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type SmsPricingRule struct {
+	ID             uuid.UUID          `db:"id" json:"id"`
+	PricingPlanID  uuid.UUID          `db:"pricing_plan_id" json:"pricing_plan_id"`
+	TrafficClass   string             `db:"traffic_class" json:"traffic_class"`
+	UnitCostMicros int64              `db:"unit_cost_micros" json:"unit_cost_micros"`
+	EffectiveFrom  pgtype.Timestamptz `db:"effective_from" json:"effective_from"`
+	EffectiveUntil pgtype.Timestamptz `db:"effective_until" json:"effective_until"`
+	Status         string             `db:"status" json:"status"`
+	CreatedAt      pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
 type Team struct {
@@ -132,6 +157,16 @@ type TeamMember struct {
 	Status    string             `db:"status" json:"status"`
 	CreatedAt pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type TeamSmsSetting struct {
+	TeamID              uuid.UUID          `db:"team_id" json:"team_id"`
+	PricingPlanID       uuid.UUID          `db:"pricing_plan_id" json:"pricing_plan_id"`
+	DefaultTrafficClass string             `db:"default_traffic_class" json:"default_traffic_class"`
+	LocalEnabled        bool               `db:"local_enabled" json:"local_enabled"`
+	A2pEnabled          bool               `db:"a2p_enabled" json:"a2p_enabled"`
+	CreatedAt           pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
 type TeamToken struct {

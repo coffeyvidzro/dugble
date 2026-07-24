@@ -5,21 +5,25 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/coffeyvidzro/dugble/server/internal/integration/sms"
 )
 
 var (
-	ErrNoRoutesConfigured = errors.New("no SMS routes configured")
-	ErrNoEnabledRoutes    = errors.New("no SMS routes are enabled")
-	ErrInvalidProviderID  = errors.New("invalid SMS provider ID")
-	ErrInvalidPriority    = errors.New("invalid SMS provider priority")
-	ErrDuplicateProvider  = errors.New("duplicate SMS provider")
-	ErrDuplicatePriority  = errors.New("duplicate SMS provider priority")
+	ErrNoRoutesConfigured  = errors.New("no SMS routes configured")
+	ErrNoEnabledRoutes     = errors.New("no SMS routes are enabled")
+	ErrInvalidProviderID   = errors.New("invalid SMS provider ID")
+	ErrInvalidTrafficClass = errors.New("invalid SMS traffic class")
+	ErrInvalidPriority     = errors.New("invalid SMS provider priority")
+	ErrDuplicateProvider   = errors.New("duplicate SMS provider")
+	ErrDuplicatePriority   = errors.New("duplicate SMS provider priority")
 )
 
 type Route struct {
-	ProviderID string
-	Priority   int
-	Enabled    bool
+	ProviderID   string
+	TrafficClass string
+	Priority     int
+	Enabled      bool
 }
 
 type Config struct {
@@ -30,14 +34,16 @@ func DefaultConfig() Config {
 	return Config{
 		Routes: []Route{
 			{
-				ProviderID: "arkesel",
-				Priority:   1,
-				Enabled:    true,
+				ProviderID:   "arkesel",
+				TrafficClass: sms.TrafficClassA2P,
+				Priority:     1,
+				Enabled:      true,
 			},
 			{
-				ProviderID: "mnotify",
-				Priority:   2,
-				Enabled:    true,
+				ProviderID:   "mnotify",
+				TrafficClass: sms.TrafficClassA2P,
+				Priority:     2,
+				Enabled:      true,
 			},
 		},
 	}
@@ -49,13 +55,22 @@ func (c Config) Validate() error {
 	}
 
 	providers := make(map[string]struct{}, len(c.Routes))
-	priorities := make(map[int]string, len(c.Routes))
+	priorities := make(map[string]string, len(c.Routes))
 	enabledCount := 0
 
 	for _, route := range c.Routes {
 		providerID := normalizeProviderID(route.ProviderID)
 		if providerID == "" {
 			return ErrInvalidProviderID
+		}
+		trafficClass := sms.NormalizeTrafficClass(route.TrafficClass)
+		if !sms.IsKnownTrafficClass(trafficClass) {
+			return fmt.Errorf(
+				"%w for provider %q: %q",
+				ErrInvalidTrafficClass,
+				providerID,
+				route.TrafficClass,
+			)
 		}
 
 		if route.Priority < 1 {
@@ -66,25 +81,29 @@ func (c Config) Validate() error {
 			)
 		}
 
-		if _, exists := providers[providerID]; exists {
+		providerKey := trafficClass + ":" + providerID
+		if _, exists := providers[providerKey]; exists {
 			return fmt.Errorf(
-				"%w: %s",
+				"%w for traffic class %q: %s",
 				ErrDuplicateProvider,
+				trafficClass,
 				providerID,
 			)
 		}
-		providers[providerID] = struct{}{}
+		providers[providerKey] = struct{}{}
 
-		if existingProvider, exists := priorities[route.Priority]; exists {
+		priorityKey := fmt.Sprintf("%s:%d", trafficClass, route.Priority)
+		if existingProvider, exists := priorities[priorityKey]; exists {
 			return fmt.Errorf(
-				"%w: providers %q and %q both use priority %d",
+				"%w: providers %q and %q both use priority %d for traffic class %q",
 				ErrDuplicatePriority,
 				existingProvider,
 				providerID,
 				route.Priority,
+				trafficClass,
 			)
 		}
-		priorities[route.Priority] = providerID
+		priorities[priorityKey] = providerID
 
 		if route.Enabled {
 			enabledCount++
@@ -109,10 +128,14 @@ func (c Config) enabledRoutes() []Route {
 		}
 
 		route.ProviderID = normalizeProviderID(route.ProviderID)
+		route.TrafficClass = sms.NormalizeTrafficClass(route.TrafficClass)
 		routes = append(routes, route)
 	}
 
 	sort.SliceStable(routes, func(i, j int) bool {
+		if routes[i].TrafficClass != routes[j].TrafficClass {
+			return routes[i].TrafficClass < routes[j].TrafficClass
+		}
 		return routes[i].Priority < routes[j].Priority
 	})
 

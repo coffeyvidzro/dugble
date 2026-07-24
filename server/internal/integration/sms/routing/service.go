@@ -94,20 +94,32 @@ func (s *Service) Route(
 		return nil, err
 	}
 
+	req = req.Normalize()
+	eligibleRoutes := make([]Route, 0, len(s.routes))
+	for _, route := range s.routes {
+		if route.TrafficClass == req.TrafficClass {
+			eligibleRoutes = append(eligibleRoutes, route)
+		}
+	}
+	if len(eligibleRoutes) == 0 {
+		return nil, sms.ErrNoProviderAvailable
+	}
+
 	// A strategy receives a copy so a custom implementation cannot mutate the
 	// service's route snapshot.
-	routes := make([]Route, len(s.routes))
-	copy(routes, s.routes)
+	routes := make([]Route, len(eligibleRoutes))
+	copy(routes, eligibleRoutes)
 
 	orderedRoutes := s.strategy.Order(ctx, req, routes)
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 
-	// Only providers present in the enabled route snapshot are eligible. This
-	// prevents a custom strategy from injecting a disabled registered provider.
-	enabled := make(map[string]struct{}, len(s.routes))
-	for _, route := range s.routes {
+	// Only providers present in the traffic-class-specific route snapshot are
+	// eligible. This prevents a custom strategy from injecting a provider from
+	// another traffic class or a disabled route.
+	enabled := make(map[string]struct{}, len(eligibleRoutes))
+	for _, route := range eligibleRoutes {
 		enabled[route.ProviderID] = struct{}{}
 	}
 

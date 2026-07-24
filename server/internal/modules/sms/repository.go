@@ -17,10 +17,13 @@ var ErrMessageNotFound = errors.New("sms message not found")
 
 type Repository struct {
 	db      *pgxpool.Pool
+	dbtx    dbsqlc.DBTX
 	queries *dbsqlc.Queries
 }
 
-func NewRepository(db *pgxpool.Pool) *Repository { return &Repository{db: db, queries: dbsqlc.New(db)} }
+func NewRepository(db *pgxpool.Pool) *Repository {
+	return &Repository{db: db, dbtx: db, queries: dbsqlc.New(db)}
+}
 
 func (r *Repository) BeginTx(ctx context.Context) (pgx.Tx, error) {
 	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
@@ -31,32 +34,38 @@ func (r *Repository) BeginTx(ctx context.Context) (pgx.Tx, error) {
 }
 
 func (r *Repository) WithTx(tx pgx.Tx) *Repository {
-	return &Repository{db: r.db, queries: r.queries.WithTx(tx)}
+	return &Repository{db: r.db, dbtx: tx, queries: r.queries.WithTx(tx)}
 }
 
 type createMessageParams struct {
-	TeamID     uuid.UUID
-	SenderID   *uuid.UUID
-	To         string
-	From       string
-	Body       string
-	Status     string
-	Segments   int32
-	CostMicros int64
-	Metadata   json.RawMessage
+	TeamID         uuid.UUID
+	SenderID       *uuid.UUID
+	To             string
+	From           string
+	Body           string
+	Status         string
+	Segments       int32
+	CostMicros     int64
+	Metadata       json.RawMessage
+	TrafficClass   string
+	PricingRuleID  uuid.UUID
+	UnitCostMicros int64
 }
 
 func (r *Repository) Create(ctx context.Context, params createMessageParams) (Message, error) {
 	row, err := r.queries.CreateSMSMessage(ctx, dbsqlc.CreateSMSMessageParams{
-		TeamID:     params.TeamID,
-		SenderID:   params.SenderID,
-		ToNumber:   params.To,
-		FromName:   params.From,
-		Body:       params.Body,
-		Status:     params.Status,
-		Segments:   params.Segments,
-		CostMicros: params.CostMicros,
-		Metadata:   ensureMetadata(params.Metadata),
+		TeamID:         params.TeamID,
+		SenderID:       params.SenderID,
+		ToNumber:       params.To,
+		FromName:       params.From,
+		Body:           params.Body,
+		Status:         params.Status,
+		Segments:       params.Segments,
+		CostMicros:     params.CostMicros,
+		Metadata:       ensureMetadata(params.Metadata),
+		TrafficClass:   params.TrafficClass,
+		PricingRuleID:  params.PricingRuleID,
+		UnitCostMicros: params.UnitCostMicros,
 	})
 	if err != nil {
 		return Message{}, fmt.Errorf("create sms message: %w", err)
@@ -163,6 +172,9 @@ func messageFromSQLC(row dbsqlc.SmsMessage) Message {
 		Metadata:          ensureMetadata(row.Metadata),
 		CreatedAt:         row.CreatedAt.Time,
 		UpdatedAt:         row.UpdatedAt.Time,
+		TrafficClass:      row.TrafficClass,
+		PricingRuleID:     row.PricingRuleID.String(),
+		UnitCostMicros:    row.UnitCostMicros,
 	}
 	if row.SenderID != nil {
 		value := row.SenderID.String()
@@ -174,19 +186,14 @@ func messageFromSQLC(row dbsqlc.SmsMessage) Message {
 	if row.DeliveredAt.Valid {
 		message.DeliveredAt = &row.DeliveredAt.Time
 	}
-	message.Billing = billingFromCost(message.Segments, message.CostMicros)
+	message.Billing = billingFromAmounts(message.UnitCostMicros, message.CostMicros)
 	return message
 }
 
-func billingFromCost(segments int32, costMicros int64) Billing {
-	var unitMicros int64
-	if segments > 0 {
-		unitMicros = costMicros / int64(segments)
-	}
-
+func billingFromAmounts(unitCostMicros int64, totalCostMicros int64) Billing {
 	return Billing{
-		UnitCost:  microsToUSD(unitMicros),
-		TotalCost: microsToUSD(costMicros),
+		UnitCost:  microsToUSD(unitCostMicros),
+		TotalCost: microsToUSD(totalCostMicros),
 		Currency:  "USD",
 	}
 }

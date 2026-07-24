@@ -11,6 +11,11 @@ import (
 const MaxSenderIDCharacters = 11
 
 const (
+	TrafficClassLocal = "local"
+	TrafficClassA2P   = "a2p"
+)
+
+const (
 	StatusQueued      = "queued"
 	StatusSubmitted   = "submitted"
 	StatusSent        = "sent"
@@ -33,16 +38,22 @@ var (
 // Batching can be added later without changing the provider implementations by
 // introducing a separate batch request type.
 type SendRequest struct {
-	To      string
-	From    string
-	Message string
+	To           string
+	From         string
+	Message      string
+	TrafficClass string
 }
 
 // Normalize trims routing fields while preserving the message exactly as the
-// caller supplied it.
+// caller supplied it. Requests created by older callers default to A2P so they
+// cannot accidentally enter a cheaper local route.
 func (r SendRequest) Normalize() SendRequest {
 	r.To = strings.TrimSpace(r.To)
 	r.From = strings.TrimSpace(r.From)
+	r.TrafficClass = NormalizeTrafficClass(r.TrafficClass)
+	if r.TrafficClass == "" {
+		r.TrafficClass = TrafficClassA2P
+	}
 	return r
 }
 
@@ -64,8 +75,24 @@ func (r SendRequest) Validate() error {
 	if strings.TrimSpace(r.Message) == "" {
 		return &ValidationError{Field: "message", Reason: "message is required"}
 	}
+	if !IsKnownTrafficClass(r.TrafficClass) {
+		return &ValidationError{Field: "traffic_class", Reason: "traffic class must be local or a2p"}
+	}
 
 	return nil
+}
+
+func NormalizeTrafficClass(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
+}
+
+func IsKnownTrafficClass(value string) bool {
+	switch NormalizeTrafficClass(value) {
+	case TrafficClassLocal, TrafficClassA2P:
+		return true
+	default:
+		return false
+	}
 }
 
 type SendResponse struct {

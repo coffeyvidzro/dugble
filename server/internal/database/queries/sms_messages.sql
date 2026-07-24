@@ -8,7 +8,10 @@ INSERT INTO sms_messages (
     status,
     segments,
     cost_micros,
-    metadata
+    metadata,
+    traffic_class,
+    pricing_rule_id,
+    unit_cost_micros
 ) VALUES (
     sqlc.arg(team_id),
     sqlc.narg(sender_id),
@@ -18,7 +21,10 @@ INSERT INTO sms_messages (
     sqlc.arg(status),
     sqlc.arg(segments),
     sqlc.arg(cost_micros),
-    sqlc.arg(metadata)
+    sqlc.arg(metadata),
+    sqlc.arg(traffic_class),
+    sqlc.arg(pricing_rule_id),
+    sqlc.arg(unit_cost_micros)
 )
 RETURNING *;
 

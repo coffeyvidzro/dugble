@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
+	smsapi "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
@@ -24,6 +27,33 @@ func TestValidateSendDefaultsMetadata(t *testing.T) {
 	}
 	if string(req.Metadata) != "{}" {
 		t.Fatalf("Metadata = %s, want {}", req.Metadata)
+	}
+}
+
+func TestValidateSendNormalizesTrafficClass(t *testing.T) {
+	req, err := validateSend(SendRequest{
+		To:           "+233241234567",
+		From:         "DUGBLE",
+		Body:         "hello",
+		TrafficClass: " A2P ",
+	})
+	if err != nil {
+		t.Fatalf("validateSend returned error: %v", err)
+	}
+	if req.TrafficClass != smsapi.TrafficClassA2P {
+		t.Fatalf("TrafficClass = %q, want %q", req.TrafficClass, smsapi.TrafficClassA2P)
+	}
+}
+
+func TestValidateSendRejectsUnknownTrafficClass(t *testing.T) {
+	_, err := validateSend(SendRequest{
+		To:           "+233241234567",
+		From:         "DUGBLE",
+		Body:         "hello",
+		TrafficClass: "cheap",
+	})
+	if err == nil {
+		t.Fatal("validateSend returned nil error for unknown traffic class")
 	}
 }
 
@@ -90,14 +120,8 @@ func TestCountSegments(t *testing.T) {
 	}
 }
 
-func TestDefaultCostMicrosPerSegment(t *testing.T) {
-	if defaultCostMicrosPerSegment != 9_000 {
-		t.Fatalf("defaultCostMicrosPerSegment = %d, want 9000", defaultCostMicrosPerSegment)
-	}
-}
-
-func TestBillingFromCost(t *testing.T) {
-	billing := billingFromCost(2, 18_000)
+func TestBillingFromAmounts(t *testing.T) {
+	billing := billingFromAmounts(9_000, 18_000)
 	if billing.UnitCost != 0.009 {
 		t.Fatalf("UnitCost = %v, want 0.009", billing.UnitCost)
 	}
@@ -106,6 +130,34 @@ func TestBillingFromCost(t *testing.T) {
 	}
 	if billing.Currency != "USD" {
 		t.Fatalf("Currency = %q, want USD", billing.Currency)
+	}
+}
+
+func TestResolveTrafficClassUsesTeamDefault(t *testing.T) {
+	settings := teamPricingSettings{
+		PricingPlanID:       uuid.New(),
+		DefaultTrafficClass: smsapi.TrafficClassA2P,
+		A2PEnabled:          true,
+	}
+	got, err := resolveTrafficClass(settings, "")
+	if err != nil {
+		t.Fatalf("resolveTrafficClass returned error: %v", err)
+	}
+	if got != smsapi.TrafficClassA2P {
+		t.Fatalf("resolveTrafficClass = %q, want %q", got, smsapi.TrafficClassA2P)
+	}
+}
+
+func TestResolveTrafficClassRejectsDisabledClass(t *testing.T) {
+	settings := teamPricingSettings{
+		PricingPlanID:       uuid.New(),
+		DefaultTrafficClass: smsapi.TrafficClassA2P,
+		A2PEnabled:          true,
+		LocalEnabled:        false,
+	}
+	_, err := resolveTrafficClass(settings, smsapi.TrafficClassLocal)
+	if !errors.Is(err, ErrTrafficClassNotEnabled) {
+		t.Fatalf("resolveTrafficClass error = %v, want ErrTrafficClassNotEnabled", err)
 	}
 }
 
@@ -123,9 +175,12 @@ func TestSMSResponseJSONUsesPublicRepresentation(t *testing.T) {
 		Status:            StatusFailed,
 		ProviderID:        &providerID,
 		ProviderMessageID: &providerMessageID,
+		TrafficClass:      smsapi.TrafficClassA2P,
+		PricingRuleID:     "pricing-rule-secret",
 		Segments:          1,
+		UnitCostMicros:    9_000,
 		CostMicros:        9_000,
-		Billing:           billingFromCost(1, 9_000),
+		Billing:           billingFromAmounts(9_000, 9_000),
 		ErrorMessage:      &internalError,
 		Metadata:          json.RawMessage(`{"campaign":"welcome"}`),
 		SubmittedAt:       &now,
@@ -137,13 +192,25 @@ func TestSMSResponseJSONUsesPublicRepresentation(t *testing.T) {
 		t.Fatalf("Marshal returned error: %v", err)
 	}
 	body := string(payload)
-	for _, hidden := range []string{"cost_micros", "team_id", "sender_id", "provider_id", "provider_message_id", "error_message", internalError} {
+	for _, hidden := range []string{
+		"cost_micros",
+		"unit_cost_micros",
+		"pricing_rule_id",
+		"pricing-rule-secret",
+		"team_id",
+		"sender_id",
+		"provider_id",
+		"provider_message_id",
+		"error_message",
+		internalError,
+	} {
 		if strings.Contains(body, hidden) {
 			t.Fatalf("SMS response JSON should not expose %s: %s", hidden, body)
 		}
 	}
 	for _, expected := range []string{
 		`"metadata":{"campaign":"welcome"}`,
+		`"traffic_class":"a2p"`,
 		`"segments":1`,
 		`"unit_cost":0.009`,
 		`"total_cost":0.009`,
