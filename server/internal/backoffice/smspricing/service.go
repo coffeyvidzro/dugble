@@ -100,7 +100,7 @@ func (s *Service) AddRate(ctx context.Context, planID string, req AddRateRequest
 		effectiveUntil = &value
 	}
 
-	return s.repository.AddRate(ctx, planID, trafficClass, unitCostMicros, effectiveFrom, effectiveUntil)
+	return s.repository.ScheduleRate(ctx, planID, trafficClass, unitCostMicros, effectiveFrom, effectiveUntil)
 }
 
 func (s *Service) ListActivePlans(ctx context.Context) ([]PlanOption, error) {
@@ -179,7 +179,8 @@ func parseUSDToMicros(value string) (int64, error) {
 			return 0, errors.New("unit cost must be a valid USD amount")
 		}
 	}
-	if whole > math.MaxInt64/1_000_000 {
+	maxWhole := int64(math.MaxInt64 / 1_000_000)
+	if whole > maxWhole || (whole == maxWhole && fraction > math.MaxInt64-whole*1_000_000) {
 		return 0, errors.New("unit cost is too large")
 	}
 	micros := whole*1_000_000 + fraction
