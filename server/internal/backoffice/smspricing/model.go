@@ -2,6 +2,11 @@ package smspricing
 
 import "time"
 
+type Actor struct {
+	UserID string
+	Email  string
+}
+
 type PlanRow struct {
 	ID                  string
 	Name                string
@@ -29,12 +34,29 @@ type RateRow struct {
 	EffectiveFrom  time.Time
 	EffectiveUntil *time.Time
 	Status         string
+	Lifecycle      string
+	CanEdit        bool
+	CanCancel      bool
 	CreatedAt      time.Time
 }
 
+type AuditRow struct {
+	ActorEmail   string
+	Action       string
+	ResourceType string
+	ResourceID   string
+	Metadata     string
+	CreatedAt    time.Time
+}
+
 type PlanDetail struct {
-	Plan  PlanRow
-	Rates []RateRow
+	Plan              PlanRow
+	LocalRates        []RateRow
+	A2PRates          []RateRow
+	Audits            []AuditRow
+	AssignedTeamCount int64
+	RateCount         int64
+	CanDelete         bool
 }
 
 type CreatePlanRequest struct {
@@ -42,11 +64,33 @@ type CreatePlanRequest struct {
 	MakeDefault bool
 }
 
+type RenamePlanRequest struct {
+	Name string
+}
+
 type AddRateRequest struct {
 	TrafficClass   string
 	UnitCostUSD    string
 	EffectiveFrom  string
 	EffectiveUntil string
+}
+
+type UpdateRateRequest struct {
+	UnitCostUSD    string
+	EffectiveFrom  string
+	EffectiveUntil string
+}
+
+type RatePreview struct {
+	PlanID            string
+	PlanName          string
+	TrafficClass      string
+	UnitCostUSD       string
+	UnitCostMicros    int64
+	EffectiveFrom     time.Time
+	EffectiveUntil    *time.Time
+	CurrentRateMicros int64
+	HasCurrentRate    bool
 }
 
 type TeamConfiguration struct {
