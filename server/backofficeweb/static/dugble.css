@@ -35,3 +35,8 @@ pre { background: white; border: 1px solid #e2e8f0; border-radius: .75rem; overf
 .control-panel label { color: #475569; display: grid; font-size: .875rem; gap: .25rem; }
 .control-panel input, .control-panel select { border: 1px solid #cbd5e1; border-radius: .5rem; font: inherit; padding: .5rem .75rem; }
 .control-panel button { background: #2563eb; border: 0; border-radius: .5rem; color: white; cursor: pointer; font: inherit; padding: .55rem .9rem; }
+.control-panel .checkbox-label { align-items: center; display: flex; flex-direction: row; gap: .5rem; padding-bottom: .55rem; }
+.control-panel .checkbox-label input { height: 1rem; margin: 0; width: 1rem; }
+.muted { color: #64748b; font-size: .9rem; }
+.button-link { background: #2563eb; border-radius: .5rem; color: white; display: inline-block; padding: .55rem .9rem; }
+.button-link:hover { background: #1d4ed8; text-decoration: none; }
