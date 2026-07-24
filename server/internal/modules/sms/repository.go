@@ -185,12 +185,9 @@ func billingFromCost(segments int32, costMicros int64) Billing {
 	}
 
 	return Billing{
-		Units: segments,
-		Pricing: BillingPrice{
-			UnitCost:  microsToUSD(unitMicros),
-			TotalCost: microsToUSD(costMicros),
-			Currency:  "USD",
-		},
+		UnitCost:  microsToUSD(unitMicros),
+		TotalCost: microsToUSD(costMicros),
+		Currency:  "USD",
 	}
 }
 

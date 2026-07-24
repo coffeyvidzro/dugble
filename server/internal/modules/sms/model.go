@@ -23,8 +23,8 @@ const (
 
 type Message struct {
 	ID                string          `json:"id"`
-	TeamID            string          `json:"team_id"`
-	SenderID          *string         `json:"sender_id,omitempty"`
+	TeamID            string          `json:"-"`
+	SenderID          *string         `json:"-"`
 	To                string          `json:"to"`
 	From              string          `json:"from"`
 	Body              string          `json:"body"`
@@ -35,19 +35,14 @@ type Message struct {
 	CostMicros        int64           `json:"-"`
 	Billing           Billing         `json:"billing"`
 	ErrorMessage      *string         `json:"error_message,omitempty"`
-	Metadata          json.RawMessage `json:"metadata"`
+	Metadata          json.RawMessage `json:"-"`
 	SubmittedAt       *time.Time      `json:"submitted_at,omitempty"`
 	DeliveredAt       *time.Time      `json:"delivered_at,omitempty"`
 	CreatedAt         time.Time       `json:"created_at"`
-	UpdatedAt         time.Time       `json:"updated_at"`
+	UpdatedAt         time.Time       `json:"-"`
 }
 
 type Billing struct {
-	Units   int32        `json:"units"`
-	Pricing BillingPrice `json:"pricing"`
-}
-
-type BillingPrice struct {
 	UnitCost  float64 `json:"unitCost"`
 	TotalCost float64 `json:"totalCost"`
 	Currency  string  `json:"currency"`

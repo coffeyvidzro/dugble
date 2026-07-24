@@ -94,17 +94,14 @@ func TestDefaultCostMicrosPerSegment(t *testing.T) {
 
 func TestBillingFromCost(t *testing.T) {
 	billing := billingFromCost(2, 18_000)
-	if billing.Units != 2 {
-		t.Fatalf("Units = %d, want 2", billing.Units)
+	if billing.UnitCost != 0.009 {
+		t.Fatalf("UnitCost = %v, want 0.009", billing.UnitCost)
 	}
-	if billing.Pricing.UnitCost != 0.009 {
-		t.Fatalf("UnitCost = %v, want 0.009", billing.Pricing.UnitCost)
+	if billing.TotalCost != 0.018 {
+		t.Fatalf("TotalCost = %v, want 0.018", billing.TotalCost)
 	}
-	if billing.Pricing.TotalCost != 0.018 {
-		t.Fatalf("TotalCost = %v, want 0.018", billing.Pricing.TotalCost)
-	}
-	if billing.Pricing.Currency != "USD" {
-		t.Fatalf("Currency = %q, want USD", billing.Pricing.Currency)
+	if billing.Currency != "USD" {
+		t.Fatalf("Currency = %q, want USD", billing.Currency)
 	}
 }
 
@@ -115,8 +112,10 @@ func TestMessageJSONUsesBillingRepresentation(t *testing.T) {
 		t.Fatalf("Marshal returned error: %v", err)
 	}
 	body := string(payload)
-	if strings.Contains(body, "cost_micros") {
-		t.Fatalf("Message JSON should not expose internal cost_micros: %s", body)
+	for _, hidden := range []string{"cost_micros", "team_id", "sender_id", "metadata", "updated_at", "units", "pricing"} {
+		if strings.Contains(body, hidden) {
+			t.Fatalf("Message JSON should not expose %s: %s", hidden, body)
+		}
 	}
 	if !strings.Contains(body, `"billing"`) || !strings.Contains(body, `"unitCost":0.009`) || !strings.Contains(body, `"totalCost":0.009`) {
 		t.Fatalf("Message JSON missing billing money representation: %s", body)
