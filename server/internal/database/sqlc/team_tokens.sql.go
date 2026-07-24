@@ -72,11 +72,13 @@ func (q *Queries) CreateTeamToken(ctx context.Context, arg CreateTeamTokenParams
 }
 
 const getActiveTeamTokenByHash = `-- name: GetActiveTeamTokenByHash :one
-SELECT id, team_id, name, token_hash, token_prefix, permissions, created_by, expires_at, revoked_at, last_used_at, created_at, updated_at
-FROM team_tokens
-WHERE token_hash = $1
-  AND revoked_at IS NULL
-  AND (expires_at IS NULL OR expires_at > now())
+SELECT tt.id, tt.team_id, tt.name, tt.token_hash, tt.token_prefix, tt.permissions, tt.created_by, tt.expires_at, tt.revoked_at, tt.last_used_at, tt.created_at, tt.updated_at
+FROM team_tokens tt
+JOIN teams t ON t.id = tt.team_id
+WHERE tt.token_hash = $1
+  AND tt.revoked_at IS NULL
+  AND (tt.expires_at IS NULL OR tt.expires_at > now())
+  AND t.status = 'active'
 `
 
 type GetActiveTeamTokenByHashParams struct {

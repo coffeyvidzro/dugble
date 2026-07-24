@@ -12,19 +12,21 @@ const (
 	RoleMember = "member"
 
 	StatusActive    = "active"
+	StatusDisabled  = "disabled"
 	StatusSuspended = "suspended"
 	StatusInvited   = "invited"
 )
 
 type Membership struct {
-	TeamID uuid.UUID
-	UserID uuid.UUID
-	Role   string
-	Status string
+	TeamID     uuid.UUID
+	UserID     uuid.UUID
+	Role       string
+	Status     string
+	TeamStatus string
 }
 
 func (m Membership) Active() bool {
-	return m.Status == StatusActive
+	return m.Status == StatusActive && (m.TeamStatus == "" || m.TeamStatus == StatusActive)
 }
 
 type MembershipStore interface {

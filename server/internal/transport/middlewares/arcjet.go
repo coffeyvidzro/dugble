@@ -10,6 +10,9 @@ import (
 
 var arcjetExemptPaths = map[string]struct{}{
 	"/favicon.ico": {},
+	"/health":      {},
+	"/ready":       {},
+	"/csrf":        {},
 }
 
 // Arcjet is a middleware that integrates the Arcjet client for request protection.

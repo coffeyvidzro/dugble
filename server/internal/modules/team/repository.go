@@ -118,11 +118,16 @@ func (r *Repository) GetTenantMembership(
 	if err != nil {
 		return tenant.Membership{}, err
 	}
+	team, err := r.Get(ctx, teamID)
+	if err != nil {
+		return tenant.Membership{}, err
+	}
 	return tenant.Membership{
-		TeamID: teamID,
-		UserID: userID,
-		Role:   member.Role,
-		Status: member.Status,
+		TeamID:     teamID,
+		UserID:     userID,
+		Role:       member.Role,
+		Status:     member.Status,
+		TeamStatus: team.Status,
 	}, nil
 }
 
