@@ -43,32 +43,72 @@ type Message struct {
 }
 
 type SMSResponse struct {
-	ID        string          `json:"id"`
-	To        string          `json:"to"`
-	From      string          `json:"from"`
-	Body      string          `json:"body"`
-	Status    string          `json:"status"`
-	Metadata  json.RawMessage `json:"metadata,omitempty"`
-	Billing   Billing         `json:"billing"`
-	CreatedAt time.Time       `json:"created_at"`
+	ID          string          `json:"id"`
+	To          string          `json:"to"`
+	From        string          `json:"from"`
+	Body        string          `json:"body"`
+	Status      string          `json:"status"`
+	Segments    int32           `json:"segments"`
+	Metadata    json.RawMessage `json:"metadata"`
+	Billing     Billing         `json:"billing"`
+	Failure     *SMSFailure     `json:"failure,omitempty"`
+	SubmittedAt *time.Time      `json:"submitted_at,omitempty"`
+	DeliveredAt *time.Time      `json:"delivered_at,omitempty"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
+}
+
+type SMSFailure struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
 }
 
 func (m Message) Response() SMSResponse {
 	return SMSResponse{
-		ID:        m.ID,
-		To:        m.To,
-		From:      m.From,
-		Body:      m.Body,
-		Status:    m.Status,
-		Metadata:  m.Metadata,
-		Billing:   m.Billing,
-		CreatedAt: m.CreatedAt,
+		ID:          m.ID,
+		To:          m.To,
+		From:        m.From,
+		Body:        m.Body,
+		Status:      m.Status,
+		Segments:    m.Segments,
+		Metadata:    m.Metadata,
+		Billing:     m.Billing,
+		Failure:     publicFailure(m.Status),
+		SubmittedAt: m.SubmittedAt,
+		DeliveredAt: m.DeliveredAt,
+		CreatedAt:   m.CreatedAt,
+		UpdatedAt:   m.UpdatedAt,
+	}
+}
+
+func Responses(messages []Message) []SMSResponse {
+	responses := make([]SMSResponse, len(messages))
+	for index, message := range messages {
+		responses[index] = message.Response()
+	}
+	return responses
+}
+
+func publicFailure(status string) *SMSFailure {
+	switch status {
+	case StatusRefundPending:
+		return &SMSFailure{Code: "SMS_REFUND_PENDING", Message: "SMS delivery failed and the refund is being processed"}
+	case StatusUndelivered:
+		return &SMSFailure{Code: "SMS_UNDELIVERED", Message: "SMS could not be delivered"}
+	case StatusRejected:
+		return &SMSFailure{Code: "SMS_REJECTED", Message: "SMS was rejected"}
+	case StatusFailed:
+		return &SMSFailure{Code: "SMS_FAILED", Message: "SMS delivery failed"}
+	case StatusExpired:
+		return &SMSFailure{Code: "SMS_EXPIRED", Message: "SMS delivery expired"}
+	default:
+		return nil
 	}
 }
 
 type Billing struct {
-	UnitCost  float64 `json:"unitCost"`
-	TotalCost float64 `json:"totalCost"`
+	UnitCost  float64 `json:"unit_cost"`
+	TotalCost float64 `json:"total_cost"`
 	Currency  string  `json:"currency"`
 }
 
@@ -83,15 +123,27 @@ type BatchSendRequest struct {
 	Messages []SendRequest `json:"messages"`
 }
 
-type BatchSendFailure struct {
-	Index   int      `json:"index"`
-	Message *Message `json:"message,omitempty"`
-	Error   string   `json:"error"`
+type BatchSendError struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+type BatchSendResult struct {
+	Index   int             `json:"index"`
+	Success bool            `json:"success"`
+	Message *SMSResponse    `json:"message,omitempty"`
+	Error   *BatchSendError `json:"error,omitempty"`
+}
+
+type BatchSendSummary struct {
+	Requested int `json:"requested"`
+	Succeeded int `json:"succeeded"`
+	Failed    int `json:"failed"`
 }
 
 type BatchSendResponse struct {
-	Messages []Message          `json:"messages"`
-	Failures []BatchSendFailure `json:"failures,omitempty"`
+	Results []BatchSendResult `json:"results"`
+	Summary BatchSendSummary  `json:"summary"`
 }
 
 type ListRequest struct {
