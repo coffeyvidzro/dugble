@@ -1,4 +1,9 @@
 {{template "layout_start" .}}
+<form class="filters" method="get">
+  <label>Search <input type="search" name="q" value="{{.Filter.Query}}" placeholder="team name"></label>
+  <button type="submit">Filter</button>
+  <a href="/teams">Clear</a>
+</form>
 <table>
   <thead><tr><th>Name</th><th>Status</th><th>Created</th><th>ID</th></tr></thead>
   <tbody>
