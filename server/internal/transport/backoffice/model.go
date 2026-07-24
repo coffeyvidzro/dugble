@@ -96,6 +96,7 @@ type PageData struct {
 	Title  string
 	Data   any
 	Filter any
+	CSRF   string
 }
 
 type UserDetail struct {

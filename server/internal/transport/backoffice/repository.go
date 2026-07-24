@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+var errNotFound = pgx.ErrNoRows
 
 type Repository struct {
 	db *pgxpool.Pool
@@ -196,6 +199,83 @@ func (r *Repository) Domains(ctx context.Context, filter DomainFilter) ([]Domain
 	}
 
 	return domains, rows.Err()
+}
+
+func (r *Repository) ApproveSenderID(ctx context.Context, id string) error {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE sender_ids
+		SET status = 'approved',
+			approved_at = now(),
+			rejected_at = NULL,
+			rejection_reason = NULL,
+			updated_at = now()
+		WHERE id = $1::uuid
+	`, id)
+	if err != nil {
+		return fmt.Errorf("approve sender id: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("approve sender id: %w", errNotFound)
+	}
+
+	return nil
+}
+
+func (r *Repository) RejectSenderID(ctx context.Context, id string, reason string) error {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE sender_ids
+		SET status = 'rejected',
+			rejected_at = now(),
+			approved_at = NULL,
+			rejection_reason = $2,
+			updated_at = now()
+		WHERE id = $1::uuid
+	`, id, reason)
+	if err != nil {
+		return fmt.Errorf("reject sender id: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("reject sender id: %w", errNotFound)
+	}
+
+	return nil
+}
+
+func (r *Repository) VerifyDomain(ctx context.Context, id string) error {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE sender_domains
+		SET status = 'verified',
+			verified_at = now(),
+			failure_reason = NULL,
+			updated_at = now()
+		WHERE id = $1::uuid
+	`, id)
+	if err != nil {
+		return fmt.Errorf("verify sender domain: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("verify sender domain: %w", errNotFound)
+	}
+
+	return nil
+}
+
+func (r *Repository) FailDomain(ctx context.Context, id string, reason string) error {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE sender_domains
+		SET status = 'failed',
+			failure_reason = $2,
+			updated_at = now()
+		WHERE id = $1::uuid
+	`, id, reason)
+	if err != nil {
+		return fmt.Errorf("fail sender domain: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("fail sender domain: %w", errNotFound)
+	}
+
+	return nil
 }
 
 func (r *Repository) UserDetail(ctx context.Context, id string) (UserDetail, error) {

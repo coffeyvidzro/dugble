@@ -2,6 +2,7 @@ package backoffice
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v5"
@@ -45,12 +46,23 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		Sessions: sessionRepository,
 		Users:    authRepository,
 	})
+	csrfMiddleware := middleware.CSRFWithConfig(middleware.CSRFConfig{
+		TrustedOrigins: cfg.CORSOrigins,
+		TokenLookup:    "form:csrf,header:" + echo.HeaderXCSRFToken,
+		ContextKey:     middlewares.CSRFContextKey,
+		CookieName:     "dugble_backoffice_csrf",
+		CookiePath:     "/",
+		CookieSecure:   !cfg.IsDevelopment(),
+		CookieHTTPOnly: false,
+		CookieSameSite: http.SameSiteLaxMode,
+	})
 
 	handler := NewHandler(NewRepository(deps.DB))
 
 	protected := router.Group("")
 	protected.Use(authMiddleware)
 	protected.Use(RequireAdmin(cfg.Backoffice.AdminEmails))
+	protected.Use(csrfMiddleware)
 
 	protected.GET("/", handler.Dashboard)
 	protected.GET("/users", handler.Users)
@@ -61,7 +73,11 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	protected.GET("/sms/:id", handler.SMSDetail)
 	protected.GET("/wallets", handler.Wallets)
 	protected.GET("/sender-ids", handler.SenderIDs)
+	protected.POST("/sender-ids/:id/approve", handler.ApproveSenderID)
+	protected.POST("/sender-ids/:id/reject", handler.RejectSenderID)
 	protected.GET("/domains", handler.Domains)
+	protected.POST("/domains/:id/verify", handler.VerifyDomain)
+	protected.POST("/domains/:id/fail", handler.FailDomain)
 
 	return router, nil
 }
