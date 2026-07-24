@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { AnimatedGrid } from "@/components/marketing/hero/animated-grid";
 import { FloatingOrbs } from "@/components/marketing/hero/floating-orbs";
 import { buttonVariants } from "@/components/ui/button";
+import { TerminalLink } from "../terminal-link";
 import { RouteDiagram } from "./route-diagram";
 import { cn } from "@/lib/utils";
 
@@ -38,21 +39,16 @@ export function A2pHero() {
                             Start building
                             <ArrowRight className="ml-1.5 size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                         </Link>
-                        <Link
+                        <TerminalLink
                             href="/quickstart"
-                            className="group/button relative inline-flex h-10 flex-1 items-center justify-center gap-2 overflow-hidden rounded-full border bg-background px-4 font-mono text-sm text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:text-foreground hover:shadow-lg hover:shadow-black/20 sm:flex-none"
+                            className="flex-1 sm:flex-none"
                         >
-                            <span className="text-signal">$</span>
                             view docs
-                            <span
-                                aria-hidden
-                                className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-foreground/10 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-                            />
-                        </Link>
+                        </TerminalLink>
                     </div>
                 </div>
 
-                <div className="animate-fade-up rounded-2xl border bg-card p-6 shadow-2xl shadow-black/40 [animation-delay:120ms]">
+                <div className="animate-fade-up rounded-2xl border bg-card p-6 shadow-lg shadow-black/5 dark:shadow-2xl dark:shadow-black/40 [animation-delay:120ms]">
                     <div className="flex items-center justify-between border-b pb-3 font-mono text-[11px] text-muted-foreground">
                         <span>POST /v1/messages</span>
                         <span className="text-signal">
