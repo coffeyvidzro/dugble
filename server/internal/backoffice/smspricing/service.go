@@ -17,12 +17,12 @@ import (
 )
 
 var (
-	ErrInvalidRequest       = errors.New("invalid sms pricing request")
-	ErrPlanNameConflict     = errors.New("sms pricing plan name already exists")
-	ErrRateOverlap          = errors.New("sms pricing rate overlaps an existing rate")
-	ErrPlanUnavailable      = errors.New("sms pricing plan is not active")
-	ErrNoCurrentLocalRate   = errors.New("sms pricing plan has no current local rate")
-	ErrNoCurrentA2PRate     = errors.New("sms pricing plan has no current a2p rate")
+	ErrInvalidRequest     = errors.New("invalid sms pricing request")
+	ErrPlanNameConflict   = errors.New("sms pricing plan name already exists")
+	ErrRateOverlap        = errors.New("sms pricing rate overlaps an existing rate")
+	ErrPlanUnavailable    = errors.New("sms pricing plan is not active")
+	ErrNoCurrentLocalRate = errors.New("sms pricing plan has no current local rate")
+	ErrNoCurrentA2PRate   = errors.New("sms pricing plan has no current a2p rate")
 )
 
 type Service struct {
