@@ -104,6 +104,17 @@ type SmsMessage struct {
 	UnitCostMicros    int64              `db:"unit_cost_micros" json:"unit_cost_micros"`
 }
 
+type SmsPricingAuditLog struct {
+	ID           uuid.UUID          `db:"id" json:"id"`
+	ActorUserID  *uuid.UUID         `db:"actor_user_id" json:"actor_user_id"`
+	ActorEmail   string             `db:"actor_email" json:"actor_email"`
+	Action       string             `db:"action" json:"action"`
+	ResourceType string             `db:"resource_type" json:"resource_type"`
+	ResourceID   *uuid.UUID         `db:"resource_id" json:"resource_id"`
+	Metadata     []byte             `db:"metadata" json:"metadata"`
+	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
 type SmsPricingPlan struct {
 	ID        uuid.UUID          `db:"id" json:"id"`
 	Name      string             `db:"name" json:"name"`

@@ -63,7 +63,7 @@ func (s *Service) Detail(ctx context.Context, id string) (PlanDetail, error) {
 		return PlanDetail{}, err
 	}
 	detail.CanDelete = !detail.Plan.IsDefault && detail.AssignedTeamCount == 0 && detail.RateCount == 0
-	detail.Audits, err = s.repository.PricingAudit(ctx, "plan", id)
+	detail.Audits, err = s.repository.PlanAudit(ctx, id)
 	if err != nil {
 		return PlanDetail{}, err
 	}

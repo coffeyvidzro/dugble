@@ -490,7 +490,7 @@ func ensureNoRateOverlap(
 			WHERE pricing_plan_id = $1::uuid
 			  AND traffic_class = $2
 			  AND status = 'active'
-			  AND ($5 = '' OR id <> $5::uuid)
+			  AND (NULLIF($5, '') IS NULL OR id <> NULLIF($5, '')::uuid)
 			  AND effective_from < COALESCE($4::timestamptz, 'infinity'::timestamptz)
 			  AND COALESCE(effective_until, 'infinity'::timestamptz) > $3::timestamptz
 			  AND NOT (effective_until IS NULL AND effective_from < $3::timestamptz)
