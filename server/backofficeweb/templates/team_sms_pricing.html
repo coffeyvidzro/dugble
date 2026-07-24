@@ -1,0 +1,34 @@
+{{template "layout_start" .}}
+{{$page := .Data}}
+{{$config := $page.Configuration}}
+<p><a href="/teams/{{$page.Team.Team.ID}}">← Back to {{$page.Team.Team.Name}}</a></p>
+<section class="detail-grid">
+  <article><span>Team</span><strong>{{$page.Team.Team.Name}}</strong></article>
+  <article><span>Pricing plan</span><strong><a href="/sms-pricing/{{$config.PricingPlanID}}">{{$config.PricingPlanName}}</a></strong></article>
+  <article><span>Configuration</span><strong>{{if $config.Explicit}}Explicit{{else}}Inherited default{{end}}</strong></article>
+  <article><span>Default traffic class</span><strong>{{$config.DefaultTrafficClass}}</strong></article>
+  <article><span>Local</span><strong>{{if $config.LocalEnabled}}Enabled{{else}}Disabled{{end}}</strong></article>
+  <article><span>A2P</span><strong>{{if $config.A2PEnabled}}Enabled{{else}}Disabled{{end}}</strong></article>
+</section>
+<h2>Assign pricing and traffic entitlements</h2>
+<form class="control-panel" method="post" action="/teams/{{$page.Team.Team.ID}}/sms-pricing">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <label>Pricing plan
+    <select name="pricing_plan_id" required>
+      {{range $page.Plans}}
+        <option value="{{.ID}}" {{if eq .ID $config.PricingPlanID}}selected{{end}}>{{.Name}}{{if .IsDefault}} (default){{end}}</option>
+      {{end}}
+    </select>
+  </label>
+  <label>Default traffic class
+    <select name="default_traffic_class" required>
+      <option value="a2p" {{if eq $config.DefaultTrafficClass "a2p"}}selected{{end}}>A2P</option>
+      <option value="local" {{if eq $config.DefaultTrafficClass "local"}}selected{{end}}>Local</option>
+    </select>
+  </label>
+  <label class="checkbox-label"><input type="checkbox" name="a2p_enabled" value="true" {{if $config.A2PEnabled}}checked{{end}}> Enable A2P</label>
+  <label class="checkbox-label"><input type="checkbox" name="local_enabled" value="true" {{if $config.LocalEnabled}}checked{{end}}> Enable local</label>
+  <button type="submit">Save SMS settings</button>
+</form>
+<p class="muted">At least one traffic class must remain enabled. The selected default must also be enabled, and each enabled class must have a currently effective rate on the assigned plan.</p>
+{{template "layout_end" .}}
