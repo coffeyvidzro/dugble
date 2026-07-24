@@ -85,6 +85,23 @@ func (r *Repository) Teams(ctx context.Context, filter TeamFilter) ([]TeamRow, e
 	return teams, rows.Err()
 }
 
+func (r *Repository) UpdateTeamStatus(ctx context.Context, id string, status string) error {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE teams
+		SET status = $2,
+			updated_at = now()
+		WHERE id = $1::uuid
+	`, id, status)
+	if err != nil {
+		return fmt.Errorf("update team status: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("update team status: %w", errNotFound)
+	}
+
+	return nil
+}
+
 func (r *Repository) SMSMessages(ctx context.Context, filter SMSFilter) ([]SMSRow, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT

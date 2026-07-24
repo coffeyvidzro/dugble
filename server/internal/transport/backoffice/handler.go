@@ -79,6 +79,34 @@ func (h *Handler) TeamDetail(c *echo.Context) error {
 	return h.render(c, "team_detail.html", detail.Team.Name, detail, nil)
 }
 
+func (h *Handler) UpdateTeamStatus(c *echo.Context) error {
+	id, ok := validID(c)
+	if !ok {
+		return c.String(http.StatusBadRequest, "invalid team id")
+	}
+
+	var status string
+	switch cleanQuery(c.Request().FormValue("action")) {
+	case "enable":
+		status = "active"
+	case "disable":
+		status = "disabled"
+	default:
+		return c.String(http.StatusBadRequest, "action must be enable or disable")
+	}
+
+	reason := cleanQuery(c.Request().FormValue("reason"))
+	if reason == "" {
+		return c.String(http.StatusBadRequest, "status change reason is required")
+	}
+
+	if err := h.repository.UpdateTeamStatus(c.Request().Context(), id, status); err != nil {
+		return handleDetailError(c, err)
+	}
+
+	return c.Redirect(http.StatusSeeOther, "/teams/"+id)
+}
+
 func (h *Handler) SMSMessages(c *echo.Context) error {
 	filter := SMSFilter{
 		Query:  cleanQuery(c.QueryParam("q")),

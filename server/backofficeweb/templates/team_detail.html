@@ -7,6 +7,20 @@
   <article><span>Created</span><strong>{{$detail.Team.CreatedAt.Format "2006-01-02 15:04"}}</strong></article>
   <article><span>ID</span><strong><code>{{$detail.Team.ID}}</code></strong></article>
 </section>
+<h2>Status</h2>
+<form class="control-panel" method="post" action="/teams/{{$detail.Team.ID}}/status">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <label>Action
+    <select name="action" required>
+      <option value="disable">Disable</option>
+      <option value="enable">Enable</option>
+    </select>
+  </label>
+  <label>Reason
+    <input type="text" name="reason" placeholder="Abuse review" required>
+  </label>
+  <button type="submit">Update status</button>
+</form>
 <h2>Members</h2>
 <table>
   <thead><tr><th>User</th><th>Name</th><th>Role</th><th>Status</th><th>Joined</th></tr></thead>
