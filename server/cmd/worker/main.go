@@ -2,32 +2,98 @@ package main
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/riverqueue/river"
+
+	"github.com/coffeyvidzro/dugble/server/internal/config"
+	"github.com/coffeyvidzro/dugble/server/internal/database"
+	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
+	smsintegration "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
+	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/arkesel"
+	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/mnotify"
+	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/routing"
+	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
+	"github.com/coffeyvidzro/dugble/server/internal/modules/wallet"
+	"github.com/coffeyvidzro/dugble/server/internal/worker"
 )
 
 func main() {
+	if err := run(); err != nil {
+		slog.Error("worker stopped", "error", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	log.Println("worker started (logging every minute)")
-
-	ticker := time.NewTicker(time.Minute)
-	defer ticker.Stop()
-
-	// Optional: log immediately on startup
-	log.Println("working...")
-
-	for {
-		select {
-		case <-ctx.Done():
-			log.Println("worker stopping")
-			return
-		case <-ticker.C:
-			log.Println("working...")
-		}
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("load configuration: %w", err)
 	}
+
+	startupCtx, cancelStartup := context.WithTimeout(ctx, 15*time.Second)
+	defer cancelStartup()
+
+	db, err := database.NewPostgres(startupCtx, cfg.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("initialize PostgreSQL: %w", err)
+	}
+	defer db.Close()
+
+	if err := worker.Migrate(startupCtx, db); err != nil {
+		return fmt.Errorf("migrate River schema: %w", err)
+	}
+
+	smsRouter, err := routing.NewService(
+		routing.DefaultConfig(),
+		routing.NewPriorityStrategy(),
+		arkesel.NewProvider(arkesel.NewClient(cfg.Arkesel)),
+		mnotify.NewProvider(mnotify.NewClient(cfg.MNotify)),
+	)
+	if err != nil {
+		return fmt.Errorf("initialize SMS router: %w", err)
+	}
+
+	smsSender, err := smsintegration.NewService(smsRouter)
+	if err != nil {
+		return fmt.Errorf("initialize SMS sender: %w", err)
+	}
+
+	workers := river.NewWorkers()
+	river.AddWorker(workers, smsdelivery.NewWorker(
+		smsmodule.NewRepository(db),
+		smsSender,
+		wallet.NewRepository(db),
+	))
+
+	riverClient, err := worker.NewConsumer(db, workers, map[string]river.QueueConfig{
+		smsdelivery.DeliverQueue: {MaxWorkers: worker.DefaultMaxWorkers},
+	})
+	if err != nil {
+		return fmt.Errorf("initialize River consumer: %w", err)
+	}
+
+	if err := riverClient.Start(ctx); err != nil {
+		return fmt.Errorf("start River worker: %w", err)
+	}
+
+	slog.Info("worker started")
+	<-ctx.Done()
+
+	shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancelShutdown()
+	if err := riverClient.Stop(shutdownCtx); err != nil {
+		return fmt.Errorf("stop River worker: %w", err)
+	}
+
+	slog.Info("worker stopped")
+	return nil
 }

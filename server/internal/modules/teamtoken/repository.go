@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
+	"github.com/coffeyvidzro/dugble/server/pkg/pgconv"
 )
 
 type Repository struct{ queries *dbsqlc.Queries }
@@ -116,9 +117,9 @@ func tokenFromSQLC(row dbsqlc.TeamToken) Token {
 		TokenPrefix: row.TokenPrefix,
 		Permissions: row.Permissions,
 		CreatedBy:   createdBy,
-		ExpiresAt:   timePtr(row.ExpiresAt),
-		RevokedAt:   timePtr(row.RevokedAt),
-		LastUsedAt:  timePtr(row.LastUsedAt),
+		ExpiresAt:   pgconv.TimestamptzToTimePtr(row.ExpiresAt),
+		RevokedAt:   pgconv.TimestamptzToTimePtr(row.RevokedAt),
+		LastUsedAt:  pgconv.TimestamptzToTimePtr(row.LastUsedAt),
 		CreatedAt:   row.CreatedAt.Time,
 		UpdatedAt:   row.UpdatedAt.Time,
 	}
@@ -129,10 +130,4 @@ func timestamptz(value *time.Time) pgtype.Timestamptz {
 		return pgtype.Timestamptz{}
 	}
 	return pgtype.Timestamptz{Time: value.UTC(), Valid: true}
-}
-func timePtr(value pgtype.Timestamptz) *time.Time {
-	if !value.Valid {
-		return nil
-	}
-	return &value.Time
 }

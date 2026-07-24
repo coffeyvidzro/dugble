@@ -9,12 +9,64 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type IdempotencyKey struct {
+	Scope               string             `db:"scope" json:"scope"`
+	IdempotencyKey      string             `db:"idempotency_key" json:"idempotency_key"`
+	Method              string             `db:"method" json:"method"`
+	Path                string             `db:"path" json:"path"`
+	RequestHash         string             `db:"request_hash" json:"request_hash"`
+	Status              string             `db:"status" json:"status"`
+	ResponseStatus      *int32             `db:"response_status" json:"response_status"`
+	ResponseBody        []byte             `db:"response_body" json:"response_body"`
+	ResponseContentType *string            `db:"response_content_type" json:"response_content_type"`
+	ResponseHeaders     []byte             `db:"response_headers" json:"response_headers"`
+	LockedUntil         pgtype.Timestamptz `db:"locked_until" json:"locked_until"`
+	CompletedAt         pgtype.Timestamptz `db:"completed_at" json:"completed_at"`
+	ExpiresAt           pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+	CreatedAt           pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
 type OauthIdentity struct {
 	ID          uuid.UUID          `db:"id" json:"id"`
 	UserID      uuid.UUID          `db:"user_id" json:"user_id"`
 	Provider    string             `db:"provider" json:"provider"`
 	ProviderUid string             `db:"provider_uid" json:"provider_uid"`
 	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
+type SenderDomain struct {
+	ID                  uuid.UUID          `db:"id" json:"id"`
+	TeamID              uuid.UUID          `db:"team_id" json:"team_id"`
+	Domain              string             `db:"domain" json:"domain"`
+	Provider            string             `db:"provider" json:"provider"`
+	ProviderRegion      string             `db:"provider_region" json:"provider_region"`
+	Status              string             `db:"status" json:"status"`
+	VerificationRecords []byte             `db:"verification_records" json:"verification_records"`
+	FailureReason       *string            `db:"failure_reason" json:"failure_reason"`
+	LastCheckedAt       pgtype.Timestamptz `db:"last_checked_at" json:"last_checked_at"`
+	VerifiedAt          pgtype.Timestamptz `db:"verified_at" json:"verified_at"`
+	DisabledAt          pgtype.Timestamptz `db:"disabled_at" json:"disabled_at"`
+	CreatedBy           *uuid.UUID         `db:"created_by" json:"created_by"`
+	CreatedAt           pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type SenderID struct {
+	ID              uuid.UUID          `db:"id" json:"id"`
+	TeamID          uuid.UUID          `db:"team_id" json:"team_id"`
+	Name            string             `db:"name" json:"name"`
+	CountryCode     string             `db:"country_code" json:"country_code"`
+	Purpose         string             `db:"purpose" json:"purpose"`
+	Status          string             `db:"status" json:"status"`
+	Provider        *string            `db:"provider" json:"provider"`
+	RejectionReason *string            `db:"rejection_reason" json:"rejection_reason"`
+	ApprovedAt      pgtype.Timestamptz `db:"approved_at" json:"approved_at"`
+	RejectedAt      pgtype.Timestamptz `db:"rejected_at" json:"rejected_at"`
+	SuspendedAt     pgtype.Timestamptz `db:"suspended_at" json:"suspended_at"`
+	CreatedBy       *uuid.UUID         `db:"created_by" json:"created_by"`
+	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
 type Session struct {
@@ -27,6 +79,26 @@ type Session struct {
 	RevokedAt  pgtype.Timestamptz `db:"revoked_at" json:"revoked_at"`
 	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	LastSeenAt pgtype.Timestamptz `db:"last_seen_at" json:"last_seen_at"`
+}
+
+type SmsMessage struct {
+	ID                uuid.UUID          `db:"id" json:"id"`
+	TeamID            uuid.UUID          `db:"team_id" json:"team_id"`
+	SenderID          *uuid.UUID         `db:"sender_id" json:"sender_id"`
+	ToNumber          string             `db:"to_number" json:"to_number"`
+	FromName          string             `db:"from_name" json:"from_name"`
+	Body              string             `db:"body" json:"body"`
+	Status            string             `db:"status" json:"status"`
+	ProviderID        *string            `db:"provider_id" json:"provider_id"`
+	ProviderMessageID *string            `db:"provider_message_id" json:"provider_message_id"`
+	Segments          int32              `db:"segments" json:"segments"`
+	CostMicros        int64              `db:"cost_micros" json:"cost_micros"`
+	ErrorMessage      *string            `db:"error_message" json:"error_message"`
+	Metadata          []byte             `db:"metadata" json:"metadata"`
+	SubmittedAt       pgtype.Timestamptz `db:"submitted_at" json:"submitted_at"`
+	DeliveredAt       pgtype.Timestamptz `db:"delivered_at" json:"delivered_at"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
 type Team struct {
@@ -92,4 +164,28 @@ type VerificationToken struct {
 	TokenHash  string             `db:"token_hash" json:"token_hash"`
 	ExpiresAt  pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
 	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
+type Wallet struct {
+	ID        uuid.UUID          `db:"id" json:"id"`
+	TeamID    uuid.UUID          `db:"team_id" json:"team_id"`
+	Currency  string             `db:"currency" json:"currency"`
+	Balance   int64              `db:"balance" json:"balance"`
+	Status    string             `db:"status" json:"status"`
+	CreatedAt pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type WalletTransaction struct {
+	ID              uuid.UUID          `db:"id" json:"id"`
+	WalletID        uuid.UUID          `db:"wallet_id" json:"wallet_id"`
+	TeamID          uuid.UUID          `db:"team_id" json:"team_id"`
+	TransactionType string             `db:"transaction_type" json:"transaction_type"`
+	ReferenceID     *uuid.UUID         `db:"reference_id" json:"reference_id"`
+	Amount          int64              `db:"amount" json:"amount"`
+	BalanceAfter    int64              `db:"balance_after" json:"balance_after"`
+	Status          string             `db:"status" json:"status"`
+	Description     *string            `db:"description" json:"description"`
+	Metadata        []byte             `db:"metadata" json:"metadata"`
+	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }

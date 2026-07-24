@@ -8,12 +8,19 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/coffeyvidzro/dugble/server/internal/config"
+	"github.com/coffeyvidzro/dugble/server/internal/integration/fx"
+	"github.com/coffeyvidzro/dugble/server/internal/integration/hubtel"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/auth"
+	"github.com/coffeyvidzro/dugble/server/internal/modules/domain"
+	"github.com/coffeyvidzro/dugble/server/internal/modules/senderid"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
+	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/team"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/teamtoken"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/user"
+	"github.com/coffeyvidzro/dugble/server/internal/modules/wallet"
 	"github.com/coffeyvidzro/dugble/server/internal/notifications"
+	"github.com/coffeyvidzro/dugble/server/internal/platform/idempotency"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 	"github.com/coffeyvidzro/dugble/server/internal/transport/csrf"
 	"github.com/coffeyvidzro/dugble/server/internal/transport/health"
@@ -22,11 +29,13 @@ import (
 
 // Dependencies contains infrastructure required by the HTTP transport.
 type Dependencies struct {
-	DB       *pgxpool.Pool
-	Redis    *redis.Client
-	Arcjet   *arcjet.Client
-	Sender   notifications.EmailSender
-	Renderer *notifications.Renderer
+	DB          *pgxpool.Pool
+	Redis       *redis.Client
+	Arcjet      *arcjet.Client
+	Sender      notifications.EmailSender
+	Renderer    *notifications.Renderer
+	SMSSender   smsmodule.Sender
+	SMSDelivery smsmodule.DeliveryQueue
 }
 
 // NewRouter creates and configures the HTTP router.
@@ -42,6 +51,11 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	router.Use(middlewares.NewCORS(cfg.CORSOrigins, cfg.IsDevelopment()))
 	router.Use(middlewares.NewSecure(cfg.IsDevelopment()))
 	router.Use(middlewares.Arcjet(deps.Arcjet))
+	if deps.DB != nil {
+		router.Use(middlewares.Idempotency(middlewares.IdempotencyConfig{
+			Repository: idempotency.NewRepository(deps.DB),
+		}))
+	}
 
 	// Public infrastructure routes.
 	healthHandler := health.NewHandler(deps.DB, deps.Redis)
@@ -84,6 +98,12 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	teamRepository := team.NewRepository(deps.DB)
 	teamService := team.NewService(teamRepository, emailService)
 	teamTokenRepository := teamtoken.NewRepository(deps.DB)
+	domainRepository := domain.NewRepository(deps.DB)
+	senderIDRepository := senderid.NewRepository(deps.DB)
+	smsRepository := smsmodule.NewRepository(deps.DB)
+	walletRepository := wallet.NewRepository(deps.DB)
+	hubtelProvider := hubtel.NewProvider(hubtel.NewClient(cfg.Hubtel))
+	fxClient := fx.NewCachedProvider(fx.NewFrankfurterClient(), deps.Redis)
 	tenantMiddleware := func(permission tenant.Permission) echo.MiddlewareFunc {
 		return middlewares.Tenant(
 			middlewares.TenantConfig{Memberships: teamRepository, Required: permission},
@@ -101,6 +121,47 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	teamtoken.RegisterRoutes(
 		router,
 		teamtoken.NewHandler(teamTokenService),
+		authMiddleware,
+		csrfMiddleware,
+		tenantMiddleware,
+	)
+
+	senderIDService := senderid.NewService(senderIDRepository)
+	senderid.RegisterRoutes(
+		router,
+		senderid.NewHandler(senderIDService),
+		authMiddleware,
+		csrfMiddleware,
+		tenantMiddleware,
+	)
+
+	domainService := domain.NewService(domainRepository)
+	domain.RegisterRoutes(
+		router,
+		domain.NewHandler(domainService),
+		authMiddleware,
+		csrfMiddleware,
+		tenantMiddleware,
+	)
+
+	walletService := wallet.NewService(
+		walletRepository,
+		wallet.ServiceConfig{FrontendURL: cfg.FrontendURL, BackendURL: cfg.BackendURL},
+		hubtelProvider,
+		fxClient,
+	)
+	wallet.RegisterRoutes(
+		router,
+		wallet.NewHandler(walletService),
+		authMiddleware,
+		csrfMiddleware,
+		tenantMiddleware,
+	)
+
+	smsService := smsmodule.NewService(smsRepository, deps.SMSSender, walletRepository, deps.SMSDelivery)
+	smsmodule.RegisterRoutes(
+		router,
+		smsmodule.NewHandler(smsService),
 		authMiddleware,
 		csrfMiddleware,
 		tenantMiddleware,

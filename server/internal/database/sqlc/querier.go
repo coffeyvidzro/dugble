@@ -6,11 +6,18 @@ package sqlc
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 type Querier interface {
 	AcceptTeamInvitation(ctx context.Context, arg AcceptTeamInvitationParams) (TeamInvitation, error)
+	CompleteIdempotencyKey(ctx context.Context, arg CompleteIdempotencyKeyParams) error
+	CreateIdempotencyKey(ctx context.Context, arg CreateIdempotencyKeyParams) (IdempotencyKey, error)
 	CreateOAuthIdentity(ctx context.Context, arg CreateOAuthIdentityParams) (OauthIdentity, error)
+	CreateSMSMessage(ctx context.Context, arg CreateSMSMessageParams) (SmsMessage, error)
+	CreateSenderDomain(ctx context.Context, arg CreateSenderDomainParams) (SenderDomain, error)
+	CreateSenderID(ctx context.Context, arg CreateSenderIDParams) (SenderID, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateTeam(ctx context.Context, arg CreateTeamParams) (Team, error)
 	CreateTeamInvitation(ctx context.Context, arg CreateTeamInvitationParams) (TeamInvitation, error)
@@ -18,14 +25,28 @@ type Querier interface {
 	CreateTeamToken(ctx context.Context, arg CreateTeamTokenParams) (TeamToken, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateVerificationToken(ctx context.Context, arg CreateVerificationTokenParams) (VerificationToken, error)
+	CreateWallet(ctx context.Context, arg CreateWalletParams) (Wallet, error)
+	CreateWalletTransaction(ctx context.Context, arg CreateWalletTransactionParams) (WalletTransaction, error)
+	CreditWallet(ctx context.Context, arg CreditWalletParams) (Wallet, error)
+	DebitWallet(ctx context.Context, arg DebitWalletParams) (Wallet, error)
 	DeclineTeamInvitation(ctx context.Context, arg DeclineTeamInvitationParams) (TeamInvitation, error)
 	DeleteExpiredVerificationTokens(ctx context.Context) error
+	DeleteIdempotencyKey(ctx context.Context, arg DeleteIdempotencyKeyParams) error
+	DeleteSenderDomain(ctx context.Context, arg DeleteSenderDomainParams) (SenderDomain, error)
+	DeleteSenderID(ctx context.Context, arg DeleteSenderIDParams) (SenderID, error)
 	DeleteUser(ctx context.Context, arg DeleteUserParams) error
 	DeleteVerificationToken(ctx context.Context, arg DeleteVerificationTokenParams) error
 	DeleteVerificationTokensByIdentifier(ctx context.Context, arg DeleteVerificationTokensByIdentifierParams) error
 	DisableTeam(ctx context.Context, arg DisableTeamParams) (Team, error)
+	FindApprovedSMSSender(ctx context.Context, arg FindApprovedSMSSenderParams) (uuid.UUID, error)
 	GetActiveTeamTokenByHash(ctx context.Context, arg GetActiveTeamTokenByHashParams) (TeamToken, error)
+	GetCompletedWalletRefundByReference(ctx context.Context, arg GetCompletedWalletRefundByReferenceParams) (WalletTransaction, error)
+	GetIdempotencyKey(ctx context.Context, arg GetIdempotencyKeyParams) (IdempotencyKey, error)
 	GetOAuthIdentity(ctx context.Context, arg GetOAuthIdentityParams) (OauthIdentity, error)
+	GetSMSMessage(ctx context.Context, arg GetSMSMessageParams) (SmsMessage, error)
+	GetSenderDomain(ctx context.Context, arg GetSenderDomainParams) (SenderDomain, error)
+	GetSenderDomainByDomain(ctx context.Context, arg GetSenderDomainByDomainParams) (SenderDomain, error)
+	GetSenderID(ctx context.Context, arg GetSenderIDParams) (SenderID, error)
 	GetSessionByID(ctx context.Context, arg GetSessionByIDParams) (Session, error)
 	GetSessionByTokenHash(ctx context.Context, arg GetSessionByTokenHashParams) (Session, error)
 	GetTeam(ctx context.Context, arg GetTeamParams) (Team, error)
@@ -34,12 +55,26 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (User, error)
 	GetUserByID(ctx context.Context, arg GetUserByIDParams) (User, error)
 	GetVerificationToken(ctx context.Context, arg GetVerificationTokenParams) (VerificationToken, error)
+	GetWallet(ctx context.Context, arg GetWalletParams) (Wallet, error)
+	GetWalletByTeamAndCurrency(ctx context.Context, arg GetWalletByTeamAndCurrencyParams) (Wallet, error)
+	GetWalletByTeamAndCurrencyForUpdate(ctx context.Context, arg GetWalletByTeamAndCurrencyForUpdateParams) (Wallet, error)
+	GetWalletTransaction(ctx context.Context, arg GetWalletTransactionParams) (WalletTransaction, error)
+	GetWalletTransactionByReferenceForUpdate(ctx context.Context, arg GetWalletTransactionByReferenceForUpdateParams) (WalletTransaction, error)
 	ListOAuthIdentitiesByUserID(ctx context.Context, arg ListOAuthIdentitiesByUserIDParams) ([]OauthIdentity, error)
 	ListPendingTeamInvitations(ctx context.Context, arg ListPendingTeamInvitationsParams) ([]TeamInvitation, error)
+	ListSMSMessages(ctx context.Context, arg ListSMSMessagesParams) ([]SmsMessage, error)
+	ListSenderDomains(ctx context.Context, arg ListSenderDomainsParams) ([]SenderDomain, error)
+	ListSenderIDs(ctx context.Context, arg ListSenderIDsParams) ([]SenderID, error)
 	ListSessionsByUserID(ctx context.Context, arg ListSessionsByUserIDParams) ([]Session, error)
 	ListTeamMembers(ctx context.Context, arg ListTeamMembersParams) ([]TeamMember, error)
 	ListTeamTokens(ctx context.Context, arg ListTeamTokensParams) ([]TeamToken, error)
+	ListTeamWalletTransactions(ctx context.Context, arg ListTeamWalletTransactionsParams) ([]WalletTransaction, error)
 	ListTeamsForUser(ctx context.Context, arg ListTeamsForUserParams) ([]Team, error)
+	ListWalletTransactions(ctx context.Context, arg ListWalletTransactionsParams) ([]WalletTransaction, error)
+	MarkSMSMessageFailed(ctx context.Context, arg MarkSMSMessageFailedParams) (SmsMessage, error)
+	MarkSMSMessageProcessing(ctx context.Context, arg MarkSMSMessageProcessingParams) (SmsMessage, error)
+	MarkSMSMessageRefundPending(ctx context.Context, arg MarkSMSMessageRefundPendingParams) (SmsMessage, error)
+	MarkSMSMessageSubmitted(ctx context.Context, arg MarkSMSMessageSubmittedParams) (SmsMessage, error)
 	MarkUserEmailVerifiedByEmail(ctx context.Context, arg MarkUserEmailVerifiedByEmailParams) (User, error)
 	RemoveTeamMember(ctx context.Context, arg RemoveTeamMemberParams) error
 	RevokeOtherUserSessions(ctx context.Context, arg RevokeOtherUserSessionsParams) error
@@ -48,6 +83,8 @@ type Querier interface {
 	RevokeUserSessions(ctx context.Context, arg RevokeUserSessionsParams) error
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
 	TouchTeamToken(ctx context.Context, arg TouchTeamTokenParams) error
+	UpdateSMSMessageStatus(ctx context.Context, arg UpdateSMSMessageStatusParams) (SmsMessage, error)
+	UpdateSenderDomainVerification(ctx context.Context, arg UpdateSenderDomainVerificationParams) (SenderDomain, error)
 	UpdateTeam(ctx context.Context, arg UpdateTeamParams) (Team, error)
 	UpdateTeamMemberRole(ctx context.Context, arg UpdateTeamMemberRoleParams) (TeamMember, error)
 	UpdateTeamToken(ctx context.Context, arg UpdateTeamTokenParams) (TeamToken, error)
@@ -55,6 +92,9 @@ type Querier interface {
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (User, error)
 	UpdateUserPasswordByEmail(ctx context.Context, arg UpdateUserPasswordByEmailParams) (User, error)
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error)
+	UpdateWalletStatus(ctx context.Context, arg UpdateWalletStatusParams) (Wallet, error)
+	UpdateWalletTransactionMetadata(ctx context.Context, arg UpdateWalletTransactionMetadataParams) (WalletTransaction, error)
+	UpdateWalletTransactionSettlement(ctx context.Context, arg UpdateWalletTransactionSettlementParams) (WalletTransaction, error)
 }
 
 var _ Querier = (*Queries)(nil)

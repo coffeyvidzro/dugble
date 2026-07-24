@@ -2,6 +2,7 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { z } from "zod";
 import { env } from "@/config/env";
 
@@ -34,26 +35,41 @@ export async function getSessionId(): Promise<string | null> {
 }
 
 /** Resolves the current cookie against the authoritative Go session store. */
-export async function getSession(): Promise<Session | null> {
+export const getSession = cache(async (): Promise<Session | null> => {
   const sessionId = await getSessionId();
   if (!sessionId) {
     return null;
   }
 
-  const response = await fetch(`${BACKEND_URL}/auth/user`, {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-      Cookie: `${SESSION_COOKIE_NAME}=${encodeURIComponent(sessionId)}`,
-    },
-    cache: "no-store",
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${BACKEND_URL}/auth/user`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Cookie: `${SESSION_COOKIE_NAME}=${encodeURIComponent(sessionId)}`,
+      },
+      cache: "no-store",
+    });
+  } catch (error) {
+    console.warn(
+      "Unable to reach the backend while resolving the session.",
+      error,
+    );
+    return null;
+  }
 
   if (response.status === 401) {
     return null;
   }
 
   if (!response.ok) {
+    if (isTransientUpstreamStatus(response.status)) {
+      console.warn(`Unable to resolve session (${response.status}).`);
+      return null;
+    }
+
     throw new Error(`Unable to resolve session (${response.status}).`);
   }
 
@@ -65,6 +81,10 @@ export async function getSession(): Promise<Session | null> {
   }
 
   return parsed.data.data;
+});
+
+function isTransientUpstreamStatus(status: number): boolean {
+  return [502, 503, 504, 522, 523, 524].includes(status);
 }
 
 /** Returns the current session or redirects unauthenticated users to login. */

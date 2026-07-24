@@ -38,6 +38,25 @@ func Created(c *echo.Context, data any) error {
 	})
 }
 
+// Partial sends a response that includes committed data plus an error.
+func Partial(c *echo.Context, status int, data any, err error) error {
+	errObj := &ErrorObj{
+		Code:    "INTERNAL_ERROR",
+		Message: "An unexpected error occurred",
+	}
+
+	if appErr, ok := errors.AsType[*apperrors.AppError](err); ok {
+		errObj.Code = appErr.Code
+		errObj.Message = appErr.Message
+	}
+
+	return c.JSON(status, Response{
+		Success: false,
+		Data:    data,
+		Error:   errObj,
+	})
+}
+
 // Error sends an error response based on AppError.
 func Error(c *echo.Context, err error) error {
 	status := http.StatusInternalServerError
