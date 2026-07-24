@@ -32,13 +32,25 @@ type Message struct {
 	ProviderID        *string         `json:"provider_id,omitempty"`
 	ProviderMessageID *string         `json:"provider_message_id,omitempty"`
 	Segments          int32           `json:"segments"`
-	CostMicros        int64           `json:"cost_micros"`
+	CostMicros        int64           `json:"-"`
+	Billing           Billing         `json:"billing"`
 	ErrorMessage      *string         `json:"error_message,omitempty"`
 	Metadata          json.RawMessage `json:"metadata"`
 	SubmittedAt       *time.Time      `json:"submitted_at,omitempty"`
 	DeliveredAt       *time.Time      `json:"delivered_at,omitempty"`
 	CreatedAt         time.Time       `json:"created_at"`
 	UpdatedAt         time.Time       `json:"updated_at"`
+}
+
+type Billing struct {
+	Units   int32        `json:"units"`
+	Pricing BillingPrice `json:"pricing"`
+}
+
+type BillingPrice struct {
+	UnitCost  float64 `json:"unitCost"`
+	TotalCost float64 `json:"totalCost"`
+	Currency  string  `json:"currency"`
 }
 
 type SendRequest struct {

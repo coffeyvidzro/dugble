@@ -9,7 +9,7 @@
   <article><span>Provider</span><strong>{{$sms.ProviderID}}</strong></article>
   <article><span>Provider message</span><strong>{{$sms.ProviderMessageID}}</strong></article>
   <article><span>Segments</span><strong>{{$sms.Segments}}</strong></article>
-  <article><span>Cost micros</span><strong>{{$sms.CostMicros}}</strong></article>
+  <article><span>Cost</span><strong>{{money $sms.CostMicros}}</strong></article>
   <article><span>Submitted</span><strong>{{$sms.SubmittedAt}}</strong></article>
   <article><span>Delivered</span><strong>{{$sms.DeliveredAt}}</strong></article>
   <article><span>Created</span><strong>{{$sms.CreatedAt.Format "2006-01-02 15:04"}}</strong></article>

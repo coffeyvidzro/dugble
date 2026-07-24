@@ -37,12 +37,16 @@ func formatMoney(micros int64) string {
 		micros = -micros
 	}
 
-	cents := (micros + 5_000) / 10_000
-	whole := cents / 100
-	fraction := cents % 100
-	if negative {
-		return fmt.Sprintf("-$%d.%02d", whole, fraction)
+	whole := micros / 1_000_000
+	fraction := micros % 1_000_000
+	fractionText := fmt.Sprintf("%06d", fraction)
+	for len(fractionText) > 2 && fractionText[len(fractionText)-1] == '0' {
+		fractionText = fractionText[:len(fractionText)-1]
 	}
 
-	return fmt.Sprintf("$%d.%02d", whole, fraction)
+	if negative {
+		return fmt.Sprintf("-$%d.%s", whole, fractionText)
+	}
+
+	return fmt.Sprintf("$%d.%s", whole, fractionText)
 }

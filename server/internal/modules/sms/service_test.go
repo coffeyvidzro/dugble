@@ -1,6 +1,10 @@
 package sms
 
-import "testing"
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+)
 
 func TestValidateSendRequiresE164Recipient(t *testing.T) {
 	_, err := validateSend(SendRequest{To: "0241234567", From: "DUGBLE", Body: "hello"})
@@ -85,5 +89,36 @@ func TestCountSegments(t *testing.T) {
 func TestDefaultCostMicrosPerSegment(t *testing.T) {
 	if defaultCostMicrosPerSegment != 9_000 {
 		t.Fatalf("defaultCostMicrosPerSegment = %d, want 9000", defaultCostMicrosPerSegment)
+	}
+}
+
+func TestBillingFromCost(t *testing.T) {
+	billing := billingFromCost(2, 18_000)
+	if billing.Units != 2 {
+		t.Fatalf("Units = %d, want 2", billing.Units)
+	}
+	if billing.Pricing.UnitCost != 0.009 {
+		t.Fatalf("UnitCost = %v, want 0.009", billing.Pricing.UnitCost)
+	}
+	if billing.Pricing.TotalCost != 0.018 {
+		t.Fatalf("TotalCost = %v, want 0.018", billing.Pricing.TotalCost)
+	}
+	if billing.Pricing.Currency != "USD" {
+		t.Fatalf("Currency = %q, want USD", billing.Pricing.Currency)
+	}
+}
+
+func TestMessageJSONUsesBillingRepresentation(t *testing.T) {
+	message := Message{Segments: 1, CostMicros: 9_000, Billing: billingFromCost(1, 9_000)}
+	payload, err := json.Marshal(message)
+	if err != nil {
+		t.Fatalf("Marshal returned error: %v", err)
+	}
+	body := string(payload)
+	if strings.Contains(body, "cost_micros") {
+		t.Fatalf("Message JSON should not expose internal cost_micros: %s", body)
+	}
+	if !strings.Contains(body, `"billing"`) || !strings.Contains(body, `"unitCost":0.009`) || !strings.Contains(body, `"totalCost":0.009`) {
+		t.Fatalf("Message JSON missing billing money representation: %s", body)
 	}
 }

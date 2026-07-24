@@ -13,8 +13,10 @@ func TestFormatMoneyFromMicros(t *testing.T) {
 		{name: "zero", micros: 0, want: "$0.00"},
 		{name: "ten dollars", micros: 10_000_000, want: "$10.00"},
 		{name: "one dollar and one cent", micros: 1_010_000, want: "$1.01"},
-		{name: "rounds to nearest cent", micros: 1_015_000, want: "$1.02"},
+		{name: "preserves mills", micros: 1_015_000, want: "$1.015"},
 		{name: "negative", micros: -10_000_000, want: "-$10.00"},
+		{name: "sms unit cost", micros: 9_000, want: "$0.009"},
+		{name: "negative sms unit cost", micros: -9_000, want: "-$0.009"},
 	}
 
 	for _, tt := range tests {
