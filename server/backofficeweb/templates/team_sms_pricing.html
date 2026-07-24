@@ -15,9 +15,7 @@
   <input type="hidden" name="csrf" value="{{.CSRF}}">
   <label>Pricing plan
     <select name="pricing_plan_id" required>
-      {{range $page.Plans}}
-        <option value="{{.ID}}" {{if eq .ID $config.PricingPlanID}}selected{{end}}>{{.Name}}{{if .IsDefault}} (default){{end}}</option>
-      {{end}}
+      {{range $page.Plans}}<option value="{{.ID}}" {{if eq .ID $config.PricingPlanID}}selected{{end}}>{{.Name}}{{if .IsDefault}} (default){{end}}</option>{{end}}
     </select>
   </label>
   <label>Default traffic class
@@ -28,7 +26,15 @@
   </label>
   <label class="checkbox-label"><input type="checkbox" name="a2p_enabled" value="true" {{if $config.A2PEnabled}}checked{{end}}> Enable A2P</label>
   <label class="checkbox-label"><input type="checkbox" name="local_enabled" value="true" {{if $config.LocalEnabled}}checked{{end}}> Enable local</label>
-  <button type="submit">Save SMS settings</button>
+  <button type="submit">Save explicit SMS settings</button>
 </form>
 <p class="muted">At least one traffic class must remain enabled. The selected default must also be enabled, and each enabled class must have a currently effective rate on the assigned plan.</p>
+{{if $config.Explicit}}
+<h2>Reset configuration</h2>
+<form class="control-panel" method="post" action="/teams/{{$page.Team.Team.ID}}/sms-pricing/reset">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <p class="muted">Remove this explicit assignment and return the team to the platform default pricing plan and default A2P entitlement.</p>
+  <button class="danger" type="submit">Reset to inherited default</button>
+</form>
+{{end}}
 {{template "layout_end" .}}
