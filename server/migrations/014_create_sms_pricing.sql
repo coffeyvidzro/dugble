@@ -83,10 +83,11 @@ INSERT INTO sms_pricing_rules (
 
 -- sms_messages is created in migration 012, before the pricing tables exist.
 -- Add its final pricing columns now that sms_pricing_rules can be referenced.
+-- Preserve the established final column order so sqlc output remains stable.
 ALTER TABLE sms_messages
-    ADD COLUMN destination_country CHAR(2) NOT NULL,
     ADD COLUMN pricing_rule_id UUID NOT NULL,
     ADD COLUMN unit_cost_micros BIGINT NOT NULL DEFAULT 0,
+    ADD COLUMN destination_country CHAR(2) NOT NULL,
     ADD CONSTRAINT fk_sms_messages_pricing_rule
         FOREIGN KEY (pricing_rule_id)
         REFERENCES sms_pricing_rules(id)
