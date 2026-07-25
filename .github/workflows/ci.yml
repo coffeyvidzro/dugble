@@ -56,21 +56,6 @@ jobs:
           path: golangci-lint.log
           retention-days: 1
 
-      - name: Upload lint source snapshot
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: golangci-lint-sources
-          path: |
-            server/cmd/server/main.go
-            server/internal/backoffice/smspricing/management.go
-            server/internal/backoffice/wallets/repository.go
-            server/internal/integration/fx/cached.go
-            server/internal/modules/sms/service.go
-            server/internal/modules/team/repository.go
-            server/internal/modules/wallet/repository.go
-          retention-days: 1
-
       - name: Vet
         run: go vet ./...
 
