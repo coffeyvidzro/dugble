@@ -19,13 +19,13 @@ CREATE UNIQUE INDEX uq_sms_pricing_plans_default
 CREATE TABLE sms_pricing_rules (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     pricing_plan_id UUID NOT NULL REFERENCES sms_pricing_plans(id) ON DELETE RESTRICT,
-    destination_country CHAR(2) NOT NULL,
     unit_cost_micros BIGINT NOT NULL,
     effective_from TIMESTAMPTZ NOT NULL DEFAULT now(),
     effective_until TIMESTAMPTZ,
     status TEXT NOT NULL DEFAULT 'active',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    destination_country CHAR(2) NOT NULL,
 
     CONSTRAINT chk_sms_pricing_rules_destination_country
         CHECK (destination_country ~ '^[A-Z]{2}$'),
