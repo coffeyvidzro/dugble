@@ -6,21 +6,20 @@
   </label>
   <button type="submit">Create pricing plan</button>
 </form>
-<p class="muted">New plans use USD and remain inactive for customer traffic until rates are added and the plan is assigned to a team.</p>
+<p class="muted">Prices are configured per destination country. Teams inherit the default plan unless an explicit plan is assigned.</p>
 <table>
-  <thead><tr><th>Plan</th><th>Local rate</th><th>A2P rate</th><th>Default</th><th>Status</th><th>Updated</th></tr></thead>
+  <thead><tr><th>Plan</th><th>Countries currently priced</th><th>Default</th><th>Status</th><th>Updated</th></tr></thead>
   <tbody>
   {{range .Data}}
     <tr>
       <td><a href="/sms-pricing/{{.ID}}">{{.Name}}</a><br><code>{{.ID}}</code></td>
-      <td>{{if .HasCurrentLocalRate}}{{money .LocalRateMicros}} / segment{{else}}Not configured{{end}}</td>
-      <td>{{if .HasCurrentA2PRate}}{{money .A2PRateMicros}} / segment{{else}}Not configured{{end}}</td>
+      <td>{{.CurrentCountryCount}}</td>
       <td>{{if .IsDefault}}Yes{{else}}No{{end}}</td>
       <td>{{.Status}}</td>
       <td>{{.UpdatedAt.Format "2006-01-02 15:04"}}</td>
     </tr>
   {{else}}
-    <tr><td colspan="6">No SMS pricing plans found.</td></tr>
+    <tr><td colspan="5">No SMS pricing plans found.</td></tr>
   {{end}}
   </tbody>
 </table>
