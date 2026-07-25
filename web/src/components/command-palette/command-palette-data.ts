@@ -97,6 +97,13 @@ const staticItems: CommandItem[] = [
     },
     {
         group: "Company",
+        title: "Brand",
+        description: "Logos, color, type, and voice guidelines.",
+        href: "/brand",
+        keywords: ["logo", "press", "assets", "kit"],
+    },
+    {
+        group: "Company",
         title: "Contact",
         description: "Talk to Dugble about A2P messaging.",
         href: "/contact",
