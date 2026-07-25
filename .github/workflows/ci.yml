@@ -48,6 +48,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Verify golangci-lint config
+        run: |
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            -w /workspace/server \
+            golangci/golangci-lint:v2.12.2 \
+            golangci-lint config verify --config ../.golangci.yml
+
       - name: Validate Compose config
         run: docker compose --env-file .env.example -f compose.yml config --quiet
 
