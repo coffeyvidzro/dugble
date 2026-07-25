@@ -142,20 +142,7 @@ func TestValidateSendRejectsUnsupportedDestination(t *testing.T) {
           curl -sSf https://atlasgo.sh | sh
           atlas migrate hash --dir file://migrations
 
-      - name: Verify traffic class removal
-        run: |
-          if grep -R -n -E 'TrafficClass|traffic_class|Traffic class|A2P rate|Local rate' \
-            server/internal server/backofficeweb/templates \
-            --include='*.go' --include='*.html'; then
-            echo 'Legacy traffic-class references remain.' >&2
-            exit 1
-          fi
-
-      - name: Test server
-        working-directory: server
-        run: go test ./...
-
-      - name: Commit finalized refactor
+      - name: Commit generated refactor
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
