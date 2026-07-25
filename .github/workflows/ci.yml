@@ -53,10 +53,22 @@ jobs:
 
       - name: Apply migrations to fresh PostgreSQL
         run: |
+          set +e
           docker compose --env-file .env.example -f compose.yml up \
             --abort-on-container-exit \
             --exit-code-from migrate \
-            migrate
+            migrate > migration.log 2>&1
+          status=$?
+          cat migration.log
+          exit $status
+
+      - name: Upload migration logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: migration-logs
+          path: migration.log
+          retention-days: 1
 
       - name: Build runtime image
         run: docker build -f server/Dockerfile server
