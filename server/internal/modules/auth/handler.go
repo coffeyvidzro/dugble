@@ -14,12 +14,17 @@ import (
 )
 
 type Handler struct {
-	service     *Service
-	development bool
+	service      *Service
+	development  bool
+	cookieDomain string
 }
 
-func NewHandler(service *Service, development bool) *Handler {
-	return &Handler{service: service, development: development}
+func NewHandler(service *Service, development bool, cookieDomain string) *Handler {
+	return &Handler{
+		service:      service,
+		development:  development,
+		cookieDomain: strings.TrimSpace(cookieDomain),
+	}
 }
 
 func (h *Handler) GetUser(c *echo.Context) error {
@@ -111,7 +116,7 @@ func (h *Handler) Logout(c *echo.Context) error {
 	if err := h.service.Logout(c.Request().Context()); err != nil {
 		return httputil.Error(c, err)
 	}
-	cookie := expiredSessionCookie(h.development)
+	cookie := expiredSessionCookie(h.development, h.cookieDomain)
 	c.SetCookie(cookie)
 	return httputil.OK(c, map[string]bool{"logged_out": true})
 }
@@ -129,6 +134,7 @@ func (h *Handler) setSessionCookie(c *echo.Context, token string, expiresAt time
 			Name:     authnz.SessionCookieName,
 			Value:    token,
 			Path:     "/",
+			Domain:   h.cookieDomain,
 			Expires:  expiresAt,
 			HttpOnly: true,
 			Secure:   !h.development,
@@ -137,11 +143,12 @@ func (h *Handler) setSessionCookie(c *echo.Context, token string, expiresAt time
 	)
 }
 
-func expiredSessionCookie(development bool) *http.Cookie {
+func expiredSessionCookie(development bool, cookieDomain string) *http.Cookie {
 	return &http.Cookie{
 		Name:     authnz.SessionCookieName,
 		Value:    "",
 		Path:     "/",
+		Domain:   strings.TrimSpace(cookieDomain),
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   !development,
