@@ -7,54 +7,9 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  finalize-country-pricing:
-    name: Finalize country pricing refactor
-    if: github.event_name == 'pull_request' && github.head_ref == 'agent/add-sms-traffic-pricing'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout branch head
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ github.head_ref }}
-
-      - name: Set up Go
-        uses: actions/setup-go@v7
-        with:
-          go-version-file: server/go.mod
-          cache: true
-          cache-dependency-path: server/go.sum
-
-      - name: Apply source cutover
-        run: python3 .github/scripts/finalize_country_pricing.py
-
-      - name: Format Go code
-        working-directory: server
-        run: gofmt -w internal/backoffice/smspricing internal/delivery/sms internal/integration/sms internal/modules/sms internal/transport/backoffice
-
-      - name: Generate sqlc
-        working-directory: server
-        run: go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
-
-      - name: Hash Atlas migrations
-        working-directory: server
-        run: |
-          curl -sSf https://atlasgo.sh | sh
-          atlas migrate hash --dir file://migrations
-
-      - name: Commit finalized refactor
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add server
-          if git diff --cached --quiet; then
-            exit 0
-          fi
-          git commit -m "Finalize country-based SMS pricing"
-          git push origin HEAD:agent/add-sms-traffic-pricing
-
   go:
     name: Go quality gates
     runs-on: ubuntu-latest
