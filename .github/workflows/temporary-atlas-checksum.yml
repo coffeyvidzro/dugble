@@ -1,9 +1,7 @@
 name: Temporary Atlas checksum generation
 
 on:
-  push:
-    branches:
-      - agent/fix-atlas-checksum
+  pull_request:
 
 permissions:
   contents: read
@@ -12,8 +10,10 @@ jobs:
   hash:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout branch head
+      - name: Checkout pull request head
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Generate Atlas checksum
         run: |
