@@ -86,7 +86,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 
 	auth.RegisterRoutes(
 		router,
-		auth.NewHandler(authService, cfg.IsDevelopment()),
+		auth.NewHandler(authService, cfg.IsDevelopment(), cfg.SessionCookieDomain),
 		authMiddleware,
 		csrfMiddleware,
 	)
@@ -117,60 +117,58 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		tenantMiddleware,
 	)
 
-	teamTokenService := teamtoken.NewService(teamTokenRepository)
 	teamtoken.RegisterRoutes(
 		router,
-		teamtoken.NewHandler(teamTokenService),
+		teamtoken.NewHandler(teamtoken.NewService(teamTokenRepository)),
 		authMiddleware,
 		csrfMiddleware,
 		tenantMiddleware,
 	)
 
-	senderIDService := senderid.NewService(senderIDRepository)
 	senderid.RegisterRoutes(
 		router,
-		senderid.NewHandler(senderIDService),
+		senderid.NewHandler(senderid.NewService(senderIDRepository)),
 		authMiddleware,
 		csrfMiddleware,
 		tenantMiddleware,
 	)
 
-	domainService := domain.NewService(domainRepository)
 	domain.RegisterRoutes(
 		router,
-		domain.NewHandler(domainService),
+		domain.NewHandler(domain.NewService(domainRepository)),
 		authMiddleware,
 		csrfMiddleware,
 		tenantMiddleware,
 	)
 
-	walletService := wallet.NewService(
-		walletRepository,
-		wallet.ServiceConfig{FrontendURL: cfg.FrontendURL, BackendURL: cfg.BackendURL},
-		hubtelProvider,
-		fxClient,
-	)
 	wallet.RegisterRoutes(
 		router,
-		wallet.NewHandler(walletService),
+		wallet.NewHandler(
+			wallet.NewService(
+				walletRepository,
+				wallet.ServiceConfig{FrontendURL: cfg.FrontendURL, BackendURL: cfg.BackendURL},
+				hubtelProvider,
+				fxClient,
+			),
+		),
 		authMiddleware,
 		csrfMiddleware,
 		tenantMiddleware,
 	)
 
-	smsService := smsmodule.NewService(smsRepository, deps.SMSSender, walletRepository, deps.SMSDelivery)
 	smsmodule.RegisterRoutes(
 		router,
-		smsmodule.NewHandler(smsService),
+		smsmodule.NewHandler(
+			smsmodule.NewService(smsRepository, deps.SMSSender, walletRepository, deps.SMSDelivery),
+		),
 		authMiddleware,
 		csrfMiddleware,
 		tenantMiddleware,
 	)
 
-	sessionService := session.NewService(sessionRepository)
 	session.RegisterRoutes(
 		router,
-		session.NewHandler(sessionService),
+		session.NewHandler(session.NewService(sessionRepository)),
 		authMiddleware,
 		csrfMiddleware,
 	)
