@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Command, CornerDownLeft, SearchX, X, ArrowRight } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
 import { commandItems, type CommandItem } from "./command-palette-data";
 import { cn } from "@/lib/utils";
 
