@@ -7,6 +7,7 @@ x-app-env: &app-env
   FRONTEND_URL: ${FRONTEND_URL:?set FRONTEND_URL}
   BACKEND_URL: ${BACKEND_URL:?set BACKEND_URL}
   CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS}
+  SESSION_COOKIE_DOMAIN: ${SESSION_COOKIE_DOMAIN:?set SESSION_COOKIE_DOMAIN}
   ARCJET_KEY: ${ARCJET_KEY:?set ARCJET_KEY}
   AWS_FROM_EMAIL: ${AWS_FROM_EMAIL:?set AWS_FROM_EMAIL}
   AWS_REGION: ${AWS_REGION:-us-east-1}
@@ -32,6 +33,7 @@ services:
     restart: unless-stopped
     environment:
       API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN}
+      BACKOFFICE_DOMAIN: ${BACKOFFICE_DOMAIN:?set BACKOFFICE_DOMAIN}
     ports:
       - "80:80"
       - "443:443"
@@ -43,6 +45,8 @@ services:
       - dugble-network
     depends_on:
       server:
+        condition: service_started
+      backoffice:
         condition: service_started
 
   postgres:
