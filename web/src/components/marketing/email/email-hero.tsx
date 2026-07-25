@@ -11,11 +11,11 @@ import { cn } from "@/lib/utils";
 
 export function EmailHero() {
     return (
-        <section className="relative isolate overflow-hidden py-8 lg:py-12">
+        <section className="relative isolate overflow-hidden py-8 lg:py-12 rounded-2xl">
             <AnimatedGrid />
             <FloatingOrbs />
 
-            <div className="relative grid gap-12 lg:grid-cols-[1fr_1.05fr] lg:items-center lg:gap-10">
+            <div className="relative grid gap-12 lg:grid-cols-[1fr_1.05fr] lg:items-center lg:gap-10 px-6">
                 <div className="animate-fade-up space-y-6">
                     <p className="font-mono text-xs uppercase tracking-[0.2em] text-signal">
                         Email API

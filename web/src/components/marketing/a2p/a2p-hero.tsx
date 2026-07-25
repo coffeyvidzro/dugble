@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 export function A2pHero() {
     return (
-        <section className="relative isolate overflow-hidden py-12">
+        <section className="relative isolate overflow-hidden py-12 rounded-2xl px-6">
             <AnimatedGrid />
             <FloatingOrbs />
             <div className="relative grid gap-12 lg:grid-cols-[1fr_0.95fr] lg:items-center lg:gap-10">

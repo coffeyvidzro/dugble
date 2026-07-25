@@ -29,7 +29,7 @@ export default function Page() {
     return (
         <main className="min-h-svh bg-background text-foreground">
             <div className="mx-auto flex w-full max-w-5xl flex-col px-6 py-8 lg:px-8">
-                <section className="relative isolate overflow-hidden py-16">
+                <section className="relative isolate overflow-hidden py-16 rounded-2xl px-6">
                     <AnimatedGrid />
                     <FloatingOrbs />
                     <div className="relative grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-10">

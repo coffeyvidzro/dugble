@@ -25,7 +25,7 @@ export default async function Page() {
     return (
         <main className="min-h-svh bg-background text-foreground">
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-14 px-6 py-8 lg:px-8">
-                <section className="relative isolate overflow-hidden py-12">
+                <section className="relative isolate overflow-hidden py-12 rounded-2xl px-6">
                     <AnimatedGrid />
                     <FloatingOrbs />
                     <Reveal className="relative space-y-4">
