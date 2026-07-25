@@ -3,7 +3,7 @@
 <p><a href="/sms-pricing/{{$preview.PlanID}}">← Back to {{$preview.PlanName}}</a></p>
 <section class="detail-grid">
   <article><span>Plan</span><strong>{{$preview.PlanName}}</strong></article>
-  <article><span>Traffic class</span><strong>{{$preview.TrafficClass}}</strong></article>
+  <article><span>Destination country</span><strong>{{$preview.DestinationCountry}}</strong></article>
   <article><span>Current price</span><strong>{{if $preview.HasCurrentRate}}{{money $preview.CurrentRateMicros}} / segment{{else}}Not configured{{end}}</strong></article>
   <article><span>Proposed price</span><strong>{{money $preview.UnitCostMicros}} / segment</strong></article>
   <article><span>Exact proposed amount</span><strong>{{$preview.UnitCostMicros}} micros</strong></article>
@@ -12,14 +12,14 @@
 </section>
 <div class="notice warning">
   {{if $preview.HasCurrentRate}}
-  This will replace the current {{$preview.TrafficClass}} price of {{money $preview.CurrentRateMicros}} with {{money $preview.UnitCostMicros}} per segment at the stated start time.
+  This will replace the current {{$preview.DestinationCountry}} price of {{money $preview.CurrentRateMicros}} with {{money $preview.UnitCostMicros}} per segment at the stated start time.
   {{else}}
-  This will create the first {{$preview.TrafficClass}} price for this plan.
+  This will create the first {{$preview.DestinationCountry}} price for this plan.
   {{end}}
 </div>
 <form class="control-panel" method="post" action="/sms-pricing/{{$preview.PlanID}}/rates">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
-  <input type="hidden" name="traffic_class" value="{{$preview.TrafficClass}}">
+  <input type="hidden" name="destination_country" value="{{$preview.DestinationCountry}}">
   <input type="hidden" name="unit_cost_usd" value="{{$preview.UnitCostUSD}}">
   <input type="hidden" name="effective_from" value="{{$preview.EffectiveFrom.Format "2006-01-02T15:04:05Z07:00"}}">
   <input type="hidden" name="effective_until" {{if $preview.EffectiveUntil}}value="{{$preview.EffectiveUntil.Format "2006-01-02T15:04:05Z07:00"}}"{{end}}>
