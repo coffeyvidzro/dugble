@@ -44,7 +44,7 @@ func NewClient(cfg config.HubtelConfig) *Client {
 	return &Client{
 		APIID:                 strings.TrimSpace(cfg.APIID),
 		APIKey:                strings.TrimSpace(cfg.APIKey),
-		MerchantAccountNumber: strings.TrimSpace(cfg.MerchantAccountNumber),
+		MerchantAccountNumber: strings.TrimSpace(cfg.MerchantNumber),
 		HTTPClient:            &http.Client{Timeout: defaultClientTimeout},
 	}
 }
