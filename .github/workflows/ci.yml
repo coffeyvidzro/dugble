@@ -147,17 +147,53 @@ jobs:
                   FROM information_schema.columns
                   WHERE table_schema = 'public'
                     AND table_name = 'sms_messages'
-                    AND column_name = 'destination_country'
+                    AND column_name = 'pricing_rule_id'
                     AND is_nullable = 'NO'
               ) OR NOT EXISTS (
                   SELECT 1
                   FROM information_schema.columns
                   WHERE table_schema = 'public'
                     AND table_name = 'sms_messages'
-                    AND column_name = 'pricing_rule_id'
+                    AND column_name = 'unit_cost_micros'
+                    AND is_nullable = 'NO'
+              ) OR NOT EXISTS (
+                  SELECT 1
+                  FROM information_schema.columns
+                  WHERE table_schema = 'public'
+                    AND table_name = 'sms_messages'
+                    AND column_name = 'destination_country'
                     AND is_nullable = 'NO'
               ) THEN
-                  RAISE EXCEPTION 'sms_messages final pricing columns are missing or nullable';
+                  RAISE EXCEPTION 'sms_messages final pricing snapshot columns are missing or nullable';
+              END IF;
+
+              IF NOT EXISTS (
+                  SELECT 1
+                  FROM pg_constraint AS constraint_record
+                  JOIN pg_class AS source_table
+                    ON source_table.oid = constraint_record.conrelid
+                  JOIN pg_class AS referenced_table
+                    ON referenced_table.oid = constraint_record.confrelid
+                  WHERE constraint_record.conname = 'fk_sms_messages_pricing_rule'
+                    AND constraint_record.contype = 'f'
+                    AND source_table.relname = 'sms_messages'
+                    AND referenced_table.relname = 'sms_pricing_rules'
+              ) THEN
+                  RAISE EXCEPTION 'sms_messages pricing-rule foreign key is missing';
+              END IF;
+
+              IF NOT EXISTS (
+                  SELECT 1
+                  FROM pg_constraint
+                  WHERE conname = 'chk_sms_messages_destination_country'
+                    AND conrelid = 'public.sms_messages'::regclass
+              ) OR NOT EXISTS (
+                  SELECT 1
+                  FROM pg_constraint
+                  WHERE conname = 'chk_sms_messages_unit_cost_non_negative'
+                    AND conrelid = 'public.sms_messages'::regclass
+              ) THEN
+                  RAISE EXCEPTION 'sms_messages pricing snapshot constraints are missing';
               END IF;
 
               IF EXISTS (
@@ -175,16 +211,12 @@ jobs:
                   RAISE EXCEPTION 'legacy SMS pricing columns still exist';
               END IF;
 
-              IF NOT EXISTS (
-                  SELECT 1
-                  FROM sms_pricing_rules
-                  WHERE id = '9f6cb7f6-1a21-4a79-9aa8-9782c867a101'::uuid
-                    AND pricing_plan_id = '9f6cb7f6-1a21-4a79-9aa8-9782c867a001'::uuid
-                    AND destination_country = 'GH'
-                    AND unit_cost_micros = 9000
-                    AND status = 'active'
-              ) THEN
-                  RAISE EXCEPTION 'default Ghana SMS pricing rate is missing';
+              IF EXISTS (SELECT 1 FROM sms_pricing_plans) THEN
+                  RAISE EXCEPTION 'sms_pricing_plans should be empty after schema migrations';
+              END IF;
+
+              IF EXISTS (SELECT 1 FROM sms_pricing_rules) THEN
+                  RAISE EXCEPTION 'sms_pricing_rules should be empty after schema migrations';
               END IF;
           END
           $$;
