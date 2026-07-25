@@ -19,7 +19,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_sms_pricing_plans_default
 CREATE TABLE IF NOT EXISTS sms_pricing_rules (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     pricing_plan_id UUID NOT NULL REFERENCES sms_pricing_plans(id) ON DELETE RESTRICT,
-    traffic_class TEXT NOT NULL,
+    destination_country CHAR(2) NOT NULL,
     unit_cost_micros BIGINT NOT NULL,
     effective_from TIMESTAMPTZ NOT NULL DEFAULT now(),
     effective_until TIMESTAMPTZ,
@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS sms_pricing_rules (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
-    CONSTRAINT chk_sms_pricing_rules_traffic_class CHECK (traffic_class IN ('local', 'a2p')),
+    CONSTRAINT chk_sms_pricing_rules_destination_country
+        CHECK (destination_country ~ '^[A-Z]{2}$'),
     CONSTRAINT chk_sms_pricing_rules_unit_cost CHECK (unit_cost_micros > 0),
     CONSTRAINT chk_sms_pricing_rules_effective_range CHECK (
         effective_until IS NULL OR effective_until > effective_from
@@ -38,7 +39,7 @@ CREATE TABLE IF NOT EXISTS sms_pricing_rules (
 CREATE INDEX IF NOT EXISTS idx_sms_pricing_rules_lookup
     ON sms_pricing_rules (
         pricing_plan_id,
-        traffic_class,
+        destination_country,
         status,
         effective_from DESC
     );
@@ -46,19 +47,8 @@ CREATE INDEX IF NOT EXISTS idx_sms_pricing_rules_lookup
 CREATE TABLE IF NOT EXISTS team_sms_settings (
     team_id UUID PRIMARY KEY REFERENCES teams(id) ON DELETE CASCADE,
     pricing_plan_id UUID NOT NULL REFERENCES sms_pricing_plans(id) ON DELETE RESTRICT,
-    default_traffic_class TEXT NOT NULL DEFAULT 'a2p',
-    local_enabled BOOLEAN NOT NULL DEFAULT false,
-    a2p_enabled BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-    CONSTRAINT chk_team_sms_settings_default_class CHECK (
-        default_traffic_class IN ('local', 'a2p')
-    ),
-    CONSTRAINT chk_team_sms_settings_default_enabled CHECK (
-        (default_traffic_class = 'local' AND local_enabled)
-        OR (default_traffic_class = 'a2p' AND a2p_enabled)
-    )
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 INSERT INTO sms_pricing_plans (
@@ -79,14 +69,14 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO sms_pricing_rules (
     id,
     pricing_plan_id,
-    traffic_class,
+    destination_country,
     unit_cost_micros,
     effective_from,
     status
 ) VALUES (
     '9f6cb7f6-1a21-4a79-9aa8-9782c867a101',
     '9f6cb7f6-1a21-4a79-9aa8-9782c867a001',
-    'a2p',
+    'GH',
     9000,
     '1970-01-01T00:00:00Z',
     'active'
@@ -94,12 +84,20 @@ INSERT INTO sms_pricing_rules (
 ON CONFLICT (id) DO NOTHING;
 
 ALTER TABLE sms_messages
-    ADD COLUMN IF NOT EXISTS traffic_class TEXT NOT NULL DEFAULT 'a2p',
+    ADD COLUMN IF NOT EXISTS destination_country CHAR(2),
     ADD COLUMN IF NOT EXISTS pricing_rule_id UUID,
     ADD COLUMN IF NOT EXISTS unit_cost_micros BIGINT NOT NULL DEFAULT 0;
 
 UPDATE sms_messages
-SET pricing_rule_id = COALESCE(
+SET destination_country = COALESCE(
+        destination_country,
+        CASE
+            WHEN to_number LIKE '+233%' THEN 'GH'
+            WHEN to_number LIKE '+234%' THEN 'NG'
+            ELSE 'ZZ'
+        END
+    ),
+    pricing_rule_id = COALESCE(
         pricing_rule_id,
         '9f6cb7f6-1a21-4a79-9aa8-9782c867a101'::uuid
     ),
@@ -110,6 +108,7 @@ SET pricing_rule_id = COALESCE(
     END;
 
 ALTER TABLE sms_messages
+    ALTER COLUMN destination_country SET NOT NULL,
     ALTER COLUMN pricing_rule_id SET NOT NULL;
 
 ALTER TABLE sms_messages
@@ -117,10 +116,13 @@ ALTER TABLE sms_messages
         FOREIGN KEY (pricing_rule_id)
         REFERENCES sms_pricing_rules(id)
         ON DELETE RESTRICT,
-    ADD CONSTRAINT chk_sms_messages_traffic_class
-        CHECK (traffic_class IN ('local', 'a2p')),
+    ADD CONSTRAINT chk_sms_messages_destination_country
+        CHECK (destination_country ~ '^[A-Z]{2}$'),
     ADD CONSTRAINT chk_sms_messages_unit_cost_non_negative
         CHECK (unit_cost_micros >= 0);
 
 CREATE INDEX IF NOT EXISTS idx_sms_messages_pricing_rule
     ON sms_messages (pricing_rule_id);
+
+CREATE INDEX IF NOT EXISTS idx_sms_messages_destination_country
+    ON sms_messages (destination_country, created_at DESC);
