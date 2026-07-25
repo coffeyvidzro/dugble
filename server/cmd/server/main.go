@@ -78,7 +78,11 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("initialize Redis: %w", err)
 	}
-	defer redisClient.Close()
+	defer func() {
+		if err := redisClient.Close(); err != nil {
+			slog.Warn("close Redis client", "error", err)
+		}
+	}()
 
 	arcjetClient, err := security.NewClient(cfg.ArcjetKey)
 	if err != nil {
