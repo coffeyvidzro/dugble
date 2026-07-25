@@ -99,15 +99,31 @@ jobs:
           path: migration.log
           retention-days: 1
 
-      - name: Verify application health checks
+      - name: Verify Caddy health and upstream routing
         run: |
+          export API_DOMAIN=http://api.localhost
+          export BACKOFFICE_DOMAIN=http://bo.localhost
+
           docker compose --env-file .env.example -f compose.yml up \
             --detach \
             --build \
             --wait \
             --wait-timeout 120 \
-            server backoffice
+            caddy
+
           docker compose --env-file .env.example -f compose.yml ps
+
+          curl --fail --silent --show-error \
+            --header "Host: api.localhost" \
+            http://127.0.0.1/ready \
+            | tee api-ready.json
+          grep -q '"status":"ready"' api-ready.json
+
+          curl --fail --silent --show-error \
+            --header "Host: bo.localhost" \
+            http://127.0.0.1/ready \
+            | tee backoffice-ready.json
+          grep -q '"status":"ready"' backoffice-ready.json
 
       - name: Clean up Compose services
         if: always()
