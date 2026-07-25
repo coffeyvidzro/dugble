@@ -74,15 +74,11 @@ services:
     image: arigaio/atlas:1.2.3-community-alpine
     container_name: dugble-migrate
     restart: "no"
+    entrypoint: ["/bin/sh", "-c"]
     command:
-      - migrate
-      - apply
-      - --dir
-      - file:///migrations
-      - --url
-      - env://DATABASE_URL
+      - exec /atlas migrate apply --dir file:///migrations --url "$$DATABASE_URL"
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-dugble}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-dugble}?sslmode=disable
+      DATABASE_URL: "postgres://${POSTGRES_USER:-dugble}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-dugble}?sslmode=disable&search_path=public"
     volumes:
       - ./server/migrations:/migrations:ro
     networks:
