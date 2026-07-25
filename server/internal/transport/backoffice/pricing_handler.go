@@ -190,10 +190,7 @@ func (h *PricingHandler) UpdateTeam(c *echo.Context) error {
 		return c.String(http.StatusBadRequest, "invalid team id")
 	}
 	if err := h.pricing.UpdateTeam(c.Request().Context(), id, backofficesmspricing.UpdateTeamRequest{
-		PricingPlanID:       c.Request().FormValue("pricing_plan_id"),
-		DefaultTrafficClass: c.Request().FormValue("default_traffic_class"),
-		LocalEnabled:        c.Request().FormValue("local_enabled") != "",
-		A2PEnabled:          c.Request().FormValue("a2p_enabled") != "",
+		PricingPlanID: c.Request().FormValue("pricing_plan_id"),
 	}, pricingActor(c)); err != nil {
 		return handlePricingCommandError(c, err)
 	}
@@ -213,10 +210,10 @@ func (h *PricingHandler) ResetTeam(c *echo.Context) error {
 
 func rateRequestFromForm(c *echo.Context) backofficesmspricing.AddRateRequest {
 	return backofficesmspricing.AddRateRequest{
-		TrafficClass:   c.Request().FormValue("traffic_class"),
-		UnitCostUSD:    c.Request().FormValue("unit_cost_usd"),
-		EffectiveFrom:  c.Request().FormValue("effective_from"),
-		EffectiveUntil: c.Request().FormValue("effective_until"),
+		DestinationCountry: c.Request().FormValue("destination_country"),
+		UnitCostUSD:        c.Request().FormValue("unit_cost_usd"),
+		EffectiveFrom:     c.Request().FormValue("effective_from"),
+		EffectiveUntil:    c.Request().FormValue("effective_until"),
 	}
 }
 
@@ -232,8 +229,7 @@ func handlePricingCommandError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, backofficesmspricing.ErrInvalidRequest),
 		errors.Is(err, backofficesmspricing.ErrPlanUnavailable),
-		errors.Is(err, backofficesmspricing.ErrNoCurrentLocalRate),
-		errors.Is(err, backofficesmspricing.ErrNoCurrentA2PRate),
+		errors.Is(err, backofficesmspricing.ErrNoCurrentRate),
 		errors.Is(err, backofficesmspricing.ErrDefaultPlan),
 		errors.Is(err, backofficesmspricing.ErrPlanInUse),
 		errors.Is(err, backofficesmspricing.ErrRateImmutable):
