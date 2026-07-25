@@ -51,54 +51,10 @@ CREATE TABLE team_sms_settings (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-INSERT INTO sms_pricing_plans (
-    id,
-    name,
-    currency,
-    is_default,
-    status
-) VALUES (
-    '9f6cb7f6-1a21-4a79-9aa8-9782c867a001',
-    'Standard',
-    'USD',
-    true,
-    'active'
-);
-
-INSERT INTO sms_pricing_rules (
-    id,
-    pricing_plan_id,
-    destination_country,
-    unit_cost_micros,
-    effective_from,
-    status
-) VALUES (
-    '9f6cb7f6-1a21-4a79-9aa8-9782c867a101',
-    '9f6cb7f6-1a21-4a79-9aa8-9782c867a001',
-    'GH',
-    9000,
-    '1970-01-01T00:00:00Z',
-    'active'
-);
-
--- sms_messages is created in migration 012, before the pricing tables exist.
--- Add its final pricing columns now that sms_pricing_rules can be referenced.
--- Preserve the established final column order so sqlc output remains stable.
+-- sms_messages is created in migration 012. Attach its pricing-rule foreign key
+-- after sms_pricing_rules exists.
 ALTER TABLE sms_messages
-    ADD COLUMN pricing_rule_id UUID NOT NULL,
-    ADD COLUMN unit_cost_micros BIGINT NOT NULL DEFAULT 0,
-    ADD COLUMN destination_country CHAR(2) NOT NULL,
     ADD CONSTRAINT fk_sms_messages_pricing_rule
         FOREIGN KEY (pricing_rule_id)
         REFERENCES sms_pricing_rules(id)
-        ON DELETE RESTRICT,
-    ADD CONSTRAINT chk_sms_messages_destination_country
-        CHECK (destination_country ~ '^[A-Z]{2}$'),
-    ADD CONSTRAINT chk_sms_messages_unit_cost_non_negative
-        CHECK (unit_cost_micros >= 0);
-
-CREATE INDEX idx_sms_messages_pricing_rule
-    ON sms_messages (pricing_rule_id);
-
-CREATE INDEX idx_sms_messages_destination_country
-    ON sms_messages (destination_country, created_at DESC);
+        ON DELETE RESTRICT;
