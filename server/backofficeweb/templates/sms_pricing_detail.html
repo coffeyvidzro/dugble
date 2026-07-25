@@ -6,8 +6,7 @@
   <article><span>Currency</span><strong>{{$detail.Plan.Currency}}</strong></article>
   <article><span>Default</span><strong>{{if $detail.Plan.IsDefault}}Yes{{else}}No{{end}}</strong></article>
   <article><span>Status</span><strong>{{$detail.Plan.Status}}</strong></article>
-  <article><span>Current local rate</span><strong>{{if $detail.Plan.HasCurrentLocalRate}}{{money $detail.Plan.LocalRateMicros}} / segment{{else}}Not configured{{end}}</strong></article>
-  <article><span>Current A2P rate</span><strong>{{if $detail.Plan.HasCurrentA2PRate}}{{money $detail.Plan.A2PRateMicros}} / segment{{else}}Not configured{{end}}</strong></article>
+  <article><span>Countries currently priced</span><strong>{{$detail.Plan.CurrentCountryCount}}</strong></article>
   <article><span>Explicit team assignments</span><strong>{{$detail.AssignedTeamCount}}</strong></article>
   <article><span>Historical rate records</span><strong>{{$detail.RateCount}}</strong></article>
 </section>
@@ -29,36 +28,62 @@
   <form method="post" action="/sms-pricing/{{$detail.Plan.ID}}/delete"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="danger" type="submit">Delete unused plan</button></form>
   {{end}}
 </div>
-{{if $detail.Plan.IsDefault}}<p class="muted">Select another qualified default plan before archiving this plan.</p>{{end}}
+{{if $detail.Plan.IsDefault}}<p class="muted">Select another plan with at least one current country rate before archiving this plan.</p>{{end}}
 {{if gt $detail.AssignedTeamCount 0}}<p class="muted">Reassign explicit team configurations before archiving this plan.</p>{{end}}
 {{if eq $detail.Plan.Status "active"}}
-<h2>Schedule a replacement rate</h2>
+<h2>Schedule a country rate</h2>
 <form class="control-panel" method="post" action="/sms-pricing/{{$detail.Plan.ID}}/rates/preview">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
-  <label>Traffic class <select name="traffic_class" required><option value="a2p">A2P</option><option value="local">Local</option></select></label>
+  <label>Destination country
+    <input type="text" name="destination_country" placeholder="GH" minlength="2" maxlength="2" pattern="[A-Za-z]{2}" required>
+  </label>
   <label>USD per segment <input type="text" inputmode="decimal" name="unit_cost_usd" placeholder="0.009000" required></label>
   <label>Effective from <input type="datetime-local" name="effective_from"></label>
   <label>Effective until <input type="datetime-local" name="effective_until"></label>
   <button type="submit">Review rate change</button>
 </form>
-<p class="muted">The confirmation page shows the current price, proposed price, and exact micros before anything is changed. A new rate closes the previous open-ended rate at the new start time.</p>
+<p class="muted">Use a two-letter ISO country code such as GH or NG. A replacement rate closes the previous open-ended rate for that country at the new start time.</p>
 {{end}}
-<h2>A2P price timeline</h2>
-<table><thead><tr><th>Unit price</th><th>Effective from</th><th>Effective until</th><th>Lifecycle</th><th>Actions</th><th>ID</th></tr></thead><tbody>
-{{range $detail.A2PRates}}
-<tr><td>{{money .UnitCostMicros}} / segment<br><small>{{.UnitCostMicros}} micros</small></td><td>{{.EffectiveFrom.Format "2006-01-02 15:04"}} UTC</td><td>{{if .EffectiveUntil}}{{.EffectiveUntil.Format "2006-01-02 15:04"}} UTC{{else}}Open-ended{{end}}</td><td><span class="status-badge status-{{.Lifecycle}}">{{.Lifecycle}}</span></td><td>
-{{if .CanEdit}}<form class="compact-form" method="post" action="/sms-pricing/{{$detail.Plan.ID}}/rates/{{.ID}}"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input aria-label="USD per segment" type="text" inputmode="decimal" name="unit_cost_usd" value="{{microsInput .UnitCostMicros}}" required><input aria-label="Effective from" type="datetime-local" name="effective_from" value="{{datetimeLocal .EffectiveFrom}}" required><input aria-label="Effective until" type="datetime-local" name="effective_until" {{if .EffectiveUntil}}value="{{datetimeLocal .EffectiveUntil}}"{{end}}><button type="submit">Save schedule</button></form><form class="compact-form" method="post" action="/sms-pricing/{{$detail.Plan.ID}}/rates/{{.ID}}/cancel"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="danger" type="submit">Cancel schedule</button></form>{{else}}<span class="muted">Read only</span>{{end}}</td><td><code>{{.ID}}</code></td></tr>
-{{else}}<tr><td colspan="6">No A2P rates have been added.</td></tr>{{end}}
-</tbody></table>
-<h2>Local price timeline</h2>
-<table><thead><tr><th>Unit price</th><th>Effective from</th><th>Effective until</th><th>Lifecycle</th><th>Actions</th><th>ID</th></tr></thead><tbody>
-{{range $detail.LocalRates}}
-<tr><td>{{money .UnitCostMicros}} / segment<br><small>{{.UnitCostMicros}} micros</small></td><td>{{.EffectiveFrom.Format "2006-01-02 15:04"}} UTC</td><td>{{if .EffectiveUntil}}{{.EffectiveUntil.Format "2006-01-02 15:04"}} UTC{{else}}Open-ended{{end}}</td><td><span class="status-badge status-{{.Lifecycle}}">{{.Lifecycle}}</span></td><td>
-{{if .CanEdit}}<form class="compact-form" method="post" action="/sms-pricing/{{$detail.Plan.ID}}/rates/{{.ID}}"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input aria-label="USD per segment" type="text" inputmode="decimal" name="unit_cost_usd" value="{{microsInput .UnitCostMicros}}" required><input aria-label="Effective from" type="datetime-local" name="effective_from" value="{{datetimeLocal .EffectiveFrom}}" required><input aria-label="Effective until" type="datetime-local" name="effective_until" {{if .EffectiveUntil}}value="{{datetimeLocal .EffectiveUntil}}"{{end}}><button type="submit">Save schedule</button></form><form class="compact-form" method="post" action="/sms-pricing/{{$detail.Plan.ID}}/rates/{{.ID}}/cancel"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="danger" type="submit">Cancel schedule</button></form>{{else}}<span class="muted">Read only</span>{{end}}</td><td><code>{{.ID}}</code></td></tr>
-{{else}}<tr><td colspan="6">No local rates have been added.</td></tr>{{end}}
-</tbody></table>
+{{range $timeline := $detail.CountryRates}}
+<h2>{{$timeline.CountryCode}} price timeline</h2>
+<table>
+  <thead><tr><th>Unit price</th><th>Effective from</th><th>Effective until</th><th>Lifecycle</th><th>Actions</th><th>ID</th></tr></thead>
+  <tbody>
+  {{range $timeline.Rates}}
+  <tr>
+    <td>{{money .UnitCostMicros}} / segment<br><small>{{.UnitCostMicros}} micros</small></td>
+    <td>{{.EffectiveFrom.Format "2006-01-02 15:04"}} UTC</td>
+    <td>{{if .EffectiveUntil}}{{.EffectiveUntil.Format "2006-01-02 15:04"}} UTC{{else}}Open-ended{{end}}</td>
+    <td><span class="status-badge status-{{.Lifecycle}}">{{.Lifecycle}}</span></td>
+    <td>
+      {{if .CanEdit}}
+      <form class="compact-form" method="post" action="/sms-pricing/{{$detail.Plan.ID}}/rates/{{.ID}}">
+        <input type="hidden" name="csrf" value="{{$.CSRF}}">
+        <input aria-label="USD per segment" type="text" inputmode="decimal" name="unit_cost_usd" value="{{microsInput .UnitCostMicros}}" required>
+        <input aria-label="Effective from" type="datetime-local" name="effective_from" value="{{datetimeLocal .EffectiveFrom}}" required>
+        <input aria-label="Effective until" type="datetime-local" name="effective_until" {{if .EffectiveUntil}}value="{{datetimeLocal .EffectiveUntil}}"{{end}}>
+        <button type="submit">Save schedule</button>
+      </form>
+      <form class="compact-form" method="post" action="/sms-pricing/{{$detail.Plan.ID}}/rates/{{.ID}}/cancel">
+        <input type="hidden" name="csrf" value="{{$.CSRF}}">
+        <button class="danger" type="submit">Cancel schedule</button>
+      </form>
+      {{else}}<span class="muted">Read only</span>{{end}}
+    </td>
+    <td><code>{{.ID}}</code></td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}
+<h2>Country price timelines</h2>
+<p class="muted">No country rates have been added.</p>
+{{end}}
 <h2>Plan audit log</h2>
-<table><thead><tr><th>When</th><th>Administrator</th><th>Action</th><th>Metadata</th></tr></thead><tbody>
-{{range $detail.Audits}}<tr><td>{{.CreatedAt.Format "2006-01-02 15:04:05"}} UTC</td><td>{{.ActorEmail}}</td><td>{{.Action}}</td><td><code>{{.Metadata}}</code></td></tr>{{else}}<tr><td colspan="4">No audited changes have been recorded yet.</td></tr>{{end}}
-</tbody></table>
+<table>
+  <thead><tr><th>When</th><th>Administrator</th><th>Action</th><th>Metadata</th></tr></thead>
+  <tbody>
+  {{range $detail.Audits}}<tr><td>{{.CreatedAt.Format "2006-01-02 15:04:05"}} UTC</td><td>{{.ActorEmail}}</td><td>{{.Action}}</td><td><code>{{.Metadata}}</code></td></tr>{{else}}<tr><td colspan="4">No audited changes have been recorded yet.</td></tr>{{end}}
+  </tbody>
+</table>
 {{template "layout_end" .}}
