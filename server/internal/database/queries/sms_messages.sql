@@ -9,7 +9,7 @@ INSERT INTO sms_messages (
     segments,
     cost_micros,
     metadata,
-    traffic_class,
+    destination_country,
     pricing_rule_id,
     unit_cost_micros
 ) VALUES (
@@ -22,7 +22,7 @@ INSERT INTO sms_messages (
     sqlc.arg(segments),
     sqlc.arg(cost_micros),
     sqlc.arg(metadata),
-    sqlc.arg(traffic_class),
+    sqlc.arg(destination_country),
     sqlc.arg(pricing_rule_id),
     sqlc.arg(unit_cost_micros)
 )
@@ -95,7 +95,6 @@ WHERE id = sqlc.arg(id)
   AND status = 'queued'
   AND provider_message_id IS NULL
 RETURNING *;
-
 
 -- name: MarkSMSMessageRefundPending :one
 UPDATE sms_messages
