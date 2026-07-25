@@ -82,23 +82,59 @@ type Session struct {
 }
 
 type SmsMessage struct {
-	ID                uuid.UUID          `db:"id" json:"id"`
-	TeamID            uuid.UUID          `db:"team_id" json:"team_id"`
-	SenderID          *uuid.UUID         `db:"sender_id" json:"sender_id"`
-	ToNumber          string             `db:"to_number" json:"to_number"`
-	FromName          string             `db:"from_name" json:"from_name"`
-	Body              string             `db:"body" json:"body"`
-	Status            string             `db:"status" json:"status"`
-	ProviderID        *string            `db:"provider_id" json:"provider_id"`
-	ProviderMessageID *string            `db:"provider_message_id" json:"provider_message_id"`
-	Segments          int32              `db:"segments" json:"segments"`
-	CostMicros        int64              `db:"cost_micros" json:"cost_micros"`
-	ErrorMessage      *string            `db:"error_message" json:"error_message"`
-	Metadata          []byte             `db:"metadata" json:"metadata"`
-	SubmittedAt       pgtype.Timestamptz `db:"submitted_at" json:"submitted_at"`
-	DeliveredAt       pgtype.Timestamptz `db:"delivered_at" json:"delivered_at"`
-	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ID                 uuid.UUID          `db:"id" json:"id"`
+	TeamID             uuid.UUID          `db:"team_id" json:"team_id"`
+	SenderID           *uuid.UUID         `db:"sender_id" json:"sender_id"`
+	ToNumber           string             `db:"to_number" json:"to_number"`
+	FromName           string             `db:"from_name" json:"from_name"`
+	Body               string             `db:"body" json:"body"`
+	Status             string             `db:"status" json:"status"`
+	ProviderID         *string            `db:"provider_id" json:"provider_id"`
+	ProviderMessageID  *string            `db:"provider_message_id" json:"provider_message_id"`
+	Segments           int32              `db:"segments" json:"segments"`
+	CostMicros         int64              `db:"cost_micros" json:"cost_micros"`
+	ErrorMessage       *string            `db:"error_message" json:"error_message"`
+	Metadata           []byte             `db:"metadata" json:"metadata"`
+	SubmittedAt        pgtype.Timestamptz `db:"submitted_at" json:"submitted_at"`
+	DeliveredAt        pgtype.Timestamptz `db:"delivered_at" json:"delivered_at"`
+	CreatedAt          pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	PricingRuleID      uuid.UUID          `db:"pricing_rule_id" json:"pricing_rule_id"`
+	UnitCostMicros     int64              `db:"unit_cost_micros" json:"unit_cost_micros"`
+	DestinationCountry string             `db:"destination_country" json:"destination_country"`
+}
+
+type SmsPricingAuditLog struct {
+	ID           uuid.UUID          `db:"id" json:"id"`
+	ActorUserID  *uuid.UUID         `db:"actor_user_id" json:"actor_user_id"`
+	ActorEmail   string             `db:"actor_email" json:"actor_email"`
+	Action       string             `db:"action" json:"action"`
+	ResourceType string             `db:"resource_type" json:"resource_type"`
+	ResourceID   *uuid.UUID         `db:"resource_id" json:"resource_id"`
+	Metadata     []byte             `db:"metadata" json:"metadata"`
+	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
+type SmsPricingPlan struct {
+	ID        uuid.UUID          `db:"id" json:"id"`
+	Name      string             `db:"name" json:"name"`
+	Currency  string             `db:"currency" json:"currency"`
+	IsDefault bool               `db:"is_default" json:"is_default"`
+	Status    string             `db:"status" json:"status"`
+	CreatedAt pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type SmsPricingRule struct {
+	ID                 uuid.UUID          `db:"id" json:"id"`
+	PricingPlanID      uuid.UUID          `db:"pricing_plan_id" json:"pricing_plan_id"`
+	UnitCostMicros     int64              `db:"unit_cost_micros" json:"unit_cost_micros"`
+	EffectiveFrom      pgtype.Timestamptz `db:"effective_from" json:"effective_from"`
+	EffectiveUntil     pgtype.Timestamptz `db:"effective_until" json:"effective_until"`
+	Status             string             `db:"status" json:"status"`
+	CreatedAt          pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	DestinationCountry string             `db:"destination_country" json:"destination_country"`
 }
 
 type Team struct {
@@ -132,6 +168,13 @@ type TeamMember struct {
 	Status    string             `db:"status" json:"status"`
 	CreatedAt pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type TeamSmsSetting struct {
+	TeamID        uuid.UUID          `db:"team_id" json:"team_id"`
+	PricingPlanID uuid.UUID          `db:"pricing_plan_id" json:"pricing_plan_id"`
+	CreatedAt     pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
 type TeamToken struct {

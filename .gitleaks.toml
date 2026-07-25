@@ -1,0 +1,11 @@
+title = "Dugble Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+  [[rules.allowlists]]
+  description = "Atlas migration checksums are integrity hashes, not credentials."
+  paths = ['''^server/migrations/atlas\.sum$''']

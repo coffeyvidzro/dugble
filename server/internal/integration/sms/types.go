@@ -30,19 +30,27 @@ var (
 )
 
 // SendRequest is Dugble's provider-neutral request for one recipient.
-// Batching can be added later without changing the provider implementations by
-// introducing a separate batch request type.
+// DestinationCountry is resolved by Dugble from To and is never client chosen.
 type SendRequest struct {
-	To      string
-	From    string
-	Message string
+	To                 string
+	From               string
+	Message            string
+	DestinationCountry string
 }
 
 // Normalize trims routing fields while preserving the message exactly as the
-// caller supplied it.
+// caller supplied it. When the country snapshot is omitted it is derived from
+// the recipient number.
 func (r SendRequest) Normalize() SendRequest {
 	r.To = strings.TrimSpace(r.To)
 	r.From = strings.TrimSpace(r.From)
+	r.DestinationCountry = NormalizeCountryCode(r.DestinationCountry)
+	if r.DestinationCountry == "" {
+		country, err := ResolveDestinationCountry(r.To)
+		if err == nil {
+			r.DestinationCountry = country
+		}
+	}
 	return r
 }
 
@@ -65,6 +73,17 @@ func (r SendRequest) Validate() error {
 		return &ValidationError{Field: "message", Reason: "message is required"}
 	}
 
+	resolvedCountry, err := ResolveDestinationCountry(r.To)
+	if err != nil {
+		return &ValidationError{Field: "to", Reason: "destination country is not supported"}
+	}
+	if !IsCountryCode(r.DestinationCountry) {
+		return &ValidationError{Field: "destination_country", Reason: "destination country is required"}
+	}
+	if r.DestinationCountry != resolvedCountry {
+		return &ValidationError{Field: "destination_country", Reason: "destination country does not match recipient"}
+	}
+
 	return nil
 }
 
@@ -81,10 +100,6 @@ type StatusResponse struct {
 }
 
 // Provider is implemented by every upstream SMS adapter.
-//
-// It lives in the root sms package to prevent an import cycle. The
-// sms/provider package exposes an alias for packages that prefer the
-// provider.Provider name.
 type Provider interface {
 	ID() string
 	Send(ctx context.Context, req SendRequest) (*SendResponse, error)

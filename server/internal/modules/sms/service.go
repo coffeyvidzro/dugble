@@ -124,8 +124,6 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	}
 
 	segments := countSegments(normalized.Body)
-	costMicros := int64(segments) * defaultCostMicrosPerSegment
-
 	tx, err := s.repository.BeginTx(ctx)
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to begin SMS send transaction", err)
@@ -133,10 +131,22 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	txRepository := s.repository.WithTx(tx)
+	quote, err := txRepository.QuoteSMS(ctx, tenantContext.TeamID, normalized.DestinationCountry, segments)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrSMSPricingNotConfigured):
+			return Message{}, apperrors.NewBadRequest("SMS pricing is not configured for the destination country")
+		default:
+			return Message{}, apperrors.NewInternal("Unable to calculate SMS price", err)
+		}
+	}
+
 	created, err := txRepository.Create(ctx, createMessageParams{
 		TeamID: tenantContext.TeamID, SenderID: senderID, To: normalized.To, From: normalized.From,
 		Body: normalized.Body, Status: StatusQueued, Segments: segments,
-		CostMicros: costMicros, Metadata: normalized.Metadata,
+		CostMicros: quote.TotalCostMicros, Metadata: normalized.Metadata,
+		DestinationCountry: quote.DestinationCountry, PricingRuleID: quote.PricingRuleID,
+		UnitCostMicros: quote.UnitCostMicros,
 	})
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to create SMS message", err)
@@ -321,6 +331,11 @@ func validateSend(req SendRequest) (SendRequest, error) {
 	if !e164Pattern.MatchString(req.To) {
 		return SendRequest{}, apperrors.NewBadRequest("SMS recipient must be a valid E.164 phone number")
 	}
+	destinationCountry, err := smsapi.ResolveDestinationCountry(req.To)
+	if err != nil {
+		return SendRequest{}, apperrors.NewBadRequest("SMS recipient country is not supported")
+	}
+	req.DestinationCountry = destinationCountry
 	if req.From == "" {
 		return SendRequest{}, apperrors.NewBadRequest("SMS sender ID is required")
 	}

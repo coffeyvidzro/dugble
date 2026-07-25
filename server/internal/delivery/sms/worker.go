@@ -51,7 +51,12 @@ func (w *Worker) Work(ctx context.Context, job *river.Job[DeliverArgs]) error {
 		return w.handleAlreadyClaimed(ctx, job.Args)
 	}
 
-	response, err := w.sender.Send(ctx, smsapi.SendRequest{To: message.To, From: message.From, Message: message.Body})
+	response, err := w.sender.Send(ctx, smsapi.SendRequest{
+		To:                 message.To,
+		From:               message.From,
+		Message:            message.Body,
+		DestinationCountry: message.DestinationCountry,
+	})
 	if err != nil {
 		if !shouldRefundAfterSendError(err) {
 			// Ambiguous failures may have happened after the provider accepted the

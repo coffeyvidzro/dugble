@@ -17,29 +17,34 @@ const (
 	StatusFailed        = "failed"
 	StatusExpired       = "expired"
 	StatusUnknown       = "unknown"
-
-	defaultCostMicrosPerSegment int64 = 9_000
 )
 
 type Message struct {
-	ID                string          `json:"id"`
-	TeamID            string          `json:"team_id"`
-	SenderID          *string         `json:"sender_id,omitempty"`
-	To                string          `json:"to"`
-	From              string          `json:"from"`
-	Body              string          `json:"body"`
-	Status            string          `json:"status"`
-	ProviderID        *string         `json:"provider_id,omitempty"`
-	ProviderMessageID *string         `json:"provider_message_id,omitempty"`
-	Segments          int32           `json:"segments"`
-	CostMicros        int64           `json:"cost_micros"`
-	Billing           Billing         `json:"billing"`
-	ErrorMessage      *string         `json:"error_message,omitempty"`
-	Metadata          json.RawMessage `json:"metadata"`
-	SubmittedAt       *time.Time      `json:"submitted_at,omitempty"`
-	DeliveredAt       *time.Time      `json:"delivered_at,omitempty"`
-	CreatedAt         time.Time       `json:"created_at"`
-	UpdatedAt         time.Time       `json:"updated_at"`
+	ID                 string          `json:"id"`
+	TeamID             string          `json:"team_id"`
+	SenderID           *string         `json:"sender_id,omitempty"`
+	To                 string          `json:"to"`
+	From               string          `json:"from"`
+	Body               string          `json:"body"`
+	Status             string          `json:"status"`
+	ProviderID         *string         `json:"provider_id,omitempty"`
+	ProviderMessageID  *string         `json:"provider_message_id,omitempty"`
+	Segments           int32           `json:"segments"`
+	CostMicros         int64           `json:"cost_micros"`
+	Billing            Billing         `json:"billing"`
+	ErrorMessage       *string         `json:"error_message,omitempty"`
+	Metadata           json.RawMessage `json:"metadata"`
+	SubmittedAt        *time.Time      `json:"submitted_at,omitempty"`
+	DeliveredAt        *time.Time      `json:"delivered_at,omitempty"`
+	CreatedAt          time.Time       `json:"created_at"`
+	UpdatedAt          time.Time       `json:"updated_at"`
+	DestinationCountry string          `json:"destination_country"`
+	PricingRuleID      string          `json:"pricing_rule_id"`
+	UnitCostMicros     int64           `json:"unit_cost_micros"`
+}
+
+type Destination struct {
+	Country string `json:"country"`
 }
 
 type SMSResponse struct {
@@ -48,6 +53,7 @@ type SMSResponse struct {
 	From        string          `json:"from"`
 	Body        string          `json:"body"`
 	Status      string          `json:"status"`
+	Destination Destination     `json:"destination"`
 	Segments    int32           `json:"segments"`
 	Metadata    json.RawMessage `json:"metadata"`
 	Billing     Billing         `json:"billing"`
@@ -70,6 +76,7 @@ func (m Message) Response() SMSResponse {
 		From:        m.From,
 		Body:        m.Body,
 		Status:      m.Status,
+		Destination: Destination{Country: m.DestinationCountry},
 		Segments:    m.Segments,
 		Metadata:    m.Metadata,
 		Billing:     m.Billing,
@@ -113,10 +120,11 @@ type Billing struct {
 }
 
 type SendRequest struct {
-	To       string          `json:"to"`
-	From     string          `json:"from"`
-	Body     string          `json:"body"`
-	Metadata json.RawMessage `json:"metadata,omitempty"`
+	To                 string          `json:"to"`
+	From               string          `json:"from"`
+	Body               string          `json:"body"`
+	Metadata           json.RawMessage `json:"metadata,omitempty"`
+	DestinationCountry string          `json:"-"`
 }
 
 type BatchSendRequest struct {

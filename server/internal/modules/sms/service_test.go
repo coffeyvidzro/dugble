@@ -27,6 +27,23 @@ func TestValidateSendDefaultsMetadata(t *testing.T) {
 	}
 }
 
+func TestValidateSendResolvesDestinationCountry(t *testing.T) {
+	req, err := validateSend(SendRequest{To: "+233241234567", From: "DUGBLE", Body: "hello"})
+	if err != nil {
+		t.Fatalf("validateSend returned error: %v", err)
+	}
+	if req.DestinationCountry != "GH" {
+		t.Fatalf("DestinationCountry = %q, want GH", req.DestinationCountry)
+	}
+}
+
+func TestValidateSendRejectsUnsupportedDestination(t *testing.T) {
+	_, err := validateSend(SendRequest{To: "+12025550123", From: "DUGBLE", Body: "hello"})
+	if err == nil {
+		t.Fatal("validateSend returned nil error for unsupported destination")
+	}
+}
+
 func TestValidateBatchSendRequiresMessages(t *testing.T) {
 	if err := validateBatchSend(BatchSendRequest{}); err == nil {
 		t.Fatal("validateBatchSend returned nil error for empty batch")
@@ -90,14 +107,8 @@ func TestCountSegments(t *testing.T) {
 	}
 }
 
-func TestDefaultCostMicrosPerSegment(t *testing.T) {
-	if defaultCostMicrosPerSegment != 9_000 {
-		t.Fatalf("defaultCostMicrosPerSegment = %d, want 9000", defaultCostMicrosPerSegment)
-	}
-}
-
-func TestBillingFromCost(t *testing.T) {
-	billing := billingFromCost(2, 18_000)
+func TestBillingFromAmounts(t *testing.T) {
+	billing := billingFromAmounts(9_000, 18_000)
 	if billing.UnitCost != 0.009 {
 		t.Fatalf("UnitCost = %v, want 0.009", billing.UnitCost)
 	}
@@ -115,35 +126,50 @@ func TestSMSResponseJSONUsesPublicRepresentation(t *testing.T) {
 	providerMessageID := "provider-secret"
 	internalError := "upstream payload that must not be exposed"
 	message := Message{
-		ID:                "message-id",
-		TeamID:            "team-id",
-		To:                "+233241234567",
-		From:              "DUGBLE",
-		Body:              "hello",
-		Status:            StatusFailed,
-		ProviderID:        &providerID,
-		ProviderMessageID: &providerMessageID,
-		Segments:          1,
-		CostMicros:        9_000,
-		Billing:           billingFromCost(1, 9_000),
-		ErrorMessage:      &internalError,
-		Metadata:          json.RawMessage(`{"campaign":"welcome"}`),
-		SubmittedAt:       &now,
-		CreatedAt:         now,
-		UpdatedAt:         now,
+		ID:                 "message-id",
+		TeamID:             "team-id",
+		To:                 "+233241234567",
+		From:               "DUGBLE",
+		Body:               "hello",
+		Status:             StatusFailed,
+		ProviderID:         &providerID,
+		ProviderMessageID:  &providerMessageID,
+		DestinationCountry: "GH",
+		PricingRuleID:      "pricing-rule-secret",
+		Segments:           1,
+		UnitCostMicros:     9_000,
+		CostMicros:         9_000,
+		Billing:            billingFromAmounts(9_000, 9_000),
+		ErrorMessage:       &internalError,
+		Metadata:           json.RawMessage(`{"campaign":"welcome"}`),
+		SubmittedAt:        &now,
+		CreatedAt:          now,
+		UpdatedAt:          now,
 	}
 	payload, err := json.Marshal(message.Response())
 	if err != nil {
 		t.Fatalf("Marshal returned error: %v", err)
 	}
 	body := string(payload)
-	for _, hidden := range []string{"cost_micros", "team_id", "sender_id", "provider_id", "provider_message_id", "error_message", internalError} {
+	for _, hidden := range []string{
+		"cost_micros",
+		"unit_cost_micros",
+		"pricing_rule_id",
+		"pricing-rule-secret",
+		"team_id",
+		"sender_id",
+		"provider_id",
+		"provider_message_id",
+		"error_message",
+		internalError,
+	} {
 		if strings.Contains(body, hidden) {
 			t.Fatalf("SMS response JSON should not expose %s: %s", hidden, body)
 		}
 	}
 	for _, expected := range []string{
 		`"metadata":{"campaign":"welcome"}`,
+		`"destination":{"country":"GH"}`,
 		`"segments":1`,
 		`"unit_cost":0.009`,
 		`"total_cost":0.009`,
