@@ -31,19 +31,20 @@ type BackofficeConfig struct {
 }
 
 type Config struct {
-	AppEnv      string           `env:"APP_ENV"   envDefault:"development"`
-	HTTPPort    string           `env:"HTTP_PORT" envDefault:"8080"`
-	DatabaseURL string           `env:"DATABASE_URL,required,notEmpty"`
-	RedisURL    string           `env:"REDIS_URL" envDefault:"redis://localhost:6379/0"`
-	CORSOrigins []string         `env:"CORS_ORIGINS" envSeparator:"," envDefault:"http://localhost:3000,http://127.0.0.1:3000"`
-	ArcjetKey   string           `env:"ARCJET_KEY,required,notEmpty"`
-	FrontendURL string           `env:"FRONTEND_URL" envDefault:"http://localhost:3000"`
-	BackendURL  string           `env:"BACKEND_URL"  envDefault:"http://localhost:8080"`
-	AWS         AWSConfig        `envPrefix:"AWS_"`
-	Arkesel     ProviderConfig   `envPrefix:"ARKESEL_"`
-	MNotify     ProviderConfig   `envPrefix:"MNOTIFY_"`
-	Hubtel      HubtelConfig     `envPrefix:"HUBTEL_"`
-	Backoffice  BackofficeConfig `envPrefix:"BACKOFFICE_"`
+	AppEnv              string           `env:"APP_ENV"   envDefault:"development"`
+	HTTPPort            string           `env:"HTTP_PORT" envDefault:"8080"`
+	DatabaseURL         string           `env:"DATABASE_URL,required,notEmpty"`
+	RedisURL            string           `env:"REDIS_URL" envDefault:"redis://localhost:6379/0"`
+	CORSOrigins         []string         `env:"CORS_ORIGINS" envSeparator:"," envDefault:"http://localhost:3000,http://127.0.0.1:3000"`
+	ArcjetKey           string           `env:"ARCJET_KEY,required,notEmpty"`
+	FrontendURL         string           `env:"FRONTEND_URL" envDefault:"http://localhost:3000"`
+	BackendURL          string           `env:"BACKEND_URL"  envDefault:"http://localhost:8080"`
+	SessionCookieDomain string           `env:"SESSION_COOKIE_DOMAIN"`
+	AWS                 AWSConfig        `envPrefix:"AWS_"`
+	Arkesel             ProviderConfig   `envPrefix:"ARKESEL_"`
+	MNotify             ProviderConfig   `envPrefix:"MNOTIFY_"`
+	Hubtel              HubtelConfig     `envPrefix:"HUBTEL_"`
+	Backoffice          BackofficeConfig `envPrefix:"BACKOFFICE_"`
 }
 
 func Load() (*Config, error) {
@@ -71,6 +72,7 @@ func (c *Config) normalize() {
 	c.ArcjetKey = strings.TrimSpace(c.ArcjetKey)
 	c.FrontendURL = strings.TrimRight(strings.TrimSpace(c.FrontendURL), "/")
 	c.BackendURL = strings.TrimRight(strings.TrimSpace(c.BackendURL), "/")
+	c.SessionCookieDomain = strings.TrimSpace(c.SessionCookieDomain)
 	c.AWS.FromEmail = strings.TrimSpace(c.AWS.FromEmail)
 	c.AWS.Region = strings.TrimSpace(c.AWS.Region)
 	c.AWS.AccessKey = strings.TrimSpace(c.AWS.AccessKey)
@@ -93,7 +95,6 @@ func (c *Config) normalize() {
 
 		origins = append(origins, origin)
 	}
-
 	c.CORSOrigins = origins
 
 	adminEmails := make([]string, 0, len(c.Backoffice.AdminEmails))
@@ -105,6 +106,5 @@ func (c *Config) normalize() {
 
 		adminEmails = append(adminEmails, email)
 	}
-
 	c.Backoffice.AdminEmails = adminEmails
 }
