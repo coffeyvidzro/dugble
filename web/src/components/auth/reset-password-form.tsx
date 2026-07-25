@@ -6,13 +6,13 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, Lock } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
 
 import { AuthShell } from "@/components/auth/auth-shell";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
     Field,
     FieldDescription,
@@ -108,6 +108,7 @@ export function ResetPasswordForm({
                                             New password
                                         </FieldLabel>
                                         <div className="relative">
+                                            <Lock className="pointer-events-none absolute left-3 top-0 flex h-9 w-4 items-center text-muted-foreground" />
                                             <Input
                                                 {...field}
                                                 id="reset-password-password"
@@ -122,7 +123,7 @@ export function ResetPasswordForm({
                                                         : "password"
                                                 }
                                                 disabled={loading}
-                                                className="pr-10"
+                                                className="pl-10 pr-10"
                                             />
                                             <button
                                                 type="button"
@@ -166,6 +167,7 @@ export function ResetPasswordForm({
                                             Confirm new password
                                         </FieldLabel>
                                         <div className="relative">
+                                            <Lock className="pointer-events-none absolute left-3 top-0 flex h-9 w-4 items-center text-muted-foreground" />
                                             <Input
                                                 {...field}
                                                 id="reset-password-confirm-password"
@@ -180,7 +182,7 @@ export function ResetPasswordForm({
                                                         : "password"
                                                 }
                                                 disabled={loading}
-                                                className="pr-10"
+                                                className="pl-10 pr-10"
                                             />
                                             <button
                                                 type="button"
@@ -218,7 +220,7 @@ export function ResetPasswordForm({
                                 form="reset-password-form"
                                 disabled={loading}
                                 size="lg"
-                                className="w-full"
+                                className="w-full hover:cursor-pointer"
                             >
                                 {loading && (
                                     <Loader2 className="size-4 animate-spin" />
@@ -233,14 +235,15 @@ export function ResetPasswordForm({
                             This reset link is invalid or has expired. Request a
                             new one to continue.
                         </p>
-                        <Button
-                            size="lg"
-                            className="w-full hover:cursor-pointer"
+                        <Link
+                            href="/forgot-password"
+                            className={cn(
+                                buttonVariants({ size: "lg" }),
+                                "w-full",
+                            )}
                         >
-                            <Link href="/forgot-password">
-                                Request a new link
-                            </Link>
-                        </Button>
+                            Request a new link
+                        </Link>
                     </div>
                 )}
             </AuthShell>

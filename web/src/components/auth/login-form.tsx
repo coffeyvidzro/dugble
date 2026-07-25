@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
@@ -76,15 +76,23 @@ export function LoginForm({
                 backHref="/"
                 backLabel="Back to home"
                 footer={
-                    <>
-                        Don&apos;t have an account?{" "}
+                    <p className="text-xs">
+                        By using Dugble, you agree to our{" "}
                         <Link
-                            href="/sign-up"
-                            className="font-medium text-foreground underline-offset-4 hover:underline"
+                            href="/legal/terms"
+                            className="underline-offset-4 hover:text-foreground hover:underline"
                         >
-                            Create one
+                            Terms of Service
+                        </Link>{" "}
+                        &amp;{" "}
+                        <Link
+                            href="/legal/privacy"
+                            className="underline-offset-4 hover:text-foreground hover:underline"
+                        >
+                            Privacy Policy
                         </Link>
-                    </>
+                        .
+                    </p>
                 }
             >
                 <form
@@ -101,15 +109,19 @@ export function LoginForm({
                                     <FieldLabel htmlFor="login-email">
                                         Email
                                     </FieldLabel>
-                                    <Input
-                                        {...field}
-                                        id="login-email"
-                                        aria-invalid={fieldState.invalid}
-                                        placeholder="coffey@vidzro.com"
-                                        autoComplete="email"
-                                        type="email"
-                                        disabled={loading}
-                                    />
+                                    <div className="relative">
+                                        <Mail className="pointer-events-none absolute left-3 top-0 flex h-9 w-4 items-center text-muted-foreground" />
+                                        <Input
+                                            {...field}
+                                            id="login-email"
+                                            aria-invalid={fieldState.invalid}
+                                            placeholder="youremail@example.com"
+                                            autoComplete="email"
+                                            type="email"
+                                            disabled={loading}
+                                            className="pl-10"
+                                        />
+                                    </div>
                                     {fieldState.invalid && (
                                         <FieldError
                                             errors={[fieldState.error]}
@@ -136,6 +148,7 @@ export function LoginForm({
                                         </Link>
                                     </div>
                                     <div className="relative">
+                                        <Lock className="pointer-events-none absolute left-3 top-0 flex h-9 w-4 items-center text-muted-foreground" />
                                         <Input
                                             {...field}
                                             id="login-password"
@@ -148,7 +161,7 @@ export function LoginForm({
                                                     : "password"
                                             }
                                             disabled={loading}
-                                            className="pr-10"
+                                            className="pl-10 pr-10"
                                         />
                                         <button
                                             type="button"
@@ -191,6 +204,16 @@ export function LoginForm({
                             )}
                             Sign in
                         </Button>
+
+                        <p className="text-center text-sm text-muted-foreground">
+                            Don&apos;t have an account?{" "}
+                            <Link
+                                href="/sign-up"
+                                className="font-medium text-foreground underline-offset-4 hover:underline"
+                            >
+                                Create one
+                            </Link>
+                        </p>
                     </FieldGroup>
                 </form>
             </AuthShell>

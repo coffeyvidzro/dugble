@@ -7,7 +7,7 @@ import Link from "next/link";
 
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, Lock, Mail, User } from "lucide-react";
 import { toast } from "sonner";
 import * as z from "zod";
 
@@ -61,7 +61,9 @@ export function SignupForm({
             }
 
             toast.success("Account created. Check your email to verify it.");
-            router.push("/login");
+            router.push(
+                `/verify-email?email=${encodeURIComponent(data.email)}`,
+            );
             router.refresh();
         } catch {
             toast.error("Unable to create account. Please try again.");
@@ -78,15 +80,23 @@ export function SignupForm({
                 backHref="/"
                 backLabel="Back to home"
                 footer={
-                    <>
-                        Already have an account?{" "}
+                    <p className="text-xs">
+                        By signing up, you agree to our{" "}
                         <Link
-                            href="/login"
-                            className="font-medium text-foreground underline-offset-4 hover:underline"
+                            href="/legal/terms"
+                            className="underline-offset-4 hover:text-foreground hover:underline"
                         >
-                            Sign in
+                            Terms of Service
+                        </Link>{" "}
+                        &amp;{" "}
+                        <Link
+                            href="/legal/privacy"
+                            className="underline-offset-4 hover:text-foreground hover:underline"
+                        >
+                            Privacy Policy
                         </Link>
-                    </>
+                        .
+                    </p>
                 }
             >
                 <form
@@ -103,14 +113,18 @@ export function SignupForm({
                                     <FieldLabel htmlFor="signup-name">
                                         Name
                                     </FieldLabel>
-                                    <Input
-                                        {...field}
-                                        id="signup-name"
-                                        aria-invalid={fieldState.invalid}
-                                        placeholder="Coffey Vidzro"
-                                        autoComplete="name"
-                                        disabled={loading}
-                                    />
+                                    <div className="relative">
+                                        <User className="pointer-events-none absolute left-3 top-0 flex h-9 w-4 items-center text-muted-foreground" />
+                                        <Input
+                                            {...field}
+                                            id="signup-name"
+                                            aria-invalid={fieldState.invalid}
+                                            placeholder="Enter your name"
+                                            autoComplete="name"
+                                            disabled={loading}
+                                            className="pl-10"
+                                        />
+                                    </div>
                                     {fieldState.invalid && (
                                         <FieldError
                                             errors={[fieldState.error]}
@@ -128,15 +142,19 @@ export function SignupForm({
                                     <FieldLabel htmlFor="signup-email">
                                         Email
                                     </FieldLabel>
-                                    <Input
-                                        {...field}
-                                        id="signup-email"
-                                        aria-invalid={fieldState.invalid}
-                                        placeholder="coffey@vidzro.com"
-                                        autoComplete="email"
-                                        type="email"
-                                        disabled={loading}
-                                    />
+                                    <div className="relative">
+                                        <Mail className="pointer-events-none absolute left-3 top-0 flex h-9 w-4 items-center text-muted-foreground" />
+                                        <Input
+                                            {...field}
+                                            id="signup-email"
+                                            aria-invalid={fieldState.invalid}
+                                            placeholder="youremail@example.com"
+                                            autoComplete="email"
+                                            type="email"
+                                            disabled={loading}
+                                            className="pl-10"
+                                        />
+                                    </div>
                                     {fieldState.invalid && (
                                         <FieldError
                                             errors={[fieldState.error]}
@@ -155,6 +173,7 @@ export function SignupForm({
                                         Password
                                     </FieldLabel>
                                     <div className="relative">
+                                        <Lock className="pointer-events-none absolute left-3 top-0 flex h-9 w-4 items-center text-muted-foreground" />
                                         <Input
                                             {...field}
                                             id="signup-password"
@@ -167,7 +186,7 @@ export function SignupForm({
                                                     : "password"
                                             }
                                             disabled={loading}
-                                            className="pr-10"
+                                            className="pl-10 pr-10"
                                         />
                                         <button
                                             type="button"
@@ -214,6 +233,16 @@ export function SignupForm({
                             )}
                             Create account
                         </Button>
+
+                        <p className="text-center text-sm text-muted-foreground">
+                            Already have an account?{" "}
+                            <Link
+                                href="/login"
+                                className="font-medium text-foreground underline-offset-4 hover:underline"
+                            >
+                                Sign in
+                            </Link>
+                        </p>
                     </FieldGroup>
                 </form>
             </AuthShell>
