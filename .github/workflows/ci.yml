@@ -35,6 +35,14 @@ jobs:
           go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
           git diff --exit-code -- internal/database/sqlc
 
+      - name: Run golangci-lint
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -w /workspace/server \
+            golangci/golangci-lint:v2.12.2 \
+            golangci-lint run --config ../.golangci.yml ./...
+
       - name: Vet
         run: go vet ./...
 
