@@ -1,4 +1,4 @@
-name: Temporary country pricing finalizer
+name: Temporary country pricing source cutover
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  finalize:
+  cutover:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch
@@ -24,7 +24,7 @@ jobs:
           cache: true
           cache-dependency-path: server/go.sum
 
-      - name: Apply country pricing cutover
+      - name: Apply source cutover
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -32,61 +32,47 @@ jobs:
 
           service = Path('server/internal/modules/sms/service.go')
           text = service.read_text()
-          replacements = {
-              'quote, err := txRepository.QuoteSMS(ctx, tenantContext.TeamID, normalized.TrafficClass, segments)':
-                  'quote, err := txRepository.QuoteSMS(ctx, tenantContext.TeamID, normalized.DestinationCountry, segments)',
-              '''\t\tcase errors.Is(err, ErrTrafficClassNotEnabled):
-\t\t\treturn Message{}, apperrors.NewForbidden("SMS traffic class is not enabled for this team")
-\t\tcase errors.Is(err, ErrSMSPricingNotConfigured):
-\t\t\treturn Message{}, apperrors.NewBadRequest("SMS pricing is not configured for the requested traffic class")''':
-                  '''\t\tcase errors.Is(err, ErrSMSPricingNotConfigured):
-\t\t\treturn Message{}, apperrors.NewBadRequest("SMS pricing is not configured for the destination country")''',
-              '''\t\tTrafficClass: quote.TrafficClass, PricingRuleID: quote.PricingRuleID,
-\t\tUnitCostMicros: quote.UnitCostMicros,''':
-                  '''\t\tDestinationCountry: quote.DestinationCountry, PricingRuleID: quote.PricingRuleID,
-\t\tUnitCostMicros: quote.UnitCostMicros,''',
-              '\treq.TrafficClass = smsapi.NormalizeTrafficClass(req.TrafficClass)\n': '',
-              '''\tif req.TrafficClass != "" && !smsapi.IsKnownTrafficClass(req.TrafficClass) {
-\t\treturn SendRequest{}, apperrors.NewBadRequest("SMS traffic class must be local or a2p")
-\t}
-''': '',
-          }
-          for old, new in replacements.items():
-              if old not in text:
-                  raise SystemExit(f'missing service replacement: {old[:80]!r}')
-              text = text.replace(old, new)
-          marker = '''\tif !e164Pattern.MatchString(req.To) {
+          text = text.replace(
+              'txRepository.QuoteSMS(ctx, tenantContext.TeamID, normalized.TrafficClass, segments)',
+              'txRepository.QuoteSMS(ctx, tenantContext.TeamID, normalized.DestinationCountry, segments)',
+          )
+          text = re.sub(
+              r'\s*case errors\.Is\(err, ErrTrafficClassNotEnabled\):\n\s*return Message\{\}, apperrors\.NewForbidden\("SMS traffic class is not enabled for this team"\)\n',
+              '\n',
+              text,
+          )
+          text = text.replace(
+              'SMS pricing is not configured for the requested traffic class',
+              'SMS pricing is not configured for the destination country',
+          )
+          text = text.replace(
+              'TrafficClass: quote.TrafficClass, PricingRuleID: quote.PricingRuleID,',
+              'DestinationCountry: quote.DestinationCountry, PricingRuleID: quote.PricingRuleID,',
+          )
+          text = re.sub(r'^\s*req\.TrafficClass = smsapi\.NormalizeTrafficClass\(req\.TrafficClass\)\n', '', text, flags=re.M)
+          text = re.sub(
+              r'\s*if req\.TrafficClass != "" && !smsapi\.IsKnownTrafficClass\(req\.TrafficClass\) \{\n\s*return SendRequest\{\}, apperrors\.NewBadRequest\("SMS traffic class must be local or a2p"\)\n\s*\}\n',
+              '\n',
+              text,
+          )
+          if 'ResolveDestinationCountry(req.To)' not in text:
+              marker = '''\tif !e164Pattern.MatchString(req.To) {
 \t\treturn SendRequest{}, apperrors.NewBadRequest("SMS recipient must be a valid E.164 phone number")
 \t}
 '''
-          insertion = marker + '''\tdestinationCountry, err := smsapi.ResolveDestinationCountry(req.To)
+              insertion = marker + '''\tdestinationCountry, err := smsapi.ResolveDestinationCountry(req.To)
 \tif err != nil {
 \t\treturn SendRequest{}, apperrors.NewBadRequest("SMS recipient country is not supported")
 \t}
 \treq.DestinationCountry = destinationCountry
 '''
-          if marker not in text:
-              raise SystemExit('missing E.164 validation marker')
-          text = text.replace(marker, insertion, 1)
+              text = text.replace(marker, insertion, 1)
           service.write_text(text)
 
           worker = Path('server/internal/delivery/sms/worker.go')
           text = worker.read_text()
-          old = '''\tresponse, err := w.sender.Send(ctx, smsapi.SendRequest{
-\t\tTo:           message.To,
-\t\tFrom:         message.From,
-\t\tMessage:      message.Body,
-\t\tTrafficClass: message.TrafficClass,
-\t})'''
-          new = '''\tresponse, err := w.sender.Send(ctx, smsapi.SendRequest{
-\t\tTo:                 message.To,
-\t\tFrom:               message.From,
-\t\tMessage:            message.Body,
-\t\tDestinationCountry: message.DestinationCountry,
-\t})'''
-          if old not in text:
-              raise SystemExit('missing worker traffic class block')
-          worker.write_text(text.replace(old, new))
+          text = text.replace('TrafficClass: message.TrafficClass,', 'DestinationCountry: message.DestinationCountry,')
+          worker.write_text(text)
 
           tests = Path('server/internal/modules/sms/service_test.go')
           text = tests.read_text()
@@ -121,34 +107,24 @@ func TestValidateSendRejectsUnsupportedDestination(t *testing.T) {
               text,
               flags=re.S,
           )
-          text = text.replace('\t\tTrafficClass:      smsapi.TrafficClassA2P,\n', '\t\tDestinationCountry: "GH",\n')
+          text = text.replace('TrafficClass:      smsapi.TrafficClassA2P,', 'DestinationCountry: "GH",')
           text = text.replace('`"traffic_class":"a2p"`,', '`"destination":{"country":"GH"}`,')
           tests.write_text(text)
 
           Path('server/internal/backoffice/smspricing/rate_schedule.go').unlink(missing_ok=True)
           PY
 
-      - name: Format Go code
+      - name: Format changed Go code
         working-directory: server
         run: gofmt -w internal/backoffice/smspricing internal/delivery/sms internal/integration/sms internal/modules/sms internal/transport/backoffice
 
-      - name: Generate sqlc
-        working-directory: server
-        run: go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
-
-      - name: Hash Atlas migrations
-        working-directory: server
-        run: |
-          curl -sSf https://atlasgo.sh | sh
-          atlas migrate hash --dir file://migrations
-
-      - name: Commit generated refactor
+      - name: Commit source cutover
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add server
+          git add server/internal server/backofficeweb server/migrations server/internal/database/queries
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m "Finalize country-based SMS pricing"
+          git commit -m "Complete country-based SMS source cutover"
           git push origin HEAD:agent/add-sms-traffic-pricing
