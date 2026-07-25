@@ -1,6 +1,5 @@
-{$API_DOMAIN} {
+(dugble_common) {
     encode zstd gzip
-    reverse_proxy http://server:8080
 
     header {
         Strict-Transport-Security "max-age=31536000"
@@ -8,4 +7,14 @@
         X-Frame-Options "DENY"
         Referrer-Policy "strict-origin-when-cross-origin"
     }
+}
+
+{$API_DOMAIN} {
+    import dugble_common
+    reverse_proxy http://server:8080
+}
+
+{$BACKOFFICE_DOMAIN} {
+    import dugble_common
+    reverse_proxy http://backoffice:8081
 }

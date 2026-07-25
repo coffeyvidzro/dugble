@@ -86,7 +86,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 
 	auth.RegisterRoutes(
 		router,
-		auth.NewHandler(authService, cfg.IsDevelopment()),
+		auth.NewHandler(authService, cfg.IsDevelopment(), cfg.CookieDomain),
 		authMiddleware,
 		csrfMiddleware,
 	)

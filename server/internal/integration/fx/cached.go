@@ -91,7 +91,7 @@ func (p *CachedProvider) Refresh(ctx context.Context, base string, quote string)
 
 func (p *CachedProvider) read(ctx context.Context, base string, quote string) (cachedRate, error) {
 	if p.redis == nil {
-		return cachedRate{}, errors.New("Redis FX cache is not configured")
+		return cachedRate{}, errors.New("redis FX cache is not configured")
 	}
 	value, err := p.redis.Get(ctx, rateCacheKey(base, quote)).Result()
 	if err != nil {
@@ -112,7 +112,7 @@ func (p *CachedProvider) read(ctx context.Context, base string, quote string) (c
 
 func (p *CachedProvider) write(ctx context.Context, rate Rate) error {
 	if p.redis == nil {
-		return errors.New("Redis FX cache is not configured")
+		return errors.New("redis FX cache is not configured")
 	}
 	base := strings.ToUpper(strings.TrimSpace(rate.Base))
 	quote := strings.ToUpper(strings.TrimSpace(rate.Quote))

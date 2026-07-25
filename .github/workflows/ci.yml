@@ -35,6 +35,27 @@ jobs:
           go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
           git diff --exit-code -- internal/database/sqlc
 
+      - name: Run golangci-lint
+        run: |
+          set +e
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -w /workspace/server \
+            golangci/golangci-lint:v2.12.2 \
+            golangci-lint run --config ../.golangci.yml ./... \
+            > ../golangci-lint.log 2>&1
+          status=$?
+          cat ../golangci-lint.log
+          exit $status
+
+      - name: Upload golangci-lint report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: golangci-lint-report
+          path: golangci-lint.log
+          retention-days: 1
+
       - name: Vet
         run: go vet ./...
 
@@ -48,8 +69,62 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Validate Compose config
-        run: docker compose -f compose.yml config --quiet
+      - name: Verify golangci-lint config
+        run: |
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            -w /workspace/server \
+            golangci/golangci-lint:v2.12.2 \
+            golangci-lint config verify --config ../.golangci.yml
 
-      - name: Build runtime image
-        run: docker build -f server/Dockerfile server
+      - name: Validate Compose config
+        run: docker compose --env-file .env.example -f compose.yml config --quiet
+
+      - name: Apply migrations to fresh PostgreSQL
+        run: |
+          set +e
+          docker compose --env-file .env.example -f compose.yml up \
+            --abort-on-container-exit \
+            --exit-code-from migrate \
+            migrate > migration.log 2>&1
+          status=$?
+          cat migration.log
+          exit $status
+
+      - name: Upload migration logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: migration-logs
+          path: migration.log
+          retention-days: 1
+
+      - name: Verify Caddy health and upstream routing
+        run: |
+          export API_DOMAIN=http://api.localhost
+          export BACKOFFICE_DOMAIN=http://bo.localhost
+
+          docker compose --env-file .env.example -f compose.yml up \
+            --detach \
+            --build \
+            --wait \
+            --wait-timeout 120 \
+            caddy
+
+          docker compose --env-file .env.example -f compose.yml ps
+
+          curl --fail --silent --show-error \
+            --header "Host: api.localhost" \
+            http://127.0.0.1/ready \
+            | tee api-ready.json
+          grep -q '"status":"ready"' api-ready.json
+
+          curl --fail --silent --show-error \
+            --header "Host: bo.localhost" \
+            http://127.0.0.1/ready \
+            | tee backoffice-ready.json
+          grep -q '"status":"ready"' backoffice-ready.json
+
+      - name: Clean up Compose services
+        if: always()
+        run: docker compose --env-file .env.example -f compose.yml down -v --remove-orphans
