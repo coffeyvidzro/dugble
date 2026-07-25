@@ -99,8 +99,15 @@ jobs:
           path: migration.log
           retention-days: 1
 
-      - name: Build runtime image
-        run: docker build -f server/Dockerfile server
+      - name: Verify application health checks
+        run: |
+          docker compose --env-file .env.example -f compose.yml up \
+            --detach \
+            --build \
+            --wait \
+            --wait-timeout 120 \
+            server backoffice
+          docker compose --env-file .env.example -f compose.yml ps
 
       - name: Clean up Compose services
         if: always()
