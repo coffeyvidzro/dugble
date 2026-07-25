@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - agent/migration-baseline-cleanup
   pull_request:
 
 permissions:
