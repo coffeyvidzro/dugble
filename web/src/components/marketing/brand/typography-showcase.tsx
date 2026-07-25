@@ -2,19 +2,19 @@ import { Reveal } from "@/components/marketing/reveal";
 
 const specimens = [
     {
-        label: "Display - Mona Sans",
+        label: "Display - Space Grotesk",
         usage: "Headlines and section titles only. Semibold, tight tracking.",
         sample: "Aa Bb Cc 0123",
         className: "font-heading text-4xl font-semibold tracking-tight",
     },
     {
-        label: "Body - Geist",
+        label: "Body - Inter",
         usage: "Paragraph copy and UI labels. Regular and medium weights.",
         sample: "Aa Bb Cc 0123",
         className: "font-sans text-2xl",
     },
     {
-        label: "Mono - Geist Mono",
+        label: "Mono - JetBrains Mono",
         usage: "Logs, request IDs, code, status labels, numerals.",
         sample: "Aa Bb Cc 0123",
         className: "font-mono text-2xl",
