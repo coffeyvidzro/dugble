@@ -14,7 +14,7 @@ func (r *Repository) CreateManagedPlan(ctx context.Context, name string, actor A
 	if err != nil {
 		return "", fmt.Errorf("begin create sms pricing plan: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var id string
 	if err := tx.QueryRow(ctx, `
@@ -38,7 +38,7 @@ func (r *Repository) RenamePlan(ctx context.Context, id string, name string, act
 	if err != nil {
 		return fmt.Errorf("begin rename sms pricing plan: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var previousName string
 	if err := tx.QueryRow(ctx, `
@@ -65,7 +65,7 @@ func (r *Repository) SetManagedDefault(ctx context.Context, id string, actor Act
 	if err != nil {
 		return fmt.Errorf("begin set default sms pricing plan: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	if err := ensureActivePlan(ctx, tx, id); err != nil {
 		return err
@@ -91,7 +91,7 @@ func (r *Repository) SetPlanStatus(ctx context.Context, id string, status string
 	if err != nil {
 		return fmt.Errorf("begin update sms pricing plan status: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var isDefault bool
 	var currentStatus string
@@ -135,7 +135,7 @@ func (r *Repository) DeleteUnusedPlan(ctx context.Context, id string, actor Acto
 	if err != nil {
 		return fmt.Errorf("begin delete sms pricing plan: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var name string
 	var isDefault bool
@@ -229,7 +229,7 @@ func (r *Repository) ScheduleManagedRate(
 	if err != nil {
 		return fmt.Errorf("begin schedule sms pricing rate: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	if err := ensureActivePlan(ctx, tx, planID); err != nil {
 		return err
@@ -281,7 +281,7 @@ func (r *Repository) UpdateScheduledRate(
 	if err != nil {
 		return fmt.Errorf("begin update scheduled sms pricing rate: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var country string
 	var previousFrom time.Time
@@ -348,7 +348,7 @@ func (r *Repository) CancelScheduledRate(ctx context.Context, planID string, rat
 	if err != nil {
 		return fmt.Errorf("begin cancel scheduled sms pricing rate: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var country string
 	var effectiveFrom time.Time
@@ -393,7 +393,7 @@ func (r *Repository) UpdateManagedTeam(ctx context.Context, teamID string, req U
 	if err != nil {
 		return fmt.Errorf("begin update team sms pricing: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	if err := validateTeamPricingTx(ctx, tx, teamID, req); err != nil {
 		return err
@@ -420,7 +420,7 @@ func (r *Repository) ResetManagedTeam(ctx context.Context, teamID string, actor 
 	if err != nil {
 		return fmt.Errorf("begin reset team sms pricing: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	tag, err := tx.Exec(ctx, `DELETE FROM team_sms_settings WHERE team_id = $1::uuid`, teamID)
 	if err != nil {
