@@ -1,24 +1,24 @@
 name: dugble
 
 x-app-env: &app-env
-  APP_ENV: ${APP_ENV:-development}
-  DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-dugble}?sslmode=disable
+  APP_ENV: ${APP_ENV:-production}
+  DATABASE_URL: postgres://${POSTGRES_USER:-dugble}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-dugble}?sslmode=disable
   REDIS_URL: redis://redis:6379/0
-  FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-  BACKEND_URL: ${BACKEND_URL:-http://localhost:8080}
-  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
-  ARCJET_KEY: ${ARCJET_KEY}
-  AWS_FROM_EMAIL: ${AWS_FROM_EMAIL}
+  FRONTEND_URL: ${FRONTEND_URL:?set FRONTEND_URL}
+  BACKEND_URL: ${BACKEND_URL:?set BACKEND_URL}
+  CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS}
+  ARCJET_KEY: ${ARCJET_KEY:?set ARCJET_KEY}
+  AWS_FROM_EMAIL: ${AWS_FROM_EMAIL:?set AWS_FROM_EMAIL}
   AWS_REGION: ${AWS_REGION:-us-east-1}
-  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?set AWS_SECRET_ACCESS_KEY}
   ARKESEL_BASE_URL: ${ARKESEL_BASE_URL:-https://sms.arkesel.com}
-  ARKESEL_API_KEY: ${ARKESEL_API_KEY}
+  ARKESEL_API_KEY: ${ARKESEL_API_KEY:-}
   MNOTIFY_BASE_URL: ${MNOTIFY_BASE_URL:-https://api.mnotify.com}
-  MNOTIFY_API_KEY: ${MNOTIFY_API_KEY}
-  HUBTEL_API_ID: ${HUBTEL_API_ID}
-  HUBTEL_API_KEY: ${HUBTEL_API_KEY}
-  HUBTEL_MERCHANT_ACCOUNT_NUMBER: ${HUBTEL_MERCHANT_ACCOUNT_NUMBER}
+  MNOTIFY_API_KEY: ${MNOTIFY_API_KEY:-}
+  HUBTEL_API_ID: ${HUBTEL_API_ID:-}
+  HUBTEL_API_KEY: ${HUBTEL_API_KEY:-}
+  HUBTEL_MERCHANT_ACCOUNT_NUMBER: ${HUBTEL_MERCHANT_ACCOUNT_NUMBER:-}
 
 x-app-build: &app-build
   build:
@@ -31,7 +31,7 @@ services:
     container_name: dugble-caddy
     restart: unless-stopped
     environment:
-      API_DOMAIN: ${API_DOMAIN:-localhost}
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN}
     ports:
       - "80:80"
       - "443:443"
@@ -50,8 +50,8 @@ services:
     container_name: dugble-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-dugble}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-dugble}
     expose:
       - "5432"
@@ -124,7 +124,7 @@ services:
     environment:
       <<: *app-env
       BACKOFFICE_HTTP_PORT: "8081"
-      BACKOFFICE_ADMIN_EMAILS: ${BACKOFFICE_ADMIN_EMAILS}
+      BACKOFFICE_ADMIN_EMAILS: ${BACKOFFICE_ADMIN_EMAILS:-}
     expose:
       - "8081"
     networks:
