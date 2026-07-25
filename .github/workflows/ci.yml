@@ -37,11 +37,24 @@ jobs:
 
       - name: Run golangci-lint
         run: |
+          set +e
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/workspace" \
             -w /workspace/server \
             golangci/golangci-lint:v2.12.2 \
-            golangci-lint run --config ../.golangci.yml ./...
+            golangci-lint run --config ../.golangci.yml ./... \
+            > ../golangci-lint.log 2>&1
+          status=$?
+          cat ../golangci-lint.log
+          exit $status
+
+      - name: Upload golangci-lint report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: golangci-lint-report
+          path: golangci-lint.log
+          retention-days: 1
 
       - name: Vet
         run: go vet ./...
