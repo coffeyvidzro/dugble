@@ -19,11 +19,16 @@ type Handler struct {
 	cookieDomain string
 }
 
-func NewHandler(service *Service, development bool, cookieDomain string) *Handler {
+func NewHandler(service *Service, development bool, cookieDomains ...string) *Handler {
+	cookieDomain := ""
+	if len(cookieDomains) > 0 {
+		cookieDomain = strings.TrimSpace(cookieDomains[0])
+	}
+
 	return &Handler{
 		service:      service,
 		development:  development,
-		cookieDomain: strings.TrimSpace(cookieDomain),
+		cookieDomain: cookieDomain,
 	}
 }
 
