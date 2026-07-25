@@ -1,4 +1,4 @@
-h1:sgXirYwJ8nEE8c8P7U66cA8Tr8Nqc7f3Oo+6lNQ3a9Q=
+h1:aKIHpJ/1sG6B2BLkHLdDOXwAOjNATEosghiWvmqUPzU=
 001_create_users.sql h1:eBbhTPvYBEkMnWedFTFlS/IdkL5cO2OWFiJLUfkciSo=
 003_create_sessions.sql h1:GHYsOJ7+Wella28My8yKLbt0MhHNFFvWQFwGWqDNjtA=
 004_create_oauth_identities.sql h1:cDYHOX3gOS+TXEr4/iJuq1aAPlh/0VtzVtxf5MWFjQI=
@@ -11,6 +11,5 @@ h1:sgXirYwJ8nEE8c8P7U66cA8Tr8Nqc7f3Oo+6lNQ3a9Q=
 011_create_wallets.sql h1:/8u9MoGdqhorMplmLwEr0vuvMGLyP4PseOgkZx9OM0E=
 012_create_sms_messages.sql h1:36EK8icQD2RwQAqIPM+qNSsfUaZPLDPBXybuyh6Iiso=
 013_create_idempotency_keys.sql h1:o881tgcZGbQKdKQeAXACddBy2oDck0HUhuaYe2ao4gk=
-014_create_sms_pricing.sql h1:mQeHu6Ebnvf5nuHTiCq7vw5595E35+MstMCmTlDyWn8=
-015_create_sms_pricing_audit.sql h1:2bZRvLz7PsRbdE4c44uNyVrs2k4FUiKOZ9HHDcArX30=
-016_simplify_sms_pricing_by_country.sql h1:Z0FBWLZr7GorVV9L7ccnOwKVm3CRv0Vgl6ZDvFcxILU=
+014_create_sms_pricing.sql h1:QXxdNmB5O157eSjWzd/TzcdB3yE4qPbFlEWdFvU7BYY=
+015_create_sms_pricing_audit.sql h1:d36MGDDyhlVJnuZvYDMqKBbNDjLqCfD0OrtUpwOGr/k=
