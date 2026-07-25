@@ -10,20 +10,20 @@ import (
 )
 
 var (
-	ErrNoRoutesConfigured  = errors.New("no SMS routes configured")
-	ErrNoEnabledRoutes     = errors.New("no SMS routes are enabled")
-	ErrInvalidProviderID   = errors.New("invalid SMS provider ID")
-	ErrInvalidTrafficClass = errors.New("invalid SMS traffic class")
-	ErrInvalidPriority     = errors.New("invalid SMS provider priority")
-	ErrDuplicateProvider   = errors.New("duplicate SMS provider")
-	ErrDuplicatePriority   = errors.New("duplicate SMS provider priority")
+	ErrNoRoutesConfigured = errors.New("no SMS routes configured")
+	ErrNoEnabledRoutes    = errors.New("no SMS routes are enabled")
+	ErrInvalidProviderID  = errors.New("invalid SMS provider ID")
+	ErrInvalidCountryCode = errors.New("invalid SMS destination country")
+	ErrInvalidPriority    = errors.New("invalid SMS provider priority")
+	ErrDuplicateProvider  = errors.New("duplicate SMS provider")
+	ErrDuplicatePriority  = errors.New("duplicate SMS provider priority")
 )
 
 type Route struct {
-	ProviderID   string
-	TrafficClass string
-	Priority     int
-	Enabled      bool
+	ProviderID         string
+	DestinationCountry string
+	Priority           int
+	Enabled            bool
 }
 
 type Config struct {
@@ -34,16 +34,16 @@ func DefaultConfig() Config {
 	return Config{
 		Routes: []Route{
 			{
-				ProviderID:   "arkesel",
-				TrafficClass: sms.TrafficClassA2P,
-				Priority:     1,
-				Enabled:      true,
+				ProviderID:         "mnotify",
+				DestinationCountry: sms.CountryGhana,
+				Priority:           1,
+				Enabled:            true,
 			},
 			{
-				ProviderID:   "mnotify",
-				TrafficClass: sms.TrafficClassA2P,
-				Priority:     2,
-				Enabled:      true,
+				ProviderID:         "arkesel",
+				DestinationCountry: sms.CountryNigeria,
+				Priority:           1,
+				Enabled:            true,
 			},
 		},
 	}
@@ -63,44 +63,29 @@ func (c Config) Validate() error {
 		if providerID == "" {
 			return ErrInvalidProviderID
 		}
-		trafficClass := sms.NormalizeTrafficClass(route.TrafficClass)
-		if !sms.IsKnownTrafficClass(trafficClass) {
-			return fmt.Errorf(
-				"%w for provider %q: %q",
-				ErrInvalidTrafficClass,
-				providerID,
-				route.TrafficClass,
-			)
+		country := sms.NormalizeCountryCode(route.DestinationCountry)
+		if !sms.IsCountryCode(country) {
+			return fmt.Errorf("%w for provider %q: %q", ErrInvalidCountryCode, providerID, route.DestinationCountry)
 		}
-
 		if route.Priority < 1 {
-			return fmt.Errorf(
-				"%w for provider %q",
-				ErrInvalidPriority,
-				providerID,
-			)
+			return fmt.Errorf("%w for provider %q", ErrInvalidPriority, providerID)
 		}
 
-		providerKey := trafficClass + ":" + providerID
+		providerKey := country + ":" + providerID
 		if _, exists := providers[providerKey]; exists {
-			return fmt.Errorf(
-				"%w for traffic class %q: %s",
-				ErrDuplicateProvider,
-				trafficClass,
-				providerID,
-			)
+			return fmt.Errorf("%w for country %q: %s", ErrDuplicateProvider, country, providerID)
 		}
 		providers[providerKey] = struct{}{}
 
-		priorityKey := fmt.Sprintf("%s:%d", trafficClass, route.Priority)
+		priorityKey := fmt.Sprintf("%s:%d", country, route.Priority)
 		if existingProvider, exists := priorities[priorityKey]; exists {
 			return fmt.Errorf(
-				"%w: providers %q and %q both use priority %d for traffic class %q",
+				"%w: providers %q and %q both use priority %d for country %q",
 				ErrDuplicatePriority,
 				existingProvider,
 				providerID,
 				route.Priority,
-				trafficClass,
+				country,
 			)
 		}
 		priorities[priorityKey] = providerID
@@ -113,7 +98,6 @@ func (c Config) Validate() error {
 	if enabledCount == 0 {
 		return ErrNoEnabledRoutes
 	}
-
 	return nil
 }
 
@@ -121,24 +105,21 @@ func (c Config) Validate() error {
 // or modify the returned slice without mutating Config.
 func (c Config) enabledRoutes() []Route {
 	routes := make([]Route, 0, len(c.Routes))
-
 	for _, route := range c.Routes {
 		if !route.Enabled {
 			continue
 		}
-
 		route.ProviderID = normalizeProviderID(route.ProviderID)
-		route.TrafficClass = sms.NormalizeTrafficClass(route.TrafficClass)
+		route.DestinationCountry = sms.NormalizeCountryCode(route.DestinationCountry)
 		routes = append(routes, route)
 	}
 
 	sort.SliceStable(routes, func(i, j int) bool {
-		if routes[i].TrafficClass != routes[j].TrafficClass {
-			return routes[i].TrafficClass < routes[j].TrafficClass
+		if routes[i].DestinationCountry != routes[j].DestinationCountry {
+			return routes[i].DestinationCountry < routes[j].DestinationCountry
 		}
 		return routes[i].Priority < routes[j].Priority
 	})
-
 	return routes
 }
 
