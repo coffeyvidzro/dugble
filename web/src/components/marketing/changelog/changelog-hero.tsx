@@ -6,7 +6,7 @@ import { Rss } from "lucide-react";
 
 export function ChangelogHero() {
     return (
-        <section className="relative isolate overflow-hidden py-12">
+        <section className="relative isolate overflow-hidden py-12 rounded-2xl px-6">
             <AnimatedGrid />
             <FloatingOrbs />
 

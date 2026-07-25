@@ -29,7 +29,7 @@ const columns = [
         links: [
             { label: "About", href: "/about" },
             { label: "Blog", href: "/blog" },
-            // { label: "Brand", href: "/brand" },
+            { label: "Brand", href: "/brand" },
             { label: "Contact", href: "/contact" },
             { label: "Security", href: "/security" },
         ],

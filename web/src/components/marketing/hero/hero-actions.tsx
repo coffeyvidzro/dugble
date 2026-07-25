@@ -25,7 +25,7 @@ export function HeroActions() {
                 className="flex-1 sm:flex-none"
                 truncateLabel
             >
-                curl dugble.com/sen
+                curl dugble.com/send
             </TerminalLink>
         </div>
     );

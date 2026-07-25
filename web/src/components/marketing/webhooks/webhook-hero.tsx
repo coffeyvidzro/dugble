@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 export function WebhookHero() {
     return (
-        <section className="relative isolate overflow-hidden py-8 lg:py-12">
+        <section className="relative isolate overflow-hidden py-8 lg:py-12 rounded-2xl px-6">
             <AnimatedGrid />
             <FloatingOrbs />
 
