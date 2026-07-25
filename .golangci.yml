@@ -1,16 +1,18 @@
+version: "2"
+
 run:
   timeout: 5m
+  relative-path-mode: gomod
 
 linters:
+  default: none
   enable:
     - errcheck
     - govet
-    - staticcheck
     - ineffassign
+    - staticcheck
     - unused
-
-issues:
-  exclude-rules:
-    - path: internal/database/sqlc
-      linters:
-        - all
+  exclusions:
+    generated: strict
+    paths:
+      - ^internal/database/sqlc/
