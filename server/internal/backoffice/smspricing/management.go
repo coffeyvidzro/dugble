@@ -40,16 +40,21 @@ func (r *Repository) RenamePlan(ctx context.Context, id string, name string, act
 	}
 	defer tx.Rollback(ctx)
 
-	var previous string
+	var previousName string
 	if err := tx.QueryRow(ctx, `
-		UPDATE sms_pricing_plans
-		SET name = $2, updated_at = now()
-		WHERE id = $1::uuid
-		RETURNING name
-	`, id, name).Scan(&previous); err != nil {
+		SELECT name FROM sms_pricing_plans WHERE id = $1::uuid FOR UPDATE
+	`, id).Scan(&previousName); err != nil {
+		return fmt.Errorf("get sms pricing plan for rename: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE sms_pricing_plans SET name = $2, updated_at = now() WHERE id = $1::uuid
+	`, id, name); err != nil {
 		return fmt.Errorf("rename sms pricing plan: %w", err)
 	}
-	if err := auditPricingChange(ctx, tx, actor, "plan.renamed", "plan", id, map[string]any{"name": name}); err != nil {
+	if err := auditPricingChange(ctx, tx, actor, "plan.renamed", "plan", id, map[string]any{
+		"previous_name": previousName,
+		"name":          name,
+	}); err != nil {
 		return err
 	}
 	return commitPricingTx(ctx, tx, "rename sms pricing plan")
@@ -62,27 +67,16 @@ func (r *Repository) SetManagedDefault(ctx context.Context, id string, actor Act
 	}
 	defer tx.Rollback(ctx)
 
-	var exists bool
-	if err := tx.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1 FROM sms_pricing_plans
-			WHERE id = $1::uuid AND status = 'active'
-		)
-	`, id).Scan(&exists); err != nil {
-		return fmt.Errorf("check sms pricing plan: %w", err)
-	}
-	if !exists {
-		return pgx.ErrNoRows
+	if err := ensureActivePlan(ctx, tx, id); err != nil {
+		return err
 	}
 	if _, err := tx.Exec(ctx, `
-		UPDATE sms_pricing_plans SET is_default = false, updated_at = now()
-		WHERE is_default = true
+		UPDATE sms_pricing_plans SET is_default = false, updated_at = now() WHERE is_default = true
 	`); err != nil {
 		return fmt.Errorf("clear default sms pricing plan: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `
-		UPDATE sms_pricing_plans SET is_default = true, updated_at = now()
-		WHERE id = $1::uuid
+		UPDATE sms_pricing_plans SET is_default = true, updated_at = now() WHERE id = $1::uuid
 	`, id); err != nil {
 		return fmt.Errorf("set default sms pricing plan: %w", err)
 	}
@@ -102,9 +96,7 @@ func (r *Repository) SetPlanStatus(ctx context.Context, id string, status string
 	var isDefault bool
 	var currentStatus string
 	if err := tx.QueryRow(ctx, `
-		SELECT is_default, status FROM sms_pricing_plans
-		WHERE id = $1::uuid
-		FOR UPDATE
+		SELECT is_default, status FROM sms_pricing_plans WHERE id = $1::uuid FOR UPDATE
 	`, id).Scan(&isDefault, &currentStatus); err != nil {
 		return fmt.Errorf("get sms pricing plan status: %w", err)
 	}
@@ -126,12 +118,13 @@ func (r *Repository) SetPlanStatus(ctx context.Context, id string, status string
 		return nil
 	}
 	if _, err := tx.Exec(ctx, `
-		UPDATE sms_pricing_plans SET status = $2, updated_at = now()
-		WHERE id = $1::uuid
+		UPDATE sms_pricing_plans SET status = $2, updated_at = now() WHERE id = $1::uuid
 	`, id, status); err != nil {
 		return fmt.Errorf("update sms pricing plan status: %w", err)
 	}
-	if err := auditPricingChange(ctx, tx, actor, "plan."+status, "plan", id, map[string]any{"previous_status": currentStatus}); err != nil {
+	if err := auditPricingChange(ctx, tx, actor, "plan."+status, "plan", id, map[string]any{
+		"previous_status": currentStatus,
+	}); err != nil {
 		return err
 	}
 	return commitPricingTx(ctx, tx, "update sms pricing plan status")
@@ -147,9 +140,7 @@ func (r *Repository) DeleteUnusedPlan(ctx context.Context, id string, actor Acto
 	var name string
 	var isDefault bool
 	if err := tx.QueryRow(ctx, `
-		SELECT name, is_default FROM sms_pricing_plans
-		WHERE id = $1::uuid
-		FOR UPDATE
+		SELECT name, is_default FROM sms_pricing_plans WHERE id = $1::uuid FOR UPDATE
 	`, id).Scan(&name, &isDefault); err != nil {
 		return fmt.Errorf("get sms pricing plan for deletion: %w", err)
 	}
@@ -188,43 +179,19 @@ func (r *Repository) PlanUsage(ctx context.Context, id string) (int64, int64, er
 	return teams, rates, nil
 }
 
-func (r *Repository) PricingAudit(ctx context.Context, resourceType string, resourceID string) ([]AuditRow, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT actor_email, action, resource_type, COALESCE(resource_id::text, ''), metadata::text, created_at
-		FROM sms_pricing_audit_log
-		WHERE resource_type = $1 AND resource_id = $2::uuid
-		ORDER BY created_at DESC
-		LIMIT 50
-	`, resourceType, resourceID)
-	if err != nil {
-		return nil, fmt.Errorf("list sms pricing audit log: %w", err)
-	}
-	defer rows.Close()
-
-	audits := make([]AuditRow, 0)
-	for rows.Next() {
-		var row AuditRow
-		if err := rows.Scan(&row.ActorEmail, &row.Action, &row.ResourceType, &row.ResourceID, &row.Metadata, &row.CreatedAt); err != nil {
-			return nil, fmt.Errorf("scan sms pricing audit log: %w", err)
-		}
-		audits = append(audits, row)
-	}
-	return audits, rows.Err()
-}
-
-func (r *Repository) CurrentRate(ctx context.Context, planID string, trafficClass string) (int64, bool, error) {
+func (r *Repository) CurrentRate(ctx context.Context, planID string, country string) (int64, bool, error) {
 	var micros int64
 	err := r.db.QueryRow(ctx, `
 		SELECT unit_cost_micros
 		FROM sms_pricing_rules
 		WHERE pricing_plan_id = $1::uuid
-		  AND traffic_class = $2
+		  AND destination_country = $2
 		  AND status = 'active'
 		  AND effective_from <= now()
 		  AND (effective_until IS NULL OR effective_until > now())
 		ORDER BY effective_from DESC, created_at DESC
 		LIMIT 1
-	`, planID, trafficClass).Scan(&micros)
+	`, planID, country).Scan(&micros)
 	if err == pgx.ErrNoRows {
 		return 0, false, nil
 	}
@@ -234,10 +201,25 @@ func (r *Repository) CurrentRate(ctx context.Context, planID string, trafficClas
 	return micros, true, nil
 }
 
+func (r *Repository) CurrentRateCount(ctx context.Context, planID string) (int64, error) {
+	var count int64
+	if err := r.db.QueryRow(ctx, `
+		SELECT count(DISTINCT destination_country)
+		FROM sms_pricing_rules
+		WHERE pricing_plan_id = $1::uuid
+		  AND status = 'active'
+		  AND effective_from <= now()
+		  AND (effective_until IS NULL OR effective_until > now())
+	`, planID).Scan(&count); err != nil {
+		return 0, fmt.Errorf("count current sms pricing rates: %w", err)
+	}
+	return count, nil
+}
+
 func (r *Repository) ScheduleManagedRate(
 	ctx context.Context,
 	planID string,
-	trafficClass string,
+	country string,
 	unitCostMicros int64,
 	effectiveFrom time.Time,
 	effectiveUntil *time.Time,
@@ -252,33 +234,33 @@ func (r *Repository) ScheduleManagedRate(
 	if err := ensureActivePlan(ctx, tx, planID); err != nil {
 		return err
 	}
-	if err := ensureNoRateOverlap(ctx, tx, planID, trafficClass, "", effectiveFrom, effectiveUntil); err != nil {
+	if err := ensureNoRateOverlap(ctx, tx, planID, country, "", effectiveFrom, effectiveUntil); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE sms_pricing_rules
 		SET effective_until = $3, updated_at = now()
 		WHERE pricing_plan_id = $1::uuid
-		  AND traffic_class = $2
+		  AND destination_country = $2
 		  AND status = 'active'
 		  AND effective_until IS NULL
 		  AND effective_from < $3
-	`, planID, trafficClass, effectiveFrom); err != nil {
+	`, planID, country, effectiveFrom); err != nil {
 		return fmt.Errorf("close previous sms pricing rate: %w", err)
 	}
 
 	var rateID string
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO sms_pricing_rules (
-			pricing_plan_id, traffic_class, unit_cost_micros,
+			pricing_plan_id, destination_country, unit_cost_micros,
 			effective_from, effective_until, status
 		) VALUES ($1::uuid, $2, $3, $4, $5, 'active')
 		RETURNING id::text
-	`, planID, trafficClass, unitCostMicros, effectiveFrom, effectiveUntil).Scan(&rateID); err != nil {
+	`, planID, country, unitCostMicros, effectiveFrom, effectiveUntil).Scan(&rateID); err != nil {
 		return fmt.Errorf("schedule sms pricing rate: %w", err)
 	}
 	if err := auditPricingChange(ctx, tx, actor, "rate.scheduled", "rate", rateID, map[string]any{
-		"plan_id": planID, "traffic_class": trafficClass, "unit_cost_micros": unitCostMicros,
+		"plan_id": planID, "destination_country": country, "unit_cost_micros": unitCostMicros,
 		"effective_from": effectiveFrom, "effective_until": effectiveUntil,
 	}); err != nil {
 		return err
@@ -301,16 +283,16 @@ func (r *Repository) UpdateScheduledRate(
 	}
 	defer tx.Rollback(ctx)
 
-	var trafficClass string
+	var country string
 	var previousFrom time.Time
 	var previousUntil *time.Time
 	var status string
 	if err := tx.QueryRow(ctx, `
-		SELECT traffic_class, effective_from, effective_until, status
+		SELECT destination_country, effective_from, effective_until, status
 		FROM sms_pricing_rules
 		WHERE id = $1::uuid AND pricing_plan_id = $2::uuid
 		FOR UPDATE
-	`, rateID, planID).Scan(&trafficClass, &previousFrom, &previousUntil, &status); err != nil {
+	`, rateID, planID).Scan(&country, &previousFrom, &previousUntil, &status); err != nil {
 		return fmt.Errorf("get scheduled sms pricing rate: %w", err)
 	}
 	if status != "active" || !previousFrom.After(time.Now().UTC()) {
@@ -321,26 +303,26 @@ func (r *Repository) UpdateScheduledRate(
 		UPDATE sms_pricing_rules
 		SET effective_until = NULL, updated_at = now()
 		WHERE pricing_plan_id = $1::uuid
-		  AND traffic_class = $2
+		  AND destination_country = $2
 		  AND status = 'active'
 		  AND effective_until = $3
 		  AND effective_from < $3
-	`, planID, trafficClass, previousFrom); err != nil {
+	`, planID, country, previousFrom); err != nil {
 		return fmt.Errorf("reopen predecessor sms pricing rate: %w", err)
 	}
-	if err := ensureNoRateOverlap(ctx, tx, planID, trafficClass, rateID, effectiveFrom, effectiveUntil); err != nil {
+	if err := ensureNoRateOverlap(ctx, tx, planID, country, rateID, effectiveFrom, effectiveUntil); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE sms_pricing_rules
 		SET effective_until = $3, updated_at = now()
 		WHERE pricing_plan_id = $1::uuid
-		  AND traffic_class = $2
+		  AND destination_country = $2
 		  AND status = 'active'
 		  AND effective_until IS NULL
 		  AND effective_from < $3
 		  AND id <> $4::uuid
-	`, planID, trafficClass, effectiveFrom, rateID); err != nil {
+	`, planID, country, effectiveFrom, rateID); err != nil {
 		return fmt.Errorf("close predecessor sms pricing rate: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `
@@ -352,7 +334,7 @@ func (r *Repository) UpdateScheduledRate(
 		return fmt.Errorf("update scheduled sms pricing rate: %w", err)
 	}
 	if err := auditPricingChange(ctx, tx, actor, "rate.updated", "rate", rateID, map[string]any{
-		"plan_id": planID, "traffic_class": trafficClass, "unit_cost_micros": unitCostMicros,
+		"plan_id": planID, "destination_country": country, "unit_cost_micros": unitCostMicros,
 		"effective_from": effectiveFrom, "effective_until": effectiveUntil,
 		"previous_effective_from": previousFrom, "previous_effective_until": previousUntil,
 	}); err != nil {
@@ -368,41 +350,38 @@ func (r *Repository) CancelScheduledRate(ctx context.Context, planID string, rat
 	}
 	defer tx.Rollback(ctx)
 
-	var trafficClass string
+	var country string
 	var effectiveFrom time.Time
-	var effectiveUntil *time.Time
 	var status string
 	if err := tx.QueryRow(ctx, `
-		SELECT traffic_class, effective_from, effective_until, status
+		SELECT destination_country, effective_from, status
 		FROM sms_pricing_rules
 		WHERE id = $1::uuid AND pricing_plan_id = $2::uuid
 		FOR UPDATE
-	`, rateID, planID).Scan(&trafficClass, &effectiveFrom, &effectiveUntil, &status); err != nil {
+	`, rateID, planID).Scan(&country, &effectiveFrom, &status); err != nil {
 		return fmt.Errorf("get scheduled sms pricing rate: %w", err)
 	}
 	if status != "active" || !effectiveFrom.After(time.Now().UTC()) {
 		return ErrRateImmutable
 	}
 	if _, err := tx.Exec(ctx, `
-		UPDATE sms_pricing_rules
-		SET status = 'archived', updated_at = now()
-		WHERE id = $1::uuid
+		UPDATE sms_pricing_rules SET status = 'archived', updated_at = now() WHERE id = $1::uuid
 	`, rateID); err != nil {
 		return fmt.Errorf("archive scheduled sms pricing rate: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE sms_pricing_rules
-		SET effective_until = $4, updated_at = now()
+		SET effective_until = NULL, updated_at = now()
 		WHERE pricing_plan_id = $1::uuid
-		  AND traffic_class = $2
+		  AND destination_country = $2
 		  AND status = 'active'
 		  AND effective_until = $3
 		  AND effective_from < $3
-	`, planID, trafficClass, effectiveFrom, effectiveUntil); err != nil {
+	`, planID, country, effectiveFrom); err != nil {
 		return fmt.Errorf("restore predecessor sms pricing rate: %w", err)
 	}
 	if err := auditPricingChange(ctx, tx, actor, "rate.cancelled", "rate", rateID, map[string]any{
-		"plan_id": planID, "traffic_class": trafficClass, "effective_from": effectiveFrom,
+		"plan_id": planID, "destination_country": country, "effective_from": effectiveFrom,
 	}); err != nil {
 		return err
 	}
@@ -420,21 +399,16 @@ func (r *Repository) UpdateManagedTeam(ctx context.Context, teamID string, req U
 		return err
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO team_sms_settings (
-			team_id, pricing_plan_id, default_traffic_class, local_enabled, a2p_enabled
-		) VALUES ($1::uuid, $2::uuid, $3, $4, $5)
+		INSERT INTO team_sms_settings (team_id, pricing_plan_id)
+		VALUES ($1::uuid, $2::uuid)
 		ON CONFLICT (team_id) DO UPDATE SET
 			pricing_plan_id = EXCLUDED.pricing_plan_id,
-			default_traffic_class = EXCLUDED.default_traffic_class,
-			local_enabled = EXCLUDED.local_enabled,
-			a2p_enabled = EXCLUDED.a2p_enabled,
 			updated_at = now()
-	`, teamID, req.PricingPlanID, req.DefaultTrafficClass, req.LocalEnabled, req.A2PEnabled); err != nil {
+	`, teamID, req.PricingPlanID); err != nil {
 		return fmt.Errorf("update team sms pricing: %w", err)
 	}
 	if err := auditPricingChange(ctx, tx, actor, "team_settings.updated", "team_settings", teamID, map[string]any{
-		"pricing_plan_id": req.PricingPlanID, "default_traffic_class": req.DefaultTrafficClass,
-		"local_enabled": req.LocalEnabled, "a2p_enabled": req.A2PEnabled,
+		"pricing_plan_id": req.PricingPlanID,
 	}); err != nil {
 		return err
 	}
@@ -478,7 +452,7 @@ func ensureNoRateOverlap(
 	ctx context.Context,
 	tx pgx.Tx,
 	planID string,
-	trafficClass string,
+	country string,
 	excludeRateID string,
 	effectiveFrom time.Time,
 	effectiveUntil *time.Time,
@@ -488,14 +462,14 @@ func ensureNoRateOverlap(
 		SELECT EXISTS (
 			SELECT 1 FROM sms_pricing_rules
 			WHERE pricing_plan_id = $1::uuid
-			  AND traffic_class = $2
+			  AND destination_country = $2
 			  AND status = 'active'
 			  AND (NULLIF($5, '') IS NULL OR id <> NULLIF($5, '')::uuid)
 			  AND effective_from < COALESCE($4::timestamptz, 'infinity'::timestamptz)
 			  AND COALESCE(effective_until, 'infinity'::timestamptz) > $3::timestamptz
 			  AND NOT (effective_until IS NULL AND effective_from < $3::timestamptz)
 		)
-	`, planID, trafficClass, effectiveFrom, effectiveUntil, excludeRateID).Scan(&overlaps); err != nil {
+	`, planID, country, effectiveFrom, effectiveUntil, excludeRateID).Scan(&overlaps); err != nil {
 		return fmt.Errorf("check overlapping sms pricing rate: %w", err)
 	}
 	if overlaps {
@@ -515,30 +489,20 @@ func validateTeamPricingTx(ctx context.Context, tx pgx.Tx, teamID string, req Up
 	if err := ensureActivePlan(ctx, tx, req.PricingPlanID); err != nil {
 		return err
 	}
-	var hasLocalRate bool
-	var hasA2PRate bool
+	var hasCurrentRate bool
 	if err := tx.QueryRow(ctx, `
-		SELECT
-			EXISTS (
-				SELECT 1 FROM sms_pricing_rules
-				WHERE pricing_plan_id = $1::uuid AND traffic_class = 'local'
-				  AND status = 'active' AND effective_from <= now()
-				  AND (effective_until IS NULL OR effective_until > now())
-			),
-			EXISTS (
-				SELECT 1 FROM sms_pricing_rules
-				WHERE pricing_plan_id = $1::uuid AND traffic_class = 'a2p'
-				  AND status = 'active' AND effective_from <= now()
-				  AND (effective_until IS NULL OR effective_until > now())
-			)
-	`, req.PricingPlanID).Scan(&hasLocalRate, &hasA2PRate); err != nil {
+		SELECT EXISTS (
+			SELECT 1 FROM sms_pricing_rules
+			WHERE pricing_plan_id = $1::uuid
+			  AND status = 'active'
+			  AND effective_from <= now()
+			  AND (effective_until IS NULL OR effective_until > now())
+		)
+	`, req.PricingPlanID).Scan(&hasCurrentRate); err != nil {
 		return fmt.Errorf("check assigned sms pricing rates: %w", err)
 	}
-	if req.LocalEnabled && !hasLocalRate {
-		return ErrNoCurrentLocalRate
-	}
-	if req.A2PEnabled && !hasA2PRate {
-		return ErrNoCurrentA2PRate
+	if !hasCurrentRate {
+		return ErrNoCurrentRate
 	}
 	return nil
 }
