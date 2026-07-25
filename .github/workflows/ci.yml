@@ -51,5 +51,16 @@ jobs:
       - name: Validate Compose config
         run: docker compose --env-file .env.example -f compose.yml config --quiet
 
+      - name: Apply migrations to fresh PostgreSQL
+        run: |
+          docker compose --env-file .env.example -f compose.yml up \
+            --abort-on-container-exit \
+            --exit-code-from migrate \
+            migrate
+
       - name: Build runtime image
         run: docker build -f server/Dockerfile server
+
+      - name: Clean up Compose services
+        if: always()
+        run: docker compose --env-file .env.example -f compose.yml down -v --remove-orphans
