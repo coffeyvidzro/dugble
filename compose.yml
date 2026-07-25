@@ -70,6 +70,27 @@ services:
       retries: 10
       start_period: 10s
 
+  migrate:
+    image: arigaio/atlas:1.2.3-community-alpine
+    container_name: dugble-migrate
+    restart: "no"
+    command:
+      - migrate
+      - apply
+      - --dir
+      - file:///migrations
+      - --url
+      - env://DATABASE_URL
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-dugble}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-dugble}?sslmode=disable
+    volumes:
+      - ./server/migrations:/migrations:ro
+    networks:
+      - dugble-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   redis:
     image: redis:8-alpine
     container_name: dugble-redis
@@ -100,8 +121,8 @@ services:
     networks:
       - dugble-network
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
 
@@ -115,8 +136,8 @@ services:
     networks:
       - dugble-network
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
 
@@ -134,8 +155,8 @@ services:
     networks:
       - dugble-network
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
 
