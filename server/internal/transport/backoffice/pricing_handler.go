@@ -212,8 +212,8 @@ func rateRequestFromForm(c *echo.Context) backofficesmspricing.AddRateRequest {
 	return backofficesmspricing.AddRateRequest{
 		DestinationCountry: c.Request().FormValue("destination_country"),
 		UnitCostUSD:        c.Request().FormValue("unit_cost_usd"),
-		EffectiveFrom:     c.Request().FormValue("effective_from"),
-		EffectiveUntil:    c.Request().FormValue("effective_until"),
+		EffectiveFrom:      c.Request().FormValue("effective_from"),
+		EffectiveUntil:     c.Request().FormValue("effective_until"),
 	}
 }
 

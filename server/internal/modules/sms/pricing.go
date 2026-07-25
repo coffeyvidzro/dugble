@@ -15,13 +15,13 @@ import (
 var ErrSMSPricingNotConfigured = errors.New("sms pricing is not configured")
 
 type PricingQuote struct {
-	PricingPlanID     uuid.UUID
-	PricingPlanName   string
-	PricingRuleID     uuid.UUID
+	PricingPlanID      uuid.UUID
+	PricingPlanName    string
+	PricingRuleID      uuid.UUID
 	DestinationCountry string
-	Currency          string
-	UnitCostMicros    int64
-	TotalCostMicros   int64
+	Currency           string
+	UnitCostMicros     int64
+	TotalCostMicros    int64
 }
 
 type teamPricingSettings struct {

@@ -72,7 +72,7 @@ type RenamePlanRequest struct {
 
 type AddRateRequest struct {
 	DestinationCountry string
-	UnitCostUSD         string
+	UnitCostUSD        string
 	EffectiveFrom      string
 	EffectiveUntil     string
 }
@@ -84,15 +84,15 @@ type UpdateRateRequest struct {
 }
 
 type RatePreview struct {
-	PlanID              string
-	PlanName            string
-	DestinationCountry  string
-	UnitCostUSD         string
-	UnitCostMicros      int64
-	EffectiveFrom       time.Time
-	EffectiveUntil      *time.Time
-	CurrentRateMicros   int64
-	HasCurrentRate      bool
+	PlanID             string
+	PlanName           string
+	DestinationCountry string
+	UnitCostUSD        string
+	UnitCostMicros     int64
+	EffectiveFrom      time.Time
+	EffectiveUntil     *time.Time
+	CurrentRateMicros  int64
+	HasCurrentRate     bool
 }
 
 type TeamConfiguration struct {

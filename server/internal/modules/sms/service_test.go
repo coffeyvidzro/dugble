@@ -7,9 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-
-	smsapi "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
@@ -30,30 +27,20 @@ func TestValidateSendDefaultsMetadata(t *testing.T) {
 	}
 }
 
-func TestValidateSendNormalizesTrafficClass(t *testing.T) {
-	req, err := validateSend(SendRequest{
-		To:           "+233241234567",
-		From:         "DUGBLE",
-		Body:         "hello",
-		TrafficClass: " A2P ",
-	})
+func TestValidateSendResolvesDestinationCountry(t *testing.T) {
+	req, err := validateSend(SendRequest{To: "+233241234567", From: "DUGBLE", Body: "hello"})
 	if err != nil {
 		t.Fatalf("validateSend returned error: %v", err)
 	}
-	if req.TrafficClass != smsapi.TrafficClassA2P {
-		t.Fatalf("TrafficClass = %q, want %q", req.TrafficClass, smsapi.TrafficClassA2P)
+	if req.DestinationCountry != "GH" {
+		t.Fatalf("DestinationCountry = %q, want GH", req.DestinationCountry)
 	}
 }
 
-func TestValidateSendRejectsUnknownTrafficClass(t *testing.T) {
-	_, err := validateSend(SendRequest{
-		To:           "+233241234567",
-		From:         "DUGBLE",
-		Body:         "hello",
-		TrafficClass: "cheap",
-	})
+func TestValidateSendRejectsUnsupportedDestination(t *testing.T) {
+	_, err := validateSend(SendRequest{To: "+12025550123", From: "DUGBLE", Body: "hello"})
 	if err == nil {
-		t.Fatal("validateSend returned nil error for unknown traffic class")
+		t.Fatal("validateSend returned nil error for unsupported destination")
 	}
 }
 
@@ -133,59 +120,31 @@ func TestBillingFromAmounts(t *testing.T) {
 	}
 }
 
-func TestResolveTrafficClassUsesTeamDefault(t *testing.T) {
-	settings := teamPricingSettings{
-		PricingPlanID:       uuid.New(),
-		DefaultTrafficClass: smsapi.TrafficClassA2P,
-		A2PEnabled:          true,
-	}
-	got, err := resolveTrafficClass(settings, "")
-	if err != nil {
-		t.Fatalf("resolveTrafficClass returned error: %v", err)
-	}
-	if got != smsapi.TrafficClassA2P {
-		t.Fatalf("resolveTrafficClass = %q, want %q", got, smsapi.TrafficClassA2P)
-	}
-}
-
-func TestResolveTrafficClassRejectsDisabledClass(t *testing.T) {
-	settings := teamPricingSettings{
-		PricingPlanID:       uuid.New(),
-		DefaultTrafficClass: smsapi.TrafficClassA2P,
-		A2PEnabled:          true,
-		LocalEnabled:        false,
-	}
-	_, err := resolveTrafficClass(settings, smsapi.TrafficClassLocal)
-	if !errors.Is(err, ErrTrafficClassNotEnabled) {
-		t.Fatalf("resolveTrafficClass error = %v, want ErrTrafficClassNotEnabled", err)
-	}
-}
-
 func TestSMSResponseJSONUsesPublicRepresentation(t *testing.T) {
 	now := time.Date(2026, time.July, 24, 12, 0, 0, 0, time.UTC)
 	providerID := "arkesel"
 	providerMessageID := "provider-secret"
 	internalError := "upstream payload that must not be exposed"
 	message := Message{
-		ID:                "message-id",
-		TeamID:            "team-id",
-		To:                "+233241234567",
-		From:              "DUGBLE",
-		Body:              "hello",
-		Status:            StatusFailed,
-		ProviderID:        &providerID,
-		ProviderMessageID: &providerMessageID,
-		TrafficClass:      smsapi.TrafficClassA2P,
-		PricingRuleID:     "pricing-rule-secret",
-		Segments:          1,
-		UnitCostMicros:    9_000,
-		CostMicros:        9_000,
-		Billing:           billingFromAmounts(9_000, 9_000),
-		ErrorMessage:      &internalError,
-		Metadata:          json.RawMessage(`{"campaign":"welcome"}`),
-		SubmittedAt:       &now,
-		CreatedAt:         now,
-		UpdatedAt:         now,
+		ID:                 "message-id",
+		TeamID:             "team-id",
+		To:                 "+233241234567",
+		From:               "DUGBLE",
+		Body:               "hello",
+		Status:             StatusFailed,
+		ProviderID:         &providerID,
+		ProviderMessageID:  &providerMessageID,
+		DestinationCountry: "GH",
+		PricingRuleID:      "pricing-rule-secret",
+		Segments:           1,
+		UnitCostMicros:     9_000,
+		CostMicros:         9_000,
+		Billing:            billingFromAmounts(9_000, 9_000),
+		ErrorMessage:       &internalError,
+		Metadata:           json.RawMessage(`{"campaign":"welcome"}`),
+		SubmittedAt:        &now,
+		CreatedAt:          now,
+		UpdatedAt:          now,
 	}
 	payload, err := json.Marshal(message.Response())
 	if err != nil {
@@ -210,7 +169,7 @@ func TestSMSResponseJSONUsesPublicRepresentation(t *testing.T) {
 	}
 	for _, expected := range []string{
 		`"metadata":{"campaign":"welcome"}`,
-		`"traffic_class":"a2p"`,
+		`"destination":{"country":"GH"}`,
 		`"segments":1`,
 		`"unit_cost":0.009`,
 		`"total_cost":0.009`,

@@ -131,13 +131,11 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	txRepository := s.repository.WithTx(tx)
-	quote, err := txRepository.QuoteSMS(ctx, tenantContext.TeamID, normalized.TrafficClass, segments)
+	quote, err := txRepository.QuoteSMS(ctx, tenantContext.TeamID, normalized.DestinationCountry, segments)
 	if err != nil {
 		switch {
-		case errors.Is(err, ErrTrafficClassNotEnabled):
-			return Message{}, apperrors.NewForbidden("SMS traffic class is not enabled for this team")
 		case errors.Is(err, ErrSMSPricingNotConfigured):
-			return Message{}, apperrors.NewBadRequest("SMS pricing is not configured for the requested traffic class")
+			return Message{}, apperrors.NewBadRequest("SMS pricing is not configured for the destination country")
 		default:
 			return Message{}, apperrors.NewInternal("Unable to calculate SMS price", err)
 		}
@@ -147,7 +145,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 		TeamID: tenantContext.TeamID, SenderID: senderID, To: normalized.To, From: normalized.From,
 		Body: normalized.Body, Status: StatusQueued, Segments: segments,
 		CostMicros: quote.TotalCostMicros, Metadata: normalized.Metadata,
-		TrafficClass: quote.TrafficClass, PricingRuleID: quote.PricingRuleID,
+		DestinationCountry: quote.DestinationCountry, PricingRuleID: quote.PricingRuleID,
 		UnitCostMicros: quote.UnitCostMicros,
 	})
 	if err != nil {
@@ -327,13 +325,17 @@ func statusProgressRank(status string) (int, bool) {
 func validateSend(req SendRequest) (SendRequest, error) {
 	req.To = strings.TrimSpace(req.To)
 	req.From = strings.TrimSpace(req.From)
-	req.TrafficClass = smsapi.NormalizeTrafficClass(req.TrafficClass)
 	if req.To == "" {
 		return SendRequest{}, apperrors.NewBadRequest("SMS recipient is required")
 	}
 	if !e164Pattern.MatchString(req.To) {
 		return SendRequest{}, apperrors.NewBadRequest("SMS recipient must be a valid E.164 phone number")
 	}
+	destinationCountry, err := smsapi.ResolveDestinationCountry(req.To)
+	if err != nil {
+		return SendRequest{}, apperrors.NewBadRequest("SMS recipient country is not supported")
+	}
+	req.DestinationCountry = destinationCountry
 	if req.From == "" {
 		return SendRequest{}, apperrors.NewBadRequest("SMS sender ID is required")
 	}
@@ -345,9 +347,6 @@ func validateSend(req SendRequest) (SendRequest, error) {
 	}
 	if utf8.RuneCountInString(req.Body) > maxBodyCharacters {
 		return SendRequest{}, apperrors.NewBadRequest(fmt.Sprintf("SMS body must be at most %d characters", maxBodyCharacters))
-	}
-	if req.TrafficClass != "" && !smsapi.IsKnownTrafficClass(req.TrafficClass) {
-		return SendRequest{}, apperrors.NewBadRequest("SMS traffic class must be local or a2p")
 	}
 	if len(req.Metadata) == 0 {
 		req.Metadata = json.RawMessage(`{}`)

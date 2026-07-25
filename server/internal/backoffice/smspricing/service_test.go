@@ -69,7 +69,7 @@ func TestNormalizeRateRequestNormalizesCountry(t *testing.T) {
 	country, micros, from, until, err := normalizeRateRequest(AddRateRequest{
 		DestinationCountry: " gh ",
 		UnitCostUSD:        "0.009",
-		EffectiveFrom:     "2026-07-25T10:00",
+		EffectiveFrom:      "2026-07-25T10:00",
 	}, time.Time{})
 	if err != nil {
 		t.Fatalf("normalizeRateRequest returned error: %v", err)
@@ -83,7 +83,7 @@ func TestNormalizeRateRequestRejectsInvalidCountry(t *testing.T) {
 	_, _, _, _, err := normalizeRateRequest(AddRateRequest{
 		DestinationCountry: "GHA",
 		UnitCostUSD:        "0.009",
-		EffectiveFrom:     "2026-07-25T10:00",
+		EffectiveFrom:      "2026-07-25T10:00",
 	}, time.Time{})
 	if !errors.Is(err, ErrInvalidRequest) {
 		t.Fatalf("normalizeRateRequest error = %v, want ErrInvalidRequest", err)
@@ -94,8 +94,8 @@ func TestNormalizeRateRequestRequiresFutureEnd(t *testing.T) {
 	_, _, _, _, err := normalizeRateRequest(AddRateRequest{
 		DestinationCountry: "GH",
 		UnitCostUSD:        "0.009",
-		EffectiveFrom:     "2026-07-25T10:00",
-		EffectiveUntil:    "2026-07-25T09:00",
+		EffectiveFrom:      "2026-07-25T10:00",
+		EffectiveUntil:     "2026-07-25T09:00",
 	}, time.Time{})
 	if !errors.Is(err, ErrInvalidRequest) {
 		t.Fatalf("normalizeRateRequest error = %v, want ErrInvalidRequest", err)

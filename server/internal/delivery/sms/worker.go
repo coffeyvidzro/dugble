@@ -52,10 +52,10 @@ func (w *Worker) Work(ctx context.Context, job *river.Job[DeliverArgs]) error {
 	}
 
 	response, err := w.sender.Send(ctx, smsapi.SendRequest{
-		To:           message.To,
-		From:         message.From,
-		Message:      message.Body,
-		TrafficClass: message.TrafficClass,
+		To:                 message.To,
+		From:               message.From,
+		Message:            message.Body,
+		DestinationCountry: message.DestinationCountry,
 	})
 	if err != nil {
 		if !shouldRefundAfterSendError(err) {
