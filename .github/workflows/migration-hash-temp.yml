@@ -1,0 +1,28 @@
+name: Temporary migration checksum generation
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  hash:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Generate Atlas checksum
+        run: |
+          docker run --rm \
+            -v "$PWD/server/migrations:/migrations" \
+            arigaio/atlas:1.2.3-community-alpine \
+            migrate hash --dir file:///migrations
+
+      - name: Upload checksum
+        uses: actions/upload-artifact@v7
+        with:
+          name: migration-checksum-schema-only
+          path: server/migrations/atlas.sum
+          retention-days: 1
