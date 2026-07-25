@@ -77,6 +77,20 @@ jobs:
             golangci/golangci-lint:v2.12.2 \
             golangci-lint config verify --config ../.golangci.yml
 
+      - name: Regenerate migration checksum
+        run: |
+          docker run --rm \
+            -v "$PWD/server/migrations:/migrations" \
+            arigaio/atlas:1.2.3-community-alpine \
+            migrate hash --dir file:///migrations
+
+      - name: Upload generated migration checksum
+        uses: actions/upload-artifact@v7
+        with:
+          name: migration-checksum
+          path: server/migrations/atlas.sum
+          retention-days: 1
+
       - name: Validate Compose config
         run: docker compose --env-file .env.example -f compose.yml config --quiet
 
