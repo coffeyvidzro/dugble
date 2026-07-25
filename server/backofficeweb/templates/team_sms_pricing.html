@@ -6,11 +6,8 @@
   <article><span>Team</span><strong>{{$page.Team.Team.Name}}</strong></article>
   <article><span>Pricing plan</span><strong><a href="/sms-pricing/{{$config.PricingPlanID}}">{{$config.PricingPlanName}}</a></strong></article>
   <article><span>Configuration</span><strong>{{if $config.Explicit}}Explicit{{else}}Inherited default{{end}}</strong></article>
-  <article><span>Default traffic class</span><strong>{{$config.DefaultTrafficClass}}</strong></article>
-  <article><span>Local</span><strong>{{if $config.LocalEnabled}}Enabled{{else}}Disabled{{end}}</strong></article>
-  <article><span>A2P</span><strong>{{if $config.A2PEnabled}}Enabled{{else}}Disabled{{end}}</strong></article>
 </section>
-<h2>Assign pricing and traffic entitlements</h2>
+<h2>Assign SMS pricing plan</h2>
 <form class="control-panel" method="post" action="/teams/{{$page.Team.Team.ID}}/sms-pricing">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
   <label>Pricing plan
@@ -18,22 +15,14 @@
       {{range $page.Plans}}<option value="{{.ID}}" {{if eq .ID $config.PricingPlanID}}selected{{end}}>{{.Name}}{{if .IsDefault}} (default){{end}}</option>{{end}}
     </select>
   </label>
-  <label>Default traffic class
-    <select name="default_traffic_class" required>
-      <option value="a2p" {{if eq $config.DefaultTrafficClass "a2p"}}selected{{end}}>A2P</option>
-      <option value="local" {{if eq $config.DefaultTrafficClass "local"}}selected{{end}}>Local</option>
-    </select>
-  </label>
-  <label class="checkbox-label"><input type="checkbox" name="a2p_enabled" value="true" {{if $config.A2PEnabled}}checked{{end}}> Enable A2P</label>
-  <label class="checkbox-label"><input type="checkbox" name="local_enabled" value="true" {{if $config.LocalEnabled}}checked{{end}}> Enable local</label>
-  <button type="submit">Save explicit SMS settings</button>
+  <button type="submit">Save explicit pricing plan</button>
 </form>
-<p class="muted">At least one traffic class must remain enabled. The selected default must also be enabled, and each enabled class must have a currently effective rate on the assigned plan.</p>
+<p class="muted">The destination country is resolved from the recipient number. The assigned plan must contain a current rate for that country when a message is sent.</p>
 {{if $config.Explicit}}
 <h2>Reset configuration</h2>
 <form class="control-panel" method="post" action="/teams/{{$page.Team.Team.ID}}/sms-pricing/reset">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
-  <p class="muted">Remove this explicit assignment and return the team to the platform default pricing plan and default A2P entitlement.</p>
+  <p class="muted">Remove this explicit assignment and return the team to the platform default pricing plan.</p>
   <button class="danger" type="submit">Reset to inherited default</button>
 </form>
 {{end}}
