@@ -77,20 +77,6 @@ jobs:
             golangci/golangci-lint:v2.12.2 \
             golangci-lint config verify --config ../.golangci.yml
 
-      - name: Regenerate migration checksum
-        run: |
-          docker run --rm \
-            -v "$PWD/server/migrations:/migrations" \
-            arigaio/atlas:1.2.3-community-alpine \
-            migrate hash --dir file:///migrations
-
-      - name: Upload generated migration checksum
-        uses: actions/upload-artifact@v7
-        with:
-          name: migration-checksum
-          path: server/migrations/atlas.sum
-          retention-days: 1
-
       - name: Validate Compose config
         run: docker compose --env-file .env.example -f compose.yml config --quiet
 
@@ -138,6 +124,71 @@ jobs:
             http://127.0.0.1/ready \
             | tee backoffice-ready.json
           grep -q '"status":"ready"' backoffice-ready.json
+
+      - name: Verify final SMS pricing schema
+        run: |
+          docker compose --env-file .env.example -f compose.yml exec -T postgres \
+            sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+          DO $$
+          BEGIN
+              IF NOT EXISTS (
+                  SELECT 1
+                  FROM information_schema.columns
+                  WHERE table_schema = 'public'
+                    AND table_name = 'sms_pricing_rules'
+                    AND column_name = 'destination_country'
+                    AND is_nullable = 'NO'
+              ) THEN
+                  RAISE EXCEPTION 'sms_pricing_rules.destination_country is missing or nullable';
+              END IF;
+
+              IF NOT EXISTS (
+                  SELECT 1
+                  FROM information_schema.columns
+                  WHERE table_schema = 'public'
+                    AND table_name = 'sms_messages'
+                    AND column_name = 'destination_country'
+                    AND is_nullable = 'NO'
+              ) OR NOT EXISTS (
+                  SELECT 1
+                  FROM information_schema.columns
+                  WHERE table_schema = 'public'
+                    AND table_name = 'sms_messages'
+                    AND column_name = 'pricing_rule_id'
+                    AND is_nullable = 'NO'
+              ) THEN
+                  RAISE EXCEPTION 'sms_messages final pricing columns are missing or nullable';
+              END IF;
+
+              IF EXISTS (
+                  SELECT 1
+                  FROM information_schema.columns
+                  WHERE table_schema = 'public'
+                    AND (
+                        (table_name IN ('sms_pricing_rules', 'sms_messages') AND column_name = 'traffic_class')
+                        OR (
+                            table_name = 'team_sms_settings'
+                            AND column_name IN ('default_traffic_class', 'local_enabled', 'a2p_enabled')
+                        )
+                    )
+              ) THEN
+                  RAISE EXCEPTION 'legacy SMS pricing columns still exist';
+              END IF;
+
+              IF NOT EXISTS (
+                  SELECT 1
+                  FROM sms_pricing_rules
+                  WHERE id = '9f6cb7f6-1a21-4a79-9aa8-9782c867a101'::uuid
+                    AND pricing_plan_id = '9f6cb7f6-1a21-4a79-9aa8-9782c867a001'::uuid
+                    AND destination_country = 'GH'
+                    AND unit_cost_micros = 9000
+                    AND status = 'active'
+              ) THEN
+                  RAISE EXCEPTION 'default Ghana SMS pricing rate is missing';
+              END IF;
+          END
+          $$;
+          SQL
 
       - name: Clean up Compose services
         if: always()
