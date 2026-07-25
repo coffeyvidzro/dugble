@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
@@ -91,15 +91,19 @@ export function ForgotPasswordForm({
                                     <FieldLabel htmlFor="forgot-password-email">
                                         Email
                                     </FieldLabel>
-                                    <Input
-                                        {...field}
-                                        id="forgot-password-email"
-                                        aria-invalid={fieldState.invalid}
-                                        placeholder="coffey@vidzro.com"
-                                        autoComplete="email"
-                                        type="email"
-                                        disabled={loading}
-                                    />
+                                    <div className="relative">
+                                        <Mail className="pointer-events-none absolute left-3 top-0 flex h-9 w-4 items-center text-muted-foreground" />
+                                        <Input
+                                            {...field}
+                                            id="forgot-password-email"
+                                            aria-invalid={fieldState.invalid}
+                                            placeholder="youremail@example.com"
+                                            autoComplete="email"
+                                            type="email"
+                                            disabled={loading}
+                                            className="pl-10"
+                                        />
+                                    </div>
                                     {fieldState.invalid && (
                                         <FieldError
                                             errors={[fieldState.error]}

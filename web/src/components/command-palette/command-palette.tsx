@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { cn } from "@/lib/utils";
-import { Command, CornerDownLeft, SearchX, X } from "lucide-react";
+
+import { Command, CornerDownLeft, SearchX, X, ArrowRight } from "lucide-react";
 import { commandItems, type CommandItem } from "./command-palette-data";
+import { cn } from "@/lib/utils";
 
 const GROUP_ORDER: CommandItem["group"][] = [
     "Features",
@@ -253,12 +255,13 @@ function EmptyState({ query }: { query: string }) {
                     what you need.
                 </p>
             </div>
-            <a
+            <Link
                 href="/contact"
-                className="font-mono text-xs text-signal hover:underline"
+                className="group inline-flex items-center font-mono text-xs text-signal hover:underline"
             >
-                Contact support →
-            </a>
+                Contact support
+                <ArrowRight className="ml-1.5 size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+            </Link>
         </div>
     );
 }

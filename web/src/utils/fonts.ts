@@ -1,16 +1,16 @@
-import { Geist, Geist_Mono, Mona_Sans } from "next/font/google";
+import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 
-export const fontSans = Geist({
-    variable: "--font-geist-sans",
+export const fontSans = Inter({
+    variable: "--font-inter",
     subsets: ["latin"],
 });
 
-export const fontMono = Geist_Mono({
-    variable: "--font-geist-mono",
+export const fontMono = JetBrains_Mono({
+    variable: "--font-jetbrains-mono",
     subsets: ["latin"],
 });
 
-export const fontHeading = Mona_Sans({
-    variable: "--font-mona-sans",
+export const fontHeading = Space_Grotesk({
+    variable: "--font-space-grotesk",
     subsets: ["latin"],
 });
