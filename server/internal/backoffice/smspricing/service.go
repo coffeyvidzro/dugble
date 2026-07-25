@@ -17,15 +17,14 @@ import (
 )
 
 var (
-	ErrInvalidRequest     = errors.New("invalid sms pricing request")
-	ErrPlanNameConflict   = errors.New("sms pricing plan name already exists")
-	ErrRateOverlap        = errors.New("sms pricing rate overlaps an existing rate")
-	ErrPlanUnavailable    = errors.New("sms pricing plan is not active")
-	ErrNoCurrentLocalRate = errors.New("sms pricing plan has no current local rate")
-	ErrNoCurrentA2PRate   = errors.New("sms pricing plan has no current a2p rate")
-	ErrDefaultPlan        = errors.New("default sms pricing plan cannot be changed this way")
-	ErrPlanInUse          = errors.New("sms pricing plan is in use")
-	ErrRateImmutable      = errors.New("only scheduled sms pricing rates can be edited or cancelled")
+	ErrInvalidRequest   = errors.New("invalid sms pricing request")
+	ErrPlanNameConflict = errors.New("sms pricing plan name already exists")
+	ErrRateOverlap      = errors.New("sms pricing rate overlaps an existing rate")
+	ErrPlanUnavailable  = errors.New("sms pricing plan is not active")
+	ErrNoCurrentRate    = errors.New("sms pricing plan has no current country rate")
+	ErrDefaultPlan      = errors.New("default sms pricing plan cannot be changed this way")
+	ErrPlanInUse        = errors.New("sms pricing plan is in use")
+	ErrRateImmutable    = errors.New("only scheduled sms pricing rates can be changed")
 )
 
 type Service struct {
@@ -46,18 +45,25 @@ func (s *Service) Detail(ctx context.Context, id string) (PlanDetail, error) {
 	if err != nil {
 		return PlanDetail{}, err
 	}
+
 	now := time.Now().UTC()
-	for _, rate := range detail.Rates {
+	countryIndexes := make(map[string]int)
+	for index := range detail.Rates {
+		rate := detail.Rates[index]
 		rate.Lifecycle = rateLifecycle(rate, now)
 		rate.CanEdit = rate.Lifecycle == "scheduled"
 		rate.CanCancel = rate.Lifecycle == "scheduled"
-		if rate.TrafficClass == smsapi.TrafficClassLocal {
-			detail.LocalRates = append(detail.LocalRates, rate)
-		} else {
-			detail.A2PRates = append(detail.A2PRates, rate)
+
+		countryIndex, exists := countryIndexes[rate.DestinationCountry]
+		if !exists {
+			countryIndex = len(detail.CountryRates)
+			countryIndexes[rate.DestinationCountry] = countryIndex
+			detail.CountryRates = append(detail.CountryRates, CountryRateTimeline{CountryCode: rate.DestinationCountry})
 		}
+		detail.CountryRates[countryIndex].Rates = append(detail.CountryRates[countryIndex].Rates, rate)
 	}
 	detail.Rates = nil
+
 	detail.AssignedTeamCount, detail.RateCount, err = s.repository.PlanUsage(ctx, id)
 	if err != nil {
 		return PlanDetail{}, err
@@ -76,7 +82,7 @@ func (s *Service) CreatePlan(ctx context.Context, req CreatePlanRequest, actor A
 		return "", err
 	}
 	if req.MakeDefault {
-		return "", fmt.Errorf("%w: add a current A2P rate before making a plan the default", ErrInvalidRequest)
+		return "", fmt.Errorf("%w: add a current country rate before making a plan the default", ErrInvalidRequest)
 	}
 	id, err := s.repository.CreateManagedPlan(ctx, name, actor)
 	if isUniqueViolation(err) {
@@ -106,8 +112,8 @@ func (s *Service) SetDefault(ctx context.Context, id string, actor Actor) error 
 	if detail.Plan.Status != "active" {
 		return ErrPlanUnavailable
 	}
-	if !detail.Plan.HasCurrentA2PRate {
-		return ErrNoCurrentA2PRate
+	if detail.Plan.CurrentCountryCount == 0 {
+		return ErrNoCurrentRate
 	}
 	return s.repository.SetManagedDefault(ctx, id, actor)
 }
@@ -131,7 +137,7 @@ func (s *Service) DeletePlan(ctx context.Context, id string, actor Actor) error 
 
 func (s *Service) PreviewRate(ctx context.Context, planID string, req AddRateRequest) (RatePreview, error) {
 	planID = strings.TrimSpace(planID)
-	trafficClass, micros, from, until, err := normalizeRateRequest(req.TrafficClass, req.UnitCostUSD, req.EffectiveFrom, req.EffectiveUntil, time.Now().UTC())
+	country, micros, from, until, err := normalizeRateRequest(req, time.Now().UTC())
 	if err != nil {
 		return RatePreview{}, err
 	}
@@ -142,33 +148,33 @@ func (s *Service) PreviewRate(ctx context.Context, planID string, req AddRateReq
 	if detail.Plan.Status != "active" {
 		return RatePreview{}, ErrPlanUnavailable
 	}
-	current, hasCurrent, err := s.repository.CurrentRate(ctx, planID, trafficClass)
+	current, hasCurrent, err := s.repository.CurrentRate(ctx, planID, country)
 	if err != nil {
 		return RatePreview{}, err
 	}
 	return RatePreview{
-		PlanID:            planID,
-		PlanName:          detail.Plan.Name,
-		TrafficClass:      trafficClass,
-		UnitCostUSD:       formatMicrosInput(micros),
-		UnitCostMicros:    micros,
-		EffectiveFrom:     from,
-		EffectiveUntil:    until,
-		CurrentRateMicros: current,
-		HasCurrentRate:    hasCurrent,
+		PlanID:             planID,
+		PlanName:           detail.Plan.Name,
+		DestinationCountry: country,
+		UnitCostUSD:        formatMicrosInput(micros),
+		UnitCostMicros:     micros,
+		EffectiveFrom:      from,
+		EffectiveUntil:     until,
+		CurrentRateMicros:  current,
+		HasCurrentRate:     hasCurrent,
 	}, nil
 }
 
 func (s *Service) AddRate(ctx context.Context, planID string, req AddRateRequest, actor Actor) error {
-	trafficClass, micros, from, until, err := normalizeRateRequest(req.TrafficClass, req.UnitCostUSD, req.EffectiveFrom, req.EffectiveUntil, time.Now().UTC())
+	country, micros, from, until, err := normalizeRateRequest(req, time.Now().UTC())
 	if err != nil {
 		return err
 	}
-	return s.repository.ScheduleManagedRate(ctx, strings.TrimSpace(planID), trafficClass, micros, from, until, actor)
+	return s.repository.ScheduleManagedRate(ctx, strings.TrimSpace(planID), country, micros, from, until, actor)
 }
 
 func (s *Service) UpdateRate(ctx context.Context, planID string, rateID string, req UpdateRateRequest, actor Actor) error {
-	_, micros, from, until, err := normalizeRateRequest("a2p", req.UnitCostUSD, req.EffectiveFrom, req.EffectiveUntil, time.Time{})
+	micros, from, until, err := normalizeRateValues(req.UnitCostUSD, req.EffectiveFrom, req.EffectiveUntil, time.Time{})
 	if err != nil {
 		return err
 	}
@@ -191,28 +197,15 @@ func (s *Service) TeamConfiguration(ctx context.Context, teamID string) (TeamCon
 }
 
 func (s *Service) UpdateTeam(ctx context.Context, teamID string, req UpdateTeamRequest, actor Actor) error {
-	normalized, err := normalizeTeamRequest(req)
-	if err != nil {
-		return err
+	req.PricingPlanID = strings.TrimSpace(req.PricingPlanID)
+	if _, err := uuid.Parse(req.PricingPlanID); err != nil {
+		return fmt.Errorf("%w: a valid pricing plan is required", ErrInvalidRequest)
 	}
-	return s.repository.UpdateManagedTeam(ctx, strings.TrimSpace(teamID), normalized, actor)
+	return s.repository.UpdateManagedTeam(ctx, strings.TrimSpace(teamID), req, actor)
 }
 
 func (s *Service) ResetTeam(ctx context.Context, teamID string, actor Actor) error {
 	return s.repository.ResetManagedTeam(ctx, strings.TrimSpace(teamID), actor)
-}
-
-func rateLifecycle(rate RateRow, now time.Time) string {
-	if rate.Status == "archived" {
-		return "archived"
-	}
-	if rate.EffectiveFrom.After(now) {
-		return "scheduled"
-	}
-	if rate.EffectiveUntil != nil && !rate.EffectiveUntil.After(now) {
-		return "expired"
-	}
-	return "current"
 }
 
 func validatePlanName(value string) (string, error) {
@@ -223,58 +216,49 @@ func validatePlanName(value string) (string, error) {
 	return name, nil
 }
 
-func normalizeRateRequest(
-	trafficClassValue string,
-	unitCostValue string,
-	effectiveFromValue string,
-	effectiveUntilValue string,
-	fallback time.Time,
-) (string, int64, time.Time, *time.Time, error) {
-	trafficClass := smsapi.NormalizeTrafficClass(trafficClassValue)
-	if !smsapi.IsKnownTrafficClass(trafficClass) {
-		return "", 0, time.Time{}, nil, fmt.Errorf("%w: traffic class must be local or a2p", ErrInvalidRequest)
+func normalizeRateRequest(req AddRateRequest, fallback time.Time) (string, int64, time.Time, *time.Time, error) {
+	country := smsapi.NormalizeCountryCode(req.DestinationCountry)
+	if !smsapi.IsCountryCode(country) {
+		return "", 0, time.Time{}, nil, fmt.Errorf("%w: destination country must be a two-letter ISO code", ErrInvalidRequest)
 	}
-	unitCostMicros, err := parseUSDToMicros(unitCostValue)
+	micros, from, until, err := normalizeRateValues(req.UnitCostUSD, req.EffectiveFrom, req.EffectiveUntil, fallback)
+	return country, micros, from, until, err
+}
+
+func normalizeRateValues(unitCostUSD string, effectiveFromText string, effectiveUntilText string, fallback time.Time) (int64, time.Time, *time.Time, error) {
+	unitCostMicros, err := parseUSDToMicros(unitCostUSD)
 	if err != nil {
-		return "", 0, time.Time{}, nil, fmt.Errorf("%w: %v", ErrInvalidRequest, err)
+		return 0, time.Time{}, nil, fmt.Errorf("%w: %v", ErrInvalidRequest, err)
 	}
-	effectiveFrom, err := parseBackofficeTime(effectiveFromValue, fallback)
+	effectiveFrom, err := parseBackofficeTime(effectiveFromText, fallback)
 	if err != nil {
-		return "", 0, time.Time{}, nil, fmt.Errorf("%w: invalid effective-from time", ErrInvalidRequest)
+		return 0, time.Time{}, nil, fmt.Errorf("%w: invalid effective-from time", ErrInvalidRequest)
 	}
 	var effectiveUntil *time.Time
-	if strings.TrimSpace(effectiveUntilValue) != "" {
-		value, err := parseBackofficeTime(effectiveUntilValue, time.Time{})
+	if strings.TrimSpace(effectiveUntilText) != "" {
+		value, err := parseBackofficeTime(effectiveUntilText, time.Time{})
 		if err != nil {
-			return "", 0, time.Time{}, nil, fmt.Errorf("%w: invalid effective-until time", ErrInvalidRequest)
+			return 0, time.Time{}, nil, fmt.Errorf("%w: invalid effective-until time", ErrInvalidRequest)
 		}
 		if !value.After(effectiveFrom) {
-			return "", 0, time.Time{}, nil, fmt.Errorf("%w: effective-until must be after effective-from", ErrInvalidRequest)
+			return 0, time.Time{}, nil, fmt.Errorf("%w: effective-until must be after effective-from", ErrInvalidRequest)
 		}
 		effectiveUntil = &value
 	}
-	return trafficClass, unitCostMicros, effectiveFrom, effectiveUntil, nil
+	return unitCostMicros, effectiveFrom, effectiveUntil, nil
 }
 
-func normalizeTeamRequest(req UpdateTeamRequest) (UpdateTeamRequest, error) {
-	req.PricingPlanID = strings.TrimSpace(req.PricingPlanID)
-	if _, err := uuid.Parse(req.PricingPlanID); err != nil {
-		return UpdateTeamRequest{}, fmt.Errorf("%w: a valid pricing plan is required", ErrInvalidRequest)
+func rateLifecycle(rate RateRow, now time.Time) string {
+	if rate.Status != "active" {
+		return "archived"
 	}
-	req.DefaultTrafficClass = smsapi.NormalizeTrafficClass(req.DefaultTrafficClass)
-	if !smsapi.IsKnownTrafficClass(req.DefaultTrafficClass) {
-		return UpdateTeamRequest{}, fmt.Errorf("%w: default traffic class must be local or a2p", ErrInvalidRequest)
+	if rate.EffectiveFrom.After(now) {
+		return "scheduled"
 	}
-	if !req.LocalEnabled && !req.A2PEnabled {
-		return UpdateTeamRequest{}, fmt.Errorf("%w: at least one traffic class must be enabled", ErrInvalidRequest)
+	if rate.EffectiveUntil != nil && !rate.EffectiveUntil.After(now) {
+		return "expired"
 	}
-	if req.DefaultTrafficClass == smsapi.TrafficClassLocal && !req.LocalEnabled {
-		return UpdateTeamRequest{}, fmt.Errorf("%w: local must be enabled when it is the default", ErrInvalidRequest)
-	}
-	if req.DefaultTrafficClass == smsapi.TrafficClassA2P && !req.A2PEnabled {
-		return UpdateTeamRequest{}, fmt.Errorf("%w: a2p must be enabled when it is the default", ErrInvalidRequest)
-	}
-	return req, nil
+	return "current"
 }
 
 func parseUSDToMicros(value string) (int64, error) {
@@ -325,10 +309,6 @@ func parseUSDToMicros(value string) (int64, error) {
 	return micros, nil
 }
 
-func formatMicrosInput(micros int64) string {
-	return fmt.Sprintf("%d.%06d", micros/1_000_000, micros%1_000_000)
-}
-
 func parseBackofficeTime(value string, fallback time.Time) (time.Time, error) {
 	value = strings.TrimSpace(value)
 	if value == "" {
@@ -344,6 +324,10 @@ func parseBackofficeTime(value string, fallback time.Time) (time.Time, error) {
 		}
 	}
 	return time.Time{}, errors.New("invalid time")
+}
+
+func formatMicrosInput(micros int64) string {
+	return fmt.Sprintf("%d.%06d", micros/1_000_000, micros%1_000_000)
 }
 
 func isUniqueViolation(err error) bool {
