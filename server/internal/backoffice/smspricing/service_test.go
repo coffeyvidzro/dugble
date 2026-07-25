@@ -4,8 +4,6 @@ import (
 	"errors"
 	"testing"
 	"time"
-
-	smsapi "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
 )
 
 func TestParseUSDToMicros(t *testing.T) {
@@ -67,8 +65,38 @@ func TestRateLifecycle(t *testing.T) {
 	}
 }
 
+func TestNormalizeRateRequestNormalizesCountry(t *testing.T) {
+	country, micros, from, until, err := normalizeRateRequest(AddRateRequest{
+		DestinationCountry: " gh ",
+		UnitCostUSD:        "0.009",
+		EffectiveFrom:     "2026-07-25T10:00",
+	}, time.Time{})
+	if err != nil {
+		t.Fatalf("normalizeRateRequest returned error: %v", err)
+	}
+	if country != "GH" || micros != 9_000 || from.IsZero() || until != nil {
+		t.Fatalf("normalizeRateRequest() = %q, %d, %v, %v", country, micros, from, until)
+	}
+}
+
+func TestNormalizeRateRequestRejectsInvalidCountry(t *testing.T) {
+	_, _, _, _, err := normalizeRateRequest(AddRateRequest{
+		DestinationCountry: "GHA",
+		UnitCostUSD:        "0.009",
+		EffectiveFrom:     "2026-07-25T10:00",
+	}, time.Time{})
+	if !errors.Is(err, ErrInvalidRequest) {
+		t.Fatalf("normalizeRateRequest error = %v, want ErrInvalidRequest", err)
+	}
+}
+
 func TestNormalizeRateRequestRequiresFutureEnd(t *testing.T) {
-	_, _, _, _, err := normalizeRateRequest("a2p", "0.009", "2026-07-25T10:00", "2026-07-25T09:00", time.Time{})
+	_, _, _, _, err := normalizeRateRequest(AddRateRequest{
+		DestinationCountry: "GH",
+		UnitCostUSD:        "0.009",
+		EffectiveFrom:     "2026-07-25T10:00",
+		EffectiveUntil:    "2026-07-25T09:00",
+	}, time.Time{})
 	if !errors.Is(err, ErrInvalidRequest) {
 		t.Fatalf("normalizeRateRequest error = %v, want ErrInvalidRequest", err)
 	}
@@ -77,32 +105,5 @@ func TestNormalizeRateRequestRequiresFutureEnd(t *testing.T) {
 func TestFormatMicrosInput(t *testing.T) {
 	if got := formatMicrosInput(9_000); got != "0.009000" {
 		t.Fatalf("formatMicrosInput() = %q, want %q", got, "0.009000")
-	}
-}
-
-func TestNormalizeTeamRequestRequiresEnabledDefault(t *testing.T) {
-	_, err := normalizeTeamRequest(UpdateTeamRequest{
-		PricingPlanID:       "9f6cb7f6-1a21-4a79-9aa8-9782c867a001",
-		DefaultTrafficClass: smsapi.TrafficClassLocal,
-		LocalEnabled:        false,
-		A2PEnabled:          true,
-	})
-	if !errors.Is(err, ErrInvalidRequest) {
-		t.Fatalf("normalizeTeamRequest error = %v, want ErrInvalidRequest", err)
-	}
-}
-
-func TestNormalizeTeamRequestAcceptsIndependentEntitlements(t *testing.T) {
-	req, err := normalizeTeamRequest(UpdateTeamRequest{
-		PricingPlanID:       "9f6cb7f6-1a21-4a79-9aa8-9782c867a001",
-		DefaultTrafficClass: " A2P ",
-		LocalEnabled:        true,
-		A2PEnabled:          true,
-	})
-	if err != nil {
-		t.Fatalf("normalizeTeamRequest returned error: %v", err)
-	}
-	if req.DefaultTrafficClass != smsapi.TrafficClassA2P {
-		t.Fatalf("DefaultTrafficClass = %q, want %q", req.DefaultTrafficClass, smsapi.TrafficClassA2P)
 	}
 }
