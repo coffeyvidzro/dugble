@@ -117,58 +117,60 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		tenantMiddleware,
 	)
 
+	teamTokenService := teamtoken.NewService(teamTokenRepository)
 	teamtoken.RegisterRoutes(
 		router,
-		teamtoken.NewHandler(teamtoken.NewService(teamTokenRepository)),
+		teamtoken.NewHandler(teamTokenService),
 		authMiddleware,
 		csrfMiddleware,
 		tenantMiddleware,
 	)
 
+	senderIDService := senderid.NewService(senderIDRepository)
 	senderid.RegisterRoutes(
 		router,
-		senderid.NewHandler(senderid.NewService(senderIDRepository)),
+		senderid.NewHandler(senderIDService),
 		authMiddleware,
 		csrfMiddleware,
 		tenantMiddleware,
 	)
 
+	domainService := domain.NewService(domainRepository)
 	domain.RegisterRoutes(
 		router,
-		domain.NewHandler(domain.NewService(domainRepository)),
+		domain.NewHandler(domainService),
 		authMiddleware,
 		csrfMiddleware,
 		tenantMiddleware,
 	)
 
+	walletService := wallet.NewService(
+		walletRepository,
+		wallet.ServiceConfig{FrontendURL: cfg.FrontendURL, BackendURL: cfg.BackendURL},
+		hubtelProvider,
+		fxClient,
+	)
 	wallet.RegisterRoutes(
 		router,
-		wallet.NewHandler(
-			wallet.NewService(
-				walletRepository,
-				wallet.ServiceConfig{FrontendURL: cfg.FrontendURL, BackendURL: cfg.BackendURL},
-				hubtelProvider,
-				fxClient,
-			),
-		),
+		wallet.NewHandler(walletService),
 		authMiddleware,
 		csrfMiddleware,
 		tenantMiddleware,
 	)
 
+	smsService := smsmodule.NewService(smsRepository, deps.SMSSender, walletRepository, deps.SMSDelivery)
 	smsmodule.RegisterRoutes(
 		router,
-		smsmodule.NewHandler(
-			smsmodule.NewService(smsRepository, deps.SMSSender, walletRepository, deps.SMSDelivery),
-		),
+		smsmodule.NewHandler(smsService),
 		authMiddleware,
 		csrfMiddleware,
 		tenantMiddleware,
 	)
 
+	sessionService := session.NewService(sessionRepository)
 	session.RegisterRoutes(
 		router,
-		session.NewHandler(session.NewService(sessionRepository)),
+		session.NewHandler(sessionService),
 		authMiddleware,
 		csrfMiddleware,
 	)
