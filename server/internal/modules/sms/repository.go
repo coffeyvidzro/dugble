@@ -38,34 +38,34 @@ func (r *Repository) WithTx(tx pgx.Tx) *Repository {
 }
 
 type createMessageParams struct {
-	TeamID         uuid.UUID
-	SenderID       *uuid.UUID
-	To             string
-	From           string
-	Body           string
-	Status         string
-	Segments       int32
-	CostMicros     int64
-	Metadata       json.RawMessage
-	TrafficClass   string
-	PricingRuleID  uuid.UUID
-	UnitCostMicros int64
+	TeamID             uuid.UUID
+	SenderID           *uuid.UUID
+	To                 string
+	From               string
+	Body               string
+	Status             string
+	Segments           int32
+	CostMicros         int64
+	Metadata           json.RawMessage
+	DestinationCountry string
+	PricingRuleID      uuid.UUID
+	UnitCostMicros     int64
 }
 
 func (r *Repository) Create(ctx context.Context, params createMessageParams) (Message, error) {
 	row, err := r.queries.CreateSMSMessage(ctx, dbsqlc.CreateSMSMessageParams{
-		TeamID:         params.TeamID,
-		SenderID:       params.SenderID,
-		ToNumber:       params.To,
-		FromName:       params.From,
-		Body:           params.Body,
-		Status:         params.Status,
-		Segments:       params.Segments,
-		CostMicros:     params.CostMicros,
-		Metadata:       ensureMetadata(params.Metadata),
-		TrafficClass:   params.TrafficClass,
-		PricingRuleID:  params.PricingRuleID,
-		UnitCostMicros: params.UnitCostMicros,
+		TeamID:             params.TeamID,
+		SenderID:           params.SenderID,
+		ToNumber:           params.To,
+		FromName:           params.From,
+		Body:               params.Body,
+		Status:             params.Status,
+		Segments:           params.Segments,
+		CostMicros:         params.CostMicros,
+		Metadata:           ensureMetadata(params.Metadata),
+		DestinationCountry: params.DestinationCountry,
+		PricingRuleID:      params.PricingRuleID,
+		UnitCostMicros:     params.UnitCostMicros,
 	})
 	if err != nil {
 		return Message{}, fmt.Errorf("create sms message: %w", err)
@@ -158,23 +158,23 @@ func (r *Repository) FindApprovedSender(ctx context.Context, teamID uuid.UUID, n
 
 func messageFromSQLC(row dbsqlc.SmsMessage) Message {
 	message := Message{
-		ID:                row.ID.String(),
-		TeamID:            row.TeamID.String(),
-		To:                row.ToNumber,
-		From:              row.FromName,
-		Body:              row.Body,
-		Status:            row.Status,
-		ProviderID:        row.ProviderID,
-		ProviderMessageID: row.ProviderMessageID,
-		Segments:          row.Segments,
-		CostMicros:        row.CostMicros,
-		ErrorMessage:      row.ErrorMessage,
-		Metadata:          ensureMetadata(row.Metadata),
-		CreatedAt:         row.CreatedAt.Time,
-		UpdatedAt:         row.UpdatedAt.Time,
-		TrafficClass:      row.TrafficClass,
-		PricingRuleID:     row.PricingRuleID.String(),
-		UnitCostMicros:    row.UnitCostMicros,
+		ID:                 row.ID.String(),
+		TeamID:             row.TeamID.String(),
+		To:                 row.ToNumber,
+		From:               row.FromName,
+		Body:               row.Body,
+		Status:             row.Status,
+		ProviderID:         row.ProviderID,
+		ProviderMessageID:  row.ProviderMessageID,
+		Segments:           row.Segments,
+		CostMicros:         row.CostMicros,
+		ErrorMessage:       row.ErrorMessage,
+		Metadata:           ensureMetadata(row.Metadata),
+		CreatedAt:          row.CreatedAt.Time,
+		UpdatedAt:          row.UpdatedAt.Time,
+		DestinationCountry: row.DestinationCountry,
+		PricingRuleID:      row.PricingRuleID.String(),
+		UnitCostMicros:     row.UnitCostMicros,
 	}
 	if row.SenderID != nil {
 		value := row.SenderID.String()
