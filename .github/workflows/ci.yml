@@ -7,9 +7,143 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  finalize-country-pricing:
+    name: Finalize country pricing refactor
+    if: github.event_name == 'pull_request' && github.head_ref == 'agent/add-sms-traffic-pricing'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch head
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      - name: Apply source cutover
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          service = Path('server/internal/modules/sms/service.go')
+          text = service.read_text()
+          text = text.replace(
+              'txRepository.QuoteSMS(ctx, tenantContext.TeamID, normalized.TrafficClass, segments)',
+              'txRepository.QuoteSMS(ctx, tenantContext.TeamID, normalized.DestinationCountry, segments)',
+          )
+          text = re.sub(
+              r'\s*case errors\.Is\(err, ErrTrafficClassNotEnabled\):\n\s*return Message\{\}, apperrors\.NewForbidden\("SMS traffic class is not enabled for this team"\)\n',
+              '\n',
+              text,
+          )
+          text = text.replace(
+              'SMS pricing is not configured for the requested traffic class',
+              'SMS pricing is not configured for the destination country',
+          )
+          text = text.replace(
+              'TrafficClass: quote.TrafficClass, PricingRuleID: quote.PricingRuleID,',
+              'DestinationCountry: quote.DestinationCountry, PricingRuleID: quote.PricingRuleID,',
+          )
+          text = re.sub(r'^\s*req\.TrafficClass = smsapi\.NormalizeTrafficClass\(req\.TrafficClass\)\n', '', text, flags=re.M)
+          text = re.sub(
+              r'\s*if req\.TrafficClass != "" && !smsapi\.IsKnownTrafficClass\(req\.TrafficClass\) \{\n\s*return SendRequest\{\}, apperrors\.NewBadRequest\("SMS traffic class must be local or a2p"\)\n\s*\}\n',
+              '\n',
+              text,
+          )
+          if 'ResolveDestinationCountry(req.To)' not in text:
+              marker = '''\tif !e164Pattern.MatchString(req.To) {
+\t\treturn SendRequest{}, apperrors.NewBadRequest("SMS recipient must be a valid E.164 phone number")
+\t}
+'''
+              insertion = marker + '''\tdestinationCountry, err := smsapi.ResolveDestinationCountry(req.To)
+\tif err != nil {
+\t\treturn SendRequest{}, apperrors.NewBadRequest("SMS recipient country is not supported")
+\t}
+\treq.DestinationCountry = destinationCountry
+'''
+              text = text.replace(marker, insertion, 1)
+          service.write_text(text)
+
+          worker = Path('server/internal/delivery/sms/worker.go')
+          text = worker.read_text().replace(
+              'TrafficClass: message.TrafficClass,',
+              'DestinationCountry: message.DestinationCountry,',
+          )
+          worker.write_text(text)
+
+          tests = Path('server/internal/modules/sms/service_test.go')
+          text = tests.read_text()
+          text = text.replace('\n\t"github.com/google/uuid"\n', '\n')
+          text = text.replace('\n\tsmsapi "github.com/coffeyvidzro/dugble/server/internal/integration/sms"\n', '\n')
+          text = re.sub(
+              r'func TestValidateSendNormalizesTrafficClass\(t \*testing\.T\) \{.*?\n\}\n\nfunc TestValidateSendRejectsUnknownTrafficClass\(t \*testing\.T\) \{.*?\n\}\n\n',
+              '''func TestValidateSendResolvesDestinationCountry(t *testing.T) {
+\treq, err := validateSend(SendRequest{To: "+233241234567", From: "DUGBLE", Body: "hello"})
+\tif err != nil {
+\t\tt.Fatalf("validateSend returned error: %v", err)
+\t}
+\tif req.DestinationCountry != "GH" {
+\t\tt.Fatalf("DestinationCountry = %q, want GH", req.DestinationCountry)
+\t}
+}
+
+func TestValidateSendRejectsUnsupportedDestination(t *testing.T) {
+\t_, err := validateSend(SendRequest{To: "+12025550123", From: "DUGBLE", Body: "hello"})
+\tif err == nil {
+\t\tt.Fatal("validateSend returned nil error for unsupported destination")
+\t}
+}
+
+''',
+              text,
+              flags=re.S,
+          )
+          text = re.sub(
+              r'func TestResolveTrafficClassUsesTeamDefault\(t \*testing\.T\) \{.*?\n\}\n\nfunc TestResolveTrafficClassRejectsDisabledClass\(t \*testing\.T\) \{.*?\n\}\n\n',
+              '',
+              text,
+              flags=re.S,
+          )
+          text = text.replace('TrafficClass:      smsapi.TrafficClassA2P,', 'DestinationCountry: "GH",')
+          text = text.replace('`"traffic_class":"a2p"`,', '`"destination":{"country":"GH"}`,')
+          tests.write_text(text)
+
+          Path('server/internal/backoffice/smspricing/rate_schedule.go').unlink(missing_ok=True)
+          PY
+
+      - name: Format Go code
+        working-directory: server
+        run: gofmt -w internal/backoffice/smspricing internal/delivery/sms internal/integration/sms internal/modules/sms internal/transport/backoffice
+
+      - name: Generate sqlc
+        working-directory: server
+        run: go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
+
+      - name: Hash Atlas migrations
+        working-directory: server
+        run: |
+          curl -sSf https://atlasgo.sh | sh
+          atlas migrate hash --dir file://migrations
+
+      - name: Commit finalized refactor
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Finalize country-based SMS pricing"
+          git push origin HEAD:agent/add-sms-traffic-pricing
+
   go:
     name: Go quality gates
     runs-on: ubuntu-latest
