@@ -1,0 +1,26 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/_mintlify/:path*",
+      "destination": "https://dugble.mintlify.site/_mintlify/:path*"
+    },
+    {
+      "source": "/api/request",
+      "destination": "https://dugble.mintlify.site/_mintlify/api/request"
+    },
+    {
+      "source": "/docs",
+      "destination": "https://dugble.mintlify.site/docs"
+    },
+    {
+      "source": "/docs/:path*",
+      "destination": "https://dugble.mintlify.site/docs/:path*"
+    },
+    {
+      "source": "/mintlify-assets/:path+",
+      "destination": "https://dugble.mintlify.site/mintlify-assets/:path+"
+    }
+  ],
+  "trailingSlash": false
+}

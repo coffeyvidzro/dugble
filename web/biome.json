@@ -14,7 +14,8 @@
       "!dist",
       "!build",
       "!src/components/ui",
-      "!turbo"
+      "!turbo",
+      "!public/**/*.svg"
     ]
   },
   "formatter": {
@@ -36,6 +37,9 @@
       },
       "security": {
         "noDangerouslySetInnerHtml": "off"
+      },
+      "a11y": {
+        "noSvgWithoutTitle": "off"
       }
     },
     "domains": {
