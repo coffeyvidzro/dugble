@@ -218,12 +218,17 @@ func (s *Service) GetDelivery(ctx context.Context, value string) (Delivery, erro
 	if err != nil {
 		return Delivery{}, err
 	}
-	delivery, err := s.repository.GetDelivery(ctx, id, tenantContext.TeamID)
+	delivery, err := s.repository.GetDelivery(ctx, id)
 	if errors.Is(err, ErrDeliveryNotFound) {
 		return Delivery{}, apperrors.NewNotFound("Webhook delivery not found")
 	}
 	if err != nil {
 		return Delivery{}, apperrors.NewInternal("Unable to get webhook delivery", err)
+	}
+	if _, err := s.repository.GetEvent(ctx, uuid.MustParse(delivery.EventID), tenantContext.TeamID); errors.Is(err, ErrEventNotFound) {
+		return Delivery{}, apperrors.NewNotFound("Webhook delivery not found")
+	} else if err != nil {
+		return Delivery{}, apperrors.NewInternal("Unable to authorize webhook delivery", err)
 	}
 	return delivery, nil
 }
@@ -237,10 +242,19 @@ func (s *Service) RetryDelivery(ctx context.Context, value string) (Delivery, er
 	if err != nil {
 		return Delivery{}, err
 	}
-	delivery, err := s.repository.RetryDelivery(ctx, id, tenantContext.TeamID)
+	delivery, err := s.repository.GetDelivery(ctx, id)
 	if errors.Is(err, ErrDeliveryNotFound) {
 		return Delivery{}, apperrors.NewNotFound("Webhook delivery not found")
 	}
+	if err != nil {
+		return Delivery{}, apperrors.NewInternal("Unable to get webhook delivery", err)
+	}
+	if _, err := s.repository.GetEvent(ctx, uuid.MustParse(delivery.EventID), tenantContext.TeamID); errors.Is(err, ErrEventNotFound) {
+		return Delivery{}, apperrors.NewNotFound("Webhook delivery not found")
+	} else if err != nil {
+		return Delivery{}, apperrors.NewInternal("Unable to authorize webhook delivery", err)
+	}
+	delivery, err = s.repository.RetryDelivery(ctx, id)
 	if err != nil {
 		return Delivery{}, apperrors.NewInternal("Unable to retry webhook delivery", err)
 	}

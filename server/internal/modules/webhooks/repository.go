@@ -196,12 +196,11 @@ func (r *Repository) GetEvent(ctx context.Context, id, teamID uuid.UUID) (Event,
 	return event, nil
 }
 
-func (r *Repository) GetDelivery(ctx context.Context, id, teamID uuid.UUID) (Delivery, error) {
+func (r *Repository) GetDelivery(ctx context.Context, id uuid.UUID) (Delivery, error) {
 	delivery, err := scanDelivery(r.db.QueryRow(ctx, `
 		SELECT `+deliveryColumns+`
-		FROM webhook_deliveries AS delivery
-		JOIN webhook_events AS event ON event.id = delivery.event_id
-		WHERE delivery.id = $1 AND event.team_id = $2`, id, teamID))
+		FROM webhook_deliveries
+		WHERE id = $1`, id))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Delivery{}, ErrDeliveryNotFound
 	}
@@ -211,20 +210,17 @@ func (r *Repository) GetDelivery(ctx context.Context, id, teamID uuid.UUID) (Del
 	return delivery, nil
 }
 
-func (r *Repository) RetryDelivery(ctx context.Context, id, teamID uuid.UUID) (Delivery, error) {
+func (r *Repository) RetryDelivery(ctx context.Context, id uuid.UUID) (Delivery, error) {
 	delivery, err := scanDelivery(r.db.QueryRow(ctx, `
-		UPDATE webhook_deliveries AS delivery
+		UPDATE webhook_deliveries
 		SET status = $1,
 			next_attempt_at = now(),
 			last_error = NULL,
 			locked_at = NULL,
 			locked_by = NULL,
 			updated_at = now()
-		FROM webhook_events AS event
-		WHERE delivery.id = $2
-			AND event.id = delivery.event_id
-			AND event.team_id = $3
-		RETURNING `+deliveryColumns, DeliveryPending, id, teamID))
+		WHERE id = $2
+		RETURNING `+deliveryColumns, DeliveryPending, id))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Delivery{}, ErrDeliveryNotFound
 	}
