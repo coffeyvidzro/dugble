@@ -13,6 +13,7 @@ import (
 type Querier interface {
 	AcceptTeamInvitation(ctx context.Context, arg AcceptTeamInvitationParams) (TeamInvitation, error)
 	CompleteIdempotencyKey(ctx context.Context, arg CompleteIdempotencyKeyParams) error
+	CreateEmailMessage(ctx context.Context, arg CreateEmailMessageParams) (EmailMessage, error)
 	CreateIdempotencyKey(ctx context.Context, arg CreateIdempotencyKeyParams) (IdempotencyKey, error)
 	CreateOAuthIdentity(ctx context.Context, arg CreateOAuthIdentityParams) (OauthIdentity, error)
 	CreateSMSMessage(ctx context.Context, arg CreateSMSMessageParams) (SmsMessage, error)
@@ -41,6 +42,7 @@ type Querier interface {
 	FindApprovedSMSSender(ctx context.Context, arg FindApprovedSMSSenderParams) (uuid.UUID, error)
 	GetActiveTeamTokenByHash(ctx context.Context, arg GetActiveTeamTokenByHashParams) (TeamToken, error)
 	GetCompletedWalletRefundByReference(ctx context.Context, arg GetCompletedWalletRefundByReferenceParams) (WalletTransaction, error)
+	GetEmailMessage(ctx context.Context, arg GetEmailMessageParams) (EmailMessage, error)
 	GetIdempotencyKey(ctx context.Context, arg GetIdempotencyKeyParams) (IdempotencyKey, error)
 	GetOAuthIdentity(ctx context.Context, arg GetOAuthIdentityParams) (OauthIdentity, error)
 	GetSMSMessage(ctx context.Context, arg GetSMSMessageParams) (SmsMessage, error)
@@ -60,6 +62,7 @@ type Querier interface {
 	GetWalletByTeamAndCurrencyForUpdate(ctx context.Context, arg GetWalletByTeamAndCurrencyForUpdateParams) (Wallet, error)
 	GetWalletTransaction(ctx context.Context, arg GetWalletTransactionParams) (WalletTransaction, error)
 	GetWalletTransactionByReferenceForUpdate(ctx context.Context, arg GetWalletTransactionByReferenceForUpdateParams) (WalletTransaction, error)
+	ListEmailMessages(ctx context.Context, arg ListEmailMessagesParams) ([]EmailMessage, error)
 	ListOAuthIdentitiesByUserID(ctx context.Context, arg ListOAuthIdentitiesByUserIDParams) ([]OauthIdentity, error)
 	ListPendingTeamInvitations(ctx context.Context, arg ListPendingTeamInvitationsParams) ([]TeamInvitation, error)
 	ListSMSMessages(ctx context.Context, arg ListSMSMessagesParams) ([]SmsMessage, error)

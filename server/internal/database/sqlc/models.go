@@ -9,6 +9,33 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type EmailMessage struct {
+	ID                uuid.UUID          `db:"id" json:"id"`
+	TeamID            uuid.UUID          `db:"team_id" json:"team_id"`
+	MessageType       string             `db:"message_type" json:"message_type"`
+	FromEmail         string             `db:"from_email" json:"from_email"`
+	FromName          *string            `db:"from_name" json:"from_name"`
+	ReplyToEmail      *string            `db:"reply_to_email" json:"reply_to_email"`
+	ToEmail           string             `db:"to_email" json:"to_email"`
+	ToName            *string            `db:"to_name" json:"to_name"`
+	Subject           string             `db:"subject" json:"subject"`
+	HtmlBody          *string            `db:"html_body" json:"html_body"`
+	TextBody          *string            `db:"text_body" json:"text_body"`
+	Status            string             `db:"status" json:"status"`
+	Provider          *string            `db:"provider" json:"provider"`
+	ProviderMessageID *string            `db:"provider_message_id" json:"provider_message_id"`
+	ErrorCode         *string            `db:"error_code" json:"error_code"`
+	ErrorMessage      *string            `db:"error_message" json:"error_message"`
+	Metadata          []byte             `db:"metadata" json:"metadata"`
+	QueuedAt          pgtype.Timestamptz `db:"queued_at" json:"queued_at"`
+	ProcessingAt      pgtype.Timestamptz `db:"processing_at" json:"processing_at"`
+	SubmittedAt       pgtype.Timestamptz `db:"submitted_at" json:"submitted_at"`
+	DeliveredAt       pgtype.Timestamptz `db:"delivered_at" json:"delivered_at"`
+	FailedAt          pgtype.Timestamptz `db:"failed_at" json:"failed_at"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
 type IdempotencyKey struct {
 	Scope               string             `db:"scope" json:"scope"`
 	IdempotencyKey      string             `db:"idempotency_key" json:"idempotency_key"`
