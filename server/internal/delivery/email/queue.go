@@ -12,14 +12,14 @@ import (
 )
 
 const (
-	DeliverSubject   = "dugble.job.email.send.v1"
+	DeliverSubject    = "dugble.job.email.send.v1"
 	deliveryNamespace = "https://dugble.com/events/email/send/"
 )
 
 type DeliverCommand struct {
-	EventID      uuid.UUID `json:"event_id"`
-	MessageID    uuid.UUID `json:"message_id"`
-	TeamID       uuid.UUID `json:"team_id"`
+	EventID       uuid.UUID `json:"event_id"`
+	MessageID     uuid.UUID `json:"message_id"`
+	TeamID        uuid.UUID `json:"team_id"`
 	SchemaVersion int       `json:"schema_version"`
 }
 
