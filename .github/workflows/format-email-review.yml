@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - agent/email-api-review-fixes
+  pull_request:
 
 permissions:
   contents: read
