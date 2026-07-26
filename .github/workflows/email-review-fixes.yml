@@ -1,0 +1,66 @@
+name: Email review fixes
+
+on:
+  push:
+    branches:
+      - coffey/fix-email-api-review
+
+permissions:
+  contents: read
+
+jobs:
+  generate-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      - name: Generate SQLC code
+        working-directory: server
+        run: go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
+
+      - name: Format changed Go files
+        run: |
+          gofmt -w \
+            server/pkg/errors/errors.go \
+            server/internal/transport/middlewares/idempotency.go \
+            server/internal/transport/middlewares/idempotency_test.go \
+            server/internal/modules/email/handler.go \
+            server/internal/modules/email/model.go \
+            server/internal/modules/email/repository.go \
+            server/internal/modules/email/service.go \
+            server/internal/modules/email/service_test.go \
+            server/internal/modules/email/validation.go
+
+      - name: Run focused tests
+        working-directory: server
+        run: go test -race ./internal/modules/email ./internal/transport/middlewares
+
+      - name: Run vet
+        working-directory: server
+        run: go vet ./...
+
+      - name: Upload generated and formatted files
+        uses: actions/upload-artifact@v7
+        with:
+          name: email-review-fixes
+          path: |
+            server/internal/database/sqlc/email_messages.sql.go
+            server/internal/database/sqlc/querier.go
+            server/pkg/errors/errors.go
+            server/internal/transport/middlewares/idempotency.go
+            server/internal/transport/middlewares/idempotency_test.go
+            server/internal/modules/email/handler.go
+            server/internal/modules/email/model.go
+            server/internal/modules/email/repository.go
+            server/internal/modules/email/service.go
+            server/internal/modules/email/service_test.go
+            server/internal/modules/email/validation.go
+          retention-days: 1
