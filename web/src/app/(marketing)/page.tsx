@@ -9,23 +9,23 @@ import { Metrics } from "@/components/marketing/hero/metrics";
 import { ProductGrid } from "@/components/marketing/hero/product-grid";
 
 export const metadata: Metadata = {
+  title: "Reliable A2P Messaging & Developer Infrastructure",
+  description:
+    "Send OTPs, receipts, alerts, and customer notifications with complete delivery transparency, signed webhooks, and developer-first logs.",
+  openGraph: {
     title: "Reliable A2P Messaging & Developer Infrastructure",
     description:
-        "Send OTPs, receipts, alerts, and customer notifications with complete delivery transparency, signed webhooks, and developer-first logs.",
-    openGraph: {
-        title: "Reliable A2P Messaging & Developer Infrastructure",
-        description:
-            "Send OTPs, receipts, alerts, and customer notifications with complete delivery transparency, signed webhooks, and developer-first logs.",
-        url: "https://dugble.com",
-        siteName: "Dugble",
-        type: "website",
-    },
-    twitter: {
-        card: "summary_large_image",
-        title: "Reliable A2P Messaging Infrastructure",
-        description:
-            "Send OTPs, receipts, alerts, and customer notifications with complete delivery transparency.",
-    },
+      "Send OTPs, receipts, alerts, and customer notifications with complete delivery transparency, signed webhooks, and developer-first logs.",
+    url: "https://dugble.com",
+    siteName: "Dugble",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Reliable A2P Messaging Infrastructure",
+    description:
+      "Send OTPs, receipts, alerts, and customer notifications with complete delivery transparency.",
+  },
 };
 
 export default function Home() {

@@ -3,22 +3,22 @@ import { baseUrl } from "@/lib/site";
 import { getBlogPostPath, getBlogPosts } from "./(marketing)/blog/utils";
 
 const routes = [
-    "",
-    "/about",
-    "/blog",
-    "/brand",
-    "/changelog",
-    "/contact",
-    "/features/a2p-api",
-    "/features/email-api",
-    "/features/sms-api",
-    "/features/webhooks",
-    "/legal/privacy",
-    "/legal/terms",
-    "/pricing",
-    "/quickstart",
-    "/security",
-    "/status",
+  "",
+  "/about",
+  "/blog",
+  "/brand",
+  "/changelog",
+  "/contact",
+  "/features/a2p-api",
+  "/features/email-api",
+  "/features/sms-api",
+  "/features/webhooks",
+  "/legal/privacy",
+  "/legal/terms",
+  "/pricing",
+  "/quickstart",
+  "/security",
+  "/status",
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
