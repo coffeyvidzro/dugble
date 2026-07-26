@@ -8,14 +8,40 @@ on:
       - compose.yml
       - nats-server.conf
       - .env.example
-      - server/**
+      - server/Dockerfile
+      - server/go.mod
+      - server/go.sum
+      - server/migrations/**
+      - server/cmd/worker/**
+      - server/internal/config/**
+      - server/internal/database/**
+      - server/internal/delivery/sms/**
+      - server/internal/integration/sms/**
+      - server/internal/messaging/inbox/**
+      - server/internal/messaging/jetstream/**
+      - server/internal/messaging/outbox/**
+      - server/internal/modules/sms/**
+      - server/internal/modules/wallet/**
       - .github/workflows/jetstream.yml
   pull_request:
     paths:
       - compose.yml
       - nats-server.conf
       - .env.example
-      - server/**
+      - server/Dockerfile
+      - server/go.mod
+      - server/go.sum
+      - server/migrations/**
+      - server/cmd/worker/**
+      - server/internal/config/**
+      - server/internal/database/**
+      - server/internal/delivery/sms/**
+      - server/internal/integration/sms/**
+      - server/internal/messaging/inbox/**
+      - server/internal/messaging/jetstream/**
+      - server/internal/messaging/outbox/**
+      - server/internal/modules/sms/**
+      - server/internal/modules/wallet/**
       - .github/workflows/jetstream.yml
 
 permissions:
