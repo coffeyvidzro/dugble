@@ -41,7 +41,7 @@ SELECT *
 FROM webhook_events
 WHERE team_id = sqlc.arg(team_id)
   AND object_type = sqlc.arg(object_type)
-  AND object_id = sqlc.narg(object_id)
+  AND object_id IS NOT DISTINCT FROM sqlc.narg(object_id)
 ORDER BY occurred_at DESC, created_at DESC
 LIMIT sqlc.arg(limit_count)
 OFFSET sqlc.arg(offset_count);
