@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 
 import { DeveloperExperience } from "@/components/marketing/hero/developer-experience";
 import { DashboardPreview } from "@/components/marketing/hero/dashboard-preview";
@@ -29,8 +30,34 @@ export const metadata: Metadata = {
 };
 
 export default function Home() {
+    const jsonLd = {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        name: "Dugble",
+        applicationCategory: "DeveloperApplication",
+        operatingSystem: "Any",
+        offers: {
+            "@type": "Offer",
+            price: "0",
+            priceCurrency: "USD",
+        },
+        description:
+            "Send OTPs, receipts, alerts, and customer notifications with complete delivery transparency, signed webhooks, and developer-first logs.",
+        provider: {
+            "@type": "Organization",
+            name: "Dugble",
+            url: "https://dugble.com",
+        },
+    };
+
     return (
         <main className="min-h-svh bg-background text-foreground">
+            <Script
+                id="schema-org"
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            />
+
             <div className="mx-auto flex w-full max-w-6xl flex-col gap-24 px-6 py-8 lg:px-8">
                 <Hero />
                 <MessagePipeline />
