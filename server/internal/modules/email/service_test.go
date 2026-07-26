@@ -42,7 +42,7 @@ func (tx *fakeTx) Exec(context.Context, string, ...any) (pgconn.CommandTag, erro
 }
 func (tx *fakeTx) Query(context.Context, string, ...any) (pgx.Rows, error) { return nil, nil }
 func (tx *fakeTx) QueryRow(context.Context, string, ...any) pgx.Row        { return nil }
-func (tx *fakeTx) Conn() *pgx.Conn                                        { return nil }
+func (tx *fakeTx) Conn() *pgx.Conn                                         { return nil }
 
 type fakeEmailRepository struct {
 	tx          *fakeTx
