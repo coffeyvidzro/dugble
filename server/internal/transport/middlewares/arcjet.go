@@ -57,6 +57,19 @@ func Arcjet(client *arcjet.Client) echo.MiddlewareFunc {
 					message = "Automated request verification failed."
 				}
 
+				slog.WarnContext(
+					req.Context(),
+					"Arcjet denied request",
+					"method", req.Method,
+					"path", req.URL.Path,
+					"status", status,
+					"code", code,
+					"reason", decision.Reason,
+					"remote_addr", req.RemoteAddr,
+					"x_forwarded_for", req.Header.Get("X-Forwarded-For"),
+					"user_agent", req.UserAgent(),
+				)
+
 				return c.JSON(status, map[string]any{
 					"error": map[string]any{
 						"code":    code,
