@@ -11,14 +11,14 @@ import { AssetDownloads } from "@/components/marketing/brand/asset-downloads";
 import { BrandContact } from "@/components/marketing/brand/brand-contact";
 
 export const metadata: Metadata = {
-    title: "Brand Guidelines | Dugble",
+    title: "Brand Guidelines",
     description:
         "Explore Dugble's official brand guidelines. Download logos, typography, color palettes, and other brand assets.",
     openGraph: {
-        title: "Brand Guidelines | Dugble",
+        title: "Brand Guidelines",
         description:
             "Explore Dugble's official brand guidelines. Download logos, typography, color palettes, and other brand assets.",
-        url: "https://dugble.com/brand",
+        url: "/brand",
     },
 };
 

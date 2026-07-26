@@ -5,12 +5,48 @@ import { fontHeading, fontMono, fontSans } from "@/utils/fonts";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import { baseUrl } from "@/lib/site";
 import "./globals.css";
 
 export const metadata: Metadata = {
-    title: "Dugble",
+    metadataBase: new URL(baseUrl),
+    title: {
+        default: "Dugble | Developer-first A2P email and SMS APIs",
+        template: "%s | Dugble",
+    },
     description:
         "Developer-first A2P email and SMS APIs for African startups and teams.",
+    keywords: [
+        "A2P messaging",
+        "SMS API",
+        "Email API",
+        "OTP delivery",
+        "developer infrastructure",
+    ],
+    openGraph: {
+        type: "website",
+        locale: "en_US",
+        url: baseUrl,
+        siteName: "Dugble",
+        images: [
+            {
+                url: "/og",
+                width: 1200,
+                height: 630,
+                alt: "Dugble Developer Infrastructure",
+            },
+        ],
+    },
+    twitter: {
+        card: "summary_large_image",
+        title: "Dugble | Developer-first A2P email and SMS APIs",
+        description:
+            "Developer-first A2P email and SMS APIs for African startups and teams.",
+        images: ["/og"],
+    },
+    alternates: {
+        canonical: "/",
+    },
 };
 
 export default function RootLayout({

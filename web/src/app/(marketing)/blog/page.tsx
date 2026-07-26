@@ -8,14 +8,15 @@ import { FloatingOrbs } from "@/components/marketing/hero/floating-orbs";
 import { Reveal } from "@/components/marketing/reveal";
 
 export const metadata: Metadata = {
-    title: "Blog & Engineering Notes | Dugble",
+    title: "Blog & Engineering Notes",
     description:
         "Product thinking, developer guides, and architectural notes for teams building with Dugble A2P messaging infrastructure.",
     openGraph: {
-        title: "Blog & Engineering Notes | Dugble",
+        title: "Blog & Engineering Notes",
         description:
             "Product thinking, developer guides, and architectural notes for teams building with Dugble A2P messaging infrastructure.",
-        url: "https://dugble.com/blog",
+        url: "/blog",
+        type: "website",
     },
 };
 
@@ -24,7 +25,7 @@ export default async function Page() {
 
     return (
         <main className="min-h-svh bg-background text-foreground">
-            <div className="mx-auto flex w-full max-w-4xl flex-col gap-14 px-6 py-8 lg:px-8">
+            <div className="mx-auto flex w-full max-w-5xl flex-col gap-14 px-6 py-8 lg:px-8">
                 <section className="relative isolate overflow-hidden py-12 rounded-2xl px-6">
                     <AnimatedGrid />
                     <FloatingOrbs />

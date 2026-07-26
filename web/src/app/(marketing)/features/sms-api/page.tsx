@@ -8,20 +8,15 @@ import { Separator } from "@/components/ui/separator";
 import { Cta } from "@/components/marketing/cta";
 
 export const metadata: Metadata = {
-    title: "SMS API | Dugble",
+    title: "SMS API",
     description:
         "Reliable API for OTPs, alerts, and transactional A2P SMS. Get stable message IDs and real-time delivery tracking.",
     openGraph: {
-        title: "SMS API | Dugble",
+        title: "SMS API",
         description:
             "Reliable API for OTPs, alerts, and transactional A2P SMS. Get stable message IDs and real-time delivery tracking.",
+        url: "/features/sms-api",
         type: "website",
-    },
-    twitter: {
-        card: "summary_large_image",
-        title: "SMS API | Dugble",
-        description:
-            "Reliable API for OTPs, alerts, and transactional A2P SMS. Get stable message IDs and real-time delivery tracking.",
     },
 };
 

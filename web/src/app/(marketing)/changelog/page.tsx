@@ -7,21 +7,21 @@ import { Separator } from "@/components/ui/separator";
 import { Cta } from "@/components/marketing/cta";
 
 export const metadata: Metadata = {
-    title: "Changelog | Dugble",
+    title: "Changelog",
     description:
         "Follow the latest product updates, new features, and improvements to Dugble's A2P messaging platform.",
     openGraph: {
-        title: "Changelog | Dugble",
+        title: "Changelog",
         description:
             "Follow the latest product updates, new features, and improvements to Dugble's A2P messaging platform.",
-        url: "https://dugble.com/changelog",
+        url: "/changelog",
     },
 };
 
 export default function Page() {
     return (
         <main className="min-h-svh bg-background text-foreground">
-            <div className="mx-auto flex w-full max-w-4xl flex-col gap-16 px-6 py-8 lg:px-8">
+            <div className="mx-auto flex w-full max-w-5xl flex-col gap-16 px-6 py-8 lg:px-8">
                 <ChangelogHero />
                 <Separator />
                 <ChangelogTimeline entries={changelogEntries} />

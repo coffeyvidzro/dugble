@@ -9,14 +9,14 @@ import { Reveal } from "@/components/marketing/reveal";
 import { buttonVariants } from "@/components/ui/button";
 
 export const metadata: Metadata = {
-    title: "Contact Us | Dugble",
+    title: "Contact Us",
     description:
         "Reach out to Dugble for early access, product feedback, volume SMS, partnerships, or support.",
     openGraph: {
-        title: "Contact Us | Dugble",
+        title: "Contact Us",
         description:
             "Reach out to Dugble for early access, product feedback, volume SMS, partnerships, or support.",
-        url: "https://dugble.com/contact",
+        url: "/contact",
     },
 };
 

@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-    title: "Terms of Service | Dugble",
+    title: "Terms of Service",
     description:
         "API and dashboard terms for using Dugble's A2P messaging infrastructure.",
+    openGraph: {
+        title: "Terms of Service",
+        description:
+            "API and dashboard terms for using Dugble's A2P messaging infrastructure.",
+        url: "/legal/terms",
+    },
 };
 
 export default function Page() {
