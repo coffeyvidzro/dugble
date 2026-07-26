@@ -11,20 +11,15 @@ import {
 } from "@/components/marketing/a2p";
 
 export const metadata: Metadata = {
-    title: "A2P Messaging API | Dugble",
+    title: "A2P Messaging API",
     description:
         "Send SMS and transactional email through a unified, developer-first A2P messaging API with real-time delivery tracking and signed webhooks.",
     openGraph: {
-        title: "A2P Messaging API | Dugble",
+        title: "A2P Messaging API",
         description:
             "Send SMS and transactional email through a unified, developer-first A2P messaging API with real-time delivery tracking and signed webhooks.",
+        url: "/features/a2p-api",
         type: "website",
-    },
-    twitter: {
-        card: "summary_large_image",
-        title: "A2P Messaging API | Dugble",
-        description:
-            "Send SMS and transactional email through a unified, developer-first A2P messaging API with real-time delivery tracking and signed webhooks.",
     },
 };
 

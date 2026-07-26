@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-    title: "Privacy Policy | Dugble",
+    title: "Privacy Policy",
     description:
         "Learn how Dugble handles account, workspace, recipient, message, and webhook data.",
+    openGraph: {
+        title: "Privacy Policy",
+        description:
+            "Learn how Dugble handles account, workspace, recipient, message, and webhook data.",
+        url: "/legal/privacy",
+    },
 };
 
 export default function Page() {
