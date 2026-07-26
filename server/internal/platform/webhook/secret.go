@@ -6,6 +6,10 @@ import (
 	"fmt"
 )
 
+// SigningSecretPrefix identifies a signing secret when it is displayed to a
+// customer. The complete value returned by NewSigningSecret, including this
+// prefix, is the HMAC key; the encoded portion is not a transport encoding for
+// consumers to decode.
 const SigningSecretPrefix = "whsec_"
 
 func NewSigningSecret() (string, error) {
