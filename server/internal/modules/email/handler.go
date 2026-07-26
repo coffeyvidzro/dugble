@@ -23,7 +23,7 @@ func (h *Handler) Send(c *echo.Context) error {
 		return httputil.Error(c, err)
 	}
 	c.Response().Header().Set("Location", "/emails/"+m.ID)
-	return httputil.Accepted(c, m)
+	return httputil.Accepted(c, m.Summary())
 }
 func (h *Handler) Get(c *echo.Context) error {
 	m, err := h.service.Get(c.Request().Context(), c.Param("message_id"))
