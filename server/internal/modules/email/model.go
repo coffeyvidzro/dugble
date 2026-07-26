@@ -141,6 +141,29 @@ type BatchSendRequest struct {
 	Messages []SendRequest `json:"messages"`
 }
 
+// UnmarshalJSON accepts Resend's top-level array while retaining compatibility
+// with the original {"messages": [...]} Dugble payload.
+func (request *BatchSendRequest) UnmarshalJSON(data []byte) error {
+	data = bytes.TrimSpace(data)
+	if len(data) > 0 && data[0] == '[' {
+		return json.Unmarshal(data, &request.Messages)
+	}
+	type alias BatchSendRequest
+	return json.Unmarshal(data, (*alias)(request))
+}
+
+type SendResponse struct {
+	ID string `json:"id"`
+}
+
+func SendResponses(messages []Message) []SendResponse {
+	responses := make([]SendResponse, len(messages))
+	for index, message := range messages {
+		responses[index] = SendResponse{ID: message.ID}
+	}
+	return responses
+}
+
 type MessageSummary struct {
 	ID          string     `json:"id"`
 	ToEmail     string     `json:"to_email"`

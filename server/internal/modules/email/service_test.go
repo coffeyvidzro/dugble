@@ -31,3 +31,26 @@ func TestBatchSendValidatesEntireBatchBeforeStartingTransaction(t *testing.T) {
 		t.Fatal("expected the invalid second message to reject the batch")
 	}
 }
+
+func TestBatchSendRejectsMoreThanOneHundredEmails(t *testing.T) {
+	service := NewService(nil, configuredDeliveryQueue{}, ServiceConfig{DefaultFromEmail: "sender@example.com"})
+	messages := make([]SendRequest, 101)
+	_, err := service.BatchSend(context.Background(), BatchSendRequest{Messages: messages})
+	if err == nil {
+		t.Fatal("expected oversized batch to be rejected")
+	}
+}
+
+func TestBatchSendRejectsAttachmentsBeforeStartingTransaction(t *testing.T) {
+	service := NewService(nil, configuredDeliveryQueue{}, ServiceConfig{DefaultFromEmail: "sender@example.com"})
+	ctx := tenant.ContextWithTenant(context.Background(), tenant.Context{
+		TeamID: uuid.New(), Permissions: []tenant.Permission{tenant.PermissionEmailSend},
+	})
+	_, err := service.BatchSend(ctx, BatchSendRequest{Messages: []SendRequest{{
+		To: EmailAddressList{{Email: "recipient@example.com"}}, Subject: "Attachment", Text: "body",
+		Attachments: []Attachment{{Filename: "file.txt", Content: "ZmlsZQ=="}},
+	}}})
+	if err == nil {
+		t.Fatal("expected batch attachment to be rejected")
+	}
+}

@@ -48,6 +48,6 @@ func (h *Handler) BatchSend(c *echo.Context) error {
 	if err != nil {
 		return httputil.Error(c, err)
 	}
-	return httputil.Accepted(c, Summaries(m))
+	return httputil.Accepted(c, SendResponses(m))
 }
 func parse(value string) int32 { n, _ := strconv.ParseInt(value, 10, 32); return int32(n) }
