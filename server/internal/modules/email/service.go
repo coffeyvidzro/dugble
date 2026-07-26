@@ -114,13 +114,41 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 	if len(req.Messages) == 0 || len(req.Messages) > maxBatchSize {
 		return nil, apperrors.NewBadRequest("messages must contain between 1 and 50 items")
 	}
-	result := make([]Message, 0, len(req.Messages))
-	for _, item := range req.Messages {
-		m, err := s.Send(ctx, item)
+	tc, err := requireTenant(ctx, tenant.PermissionEmailSend)
+	if err != nil {
+		return nil, err
+	}
+	if s.delivery == nil {
+		return nil, apperrors.NewInternal("Email delivery queue is not configured", nil)
+	}
+
+	validated := make([]validatedSend, len(req.Messages))
+	for index, item := range req.Messages {
+		validated[index], err = validateSend(item, s.config)
 		if err != nil {
 			return nil, err
 		}
-		result = append(result, m)
+	}
+
+	tx, err := s.repository.BeginTx(ctx)
+	if err != nil {
+		return nil, apperrors.NewInternal("Unable to begin email batch transaction", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	result := make([]Message, 0, len(validated))
+	for _, item := range validated {
+		message, createErr := s.repository.CreateTx(ctx, tx, tc.TeamID, item)
+		if createErr != nil {
+			return nil, apperrors.NewInternal("Unable to create email message", createErr)
+		}
+		if enqueueErr := s.delivery.EnqueueEmailDeliveryTx(ctx, tx, uuid.MustParse(message.ID), tc.TeamID); enqueueErr != nil {
+			return nil, apperrors.NewInternal("Unable to enqueue email delivery", enqueueErr)
+		}
+		result = append(result, message)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, apperrors.NewInternal("Unable to commit email batch transaction", err)
 	}
 	return result, nil
 }
