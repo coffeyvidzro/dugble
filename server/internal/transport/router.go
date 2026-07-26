@@ -174,9 +174,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	smsmodule.RegisterRoutes(
 		router,
 		smsmodule.NewHandler(smsService),
-		authMiddleware,
-		csrfMiddleware,
-		tenantMiddleware,
+		tenantAccess,
 	)
 
 	emailServiceAPI := emailmodule.NewService(
