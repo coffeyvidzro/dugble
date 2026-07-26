@@ -2,12 +2,9 @@ package sms
 
 import (
 	"encoding/json"
-	"errors"
 	"strings"
 	"testing"
 	"time"
-
-	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
 func TestValidateSendRequiresE164Recipient(t *testing.T) {
@@ -198,6 +195,13 @@ func TestSMSSendResponseIsCompact(t *testing.T) {
 	}
 }
 
+func TestSMSSendResponsesPreserveBatchOrder(t *testing.T) {
+	responses := SendResponses([]Message{{ID: "first"}, {ID: "second"}})
+	if len(responses) != 2 || responses[0].ID != "first" || responses[1].ID != "second" {
+		t.Fatalf("send responses = %#v", responses)
+	}
+}
+
 func TestBatchSendRequestAcceptsTopLevelArray(t *testing.T) {
 	var request BatchSendRequest
 	if err := json.Unmarshal([]byte(`[
@@ -232,17 +236,6 @@ func TestResponsesMapsEveryMessageToPublicDTO(t *testing.T) {
 	responses := Responses([]Message{{ID: "first"}, {ID: "second"}})
 	if len(responses) != 2 || responses[0].ID != "first" || responses[1].ID != "second" {
 		t.Fatalf("Responses() = %#v", responses)
-	}
-}
-
-func TestNewBatchSendErrorDoesNotExposeWrappedCause(t *testing.T) {
-	err := apperrors.NewInternal("Unable to enqueue SMS delivery", errors.New("postgres password leaked here"))
-	result := newBatchSendError(err)
-	if result.Code != "INTERNAL_ERROR" || result.Message != "Unable to enqueue SMS delivery" {
-		t.Fatalf("newBatchSendError() = %#v", result)
-	}
-	if strings.Contains(result.Message, "postgres") {
-		t.Fatalf("newBatchSendError exposed wrapped cause: %#v", result)
 	}
 }
 

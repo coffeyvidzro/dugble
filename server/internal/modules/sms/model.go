@@ -161,34 +161,19 @@ type SendResponse struct {
 
 func (m Message) SendResponse() SendResponse { return SendResponse{Object: "sms", ID: m.ID} }
 
+func SendResponses(messages []Message) []SendResponse {
+	responses := make([]SendResponse, len(messages))
+	for index, message := range messages {
+		responses[index] = message.SendResponse()
+	}
+	return responses
+}
+
 func nonNilSMSTags(tags []Tag) []Tag {
 	if tags == nil {
 		return []Tag{}
 	}
 	return tags
-}
-
-type BatchSendError struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
-}
-
-type BatchSendResult struct {
-	Index   int             `json:"index"`
-	Success bool            `json:"success"`
-	Message *SMSResponse    `json:"message,omitempty"`
-	Error   *BatchSendError `json:"error,omitempty"`
-}
-
-type BatchSendSummary struct {
-	Requested int `json:"requested"`
-	Succeeded int `json:"succeeded"`
-	Failed    int `json:"failed"`
-}
-
-type BatchSendResponse struct {
-	Results []BatchSendResult `json:"results"`
-	Summary BatchSendSummary  `json:"summary"`
 }
 
 type ListRequest struct {

@@ -168,57 +168,88 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	return created, nil
 }
 
-func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) (BatchSendResponse, error) {
+func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Message, error) {
 	if err := validateBatchSend(req); err != nil {
-		return BatchSendResponse{}, err
+		return nil, err
 	}
-	if _, err := requireTenant(ctx, tenant.PermissionSMSSend); err != nil {
-		return BatchSendResponse{}, err
+	tenantContext, err := requireTenant(ctx, tenant.PermissionSMSSend)
+	if err != nil {
+		return nil, err
 	}
 	if s.wallet == nil {
-		return BatchSendResponse{}, apperrors.NewInternal("SMS wallet ledger is not configured", nil)
+		return nil, apperrors.NewInternal("SMS wallet ledger is not configured", nil)
 	}
 	if s.delivery == nil {
-		return BatchSendResponse{}, apperrors.NewInternal("SMS delivery queue is not configured", nil)
+		return nil, apperrors.NewInternal("SMS delivery queue is not configured", nil)
 	}
 
-	response := BatchSendResponse{
-		Results: make([]BatchSendResult, 0, len(req.Messages)),
-		Summary: BatchSendSummary{Requested: len(req.Messages)},
+	type preparedMessage struct {
+		request  SendRequest
+		senderID *uuid.UUID
+		segments int32
 	}
-
-	for index, message := range req.Messages {
-		created, err := s.Send(ctx, message)
-		result := BatchSendResult{Index: index}
-		if created.ID != "" {
-			publicMessage := created.Response()
-			result.Message = &publicMessage
-		}
+	prepared := make([]preparedMessage, len(req.Messages))
+	senders := make(map[string]*uuid.UUID)
+	for index, request := range req.Messages {
+		normalized, err := validateSend(request)
 		if err != nil {
-			publicError := newBatchSendError(err)
-			result.Error = &publicError
-			response.Summary.Failed++
-		} else {
-			result.Success = true
-			response.Summary.Succeeded++
+			return nil, err
 		}
-		response.Results = append(response.Results, result)
+		senderKey := strings.ToLower(normalized.From)
+		senderID, exists := senders[senderKey]
+		if !exists {
+			senderID, err = s.repository.FindApprovedSender(ctx, tenantContext.TeamID, normalized.From)
+			if err != nil {
+				return nil, apperrors.NewInternal("Unable to validate SMS sender ID", err)
+			}
+			if senderID == nil {
+				return nil, apperrors.NewBadRequest("SMS sender ID must be approved before use")
+			}
+			senders[senderKey] = senderID
+		}
+		prepared[index] = preparedMessage{request: normalized, senderID: senderID, segments: countSegments(normalized.Body)}
 	}
 
-	return response, nil
-}
-
-func newBatchSendError(err error) BatchSendError {
-	result := BatchSendError{
-		Code:    "INTERNAL_ERROR",
-		Message: "An unexpected error occurred",
+	tx, err := s.repository.BeginTx(ctx)
+	if err != nil {
+		return nil, apperrors.NewInternal("Unable to begin SMS batch transaction", err)
 	}
-	var appErr *apperrors.AppError
-	if errors.As(err, &appErr) {
-		result.Code = appErr.Code
-		result.Message = appErr.Message
+	defer func() { _ = tx.Rollback(ctx) }()
+	txRepository := s.repository.WithTx(tx)
+	result := make([]Message, 0, len(prepared))
+	for _, item := range prepared {
+		quote, err := txRepository.QuoteSMS(ctx, tenantContext.TeamID, item.request.DestinationCountry, item.segments)
+		if err != nil {
+			if errors.Is(err, ErrSMSPricingNotConfigured) {
+				return nil, apperrors.NewBadRequest("SMS pricing is not configured for the destination country")
+			}
+			return nil, apperrors.NewInternal("Unable to calculate SMS batch price", err)
+		}
+		created, err := txRepository.Create(ctx, createMessageParams{
+			TeamID: tenantContext.TeamID, SenderID: item.senderID, To: item.request.To, From: item.request.From,
+			Body: item.request.Body, Status: StatusQueued, Segments: item.segments,
+			CostMicros: quote.TotalCostMicros, Metadata: item.request.Metadata, Tags: item.request.Tags,
+			DestinationCountry: quote.DestinationCountry, PricingRuleID: quote.PricingRuleID, UnitCostMicros: quote.UnitCostMicros,
+		})
+		if err != nil {
+			return nil, apperrors.NewInternal("Unable to create SMS batch message", err)
+		}
+		messageID := uuid.MustParse(created.ID)
+		if _, err := s.wallet.DebitSMSChargeTx(ctx, tx, tenantContext.TeamID, created.CostMicros, messageID, item.request.Metadata); err != nil {
+			if errors.Is(err, wallet.ErrInsufficientBalance) {
+				return nil, apperrors.NewBadRequest("Insufficient wallet balance for SMS batch")
+			}
+			return nil, apperrors.NewInternal("Unable to debit wallet for SMS batch", err)
+		}
+		if err := s.delivery.EnqueueSMSDeliveryTx(ctx, tx, messageID, tenantContext.TeamID); err != nil {
+			return nil, apperrors.NewInternal("Unable to enqueue SMS batch delivery", err)
+		}
+		result = append(result, created)
 	}
-	return result
+	if err := tx.Commit(ctx); err != nil {
+		return nil, apperrors.NewInternal("Unable to commit SMS batch transaction", err)
+	}
+	return result, nil
 }
 
 func (s *Service) SyncStatus(ctx context.Context, messageID string) (Message, error) {

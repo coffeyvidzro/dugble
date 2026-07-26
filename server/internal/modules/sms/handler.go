@@ -52,7 +52,7 @@ func (h *Handler) BatchSend(c *echo.Context) error {
 	if err != nil {
 		return httputil.Error(c, err)
 	}
-	return httputil.OK(c, response)
+	return httputil.Accepted(c, SendResponses(response))
 }
 
 func (h *Handler) SyncStatus(c *echo.Context) error {
