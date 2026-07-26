@@ -23,7 +23,45 @@ type DeliveryQueue interface {
 }
 type scheduledDeliveryQueue interface {
 	EnqueueEmailDeliveryAtTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID, time.Time) error
+	CancelEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error
 }
+
+func (s *Service) Cancel(ctx context.Context, value string) (CancelResponse, error) {
+	tc, err := requireTenant(ctx, tenant.PermissionEmailSend)
+	if err != nil {
+		return CancelResponse{}, err
+	}
+	id, err := uuid.Parse(strings.TrimSpace(value))
+	if err != nil {
+		return CancelResponse{}, apperrors.NewBadRequest("Email message id must be a valid UUID")
+	}
+	queue, ok := s.delivery.(scheduledDeliveryQueue)
+	if !ok {
+		return CancelResponse{}, apperrors.NewInternal("Email delivery queue does not support cancellation", nil)
+	}
+	tx, err := s.repository.BeginTx(ctx)
+	if err != nil {
+		return CancelResponse{}, apperrors.NewInternal("Unable to begin email cancellation transaction", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := s.repository.CancelTx(ctx, tx, id, tc.TeamID); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return CancelResponse{}, apperrors.NewNotFound("Email message not found")
+		}
+		if errors.Is(err, ErrNotCancelable) {
+			return CancelResponse{}, apperrors.NewConflict("Only pending scheduled emails can be canceled")
+		}
+		return CancelResponse{}, apperrors.NewInternal("Unable to cancel email message", err)
+	}
+	if err := queue.CancelEmailDeliveryTx(ctx, tx, id, tc.TeamID); err != nil {
+		return CancelResponse{}, apperrors.NewInternal("Unable to cancel email delivery", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return CancelResponse{}, apperrors.NewInternal("Unable to commit email cancellation", err)
+	}
+	return CancelResponse{Object: "email", ID: id.String()}, nil
+}
+
 type Service struct {
 	repository *Repository
 	delivery   DeliveryQueue

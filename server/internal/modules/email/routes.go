@@ -13,5 +13,6 @@ func RegisterRoutes(router *echo.Echo, handler *Handler, auth, csrf echo.Middlew
 	emails.GET("", handler.List, tenantMiddleware(tenant.PermissionEmailRead))
 	emails.POST("", handler.Send, tenantMiddleware(tenant.PermissionEmailSend))
 	emails.POST("/batch", handler.BatchSend, tenantMiddleware(tenant.PermissionEmailSend))
+	emails.POST("/:message_id/cancel", handler.Cancel, tenantMiddleware(tenant.PermissionEmailSend))
 	emails.GET("/:message_id", handler.Get, tenantMiddleware(tenant.PermissionEmailRead))
 }

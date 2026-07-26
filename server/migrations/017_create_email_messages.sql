@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS email_messages (
     CONSTRAINT chk_email_message_type CHECK (message_type = 'transactional'),
     CONSTRAINT chk_email_status CHECK (status IN (
         'queued', 'processing', 'submitted', 'delivered', 'delayed',
-        'bounced', 'complained', 'rejected', 'failed'
+        'bounced', 'complained', 'rejected', 'failed', 'canceled'
     )),
     CONSTRAINT chk_email_metadata_object CHECK (jsonb_typeof(metadata) = 'object'),
     CONSTRAINT chk_email_from_present CHECK (length(trim(from_email)) > 0),

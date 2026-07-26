@@ -20,6 +20,7 @@ const (
 	StatusComplained = "complained"
 	StatusRejected   = "rejected"
 	StatusFailed     = "failed"
+	StatusCanceled   = "canceled"
 )
 
 const MessageTypeTransactional = "transactional"
@@ -155,6 +156,11 @@ func (request *BatchSendRequest) UnmarshalJSON(data []byte) error {
 
 type SendResponse struct {
 	ID string `json:"id"`
+}
+
+type CancelResponse struct {
+	Object string `json:"object"`
+	ID     string `json:"id"`
 }
 
 func SendResponses(messages []Message) []SendResponse {

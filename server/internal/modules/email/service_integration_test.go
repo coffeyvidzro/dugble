@@ -83,6 +83,39 @@ func TestSendPersistsMessageAndMatchingOutboxEventAtomically(t *testing.T) {
 	}
 }
 
+func TestCancelScheduledEmailUpdatesMessageAndRemovesOutboxEvent(t *testing.T) {
+	pool := openEmailTestDatabase(t)
+	teamID := createEmailTestTeam(t, pool)
+	queue := emaildelivery.NewQueue(outbox.NewRepository(pool))
+	service := NewService(NewRepository(pool), queue, ServiceConfig{DefaultFromEmail: "sender@example.com"})
+	request := emailTestRequest("recipient@example.com")
+	request.ScheduledAt = "in 1 hour"
+
+	message, err := service.Send(emailTestContext(teamID), request)
+	if err != nil {
+		t.Fatalf("send scheduled email: %v", err)
+	}
+	response, err := service.Cancel(emailTestContext(teamID), message.ID)
+	if err != nil {
+		t.Fatalf("cancel scheduled email: %v", err)
+	}
+	if response.Object != "email" || response.ID != message.ID {
+		t.Fatalf("unexpected cancel response: %#v", response)
+	}
+
+	var status string
+	if err := pool.QueryRow(t.Context(), `SELECT status FROM email_messages WHERE id = $1`, message.ID).Scan(&status); err != nil {
+		t.Fatalf("get canceled email status: %v", err)
+	}
+	var events int
+	if err := pool.QueryRow(t.Context(), `SELECT count(*) FROM outbox_events WHERE aggregate_id = $1`, message.ID).Scan(&events); err != nil {
+		t.Fatalf("count canceled email events: %v", err)
+	}
+	if status != StatusCanceled || events != 0 {
+		t.Fatalf("status = %q, events = %d; want canceled and 0", status, events)
+	}
+}
+
 type failingEmailQueue struct{ err error }
 
 func (q failingEmailQueue) EnqueueEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error {

@@ -14,8 +14,14 @@ import (
 
 type recordingStore struct {
 	event   outbox.Event
+	deleted uuid.UUID
 	usedTx  bool
 	enqueue int
+}
+
+func (s *recordingStore) DeletePendingTx(_ context.Context, _ pgx.Tx, eventID uuid.UUID) error {
+	s.deleted = eventID
+	return nil
 }
 
 func (s *recordingStore) Enqueue(_ context.Context, event outbox.Event) (uuid.UUID, error) {
@@ -74,6 +80,19 @@ func TestQueueEnqueueEmailDeliveryAtTxPreservesSchedule(t *testing.T) {
 	}
 	if !store.event.AvailableAt.Equal(scheduledAt) {
 		t.Fatalf("available at = %s, want %s", store.event.AvailableAt, scheduledAt)
+	}
+}
+
+func TestQueueCancelEmailDeliveryTxDeletesDeterministicEvent(t *testing.T) {
+	store := &recordingStore{}
+	messageID := uuid.New()
+
+	if err := NewQueue(store).CancelEmailDeliveryTx(context.Background(), nil, messageID, uuid.New()); err != nil {
+		t.Fatalf("cancel email delivery: %v", err)
+	}
+	want := uuid.NewSHA1(uuid.NameSpaceURL, []byte(deliveryNamespace+messageID.String()))
+	if store.deleted != want {
+		t.Fatalf("deleted event = %s, want %s", store.deleted, want)
 	}
 }
 

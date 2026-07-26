@@ -16,6 +16,7 @@ import (
 )
 
 var ErrNotFound = errors.New("email message not found")
+var ErrNotCancelable = errors.New("email message is not a pending scheduled email")
 
 type Repository struct {
 	db      *pgxpool.Pool
@@ -66,6 +67,34 @@ func (r *Repository) CreateTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, 
 		return Message{}, fmt.Errorf("create email message: %w", err)
 	}
 	return messageFromSQLC(row), nil
+}
+
+func (r *Repository) CancelTx(ctx context.Context, tx pgx.Tx, id, teamID uuid.UUID) error {
+	var status string
+	var scheduledAt *time.Time
+	err := tx.QueryRow(ctx, `
+		SELECT status, scheduled_at
+		FROM email_messages
+		WHERE id = $1 AND team_id = $2
+		FOR UPDATE
+	`, id, teamID).Scan(&status, &scheduledAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("lock email message for cancellation: %w", err)
+	}
+	if status != StatusQueued || scheduledAt == nil || !scheduledAt.After(time.Now().UTC()) {
+		return ErrNotCancelable
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE email_messages
+		SET status = $3, updated_at = now()
+		WHERE id = $1 AND team_id = $2
+	`, id, teamID, StatusCanceled); err != nil {
+		return fmt.Errorf("cancel email message: %w", err)
+	}
+	return nil
 }
 
 func (r *Repository) Get(ctx context.Context, id, teamID uuid.UUID) (Message, error) {

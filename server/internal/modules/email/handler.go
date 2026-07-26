@@ -32,6 +32,13 @@ func (h *Handler) Get(c *echo.Context) error {
 	}
 	return httputil.OK(c, m.RetrieveResponse())
 }
+func (h *Handler) Cancel(c *echo.Context) error {
+	response, err := h.service.Cancel(c.Request().Context(), c.Param("message_id"))
+	if err != nil {
+		return httputil.Error(c, err)
+	}
+	return httputil.OK(c, response)
+}
 func (h *Handler) List(c *echo.Context) error {
 	m, err := h.service.List(c.Request().Context(), ListRequest{Limit: parse(c.QueryParam("limit")), Offset: parse(c.QueryParam("offset"))})
 	if err != nil {
