@@ -30,7 +30,7 @@ func (h *Handler) Get(c *echo.Context) error {
 	if err != nil {
 		return httputil.Error(c, err)
 	}
-	return httputil.OK(c, m)
+	return httputil.OK(c, m.RetrieveResponse())
 }
 func (h *Handler) List(c *echo.Context) error {
 	m, err := h.service.List(c.Request().Context(), ListRequest{Limit: parse(c.QueryParam("limit")), Offset: parse(c.QueryParam("offset"))})

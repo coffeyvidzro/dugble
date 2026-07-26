@@ -7,6 +7,7 @@ import (
 	"net/mail"
 	"strings"
 	"time"
+	"unicode"
 )
 
 const (
@@ -162,6 +163,80 @@ func SendResponses(messages []Message) []SendResponse {
 		responses[index] = SendResponse{ID: message.ID}
 	}
 	return responses
+}
+
+type RetrieveResponse struct {
+	Object      string     `json:"object"`
+	ID          string     `json:"id"`
+	MessageID   *string    `json:"message_id"`
+	To          []string   `json:"to"`
+	From        string     `json:"from"`
+	CreatedAt   time.Time  `json:"created_at"`
+	Subject     string     `json:"subject"`
+	HTML        *string    `json:"html"`
+	Text        *string    `json:"text"`
+	BCC         []string   `json:"bcc"`
+	CC          []string   `json:"cc"`
+	ReplyTo     []string   `json:"reply_to"`
+	LastEvent   string     `json:"last_event"`
+	ScheduledAt *time.Time `json:"scheduled_at"`
+	Tags        []Tag      `json:"tags"`
+}
+
+func (m Message) RetrieveResponse() RetrieveResponse {
+	to := addressStrings(m.To)
+	if len(to) == 0 && m.ToEmail != "" {
+		to = addressStrings([]EmailAddress{{Email: m.ToEmail, Name: pointerValue(m.ToName)}})
+	}
+	replyTo := addressStrings(m.ReplyTo)
+	if len(replyTo) == 0 && m.ReplyToEmail != nil {
+		replyTo = []string{*m.ReplyToEmail}
+	}
+	return RetrieveResponse{
+		Object: "email", ID: m.ID, MessageID: m.ProviderMessageID,
+		To: to, From: formatEmailAddress(EmailAddress{Email: m.FromEmail, Name: pointerValue(m.FromName)}),
+		CreatedAt: m.CreatedAt, Subject: m.Subject, HTML: m.HTMLBody, Text: m.TextBody,
+		BCC: addressStrings(m.BCC), CC: addressStrings(m.CC), ReplyTo: replyTo,
+		LastEvent: m.Status, ScheduledAt: m.ScheduledAt, Tags: nonNilTags(m.Tags),
+	}
+}
+
+func addressStrings(addresses []EmailAddress) []string {
+	result := make([]string, len(addresses))
+	for index, address := range addresses {
+		result[index] = formatEmailAddress(address)
+	}
+	return result
+}
+
+func formatEmailAddress(address EmailAddress) string {
+	if address.Name != "" && isSimpleDisplayName(address.Name) {
+		return address.Name + " <" + address.Email + ">"
+	}
+	return (&mail.Address{Name: address.Name, Address: address.Email}).String()
+}
+
+func isSimpleDisplayName(name string) bool {
+	for _, character := range name {
+		if !unicode.IsLetter(character) && !unicode.IsDigit(character) && character != ' ' && !strings.ContainsRune("._-", character) {
+			return false
+		}
+	}
+	return true
+}
+
+func pointerValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
+func nonNilTags(tags []Tag) []Tag {
+	if tags == nil {
+		return []Tag{}
+	}
+	return tags
 }
 
 type MessageSummary struct {

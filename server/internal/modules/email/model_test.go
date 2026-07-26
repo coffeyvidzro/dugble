@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"testing"
+	"time"
 )
 
 func TestMessageSummaryOmitsContentBodies(t *testing.T) {
@@ -49,5 +50,36 @@ func TestSendResponsesContainOnlyIDsInRequestOrder(t *testing.T) {
 	}
 	if string(encoded) != `[{"id":"first"},{"id":"second"}]` {
 		t.Fatalf("unexpected response: %s", encoded)
+	}
+}
+
+func TestRetrieveResponseMatchesSentEmailShape(t *testing.T) {
+	html := "<p>Hello</p>"
+	fromName := "Acme"
+	providerMessageID := "<provider-message@example.com>"
+	createdAt := time.Date(2026, time.April, 3, 22, 13, 42, 0, time.UTC)
+	message := Message{
+		ID: "email-id", FromEmail: "sender@example.com", FromName: &fromName,
+		To: []EmailAddress{{Email: "ada@example.com", Name: "Ada"}}, CC: []EmailAddress{}, BCC: []EmailAddress{},
+		Subject: "Hello", HTMLBody: &html, Status: StatusDelivered, ProviderMessageID: &providerMessageID,
+		Tags: []Tag{{Name: "category", Value: "confirm_email"}}, CreatedAt: createdAt,
+	}
+
+	encoded, err := json.Marshal(message.RetrieveResponse())
+	if err != nil {
+		t.Fatalf("marshal retrieve response: %v", err)
+	}
+	response := message.RetrieveResponse()
+	if response.Object != "email" || response.From != "Acme <sender@example.com>" ||
+		len(response.To) != 1 || response.To[0] != "Ada <ada@example.com>" || response.LastEvent != StatusDelivered {
+		t.Fatalf("unexpected retrieve response: %#v", response)
+	}
+	if response.CC == nil || response.BCC == nil || response.ReplyTo == nil {
+		t.Fatalf("recipient arrays must not be null: %#v", response)
+	}
+	for _, forbidden := range [][]byte{[]byte(`"team_id"`), []byte(`"metadata"`), []byte(`"error_message"`)} {
+		if bytes.Contains(encoded, forbidden) {
+			t.Fatalf("retrieve response contains internal field %s: %s", forbidden, encoded)
+		}
 	}
 }
