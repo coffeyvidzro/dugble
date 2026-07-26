@@ -20,9 +20,11 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/modules/teamtoken"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/user"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/wallet"
+	"github.com/coffeyvidzro/dugble/server/internal/modules/webhooks"
 	"github.com/coffeyvidzro/dugble/server/internal/notifications"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/idempotency"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
+	platformwebhook "github.com/coffeyvidzro/dugble/server/internal/platform/webhook"
 	"github.com/coffeyvidzro/dugble/server/internal/transport/csrf"
 	"github.com/coffeyvidzro/dugble/server/internal/transport/health"
 	"github.com/coffeyvidzro/dugble/server/internal/transport/middlewares"
@@ -183,6 +185,16 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		emailmodule.ServiceConfig{DefaultFromEmail: cfg.AWS.FromEmail},
 	)
 	emailmodule.RegisterRoutes(router, emailmodule.NewHandler(emailServiceAPI), authMiddleware, csrfMiddleware, tenantMiddleware)
+
+	webhookRepository := webhooks.NewRepository(deps.DB)
+	webhookService := webhooks.NewService(webhookRepository, platformwebhook.NewEmitter(webhookRepository))
+	webhooks.RegisterRoutes(
+		router,
+		webhooks.NewHandler(webhookService),
+		authMiddleware,
+		csrfMiddleware,
+		tenantMiddleware,
+	)
 
 	sessionService := session.NewService(sessionRepository)
 	session.RegisterRoutes(

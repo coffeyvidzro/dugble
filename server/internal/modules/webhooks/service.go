@@ -17,12 +17,12 @@ import (
 )
 
 type Service struct {
-	repository repositoryStore
+	repository *Repository
 	emitter    *platformwebhook.Emitter
 	now        func() time.Time
 }
 
-func NewService(repository repositoryStore, emitter *platformwebhook.Emitter) *Service {
+func NewService(repository *Repository, emitter *platformwebhook.Emitter) *Service {
 	return &Service{repository: repository, emitter: emitter, now: time.Now}
 }
 

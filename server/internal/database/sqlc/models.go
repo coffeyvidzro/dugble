@@ -283,3 +283,44 @@ type WalletTransaction struct {
 	Metadata        []byte             `db:"metadata" json:"metadata"`
 	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
+
+type WebhookDelivery struct {
+	ID             uuid.UUID          `db:"id" json:"id"`
+	EventID        uuid.UUID          `db:"event_id" json:"event_id"`
+	EndpointID     uuid.UUID          `db:"endpoint_id" json:"endpoint_id"`
+	Status         string             `db:"status" json:"status"`
+	AttemptCount   int32              `db:"attempt_count" json:"attempt_count"`
+	NextAttemptAt  pgtype.Timestamptz `db:"next_attempt_at" json:"next_attempt_at"`
+	LastAttemptAt  pgtype.Timestamptz `db:"last_attempt_at" json:"last_attempt_at"`
+	ResponseStatus *int32             `db:"response_status" json:"response_status"`
+	ResponseBody   *string            `db:"response_body" json:"response_body"`
+	LastError      *string            `db:"last_error" json:"last_error"`
+	DeliveredAt    pgtype.Timestamptz `db:"delivered_at" json:"delivered_at"`
+	LockedAt       pgtype.Timestamptz `db:"locked_at" json:"locked_at"`
+	LockedBy       *string            `db:"locked_by" json:"locked_by"`
+	CreatedAt      pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type WebhookEndpoint struct {
+	ID               uuid.UUID          `db:"id" json:"id"`
+	TeamID           uuid.UUID          `db:"team_id" json:"team_id"`
+	Url              string             `db:"url" json:"url"`
+	SigningSecret    []byte             `db:"signing_secret" json:"signing_secret"`
+	Enabled          bool               `db:"enabled" json:"enabled"`
+	SubscribedEvents []string           `db:"subscribed_events" json:"subscribed_events"`
+	CreatedAt        pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	DisabledAt       pgtype.Timestamptz `db:"disabled_at" json:"disabled_at"`
+}
+
+type WebhookEvent struct {
+	ID         uuid.UUID          `db:"id" json:"id"`
+	TeamID     uuid.UUID          `db:"team_id" json:"team_id"`
+	EventType  string             `db:"event_type" json:"event_type"`
+	ObjectType string             `db:"object_type" json:"object_type"`
+	ObjectID   *uuid.UUID         `db:"object_id" json:"object_id"`
+	Payload    []byte             `db:"payload" json:"payload"`
+	OccurredAt pgtype.Timestamptz `db:"occurred_at" json:"occurred_at"`
+	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}

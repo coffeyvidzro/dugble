@@ -12,6 +12,7 @@ import (
 
 type Querier interface {
 	AcceptTeamInvitation(ctx context.Context, arg AcceptTeamInvitationParams) (TeamInvitation, error)
+	ClaimWebhookDeliveries(ctx context.Context, arg ClaimWebhookDeliveriesParams) ([]ClaimWebhookDeliveriesRow, error)
 	CompleteIdempotencyKey(ctx context.Context, arg CompleteIdempotencyKeyParams) error
 	CreateEmailMessage(ctx context.Context, arg CreateEmailMessageParams) (EmailMessage, error)
 	CreateIdempotencyKey(ctx context.Context, arg CreateIdempotencyKeyParams) (IdempotencyKey, error)
@@ -28,6 +29,10 @@ type Querier interface {
 	CreateVerificationToken(ctx context.Context, arg CreateVerificationTokenParams) (VerificationToken, error)
 	CreateWallet(ctx context.Context, arg CreateWalletParams) (Wallet, error)
 	CreateWalletTransaction(ctx context.Context, arg CreateWalletTransactionParams) (WalletTransaction, error)
+	CreateWebhookDeliveriesForEvent(ctx context.Context, arg CreateWebhookDeliveriesForEventParams) (int64, error)
+	CreateWebhookDelivery(ctx context.Context, arg CreateWebhookDeliveryParams) (WebhookDelivery, error)
+	CreateWebhookEndpoint(ctx context.Context, arg CreateWebhookEndpointParams) (WebhookEndpoint, error)
+	CreateWebhookEvent(ctx context.Context, arg CreateWebhookEventParams) (WebhookEvent, error)
 	CreditWallet(ctx context.Context, arg CreditWalletParams) (Wallet, error)
 	DebitWallet(ctx context.Context, arg DebitWalletParams) (Wallet, error)
 	DeclineTeamInvitation(ctx context.Context, arg DeclineTeamInvitationParams) (TeamInvitation, error)
@@ -39,6 +44,7 @@ type Querier interface {
 	DeleteVerificationToken(ctx context.Context, arg DeleteVerificationTokenParams) error
 	DeleteVerificationTokensByIdentifier(ctx context.Context, arg DeleteVerificationTokensByIdentifierParams) error
 	DisableTeam(ctx context.Context, arg DisableTeamParams) (Team, error)
+	DisableWebhookEndpoint(ctx context.Context, arg DisableWebhookEndpointParams) (WebhookEndpoint, error)
 	FindApprovedSMSSender(ctx context.Context, arg FindApprovedSMSSenderParams) (uuid.UUID, error)
 	GetActiveTeamTokenByHash(ctx context.Context, arg GetActiveTeamTokenByHashParams) (TeamToken, error)
 	GetCompletedWalletRefundByReference(ctx context.Context, arg GetCompletedWalletRefundByReferenceParams) (WalletTransaction, error)
@@ -62,6 +68,9 @@ type Querier interface {
 	GetWalletByTeamAndCurrencyForUpdate(ctx context.Context, arg GetWalletByTeamAndCurrencyForUpdateParams) (Wallet, error)
 	GetWalletTransaction(ctx context.Context, arg GetWalletTransactionParams) (WalletTransaction, error)
 	GetWalletTransactionByReferenceForUpdate(ctx context.Context, arg GetWalletTransactionByReferenceForUpdateParams) (WalletTransaction, error)
+	GetWebhookDelivery(ctx context.Context, arg GetWebhookDeliveryParams) (WebhookDelivery, error)
+	GetWebhookEndpoint(ctx context.Context, arg GetWebhookEndpointParams) (WebhookEndpoint, error)
+	GetWebhookEvent(ctx context.Context, arg GetWebhookEventParams) (WebhookEvent, error)
 	ListEmailMessages(ctx context.Context, arg ListEmailMessagesParams) ([]ListEmailMessagesRow, error)
 	ListOAuthIdentitiesByUserID(ctx context.Context, arg ListOAuthIdentitiesByUserIDParams) ([]OauthIdentity, error)
 	ListPendingTeamInvitations(ctx context.Context, arg ListPendingTeamInvitationsParams) ([]TeamInvitation, error)
@@ -69,21 +78,32 @@ type Querier interface {
 	ListSenderDomains(ctx context.Context, arg ListSenderDomainsParams) ([]SenderDomain, error)
 	ListSenderIDs(ctx context.Context, arg ListSenderIDsParams) ([]SenderID, error)
 	ListSessionsByUserID(ctx context.Context, arg ListSessionsByUserIDParams) ([]Session, error)
+	ListSubscribedWebhookEndpoints(ctx context.Context, arg ListSubscribedWebhookEndpointsParams) ([]WebhookEndpoint, error)
 	ListTeamMembers(ctx context.Context, arg ListTeamMembersParams) ([]TeamMember, error)
 	ListTeamTokens(ctx context.Context, arg ListTeamTokensParams) ([]TeamToken, error)
 	ListTeamWalletTransactions(ctx context.Context, arg ListTeamWalletTransactionsParams) ([]WalletTransaction, error)
 	ListTeamsForUser(ctx context.Context, arg ListTeamsForUserParams) ([]Team, error)
 	ListWalletTransactions(ctx context.Context, arg ListWalletTransactionsParams) ([]WalletTransaction, error)
+	ListWebhookDeliveriesForEvent(ctx context.Context, arg ListWebhookDeliveriesForEventParams) ([]WebhookDelivery, error)
+	ListWebhookEndpoints(ctx context.Context, arg ListWebhookEndpointsParams) ([]WebhookEndpoint, error)
+	ListWebhookEvents(ctx context.Context, arg ListWebhookEventsParams) ([]WebhookEvent, error)
+	ListWebhookEventsForObject(ctx context.Context, arg ListWebhookEventsForObjectParams) ([]WebhookEvent, error)
 	MarkSMSMessageFailed(ctx context.Context, arg MarkSMSMessageFailedParams) (SmsMessage, error)
 	MarkSMSMessageProcessing(ctx context.Context, arg MarkSMSMessageProcessingParams) (SmsMessage, error)
 	MarkSMSMessageRefundPending(ctx context.Context, arg MarkSMSMessageRefundPendingParams) (SmsMessage, error)
 	MarkSMSMessageSubmitted(ctx context.Context, arg MarkSMSMessageSubmittedParams) (SmsMessage, error)
 	MarkUserEmailVerifiedByEmail(ctx context.Context, arg MarkUserEmailVerifiedByEmailParams) (User, error)
+	MarkWebhookDeliveryFailed(ctx context.Context, arg MarkWebhookDeliveryFailedParams) (WebhookDelivery, error)
+	MarkWebhookDeliverySucceeded(ctx context.Context, arg MarkWebhookDeliverySucceededParams) (WebhookDelivery, error)
+	ReleaseWebhookDeliveryClaim(ctx context.Context, arg ReleaseWebhookDeliveryClaimParams) (int64, error)
 	RemoveTeamMember(ctx context.Context, arg RemoveTeamMemberParams) error
+	RetryWebhookDelivery(ctx context.Context, arg RetryWebhookDeliveryParams) (WebhookDelivery, error)
 	RevokeOtherUserSessions(ctx context.Context, arg RevokeOtherUserSessionsParams) error
 	RevokeSession(ctx context.Context, arg RevokeSessionParams) error
 	RevokeTeamToken(ctx context.Context, arg RevokeTeamTokenParams) (TeamToken, error)
 	RevokeUserSessions(ctx context.Context, arg RevokeUserSessionsParams) error
+	RotateWebhookEndpointSecret(ctx context.Context, arg RotateWebhookEndpointSecretParams) (WebhookEndpoint, error)
+	ScheduleWebhookDeliveryRetry(ctx context.Context, arg ScheduleWebhookDeliveryRetryParams) (WebhookDelivery, error)
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
 	TouchTeamToken(ctx context.Context, arg TouchTeamTokenParams) error
 	UpdateSMSMessageStatus(ctx context.Context, arg UpdateSMSMessageStatusParams) (SmsMessage, error)
@@ -98,6 +118,7 @@ type Querier interface {
 	UpdateWalletStatus(ctx context.Context, arg UpdateWalletStatusParams) (Wallet, error)
 	UpdateWalletTransactionMetadata(ctx context.Context, arg UpdateWalletTransactionMetadataParams) (WalletTransaction, error)
 	UpdateWalletTransactionSettlement(ctx context.Context, arg UpdateWalletTransactionSettlementParams) (WalletTransaction, error)
+	UpdateWebhookEndpoint(ctx context.Context, arg UpdateWebhookEndpointParams) (WebhookEndpoint, error)
 }
 
 var _ Querier = (*Queries)(nil)
