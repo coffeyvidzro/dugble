@@ -64,4 +64,32 @@ type EmailAddress struct {
 type BatchSendRequest struct {
 	Messages []SendRequest `json:"messages"`
 }
+
+type MessageSummary struct {
+	ID          string     `json:"id"`
+	ToEmail     string     `json:"to_email"`
+	ToName      *string    `json:"to_name,omitempty"`
+	Subject     string     `json:"subject"`
+	Status      string     `json:"status"`
+	Provider    *string    `json:"provider,omitempty"`
+	QueuedAt    time.Time  `json:"queued_at"`
+	SubmittedAt *time.Time `json:"submitted_at,omitempty"`
+	DeliveredAt *time.Time `json:"delivered_at,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+}
+
+func (m Message) Summary() MessageSummary {
+	return MessageSummary{ID: m.ID, ToEmail: m.ToEmail, ToName: m.ToName, Subject: m.Subject,
+		Status: m.Status, Provider: m.Provider, QueuedAt: m.QueuedAt, SubmittedAt: m.SubmittedAt,
+		DeliveredAt: m.DeliveredAt, CreatedAt: m.CreatedAt}
+}
+
+func Summaries(messages []Message) []MessageSummary {
+	result := make([]MessageSummary, len(messages))
+	for index, message := range messages {
+		result[index] = message.Summary()
+	}
+	return result
+}
+
 type ListRequest struct{ Limit, Offset int32 }

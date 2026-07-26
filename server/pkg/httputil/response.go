@@ -38,6 +38,11 @@ func Created(c *echo.Context, data any) error {
 	})
 }
 
+// Accepted sends a 202 response for work accepted for asynchronous processing.
+func Accepted(c *echo.Context, data any) error {
+	return c.JSON(http.StatusAccepted, Response{Success: true, Data: data})
+}
+
 // Partial sends a response that includes committed data plus an error.
 func Partial(c *echo.Context, status int, data any, err error) error {
 	errObj := &ErrorObj{

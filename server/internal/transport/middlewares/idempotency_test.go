@@ -7,10 +7,32 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
 
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
 )
+
+func TestCanonicalTeamIDNormalizesHeader(t *testing.T) {
+	t.Parallel()
+	teamID := uuid.New()
+	request := httptest.NewRequest(http.MethodPost, "/emails", nil)
+	request.Header.Set("X-Team-ID", strings.ToUpper(teamID.String()))
+
+	got, ok, err := canonicalTeamID(request)
+	if err != nil || !ok || got != teamID.String() {
+		t.Fatalf("canonicalTeamID() = %q, %v, %v; want %q, true, nil", got, ok, err, teamID)
+	}
+}
+
+func TestCanonicalTeamIDRejectsInvalidHeader(t *testing.T) {
+	t.Parallel()
+	request := httptest.NewRequest(http.MethodPost, "/emails", nil)
+	request.Header.Set("X-Team-ID", "not-a-team")
+	if _, _, err := canonicalTeamID(request); err == nil {
+		t.Fatal("expected invalid team header to be rejected")
+	}
+}
 
 func TestRequestIdempotencyScopeUsesSessionCookie(t *testing.T) {
 	t.Parallel()

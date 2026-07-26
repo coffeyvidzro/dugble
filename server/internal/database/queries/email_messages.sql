@@ -35,7 +35,18 @@ WHERE id = sqlc.arg(id)
   AND team_id = sqlc.arg(team_id);
 
 -- name: ListEmailMessages :many
-SELECT *
+SELECT
+    id,
+    team_id,
+    to_email,
+    to_name,
+    subject,
+    status,
+    provider,
+    queued_at,
+    submitted_at,
+    delivered_at,
+    created_at
 FROM email_messages
 WHERE team_id = sqlc.arg(team_id)
 ORDER BY created_at DESC

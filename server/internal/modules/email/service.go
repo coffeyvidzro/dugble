@@ -12,7 +12,10 @@ import (
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
-const maxBatchSize = 50
+const (
+	maxBatchSize         = 50
+	maxBatchPayloadBytes = 10 << 20
+)
 
 type DeliveryQueue interface {
 	EnqueueEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error
@@ -92,7 +95,7 @@ func (s *Service) Get(ctx context.Context, value string) (Message, error) {
 	return m, nil
 }
 
-func (s *Service) List(ctx context.Context, req ListRequest) ([]Message, error) {
+func (s *Service) List(ctx context.Context, req ListRequest) ([]MessageSummary, error) {
 	tc, err := requireTenant(ctx, tenant.PermissionEmailRead)
 	if err != nil {
 		return nil, err
@@ -123,10 +126,15 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 	}
 
 	validated := make([]validatedSend, len(req.Messages))
+	totalPayloadBytes := 0
 	for index, item := range req.Messages {
 		validated[index], err = validateSend(item, s.config)
 		if err != nil {
 			return nil, err
+		}
+		totalPayloadBytes += bodySize(validated[index].HTMLBody) + bodySize(validated[index].TextBody) + len(validated[index].Metadata)
+		if totalPayloadBytes > maxBatchPayloadBytes {
+			return nil, apperrors.NewBadRequest("Email batch payload is too large")
 		}
 	}
 
@@ -151,4 +159,11 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 		return nil, apperrors.NewInternal("Unable to commit email batch transaction", err)
 	}
 	return result, nil
+}
+
+func bodySize(body *string) int {
+	if body == nil {
+		return 0
+	}
+	return len(*body)
 }

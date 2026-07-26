@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createEmailMessage = `-- name: CreateEmailMessage :one
@@ -145,7 +146,18 @@ func (q *Queries) GetEmailMessage(ctx context.Context, arg GetEmailMessageParams
 }
 
 const listEmailMessages = `-- name: ListEmailMessages :many
-SELECT id, team_id, message_type, from_email, from_name, reply_to_email, to_email, to_name, subject, html_body, text_body, status, provider, provider_message_id, error_code, error_message, metadata, queued_at, processing_at, submitted_at, delivered_at, failed_at, created_at, updated_at
+SELECT
+    id,
+    team_id,
+    to_email,
+    to_name,
+    subject,
+    status,
+    provider,
+    queued_at,
+    submitted_at,
+    delivered_at,
+    created_at
 FROM email_messages
 WHERE team_id = $1
 ORDER BY created_at DESC
@@ -159,40 +171,41 @@ type ListEmailMessagesParams struct {
 	LimitCount  int32     `db:"limit_count" json:"limit_count"`
 }
 
-func (q *Queries) ListEmailMessages(ctx context.Context, arg ListEmailMessagesParams) ([]EmailMessage, error) {
+type ListEmailMessagesRow struct {
+	ID          uuid.UUID          `db:"id" json:"id"`
+	TeamID      uuid.UUID          `db:"team_id" json:"team_id"`
+	ToEmail     string             `db:"to_email" json:"to_email"`
+	ToName      *string            `db:"to_name" json:"to_name"`
+	Subject     string             `db:"subject" json:"subject"`
+	Status      string             `db:"status" json:"status"`
+	Provider    *string            `db:"provider" json:"provider"`
+	QueuedAt    pgtype.Timestamptz `db:"queued_at" json:"queued_at"`
+	SubmittedAt pgtype.Timestamptz `db:"submitted_at" json:"submitted_at"`
+	DeliveredAt pgtype.Timestamptz `db:"delivered_at" json:"delivered_at"`
+	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
+func (q *Queries) ListEmailMessages(ctx context.Context, arg ListEmailMessagesParams) ([]ListEmailMessagesRow, error) {
 	rows, err := q.db.Query(ctx, listEmailMessages, arg.TeamID, arg.OffsetCount, arg.LimitCount)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []EmailMessage{}
+	items := []ListEmailMessagesRow{}
 	for rows.Next() {
-		var i EmailMessage
+		var i ListEmailMessagesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TeamID,
-			&i.MessageType,
-			&i.FromEmail,
-			&i.FromName,
-			&i.ReplyToEmail,
 			&i.ToEmail,
 			&i.ToName,
 			&i.Subject,
-			&i.HtmlBody,
-			&i.TextBody,
 			&i.Status,
 			&i.Provider,
-			&i.ProviderMessageID,
-			&i.ErrorCode,
-			&i.ErrorMessage,
-			&i.Metadata,
 			&i.QueuedAt,
-			&i.ProcessingAt,
 			&i.SubmittedAt,
 			&i.DeliveredAt,
-			&i.FailedAt,
 			&i.CreatedAt,
-			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

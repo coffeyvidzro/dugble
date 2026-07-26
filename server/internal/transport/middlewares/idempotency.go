@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
 
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
@@ -78,6 +79,13 @@ func Idempotency(config IdempotencyConfig) echo.MiddlewareFunc {
 			scope, ok := requestIdempotencyScope(c.Request())
 			if !ok {
 				return next(c)
+			}
+			teamID, hasTeam, err := canonicalTeamID(c.Request())
+			if err != nil {
+				return httputil.Error(c, apperrors.NewBadRequest("X-Team-ID must be a valid UUID"))
+			}
+			if hasTeam {
+				scope += ":team:" + teamID
 			}
 
 			body, err := readAndRestoreBody(c.Request())
@@ -154,6 +162,18 @@ func Idempotency(config IdempotencyConfig) echo.MiddlewareFunc {
 			return recorder.Flush()
 		}
 	}
+}
+
+func canonicalTeamID(request *http.Request) (string, bool, error) {
+	value := strings.TrimSpace(request.Header.Get("X-Team-ID"))
+	if value == "" {
+		return "", false, nil
+	}
+	teamID, err := uuid.Parse(value)
+	if err != nil {
+		return "", false, err
+	}
+	return teamID.String(), true, nil
 }
 
 func replayOrReject(ctx context.Context, c *echo.Context, repository *idempotency.Repository, scope string, key string, requestHash string, now time.Time) error {

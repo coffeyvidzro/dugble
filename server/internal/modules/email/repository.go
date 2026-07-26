@@ -61,16 +61,21 @@ func (r *Repository) Get(ctx context.Context, id, teamID uuid.UUID) (Message, er
 	return messageFromSQLC(row), nil
 }
 
-func (r *Repository) List(ctx context.Context, teamID uuid.UUID, limit, offset int32) ([]Message, error) {
+func (r *Repository) List(ctx context.Context, teamID uuid.UUID, limit, offset int32) ([]MessageSummary, error) {
 	rows, err := r.queries.ListEmailMessages(ctx, dbsqlc.ListEmailMessagesParams{
 		TeamID: teamID, LimitCount: limit, OffsetCount: offset,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list email messages: %w", err)
 	}
-	messages := make([]Message, 0, len(rows))
+	messages := make([]MessageSummary, 0, len(rows))
 	for _, row := range rows {
-		messages = append(messages, messageFromSQLC(row))
+		messages = append(messages, MessageSummary{
+			ID: row.ID.String(), ToEmail: row.ToEmail, ToName: row.ToName, Subject: row.Subject,
+			Status: row.Status, Provider: row.Provider, QueuedAt: row.QueuedAt.Time,
+			SubmittedAt: optionalTime(row.SubmittedAt), DeliveredAt: optionalTime(row.DeliveredAt),
+			CreatedAt: row.CreatedAt.Time,
+		})
 	}
 	return messages, nil
 }

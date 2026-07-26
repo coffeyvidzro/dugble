@@ -49,6 +49,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	router.Use(middleware.RequestID())
 	router.Use(middleware.RequestLogger())
 	router.Use(middleware.Recover())
+	router.Use(middleware.BodyLimit(12 << 20))
 
 	router.Use(middlewares.NewCORS(cfg.CORSOrigins, cfg.IsDevelopment()))
 	router.Use(middlewares.NewSecure(cfg.IsDevelopment()))

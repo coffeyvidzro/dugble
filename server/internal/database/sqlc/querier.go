@@ -62,7 +62,7 @@ type Querier interface {
 	GetWalletByTeamAndCurrencyForUpdate(ctx context.Context, arg GetWalletByTeamAndCurrencyForUpdateParams) (Wallet, error)
 	GetWalletTransaction(ctx context.Context, arg GetWalletTransactionParams) (WalletTransaction, error)
 	GetWalletTransactionByReferenceForUpdate(ctx context.Context, arg GetWalletTransactionByReferenceForUpdateParams) (WalletTransaction, error)
-	ListEmailMessages(ctx context.Context, arg ListEmailMessagesParams) ([]EmailMessage, error)
+	ListEmailMessages(ctx context.Context, arg ListEmailMessagesParams) ([]ListEmailMessagesRow, error)
 	ListOAuthIdentitiesByUserID(ctx context.Context, arg ListOAuthIdentitiesByUserIDParams) ([]OauthIdentity, error)
 	ListPendingTeamInvitations(ctx context.Context, arg ListPendingTeamInvitationsParams) ([]TeamInvitation, error)
 	ListSMSMessages(ctx context.Context, arg ListSMSMessagesParams) ([]SmsMessage, error)
