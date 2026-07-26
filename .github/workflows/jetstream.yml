@@ -1,0 +1,153 @@
+name: JetStream Integration
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - compose.yml
+      - nats-server.conf
+      - .env.example
+      - server/**
+      - .github/workflows/jetstream.yml
+  pull_request:
+    paths:
+      - compose.yml
+      - nats-server.conf
+      - .env.example
+      - server/**
+      - .github/workflows/jetstream.yml
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Validate Compose configuration
+        run: docker compose --env-file .env.example -f compose.yml config --quiet
+
+      - name: Start worker and JetStream dependencies
+        run: |
+          docker compose --env-file .env.example -f compose.yml up \
+            --detach \
+            --build \
+            --wait \
+            --wait-timeout 180 \
+            worker
+
+          docker compose --env-file .env.example -f compose.yml ps
+
+      - name: Verify JetStream health and topology
+        run: |
+          docker compose --env-file .env.example -f compose.yml exec -T nats \
+            wget -q -O /tmp/health.json \
+            'http://127.0.0.1:8222/healthz?js-enabled-only=true'
+          docker compose --env-file .env.example -f compose.yml exec -T nats \
+            cat /tmp/health.json
+
+          docker compose --env-file .env.example -f compose.yml exec -T nats \
+            wget -q -O /tmp/jsz.json \
+            'http://127.0.0.1:8222/jsz?streams=true&config=true'
+          docker compose --env-file .env.example -f compose.yml exec -T nats \
+            cat /tmp/jsz.json > jetstream-topology.json
+
+          grep -q 'DUGBLE_JOBS' jetstream-topology.json
+          grep -q 'DUGBLE_EVENTS' jetstream-topology.json
+          grep -q 'DUGBLE_DLQ' jetstream-topology.json
+
+      - name: Verify transactional outbox relay
+        run: |
+          docker compose --env-file .env.example -f compose.yml exec -T postgres \
+            sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+          INSERT INTO outbox_events (
+              id,
+              subject,
+              aggregate_type,
+              aggregate_id,
+              payload,
+              headers
+          ) VALUES (
+              '00000000-0000-4000-8000-000000000016',
+              'dugble.event.foundation.verified.v1',
+              'foundation_check',
+              '00000000-0000-4000-8000-000000000041',
+              '{"source":"github-actions"}'::jsonb,
+              '{"Trace-Id":"jetstream-foundation"}'::jsonb
+          );
+          SQL
+
+          published=''
+          for attempt in $(seq 1 30); do
+            published="$(
+              docker compose --env-file .env.example -f compose.yml exec -T postgres \
+                sh -c 'psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+          SELECT published_at IS NOT NULL
+          FROM outbox_events
+          WHERE id = '00000000-0000-4000-8000-000000000016';
+          SQL
+            )"
+            if [ "$published" = "t" ]; then
+              break
+            fi
+            sleep 1
+          done
+
+          if [ "$published" != "t" ]; then
+            docker compose --env-file .env.example -f compose.yml exec -T postgres \
+              sh -c 'psql -x -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+          SELECT *
+          FROM outbox_events
+          WHERE id = '00000000-0000-4000-8000-000000000016';
+          SQL
+            exit 1
+          fi
+
+          docker compose --env-file .env.example -f compose.yml exec -T postgres \
+            sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+          DO $$
+          BEGIN
+              IF NOT EXISTS (
+                  SELECT 1
+                  FROM outbox_events
+                  WHERE id = '00000000-0000-4000-8000-000000000016'
+                    AND published_at IS NOT NULL
+                    AND attempts >= 1
+                    AND last_error IS NULL
+                    AND locked_at IS NULL
+                    AND locked_by IS NULL
+              ) THEN
+                  RAISE EXCEPTION 'outbox event was not published cleanly';
+              END IF;
+
+              IF to_regclass('public.processed_events') IS NULL THEN
+                  RAISE EXCEPTION 'processed_events table is missing';
+              END IF;
+          END
+          $$;
+          SQL
+
+      - name: Upload JetStream topology
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: jetstream-topology
+          path: jetstream-topology.json
+          if-no-files-found: ignore
+          retention-days: 1
+
+      - name: Show service logs
+        if: failure()
+        run: |
+          docker compose --env-file .env.example -f compose.yml logs \
+            --no-color \
+            --tail=300 \
+            postgres migrate nats worker
+
+      - name: Clean up
+        if: always()
+        run: docker compose --env-file .env.example -f compose.yml down -v --remove-orphans
