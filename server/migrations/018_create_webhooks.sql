@@ -36,7 +36,6 @@ CREATE TABLE IF NOT EXISTS webhook_events (
     event_type TEXT NOT NULL,
     object_type TEXT NOT NULL,
     object_id UUID,
-    api_version TEXT NOT NULL DEFAULT '2026-07-01',
     payload JSONB NOT NULL,
     occurred_at TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -45,7 +44,6 @@ CREATE TABLE IF NOT EXISTS webhook_events (
         length(trim(event_type)) > 0 AND event_type !~ '[[:space:]]'
     ),
     CONSTRAINT chk_webhook_event_object_type CHECK (length(trim(object_type)) > 0),
-    CONSTRAINT chk_webhook_event_api_version CHECK (length(trim(api_version)) > 0),
     CONSTRAINT chk_webhook_event_payload CHECK (jsonb_typeof(payload) = 'object')
 );
 
