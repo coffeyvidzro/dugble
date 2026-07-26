@@ -26,6 +26,8 @@ const (
 	PermissionWalletTopUp         Permission = "wallet:topup"
 	PermissionSMSRead             Permission = "sms:read"
 	PermissionSMSSend             Permission = "sms:send"
+	PermissionEmailRead           Permission = "email:read"
+	PermissionEmailSend           Permission = "email:send"
 )
 
 var permissionsByRole = map[string]map[Permission]struct{}{
@@ -52,6 +54,8 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 		PermissionWalletTopUp:         {},
 		PermissionSMSRead:             {},
 		PermissionSMSSend:             {},
+		PermissionEmailRead:           {},
+		PermissionEmailSend:           {},
 	},
 	RoleAdmin: {
 		PermissionTeamRead:            {},
@@ -75,6 +79,8 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 		PermissionWalletTopUp:         {},
 		PermissionSMSRead:             {},
 		PermissionSMSSend:             {},
+		PermissionEmailRead:           {},
+		PermissionEmailSend:           {},
 	},
 	RoleMember: {
 		PermissionTeamRead:          {},
@@ -85,6 +91,7 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 		PermissionSenderDomainsRead: {},
 		PermissionWalletRead:        {},
 		PermissionSMSRead:           {},
+		PermissionEmailRead:         {},
 	},
 }
 

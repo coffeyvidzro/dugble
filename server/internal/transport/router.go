@@ -12,6 +12,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/integration/hubtel"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/auth"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/domain"
+	emailmodule "github.com/coffeyvidzro/dugble/server/internal/modules/email"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/senderid"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
 	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
@@ -29,13 +30,14 @@ import (
 
 // Dependencies contains infrastructure required by the HTTP transport.
 type Dependencies struct {
-	DB          *pgxpool.Pool
-	Redis       *redis.Client
-	Arcjet      *arcjet.Client
-	Sender      notifications.EmailSender
-	Renderer    *notifications.Renderer
-	SMSSender   smsmodule.Sender
-	SMSDelivery smsmodule.DeliveryQueue
+	DB            *pgxpool.Pool
+	Redis         *redis.Client
+	Arcjet        *arcjet.Client
+	Sender        notifications.EmailSender
+	Renderer      *notifications.Renderer
+	SMSSender     smsmodule.Sender
+	SMSDelivery   smsmodule.DeliveryQueue
+	EmailDelivery emailmodule.DeliveryQueue
 }
 
 // NewRouter creates and configures the HTTP router.
@@ -166,6 +168,9 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		csrfMiddleware,
 		tenantMiddleware,
 	)
+
+	emailServiceAPI := emailmodule.NewService(emailmodule.NewRepository(deps.DB), deps.EmailDelivery)
+	emailmodule.RegisterRoutes(router, emailmodule.NewHandler(emailServiceAPI), authMiddleware, csrfMiddleware, tenantMiddleware)
 
 	sessionService := session.NewService(sessionRepository)
 	session.RegisterRoutes(
