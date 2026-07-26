@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -98,6 +99,51 @@ func TestBatchSendRollsBackEntireBatchWhenBalanceRunsOut(t *testing.T) {
 		t.Fatal("expected insufficient batch balance")
 	}
 	assertSMSBatchCounts(t, pool, teamID, 0, 0, 0, 15_000)
+}
+
+func TestScheduledSMSCanBeUpdatedAndCanceledWithAtomicRefund(t *testing.T) {
+	pool := openSMSTestDatabase(t)
+	teamID, service := setupSMSBatchTest(t, pool, 100_000)
+	request := sms.SendRequest{To: "+233241234567", From: "DUGBLE", Body: "scheduled", ScheduledAt: "in 1 hour"}
+	message, err := service.Send(smsBatchTestContext(teamID), request)
+	if err != nil {
+		t.Fatalf("send scheduled SMS: %v", err)
+	}
+	updatedAt := time.Now().UTC().Add(2 * time.Hour).Truncate(time.Microsecond)
+	if _, err := service.Update(smsBatchTestContext(teamID), message.ID, sms.UpdateRequest{ScheduledAt: updatedAt.Format(time.RFC3339Nano)}); err != nil {
+		t.Fatalf("update scheduled SMS: %v", err)
+	}
+	var messageSchedule, eventSchedule time.Time
+	if err := pool.QueryRow(t.Context(), `SELECT scheduled_at FROM sms_messages WHERE id = $1`, message.ID).Scan(&messageSchedule); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(t.Context(), `SELECT available_at FROM outbox_events WHERE aggregate_id = $1`, message.ID).Scan(&eventSchedule); err != nil {
+		t.Fatal(err)
+	}
+	if !messageSchedule.Equal(updatedAt) || !eventSchedule.Equal(updatedAt) {
+		t.Fatalf("schedules were not updated atomically")
+	}
+	if _, err := service.Cancel(smsBatchTestContext(teamID), message.ID); err != nil {
+		t.Fatalf("cancel scheduled SMS: %v", err)
+	}
+	var status string
+	var events, refunds int
+	var balance int64
+	if err := pool.QueryRow(t.Context(), `SELECT status FROM sms_messages WHERE id = $1`, message.ID).Scan(&status); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(t.Context(), `SELECT count(*) FROM outbox_events WHERE aggregate_id = $1`, message.ID).Scan(&events); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(t.Context(), `SELECT count(*) FROM wallet_transactions WHERE team_id = $1 AND transaction_type = 'refund'`, teamID).Scan(&refunds); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(t.Context(), `SELECT balance FROM wallets WHERE team_id = $1`, teamID).Scan(&balance); err != nil {
+		t.Fatal(err)
+	}
+	if status != sms.StatusCanceled || events != 0 || refunds != 1 || balance != 100_000 {
+		t.Fatalf("status=%s events=%d refunds=%d balance=%d", status, events, refunds, balance)
+	}
 }
 
 func assertSMSBatchCounts(t *testing.T, pool *pgxpool.Pool, teamID uuid.UUID, messages, events, charges int, balance int64) {

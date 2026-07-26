@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS sms_messages (
     error_message TEXT,
     metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
     tags JSONB NOT NULL DEFAULT '[]'::jsonb,
+    scheduled_at TIMESTAMPTZ,
     submitted_at TIMESTAMPTZ,
     delivered_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -37,7 +38,7 @@ CREATE TABLE IF NOT EXISTS sms_messages (
         CHECK (destination_country ~ '^[A-Z]{2}$'),
     CONSTRAINT chk_sms_messages_tags_array CHECK (jsonb_typeof(tags) = 'array'),
     CONSTRAINT chk_sms_messages_status
-        CHECK (status IN ('queued', 'processing', 'refund_pending', 'submitted', 'sent', 'delivered', 'undelivered', 'rejected', 'failed', 'expired', 'unknown'))
+        CHECK (status IN ('queued', 'processing', 'refund_pending', 'submitted', 'sent', 'delivered', 'undelivered', 'rejected', 'failed', 'expired', 'unknown', 'canceled'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_sms_messages_team_created
@@ -52,3 +53,7 @@ CREATE INDEX IF NOT EXISTS idx_sms_messages_pricing_rule
 
 CREATE INDEX IF NOT EXISTS idx_sms_messages_destination_country
     ON sms_messages (destination_country, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_sms_messages_team_scheduled
+    ON sms_messages (team_id, scheduled_at)
+    WHERE status = 'queued' AND scheduled_at IS NOT NULL;

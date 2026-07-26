@@ -232,6 +232,20 @@ func TestValidateSendNormalizesTags(t *testing.T) {
 	}
 }
 
+func TestValidateSendNormalizesSchedule(t *testing.T) {
+	request, err := validateSend(SendRequest{To: "+233241234567", From: "DUGBLE", Body: "hello", ScheduledAt: "in 5 min"})
+	if err != nil {
+		t.Fatalf("validate scheduled send: %v", err)
+	}
+	when, err := time.Parse(time.RFC3339Nano, request.ScheduledAt)
+	if err != nil || time.Until(when) < 4*time.Minute {
+		t.Fatalf("unexpected schedule: %q", request.ScheduledAt)
+	}
+	if _, err := normalizeSMSSchedule("in 5 min", false); err == nil {
+		t.Fatal("expected relative update schedule to be rejected")
+	}
+}
+
 func TestResponsesMapsEveryMessageToPublicDTO(t *testing.T) {
 	responses := Responses([]Message{{ID: "first"}, {ID: "second"}})
 	if len(responses) != 2 || responses[0].ID != "first" || responses[1].ID != "second" {

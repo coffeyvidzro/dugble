@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -24,6 +25,13 @@ type WalletLedger interface {
 	DebitSMSCharge(ctx context.Context, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
 	DebitSMSChargeTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
 	RefundSMSCharge(ctx context.Context, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
+	RefundSMSChargeTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
+}
+
+type scheduledDeliveryQueue interface {
+	EnqueueSMSDeliveryAtTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID, time.Time) error
+	CancelSMSDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error
+	RescheduleSMSDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID, time.Time) error
 }
 
 // DeliveryQueue enqueues durable SMS delivery work.
@@ -130,6 +138,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 		Body: normalized.Body, Status: StatusQueued, Segments: segments,
 		CostMicros: quote.TotalCostMicros, Metadata: normalized.Metadata,
 		Tags:               normalized.Tags,
+		ScheduledAt:        normalizedScheduledAt(normalized.ScheduledAt),
 		DestinationCountry: quote.DestinationCountry, PricingRuleID: quote.PricingRuleID,
 		UnitCostMicros: quote.UnitCostMicros,
 	})
@@ -158,7 +167,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 		return Message{}, apperrors.NewInternal("Unable to debit wallet for SMS", err)
 	}
 
-	if err := s.delivery.EnqueueSMSDeliveryTx(ctx, tx, messageID, tenantContext.TeamID); err != nil {
+	if err := enqueueSMSDelivery(ctx, s.delivery, tx, messageID, tenantContext.TeamID, created.ScheduledAt); err != nil {
 		return Message{}, apperrors.NewInternal("Unable to enqueue SMS delivery", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -229,6 +238,7 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 			TeamID: tenantContext.TeamID, SenderID: item.senderID, To: item.request.To, From: item.request.From,
 			Body: item.request.Body, Status: StatusQueued, Segments: item.segments,
 			CostMicros: quote.TotalCostMicros, Metadata: item.request.Metadata, Tags: item.request.Tags,
+			ScheduledAt:        normalizedScheduledAt(item.request.ScheduledAt),
 			DestinationCountry: quote.DestinationCountry, PricingRuleID: quote.PricingRuleID, UnitCostMicros: quote.UnitCostMicros,
 		})
 		if err != nil {
@@ -241,7 +251,7 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 			}
 			return nil, apperrors.NewInternal("Unable to debit wallet for SMS batch", err)
 		}
-		if err := s.delivery.EnqueueSMSDeliveryTx(ctx, tx, messageID, tenantContext.TeamID); err != nil {
+		if err := enqueueSMSDelivery(ctx, s.delivery, tx, messageID, tenantContext.TeamID, created.ScheduledAt); err != nil {
 			return nil, apperrors.NewInternal("Unable to enqueue SMS batch delivery", err)
 		}
 		result = append(result, created)
@@ -250,6 +260,110 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 		return nil, apperrors.NewInternal("Unable to commit SMS batch transaction", err)
 	}
 	return result, nil
+}
+
+func (s *Service) Cancel(ctx context.Context, value string) (SendResponse, error) {
+	tenantContext, id, queue, err := s.scheduledMutationContext(ctx, value)
+	if err != nil {
+		return SendResponse{}, err
+	}
+	tx, err := s.repository.BeginTx(ctx)
+	if err != nil {
+		return SendResponse{}, apperrors.NewInternal("Unable to begin SMS cancellation transaction", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	message, err := s.repository.CancelTx(ctx, tx, id, tenantContext.TeamID)
+	if err != nil {
+		return SendResponse{}, scheduledMutationError(err, "canceled")
+	}
+	if err := queue.CancelSMSDeliveryTx(ctx, tx, id, tenantContext.TeamID); err != nil {
+		return SendResponse{}, apperrors.NewInternal("Unable to cancel SMS delivery", err)
+	}
+	if _, err := s.wallet.RefundSMSChargeTx(ctx, tx, tenantContext.TeamID, message.CostMicros, id, message.Metadata); err != nil {
+		return SendResponse{}, apperrors.NewInternal("Unable to refund canceled SMS", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return SendResponse{}, apperrors.NewInternal("Unable to commit SMS cancellation", err)
+	}
+	return message.SendResponse(), nil
+}
+
+func (s *Service) Update(ctx context.Context, value string, req UpdateRequest) (SendResponse, error) {
+	tenantContext, id, queue, err := s.scheduledMutationContext(ctx, value)
+	if err != nil {
+		return SendResponse{}, err
+	}
+	scheduledAt, err := normalizeSMSSchedule(req.ScheduledAt, false)
+	if err != nil {
+		return SendResponse{}, err
+	}
+	if scheduledAt == nil {
+		return SendResponse{}, apperrors.NewBadRequest("scheduled_at is required")
+	}
+	tx, err := s.repository.BeginTx(ctx)
+	if err != nil {
+		return SendResponse{}, apperrors.NewInternal("Unable to begin SMS update transaction", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	message, err := s.repository.RescheduleTx(ctx, tx, id, tenantContext.TeamID, *scheduledAt)
+	if err != nil {
+		return SendResponse{}, scheduledMutationError(err, "updated")
+	}
+	if err := queue.RescheduleSMSDeliveryTx(ctx, tx, id, tenantContext.TeamID, *scheduledAt); err != nil {
+		return SendResponse{}, apperrors.NewInternal("Unable to reschedule SMS delivery", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return SendResponse{}, apperrors.NewInternal("Unable to commit SMS update", err)
+	}
+	return message.SendResponse(), nil
+}
+
+func (s *Service) scheduledMutationContext(ctx context.Context, value string) (tenant.Context, uuid.UUID, scheduledDeliveryQueue, error) {
+	tenantContext, err := requireTenant(ctx, tenant.PermissionSMSSend)
+	if err != nil {
+		return tenant.Context{}, uuid.Nil, nil, err
+	}
+	id, err := uuid.Parse(strings.TrimSpace(value))
+	if err != nil {
+		return tenant.Context{}, uuid.Nil, nil, apperrors.NewBadRequest("SMS message id must be a valid UUID")
+	}
+	queue, ok := s.delivery.(scheduledDeliveryQueue)
+	if !ok {
+		return tenant.Context{}, uuid.Nil, nil, apperrors.NewInternal("SMS delivery queue does not support scheduling", nil)
+	}
+	if s.wallet == nil {
+		return tenant.Context{}, uuid.Nil, nil, apperrors.NewInternal("SMS wallet ledger is not configured", nil)
+	}
+	return tenantContext, id, queue, nil
+}
+
+func scheduledMutationError(err error, action string) error {
+	if errors.Is(err, ErrMessageNotFound) {
+		return apperrors.NewNotFound("SMS message not found")
+	}
+	if errors.Is(err, ErrMessageNotSchedulable) {
+		return apperrors.NewConflict("Only pending scheduled SMS messages can be " + action)
+	}
+	return apperrors.NewInternal("Unable to update SMS message", err)
+}
+
+func normalizedScheduledAt(value string) *time.Time {
+	if value == "" {
+		return nil
+	}
+	parsed, _ := time.Parse(time.RFC3339Nano, value)
+	return &parsed
+}
+
+func enqueueSMSDelivery(ctx context.Context, queue DeliveryQueue, tx pgx.Tx, messageID, teamID uuid.UUID, scheduledAt *time.Time) error {
+	if scheduledAt == nil {
+		return queue.EnqueueSMSDeliveryTx(ctx, tx, messageID, teamID)
+	}
+	scheduled, ok := queue.(scheduledDeliveryQueue)
+	if !ok {
+		return errors.New("SMS delivery queue does not support scheduled delivery")
+	}
+	return scheduled.EnqueueSMSDeliveryAtTx(ctx, tx, messageID, teamID, *scheduledAt)
 }
 
 func (s *Service) SyncStatus(ctx context.Context, messageID string) (Message, error) {
@@ -306,7 +420,7 @@ func resolveProviderStatus(current string, providerStatus string) string {
 
 func isTerminalStatus(status string) bool {
 	switch status {
-	case StatusRefundPending, StatusDelivered, StatusUndelivered, StatusRejected, StatusFailed, StatusExpired:
+	case StatusRefundPending, StatusDelivered, StatusUndelivered, StatusRejected, StatusFailed, StatusExpired, StatusCanceled:
 		return true
 	default:
 		return false
@@ -331,7 +445,7 @@ func statusProgressRank(status string) (int, bool) {
 func MapProviderStatus(status string) string {
 	status = strings.ToLower(strings.TrimSpace(status))
 	switch status {
-	case StatusQueued, StatusProcessing, StatusRefundPending, StatusSubmitted, StatusSent, StatusDelivered, StatusUndelivered, StatusRejected, StatusFailed, StatusExpired, StatusUnknown:
+	case StatusQueued, StatusProcessing, StatusRefundPending, StatusSubmitted, StatusSent, StatusDelivered, StatusUndelivered, StatusRejected, StatusFailed, StatusExpired, StatusUnknown, StatusCanceled:
 		return status
 	default:
 		return StatusUnknown

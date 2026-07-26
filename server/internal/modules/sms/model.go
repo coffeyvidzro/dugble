@@ -18,6 +18,7 @@ const (
 	StatusFailed        = "failed"
 	StatusExpired       = "expired"
 	StatusUnknown       = "unknown"
+	StatusCanceled      = "canceled"
 )
 
 type Message struct {
@@ -36,6 +37,7 @@ type Message struct {
 	ErrorMessage       *string         `json:"error_message,omitempty"`
 	Metadata           json.RawMessage `json:"metadata"`
 	Tags               []Tag           `json:"tags"`
+	ScheduledAt        *time.Time      `json:"scheduled_at,omitempty"`
 	SubmittedAt        *time.Time      `json:"submitted_at,omitempty"`
 	DeliveredAt        *time.Time      `json:"delivered_at,omitempty"`
 	CreatedAt          time.Time       `json:"created_at"`
@@ -61,6 +63,7 @@ type SMSResponse struct {
 	Segments    int32           `json:"segments"`
 	Metadata    json.RawMessage `json:"metadata"`
 	Tags        []Tag           `json:"tags"`
+	ScheduledAt *time.Time      `json:"scheduled_at"`
 	Billing     Billing         `json:"billing"`
 	Failure     *SMSFailure     `json:"failure,omitempty"`
 	SubmittedAt *time.Time      `json:"submitted_at,omitempty"`
@@ -87,6 +90,7 @@ func (m Message) Response() SMSResponse {
 		Segments:    m.Segments,
 		Metadata:    m.Metadata,
 		Tags:        nonNilSMSTags(m.Tags),
+		ScheduledAt: m.ScheduledAt,
 		Billing:     m.Billing,
 		Failure:     publicFailure(m.Status),
 		SubmittedAt: m.SubmittedAt,
@@ -133,6 +137,7 @@ type SendRequest struct {
 	Body               string          `json:"body"`
 	Metadata           json.RawMessage `json:"metadata,omitempty"`
 	Tags               []Tag           `json:"tags,omitempty"`
+	ScheduledAt        string          `json:"scheduled_at,omitempty"`
 	DestinationCountry string          `json:"-"`
 }
 
@@ -157,6 +162,10 @@ type Tag struct {
 type SendResponse struct {
 	Object string `json:"object"`
 	ID     string `json:"id"`
+}
+
+type UpdateRequest struct {
+	ScheduledAt string `json:"scheduled_at"`
 }
 
 func (m Message) SendResponse() SendResponse { return SendResponse{Object: "sms", ID: m.ID} }

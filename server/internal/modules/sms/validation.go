@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 	"unicode/utf16"
 	"unicode/utf8"
 
@@ -72,7 +74,44 @@ func validateSend(req SendRequest) (SendRequest, error) {
 		return SendRequest{}, err
 	}
 	req.Tags = tags
+	scheduledAt, err := normalizeSMSSchedule(req.ScheduledAt, true)
+	if err != nil {
+		return SendRequest{}, err
+	}
+	if scheduledAt != nil {
+		req.ScheduledAt = scheduledAt.Format(time.RFC3339Nano)
+	}
 	return req, nil
+}
+
+func normalizeSMSSchedule(value string, allowRelative bool) (*time.Time, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil, nil
+	}
+	when, err := time.Parse(time.RFC3339Nano, value)
+	if err != nil && allowRelative {
+		parts := strings.Fields(strings.ToLower(value))
+		if len(parts) == 3 && parts[0] == "in" {
+			n, numberErr := strconv.Atoi(parts[1])
+			units := map[string]time.Duration{"second": time.Second, "seconds": time.Second, "sec": time.Second, "minute": time.Minute, "minutes": time.Minute, "min": time.Minute, "hour": time.Hour, "hours": time.Hour, "day": 24 * time.Hour, "days": 24 * time.Hour}
+			if unit, ok := units[parts[2]]; numberErr == nil && n > 0 && ok {
+				when, err = time.Now().UTC().Add(time.Duration(n)*unit), nil
+			}
+		}
+	}
+	if err != nil || !when.After(time.Now().UTC()) {
+		return nil, apperrors.NewBadRequest("scheduled_at must be a future ISO 8601 time" + relativeScheduleSuffix(allowRelative))
+	}
+	when = when.UTC()
+	return &when, nil
+}
+
+func relativeScheduleSuffix(allow bool) string {
+	if allow {
+		return " or a value such as 'in 5 min'"
+	}
+	return ""
 }
 
 func normalizeSMSTags(tags []Tag) ([]Tag, error) {
