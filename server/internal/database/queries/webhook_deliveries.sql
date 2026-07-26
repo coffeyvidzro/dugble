@@ -83,7 +83,6 @@ RETURNING
     delivery.attempt_count,
     event.team_id,
     event.event_type,
-    event.api_version,
     event.payload,
     event.occurred_at,
     endpoint.url,
