@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - coffey/fix-email-api-review
+  pull_request:
 
 permissions:
   contents: read
