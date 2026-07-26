@@ -26,6 +26,8 @@ var allowedPermissions = map[tenant.Permission]struct{}{
 	tenant.PermissionTeamMemberInvite:  {},
 	tenant.PermissionSenderIDsRead:     {},
 	tenant.PermissionSenderDomainsRead: {},
+	tenant.PermissionSMSRead:           {},
+	tenant.PermissionSMSSend:           {},
 	tenant.PermissionEmailRead:         {},
 	tenant.PermissionEmailSend:         {},
 }

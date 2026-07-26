@@ -25,7 +25,12 @@ INSERT INTO email_messages (
     html_body,
     text_body,
     status,
-    metadata
+    metadata,
+    recipients,
+    headers,
+    attachments,
+    tags,
+    scheduled_at
 ) VALUES (
     $1,
     $2,
@@ -38,23 +43,33 @@ INSERT INTO email_messages (
     $9,
     $10,
     'queued',
-    $11
+    $11,
+    $12,
+    $13,
+    $14,
+    $15,
+    $16
 )
-RETURNING id, team_id, message_type, from_email, from_name, reply_to_email, to_email, to_name, subject, html_body, text_body, status, provider, provider_message_id, error_code, error_message, metadata, queued_at, processing_at, submitted_at, delivered_at, failed_at, created_at, updated_at
+RETURNING id, team_id, message_type, from_email, from_name, reply_to_email, to_email, to_name, subject, html_body, text_body, status, provider, provider_message_id, error_code, error_message, metadata, queued_at, processing_at, submitted_at, delivered_at, failed_at, created_at, updated_at, recipients, headers, attachments, tags, scheduled_at
 `
 
 type CreateEmailMessageParams struct {
-	TeamID       uuid.UUID `db:"team_id" json:"team_id"`
-	MessageType  string    `db:"message_type" json:"message_type"`
-	FromEmail    string    `db:"from_email" json:"from_email"`
-	FromName     *string   `db:"from_name" json:"from_name"`
-	ReplyToEmail *string   `db:"reply_to_email" json:"reply_to_email"`
-	ToEmail      string    `db:"to_email" json:"to_email"`
-	ToName       *string   `db:"to_name" json:"to_name"`
-	Subject      string    `db:"subject" json:"subject"`
-	HtmlBody     *string   `db:"html_body" json:"html_body"`
-	TextBody     *string   `db:"text_body" json:"text_body"`
-	Metadata     []byte    `db:"metadata" json:"metadata"`
+	TeamID       uuid.UUID          `db:"team_id" json:"team_id"`
+	MessageType  string             `db:"message_type" json:"message_type"`
+	FromEmail    string             `db:"from_email" json:"from_email"`
+	FromName     *string            `db:"from_name" json:"from_name"`
+	ReplyToEmail *string            `db:"reply_to_email" json:"reply_to_email"`
+	ToEmail      string             `db:"to_email" json:"to_email"`
+	ToName       *string            `db:"to_name" json:"to_name"`
+	Subject      string             `db:"subject" json:"subject"`
+	HtmlBody     *string            `db:"html_body" json:"html_body"`
+	TextBody     *string            `db:"text_body" json:"text_body"`
+	Metadata     []byte             `db:"metadata" json:"metadata"`
+	Recipients   []byte             `db:"recipients" json:"recipients"`
+	Headers      []byte             `db:"headers" json:"headers"`
+	Attachments  []byte             `db:"attachments" json:"attachments"`
+	Tags         []byte             `db:"tags" json:"tags"`
+	ScheduledAt  pgtype.Timestamptz `db:"scheduled_at" json:"scheduled_at"`
 }
 
 func (q *Queries) CreateEmailMessage(ctx context.Context, arg CreateEmailMessageParams) (EmailMessage, error) {
@@ -70,6 +85,11 @@ func (q *Queries) CreateEmailMessage(ctx context.Context, arg CreateEmailMessage
 		arg.HtmlBody,
 		arg.TextBody,
 		arg.Metadata,
+		arg.Recipients,
+		arg.Headers,
+		arg.Attachments,
+		arg.Tags,
+		arg.ScheduledAt,
 	)
 	var i EmailMessage
 	err := row.Scan(
@@ -97,12 +117,17 @@ func (q *Queries) CreateEmailMessage(ctx context.Context, arg CreateEmailMessage
 		&i.FailedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Recipients,
+		&i.Headers,
+		&i.Attachments,
+		&i.Tags,
+		&i.ScheduledAt,
 	)
 	return i, err
 }
 
 const getEmailMessage = `-- name: GetEmailMessage :one
-SELECT id, team_id, message_type, from_email, from_name, reply_to_email, to_email, to_name, subject, html_body, text_body, status, provider, provider_message_id, error_code, error_message, metadata, queued_at, processing_at, submitted_at, delivered_at, failed_at, created_at, updated_at
+SELECT id, team_id, message_type, from_email, from_name, reply_to_email, to_email, to_name, subject, html_body, text_body, status, provider, provider_message_id, error_code, error_message, metadata, queued_at, processing_at, submitted_at, delivered_at, failed_at, created_at, updated_at, recipients, headers, attachments, tags, scheduled_at
 FROM email_messages
 WHERE id = $1
   AND team_id = $2
@@ -141,6 +166,11 @@ func (q *Queries) GetEmailMessage(ctx context.Context, arg GetEmailMessageParams
 		&i.FailedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Recipients,
+		&i.Headers,
+		&i.Attachments,
+		&i.Tags,
+		&i.ScheduledAt,
 	)
 	return i, err
 }

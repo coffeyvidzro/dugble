@@ -42,6 +42,41 @@ func (r *Repository) EnqueueTx(ctx context.Context, tx pgx.Tx, event Event) (uui
 	return enqueue(ctx, tx, event)
 }
 
+func (r *Repository) DeletePendingTx(ctx context.Context, tx pgx.Tx, eventID uuid.UUID) error {
+	if tx == nil {
+		return errors.New("outbox transaction is required")
+	}
+	result, err := tx.Exec(ctx, `
+		DELETE FROM outbox_events
+		WHERE id = $1 AND published_at IS NULL
+	`, eventID)
+	if err != nil {
+		return fmt.Errorf("delete pending outbox event: %w", err)
+	}
+	if result.RowsAffected() != 1 {
+		return errors.New("pending outbox event not found")
+	}
+	return nil
+}
+
+func (r *Repository) UpdatePendingAvailableAtTx(ctx context.Context, tx pgx.Tx, eventID uuid.UUID, availableAt time.Time) error {
+	if tx == nil {
+		return errors.New("outbox transaction is required")
+	}
+	result, err := tx.Exec(ctx, `
+		UPDATE outbox_events
+		SET available_at = $2, updated_at = now()
+		WHERE id = $1 AND published_at IS NULL
+	`, eventID, availableAt)
+	if err != nil {
+		return fmt.Errorf("reschedule pending outbox event: %w", err)
+	}
+	if result.RowsAffected() != 1 {
+		return errors.New("pending outbox event not found")
+	}
+	return nil
+}
+
 func enqueue(ctx context.Context, executor queryExecutor, event Event) (uuid.UUID, error) {
 	event.Subject = strings.TrimSpace(event.Subject)
 	event.AggregateType = strings.TrimSpace(event.AggregateType)

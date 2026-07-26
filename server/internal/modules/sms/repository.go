@@ -5,15 +5,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
 )
 
 var ErrMessageNotFound = errors.New("sms message not found")
+var ErrMessageNotSchedulable = errors.New("sms message is not a pending scheduled message")
 
 type Repository struct {
 	db      *pgxpool.Pool
@@ -47,12 +50,18 @@ type createMessageParams struct {
 	Segments           int32
 	CostMicros         int64
 	Metadata           json.RawMessage
+	Tags               []Tag
+	ScheduledAt        *time.Time
 	DestinationCountry string
 	PricingRuleID      uuid.UUID
 	UnitCostMicros     int64
 }
 
 func (r *Repository) Create(ctx context.Context, params createMessageParams) (Message, error) {
+	tags, err := json.Marshal(params.Tags)
+	if err != nil {
+		return Message{}, fmt.Errorf("encode SMS tags: %w", err)
+	}
 	row, err := r.queries.CreateSMSMessage(ctx, dbsqlc.CreateSMSMessageParams{
 		TeamID:             params.TeamID,
 		SenderID:           params.SenderID,
@@ -63,6 +72,8 @@ func (r *Repository) Create(ctx context.Context, params createMessageParams) (Me
 		Segments:           params.Segments,
 		CostMicros:         params.CostMicros,
 		Metadata:           ensureMetadata(params.Metadata),
+		Tags:               tags,
+		ScheduledAt:        timestamptz(params.ScheduledAt),
 		DestinationCountry: params.DestinationCountry,
 		PricingRuleID:      params.PricingRuleID,
 		UnitCostMicros:     params.UnitCostMicros,
@@ -94,6 +105,42 @@ func (r *Repository) Get(ctx context.Context, id uuid.UUID, teamID uuid.UUID) (M
 		return Message{}, fmt.Errorf("get sms message: %w", err)
 	}
 	return messageFromSQLC(row), nil
+}
+
+func (r *Repository) CancelTx(ctx context.Context, tx pgx.Tx, id, teamID uuid.UUID) (Message, error) {
+	if err := lockScheduledSMS(ctx, tx, id, teamID); err != nil {
+		return Message{}, err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE sms_messages SET status = $3, updated_at = now() WHERE id = $1 AND team_id = $2`, id, teamID, StatusCanceled); err != nil {
+		return Message{}, fmt.Errorf("cancel SMS message: %w", err)
+	}
+	return r.WithTx(tx).Get(ctx, id, teamID)
+}
+
+func (r *Repository) RescheduleTx(ctx context.Context, tx pgx.Tx, id, teamID uuid.UUID, scheduledAt time.Time) (Message, error) {
+	if err := lockScheduledSMS(ctx, tx, id, teamID); err != nil {
+		return Message{}, err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE sms_messages SET scheduled_at = $3, updated_at = now() WHERE id = $1 AND team_id = $2`, id, teamID, scheduledAt); err != nil {
+		return Message{}, fmt.Errorf("reschedule SMS message: %w", err)
+	}
+	return r.WithTx(tx).Get(ctx, id, teamID)
+}
+
+func lockScheduledSMS(ctx context.Context, tx pgx.Tx, id, teamID uuid.UUID) error {
+	var status string
+	var scheduledAt *time.Time
+	err := tx.QueryRow(ctx, `SELECT status, scheduled_at FROM sms_messages WHERE id = $1 AND team_id = $2 FOR UPDATE`, id, teamID).Scan(&status, &scheduledAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrMessageNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("lock scheduled SMS message: %w", err)
+	}
+	if status != StatusQueued || scheduledAt == nil || !scheduledAt.After(time.Now().UTC().Add(scheduleMutationCutoff)) {
+		return ErrMessageNotSchedulable
+	}
+	return nil
 }
 
 func (r *Repository) MarkProcessing(ctx context.Context, id uuid.UUID, teamID uuid.UUID) (Message, error) {
@@ -170,6 +217,8 @@ func messageFromSQLC(row dbsqlc.SmsMessage) Message {
 		CostMicros:         row.CostMicros,
 		ErrorMessage:       row.ErrorMessage,
 		Metadata:           ensureMetadata(row.Metadata),
+		Tags:               decodeTags(row.Tags),
+		ScheduledAt:        optionalTimestamptz(row.ScheduledAt),
 		CreatedAt:          row.CreatedAt.Time,
 		UpdatedAt:          row.UpdatedAt.Time,
 		DestinationCountry: row.DestinationCountry,
@@ -188,6 +237,26 @@ func messageFromSQLC(row dbsqlc.SmsMessage) Message {
 	}
 	message.Billing = billingFromAmounts(message.UnitCostMicros, message.CostMicros)
 	return message
+}
+
+func optionalTimestamptz(value pgtype.Timestamptz) *time.Time {
+	if !value.Valid {
+		return nil
+	}
+	return &value.Time
+}
+
+func timestamptz(value *time.Time) pgtype.Timestamptz {
+	if value == nil {
+		return pgtype.Timestamptz{}
+	}
+	return pgtype.Timestamptz{Time: *value, Valid: true}
+}
+
+func decodeTags(value []byte) []Tag {
+	result := []Tag{}
+	_ = json.Unmarshal(value, &result)
+	return result
 }
 
 func billingFromAmounts(unitCostMicros int64, totalCostMicros int64) Billing {

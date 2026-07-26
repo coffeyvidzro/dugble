@@ -40,7 +40,7 @@ func (h *Handler) Send(c *echo.Context) error {
 		return httputil.Error(c, err)
 	}
 	c.Response().Header().Set("Location", "/sms/"+message.ID)
-	return httputil.Created(c, message.Response())
+	return httputil.Accepted(c, message.SendResponse())
 }
 
 func (h *Handler) BatchSend(c *echo.Context) error {
@@ -49,6 +49,26 @@ func (h *Handler) BatchSend(c *echo.Context) error {
 		return httputil.Error(c, apperrors.NewBadRequest("Invalid JSON request body"))
 	}
 	response, err := h.service.BatchSend(c.Request().Context(), req)
+	if err != nil {
+		return httputil.Error(c, err)
+	}
+	return httputil.Accepted(c, SendResponses(response))
+}
+
+func (h *Handler) Cancel(c *echo.Context) error {
+	response, err := h.service.Cancel(c.Request().Context(), c.Param("message_id"))
+	if err != nil {
+		return httputil.Error(c, err)
+	}
+	return httputil.OK(c, response)
+}
+
+func (h *Handler) Update(c *echo.Context) error {
+	var req UpdateRequest
+	if json.NewDecoder(c.Request().Body).Decode(&req) != nil {
+		return httputil.Error(c, apperrors.NewBadRequest("Invalid JSON request body"))
+	}
+	response, err := h.service.Update(c.Request().Context(), c.Param("message_id"), req)
 	if err != nil {
 		return httputil.Error(c, err)
 	}
