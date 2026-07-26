@@ -1,0 +1,67 @@
+name: Email API core generation
+
+on:
+  pull_request:
+    paths:
+      - server/**
+      - .github/workflows/email-api-core-generate.yml
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      - name: Format source
+        run: |
+          gofmt -w \
+            server/cmd/server/main.go \
+            server/internal/delivery/email \
+            server/internal/modules/email \
+            server/internal/modules/teamtoken/service.go \
+            server/internal/platform/tenant/permissions.go \
+            server/internal/transport/router.go
+
+      - name: Generate SQLC
+        working-directory: server
+        run: go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
+
+      - name: Regenerate Atlas checksum
+        run: |
+          docker run --rm \
+            -v "$PWD/server/migrations:/migrations" \
+            arigaio/atlas:1.2.3-community-alpine \
+            migrate hash --dir file:///migrations
+
+      - name: Verify generated project
+        working-directory: server
+        run: |
+          go test ./internal/delivery/email ./internal/modules/email
+          go test ./internal/platform/tenant ./internal/modules/teamtoken
+          go test ./cmd/server
+
+      - name: Upload generated files
+        uses: actions/upload-artifact@v7
+        with:
+          name: email-api-core-generated
+          path: |
+            server/cmd/server/main.go
+            server/internal/delivery/email
+            server/internal/modules/email
+            server/internal/modules/teamtoken/service.go
+            server/internal/platform/tenant/permissions.go
+            server/internal/transport/router.go
+            server/internal/database/sqlc
+            server/migrations/atlas.sum
+          retention-days: 1
