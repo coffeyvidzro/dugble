@@ -14,6 +14,7 @@ import (
 
 	"github.com/coffeyvidzro/dugble/server/internal/config"
 	"github.com/coffeyvidzro/dugble/server/internal/database"
+	emaildelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/email"
 	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/email"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/security"
@@ -115,13 +116,14 @@ func run() error {
 	router, err := transport.NewRouter(
 		cfg,
 		transport.Dependencies{
-			DB:          db,
-			Redis:       redisClient,
-			Arcjet:      arcjetClient,
-			Sender:      notificationSender,
-			Renderer:    renderer,
-			SMSSender:   smsSender,
-			SMSDelivery: smsdelivery.NewQueue(outboxRepository),
+			DB:            db,
+			Redis:         redisClient,
+			Arcjet:        arcjetClient,
+			Sender:        notificationSender,
+			Renderer:      renderer,
+			SMSSender:     smsSender,
+			SMSDelivery:   smsdelivery.NewQueue(outboxRepository),
+			EmailDelivery: emaildelivery.NewQueue(outboxRepository),
 		},
 	)
 	if err != nil {
