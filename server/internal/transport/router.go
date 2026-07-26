@@ -78,12 +78,11 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		Sessions: sessionRepository,
 		Users:    authRepository,
 	})
-	csrfMiddleware := middlewares.CSRF(
-		middlewares.CSRFConfig{
-			Development:    cfg.IsDevelopment(),
-			TrustedOrigins: cfg.CORSOrigins,
-		},
-	)
+	csrfConfig := middlewares.CSRFConfig{
+		Development:    cfg.IsDevelopment(),
+		TrustedOrigins: cfg.CORSOrigins,
+	}
+	csrfMiddleware := middlewares.CSRF(csrfConfig)
 	csrfHandler := csrf.NewHandler()
 	router.GET("/csrf", csrfHandler.Token, csrfMiddleware)
 
@@ -111,6 +110,16 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		return middlewares.Tenant(
 			middlewares.TenantConfig{Memberships: teamRepository, Required: permission},
 		)
+	}
+	tenantAccess := func(permission tenant.Permission) echo.MiddlewareFunc {
+		return middlewares.TenantAccess(middlewares.TenantAccessConfig{
+			Sessions:    sessionRepository,
+			Users:       authRepository,
+			Memberships: teamRepository,
+			Tokens:      teamTokenRepository,
+			CSRF:        csrfConfig,
+			Required:    permission,
+		})
 	}
 	team.RegisterRoutes(
 		router,
@@ -175,7 +184,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		deps.EmailDelivery,
 		emailmodule.ServiceConfig{DefaultFromEmail: cfg.AWS.FromEmail},
 	)
-	emailmodule.RegisterRoutes(router, emailmodule.NewHandler(emailServiceAPI), authMiddleware, csrfMiddleware, tenantMiddleware)
+	emailmodule.RegisterRoutes(router, emailmodule.NewHandler(emailServiceAPI), tenantAccess)
 
 	sessionService := session.NewService(sessionRepository)
 	session.RegisterRoutes(
