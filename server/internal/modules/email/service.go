@@ -15,7 +15,7 @@ import (
 const maxBatchSize = 50
 
 type DeliveryQueue interface {
-	EnqueueTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error
+	EnqueueEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error
 }
 type Service struct {
 	repository *Repository
@@ -58,7 +58,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to create email message", err)
 	}
-	if err := s.delivery.EnqueueTx(ctx, tx, uuid.MustParse(m.ID), tc.TeamID); err != nil {
+	if err := s.delivery.EnqueueEmailDeliveryTx(ctx, tx, uuid.MustParse(m.ID), tc.TeamID); err != nil {
 		return Message{}, apperrors.NewInternal("Unable to enqueue email delivery", err)
 	}
 	if err := tx.Commit(ctx); err != nil {

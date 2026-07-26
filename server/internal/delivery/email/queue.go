@@ -12,36 +12,72 @@ import (
 )
 
 const (
-	DeliverSubject = "dugble.job.email.deliver.v1"
-	eventNamespace = "https://dugble.com/events/email/delivery/"
+	DeliverSubject    = "dugble.job.email.send.v1"
+	deliveryNamespace = "https://dugble.com/events/email/send/"
 )
 
-type SendCommand struct {
-	EventID   uuid.UUID `json:"event_id"`
-	MessageID uuid.UUID `json:"message_id"`
-	TeamID    uuid.UUID `json:"team_id"`
+type DeliverCommand struct {
+	EventID       uuid.UUID `json:"event_id"`
+	MessageID     uuid.UUID `json:"message_id"`
+	TeamID        uuid.UUID `json:"team_id"`
+	SchemaVersion int       `json:"schema_version"`
 }
 
 type eventStore interface {
+	Enqueue(context.Context, outbox.Event) (uuid.UUID, error)
 	EnqueueTx(context.Context, pgx.Tx, outbox.Event) (uuid.UUID, error)
 }
 
-type Queue struct{ store eventStore }
+type Queue struct {
+	store eventStore
+}
 
 func NewQueue(store eventStore) *Queue { return &Queue{store: store} }
 
-func (q *Queue) EnqueueTx(ctx context.Context, tx pgx.Tx, messageID, teamID uuid.UUID) error {
+func (q *Queue) EnqueueEmailDelivery(ctx context.Context, messageID uuid.UUID, teamID uuid.UUID) error {
 	if q == nil || q.store == nil {
 		return errors.New("email delivery outbox is not configured")
 	}
-	eventID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(eventNamespace+messageID.String()))
-	payload, err := json.Marshal(SendCommand{EventID: eventID, MessageID: messageID, TeamID: teamID})
+	event, err := newDeliveryEvent(messageID, teamID)
 	if err != nil {
 		return err
 	}
-	_, err = q.store.EnqueueTx(ctx, tx, outbox.Event{
-		ID: eventID, Subject: DeliverSubject, AggregateType: "email_message", AggregateID: messageID,
-		Payload: payload, Headers: map[string]string{"Dugble-Event-Type": "email.delivery.requested.v1"},
-	})
+	_, err = q.store.Enqueue(ctx, event)
 	return err
+}
+
+func (q *Queue) EnqueueEmailDeliveryTx(ctx context.Context, tx pgx.Tx, messageID uuid.UUID, teamID uuid.UUID) error {
+	if q == nil || q.store == nil {
+		return errors.New("email delivery outbox is not configured")
+	}
+	event, err := newDeliveryEvent(messageID, teamID)
+	if err != nil {
+		return err
+	}
+	_, err = q.store.EnqueueTx(ctx, tx, event)
+	return err
+}
+
+func newDeliveryEvent(messageID uuid.UUID, teamID uuid.UUID) (outbox.Event, error) {
+	eventID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(deliveryNamespace+messageID.String()))
+	payload, err := json.Marshal(DeliverCommand{
+		EventID:       eventID,
+		MessageID:     messageID,
+		TeamID:        teamID,
+		SchemaVersion: 1,
+	})
+	if err != nil {
+		return outbox.Event{}, err
+	}
+
+	return outbox.Event{
+		ID:            eventID,
+		Subject:       DeliverSubject,
+		AggregateType: "email_message",
+		AggregateID:   messageID,
+		Payload:       payload,
+		Headers: map[string]string{
+			"Dugble-Event-Type": "email.send.requested.v1",
+		},
+	}, nil
 }
