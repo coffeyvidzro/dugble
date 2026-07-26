@@ -87,7 +87,7 @@ RETURNING
     event.payload,
     event.occurred_at,
     endpoint.url,
-    endpoint.signing_secret_ciphertext;
+    endpoint.signing_secret;
 
 -- name: MarkWebhookDeliverySucceeded :one
 UPDATE webhook_deliveries
