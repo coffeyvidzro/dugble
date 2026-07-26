@@ -61,16 +61,16 @@ func (r *Repository) Get(ctx context.Context, id, teamID uuid.UUID) (Message, er
 	return messageFromSQLC(row), nil
 }
 
-func (r *Repository) List(ctx context.Context, teamID uuid.UUID, limit, offset int32) ([]Message, error) {
+func (r *Repository) List(ctx context.Context, teamID uuid.UUID, limit, offset int32) ([]MessageSummary, error) {
 	rows, err := r.queries.ListEmailMessages(ctx, dbsqlc.ListEmailMessagesParams{
 		TeamID: teamID, LimitCount: limit, OffsetCount: offset,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list email messages: %w", err)
 	}
-	messages := make([]Message, 0, len(rows))
+	messages := make([]MessageSummary, 0, len(rows))
 	for _, row := range rows {
-		messages = append(messages, messageFromSQLC(row))
+		messages = append(messages, summaryFromSQLC(row))
 	}
 	return messages, nil
 }
@@ -88,6 +88,32 @@ func messageFromSQLC(row dbsqlc.EmailMessage) Message {
 		Subject:           row.Subject,
 		HTMLBody:          row.HtmlBody,
 		TextBody:          row.TextBody,
+		Status:            row.Status,
+		Provider:          row.Provider,
+		ProviderMessageID: row.ProviderMessageID,
+		ErrorCode:         row.ErrorCode,
+		ErrorMessage:      row.ErrorMessage,
+		Metadata:          json.RawMessage(row.Metadata),
+		QueuedAt:          row.QueuedAt.Time,
+		ProcessingAt:      optionalTime(row.ProcessingAt),
+		SubmittedAt:       optionalTime(row.SubmittedAt),
+		DeliveredAt:       optionalTime(row.DeliveredAt),
+		FailedAt:          optionalTime(row.FailedAt),
+		CreatedAt:         row.CreatedAt.Time,
+		UpdatedAt:         row.UpdatedAt.Time,
+	}
+}
+
+func summaryFromSQLC(row dbsqlc.ListEmailMessagesRow) MessageSummary {
+	return MessageSummary{
+		ID:                row.ID.String(),
+		MessageType:       row.MessageType,
+		FromEmail:         row.FromEmail,
+		FromName:          row.FromName,
+		ReplyToEmail:      row.ReplyToEmail,
+		ToEmail:           row.ToEmail,
+		ToName:            row.ToName,
+		Subject:           row.Subject,
 		Status:            row.Status,
 		Provider:          row.Provider,
 		ProviderMessageID: row.ProviderMessageID,
