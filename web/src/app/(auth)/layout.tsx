@@ -13,8 +13,6 @@ export default async function AuthLayout({
   }
 
   return (
-    <main className="min-h-svh bg-background text-foreground">
-      {children}
-    </main>
+    <main className="min-h-svh bg-background text-foreground">{children}</main>
   );
 }
