@@ -1,42 +1,41 @@
 import Link from "next/link";
-
-import { SocialLinks } from "./social-links";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Reveal } from "@/components/marketing/reveal";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { SocialLinks } from "./social-links";
 
 const columns = [
-    {
-        title: "Features",
-        links: [
-            { label: "Email API", href: "/features/email-api" },
-            { label: "SMS API", href: "/features/sms-api" },
-            { label: "Webhooks", href: "/features/webhooks" },
-            { label: "Pricing", href: "/pricing" },
-        ],
-    },
-    {
-        title: "Developers",
-        links: [
-            { label: "Documentation", href: "/docs" },
-            { label: "Quickstart", href: "/quickstart" },
-            {
-                label: "API reference",
-                href: "/docs/api-reference/introduction",
-            },
-            { label: "Changelog", href: "/changelog" },
-            { label: "Status", href: "/status" },
-        ],
-    },
-    {
-        title: "Company",
-        links: [
-            { label: "About", href: "/about" },
-            { label: "Blog", href: "/blog" },
-            { label: "Brand", href: "/brand" },
-            { label: "Contact", href: "/contact" },
-            { label: "Security", href: "/security" },
-        ],
-    },
+  {
+    title: "Features",
+    links: [
+      { label: "Email API", href: "/features/email-api" },
+      { label: "SMS API", href: "/features/sms-api" },
+      { label: "Webhooks", href: "/features/webhooks" },
+      { label: "Pricing", href: "/pricing" },
+    ],
+  },
+  {
+    title: "Developers",
+    links: [
+      { label: "Documentation", href: "/docs" },
+      { label: "Quickstart", href: "/quickstart" },
+      {
+        label: "API reference",
+        href: "/docs/api-reference/introduction",
+      },
+      { label: "Changelog", href: "/changelog" },
+      { label: "Status", href: "/status" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { label: "About", href: "/about" },
+      { label: "Blog", href: "/blog" },
+      { label: "Brand", href: "/brand" },
+      { label: "Contact", href: "/contact" },
+      { label: "Security", href: "/security" },
+    ],
+  },
 ];
 
 export function Footer() {

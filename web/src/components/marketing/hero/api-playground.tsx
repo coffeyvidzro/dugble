@@ -40,25 +40,37 @@ export function ApiPlayground() {
 
     useEffect(() => {
         let i = 0;
+        let typing: ReturnType<typeof setInterval> | undefined;
+        let eventing: ReturnType<typeof setInterval> | undefined;
+        let restart: ReturnType<typeof setTimeout> | undefined;
+
         setTyped("");
         setVisibleEvents(0);
-        const typing = setInterval(() => {
+
+        typing = setInterval(() => {
             i += 2;
             setTyped(REQUEST_LINE.slice(0, i));
             if (i >= REQUEST_LINE.length) {
-                clearInterval(typing);
+                if (typing) clearInterval(typing);
                 let e = 0;
-                const eventing = setInterval(() => {
+                eventing = setInterval(() => {
                     e += 1;
                     setVisibleEvents(e);
                     if (e >= EVENT_SEQUENCE.length) {
-                        clearInterval(eventing);
-                        setTimeout(() => setCycle((c) => c + 1), 2600);
+                        if (eventing) clearInterval(eventing);
+                        restart = setTimeout(
+                            () => setCycle((c) => c + 1),
+                            2600,
+                        );
                     }
                 }, 650);
             }
         }, 14);
-        return () => clearInterval(typing);
+        return () => {
+            if (typing) clearInterval(typing);
+            if (eventing) clearInterval(eventing);
+            if (restart) clearTimeout(restart);
+        };
     }, [cycle]);
 
     return (
