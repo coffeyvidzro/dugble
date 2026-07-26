@@ -24,7 +24,7 @@ INSERT INTO sms_messages (
     cost_micros,
     metadata,
     tags,
-	scheduled_at,
+    scheduled_at,
     destination_country,
     pricing_rule_id,
     unit_cost_micros
@@ -39,7 +39,7 @@ INSERT INTO sms_messages (
     $8,
     $9,
     $10,
-	$11,
+    $11,
     $12,
     $13,
     $14
