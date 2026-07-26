@@ -8,11 +8,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
 	platformwebhook "github.com/coffeyvidzro/dugble/server/internal/platform/webhook"
+	"github.com/coffeyvidzro/dugble/server/pkg/pgconv"
 )
 
 type Repository struct {
@@ -129,7 +129,7 @@ func (r *Repository) RetryDelivery(ctx context.Context, id, teamID uuid.UUID) (D
 func (r *Repository) CreateEventTx(ctx context.Context, tx pgx.Tx, event platformwebhook.Event) (uuid.UUID, error) {
 	row, err := r.queries.WithTx(tx).CreateWebhookEvent(ctx, dbsqlc.CreateWebhookEventParams{
 		ID: event.ID, TeamID: event.TeamID, EventType: event.Type, ObjectType: event.ObjectType,
-		ObjectID: event.ObjectID, Payload: event.Payload, OccurredAt: timestamptz(event.OccurredAt),
+		ObjectID: event.ObjectID, Payload: event.Payload, OccurredAt: pgconv.NullableTimestamptz(&event.OccurredAt),
 	})
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("create webhook event: %w", err)
@@ -139,7 +139,7 @@ func (r *Repository) CreateEventTx(ctx context.Context, tx pgx.Tx, event platfor
 
 func (r *Repository) CreateDeliveriesForEventTx(ctx context.Context, tx pgx.Tx, eventID uuid.UUID, nextAttemptAt time.Time) (int64, error) {
 	count, err := r.queries.WithTx(tx).CreateWebhookDeliveriesForEvent(ctx, dbsqlc.CreateWebhookDeliveriesForEventParams{
-		EventID: eventID, NextAttemptAt: timestamptz(nextAttemptAt),
+		EventID: eventID, NextAttemptAt: pgconv.NullableTimestamptz(&nextAttemptAt),
 	})
 	if err != nil {
 		return 0, fmt.Errorf("create webhook deliveries: %w", err)
@@ -149,7 +149,7 @@ func (r *Repository) CreateDeliveriesForEventTx(ctx context.Context, tx pgx.Tx, 
 
 func (r *Repository) CreateDeliveryTx(ctx context.Context, tx pgx.Tx, eventID, endpointID uuid.UUID, nextAttemptAt time.Time) (uuid.UUID, error) {
 	row, err := r.queries.WithTx(tx).CreateWebhookDelivery(ctx, dbsqlc.CreateWebhookDeliveryParams{
-		EventID: eventID, EndpointID: endpointID, NextAttemptAt: timestamptz(nextAttemptAt),
+		EventID: eventID, EndpointID: endpointID, NextAttemptAt: pgconv.NullableTimestamptz(&nextAttemptAt),
 	})
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("create webhook delivery: %w", err)
@@ -160,8 +160,10 @@ func (r *Repository) CreateDeliveryTx(ctx context.Context, tx pgx.Tx, eventID, e
 func endpointFromSQLC(row dbsqlc.WebhookEndpoint) Endpoint {
 	return Endpoint{
 		ID: row.ID.String(), TeamID: row.TeamID.String(), URL: row.Url, Enabled: row.Enabled,
-		SubscribedEvents: row.SubscribedEvents, CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
-		DisabledAt: optionalTime(row.DisabledAt),
+		SubscribedEvents: row.SubscribedEvents,
+		CreatedAt:        pgconv.TimestamptzToTime(row.CreatedAt),
+		UpdatedAt:        pgconv.TimestamptzToTime(row.UpdatedAt),
+		DisabledAt:       pgconv.TimestamptzToTimePtr(row.DisabledAt),
 	}
 }
 
@@ -173,26 +175,18 @@ func eventFromSQLC(row dbsqlc.WebhookEvent) Event {
 	}
 	return Event{
 		ID: row.ID.String(), TeamID: row.TeamID.String(), Type: row.EventType, ObjectType: row.ObjectType,
-		ObjectID: objectID, Payload: json.RawMessage(row.Payload), OccurredAt: row.OccurredAt.Time, CreatedAt: row.CreatedAt.Time,
+		ObjectID: objectID, Payload: json.RawMessage(row.Payload),
+		OccurredAt: pgconv.TimestamptzToTime(row.OccurredAt), CreatedAt: pgconv.TimestamptzToTime(row.CreatedAt),
 	}
 }
 
 func deliveryFromSQLC(row dbsqlc.WebhookDelivery) Delivery {
 	return Delivery{
 		ID: row.ID.String(), EventID: row.EventID.String(), EndpointID: row.EndpointID.String(), Status: row.Status,
-		AttemptCount: row.AttemptCount, NextAttemptAt: row.NextAttemptAt.Time, LastAttemptAt: optionalTime(row.LastAttemptAt),
+		AttemptCount: row.AttemptCount, NextAttemptAt: pgconv.TimestamptzToTime(row.NextAttemptAt),
+		LastAttemptAt:  pgconv.TimestamptzToTimePtr(row.LastAttemptAt),
 		ResponseStatus: row.ResponseStatus, ResponseBody: row.ResponseBody, LastError: row.LastError,
-		DeliveredAt: optionalTime(row.DeliveredAt), CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
+		DeliveredAt: pgconv.TimestamptzToTimePtr(row.DeliveredAt),
+		CreatedAt:   pgconv.TimestamptzToTime(row.CreatedAt), UpdatedAt: pgconv.TimestamptzToTime(row.UpdatedAt),
 	}
-}
-
-func timestamptz(value time.Time) pgtype.Timestamptz {
-	return pgtype.Timestamptz{Time: value, Valid: true}
-}
-
-func optionalTime(value pgtype.Timestamptz) *time.Time {
-	if !value.Valid {
-		return nil
-	}
-	return &value.Time
 }
