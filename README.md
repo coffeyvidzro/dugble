@@ -140,6 +140,18 @@ go test ./...
 go vet ./...
 ```
 
+Email transaction integration tests require a migrated, disposable PostgreSQL
+database. They are skipped when `TEST_DATABASE_URL` is unset:
+
+```sh
+cd server
+TEST_DATABASE_URL='postgres://postgres:postgres@localhost:5432/dugble_test?sslmode=disable' \
+  go test ./internal/modules/email -run 'Test(Send|Batch|Get)' -v
+```
+
+The integration tests create and remove their own team, email, and outbox rows,
+but the configured database must already have all migrations applied.
+
 ## Tech stack
 
 - [Go](https://go.dev/)
