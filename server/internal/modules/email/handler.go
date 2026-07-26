@@ -2,6 +2,9 @@ package email
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
 	"strconv"
 
 	"github.com/labstack/echo/v5"
@@ -10,44 +13,93 @@ import (
 	"github.com/coffeyvidzro/dugble/server/pkg/httputil"
 )
 
+const (
+	maxSendRequestBytes  int64 = 3 << 20
+	maxBatchRequestBytes int64 = 6 << 20
+)
+
 type Handler struct{ service *Service }
 
 func NewHandler(service *Service) *Handler { return &Handler{service: service} }
+
 func (h *Handler) Send(c *echo.Context) error {
 	var req SendRequest
-	if json.NewDecoder(c.Request().Body).Decode(&req) != nil {
-		return httputil.Error(c, apperrors.NewBadRequest("Invalid JSON request body"))
+	if err := decodeJSONBody(c, maxSendRequestBytes, &req); err != nil {
+		return httputil.Error(c, err)
 	}
-	m, err := h.service.Send(c.Request().Context(), req)
+	message, err := h.service.Send(c.Request().Context(), req)
 	if err != nil {
 		return httputil.Error(c, err)
 	}
-	c.Response().Header().Set("Location", "/emails/"+m.ID)
-	return httputil.Created(c, m)
+	c.Response().Header().Set("Location", "/emails/"+message.ID)
+	return c.JSON(http.StatusAccepted, httputil.Response{
+		Success: true,
+		Data:    message.QueuedResponse(),
+	})
 }
+
 func (h *Handler) Get(c *echo.Context) error {
-	m, err := h.service.Get(c.Request().Context(), c.Param("message_id"))
+	message, err := h.service.Get(c.Request().Context(), c.Param("message_id"))
 	if err != nil {
 		return httputil.Error(c, err)
 	}
-	return httputil.OK(c, m)
+	return httputil.OK(c, message)
 }
+
 func (h *Handler) List(c *echo.Context) error {
-	m, err := h.service.List(c.Request().Context(), ListRequest{Limit: parse(c.QueryParam("limit")), Offset: parse(c.QueryParam("offset"))})
+	messages, err := h.service.List(c.Request().Context(), ListRequest{
+		Limit:  parse(c.QueryParam("limit")),
+		Offset: parse(c.QueryParam("offset")),
+	})
 	if err != nil {
 		return httputil.Error(c, err)
 	}
-	return httputil.OK(c, m)
+	return httputil.OK(c, messages)
 }
+
 func (h *Handler) BatchSend(c *echo.Context) error {
 	var req BatchSendRequest
-	if json.NewDecoder(c.Request().Body).Decode(&req) != nil {
-		return httputil.Error(c, apperrors.NewBadRequest("Invalid JSON request body"))
+	if err := decodeJSONBody(c, maxBatchRequestBytes, &req); err != nil {
+		return httputil.Error(c, err)
 	}
-	m, err := h.service.BatchSend(c.Request().Context(), req)
+	messages, err := h.service.BatchSend(c.Request().Context(), req)
 	if err != nil {
 		return httputil.Error(c, err)
 	}
-	return httputil.Created(c, m)
+	queued := make([]QueuedMessage, 0, len(messages))
+	for _, message := range messages {
+		queued = append(queued, message.QueuedResponse())
+	}
+	return c.JSON(http.StatusAccepted, httputil.Response{
+		Success: true,
+		Data:    queued,
+	})
 }
-func parse(value string) int32 { n, _ := strconv.ParseInt(value, 10, 32); return int32(n) }
+
+func decodeJSONBody(c *echo.Context, maxBytes int64, destination any) error {
+	request := c.Request()
+	request.Body = http.MaxBytesReader(c.Response(), request.Body, maxBytes)
+	decoder := json.NewDecoder(request.Body)
+	if err := decoder.Decode(destination); err != nil {
+		var maxBytesError *http.MaxBytesError
+		if errors.As(err, &maxBytesError) {
+			return apperrors.NewPayloadTooLarge("Request body is too large")
+		}
+		return apperrors.NewBadRequest("Invalid JSON request body")
+	}
+
+	var trailing any
+	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
+		var maxBytesError *http.MaxBytesError
+		if errors.As(err, &maxBytesError) {
+			return apperrors.NewPayloadTooLarge("Request body is too large")
+		}
+		return apperrors.NewBadRequest("Request body must contain a single JSON object")
+	}
+	return nil
+}
+
+func parse(value string) int32 {
+	n, _ := strconv.ParseInt(value, 10, 32)
+	return int32(n)
+}
