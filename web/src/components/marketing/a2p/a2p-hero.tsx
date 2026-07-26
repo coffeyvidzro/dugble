@@ -40,7 +40,7 @@ export function A2pHero() {
                             <ArrowRight className="ml-1.5 size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                         </Link>
                         <TerminalLink
-                            href="/quickstart"
+                            href="/docs"
                             className="flex-1 sm:flex-none"
                         >
                             view docs

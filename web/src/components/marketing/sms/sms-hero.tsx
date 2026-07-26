@@ -39,7 +39,7 @@ export function SmsHero() {
                             Send a test SMS
                             <ArrowRight className="ml-1.5 size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                         </Link>
-                        <TerminalLink href="/docs/sms">view docs</TerminalLink>
+                        <TerminalLink href="/docs">view docs</TerminalLink>
                     </div>
                 </div>
 
