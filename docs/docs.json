@@ -13,6 +13,23 @@
       {
         "group": "Getting Started",
         "pages": ["overview", "quickstart"]
+      },
+      {
+        "group": "Email",
+        "pages": [
+          "emails/introduction",
+          "emails/custom-headers",
+          "emails/schedule-email",
+          "emails/batch-sending"
+        ]
+      },
+      {
+        "group": "Domains",
+        "pages": ["domains/introduction", "domains/dmarc"]
+      },
+      {
+        "group": "Webhooks",
+        "pages": ["webhooks/introduction", "webhooks/events"]
       }
     ]
   },
