@@ -28,94 +28,46 @@ const (
 	PermissionSMSSend             Permission = "sms:send"
 	PermissionEmailRead           Permission = "email:read"
 	PermissionEmailSend           Permission = "email:send"
+	PermissionWebhooksRead        Permission = "webhooks:read"
+	PermissionWebhooksWrite       Permission = "webhooks:write"
 )
 
 var permissionsByRole = map[string]map[Permission]struct{}{
 	RoleOwner: {
-		PermissionTeamRead:            {},
-		PermissionTeamCreate:          {},
-		PermissionTeamUpdate:          {},
-		PermissionTeamDelete:          {},
-		PermissionTeamMembersRead:     {},
-		PermissionTeamMemberInvite:    {},
-		PermissionTeamMemberRemove:    {},
-		PermissionTeamMemberRole:      {},
-		PermissionTeamTokensRead:      {},
-		PermissionTeamTokensCreate:    {},
-		PermissionTeamTokensUpdate:    {},
-		PermissionTeamTokensRevoke:    {},
-		PermissionSenderIDsRead:       {},
-		PermissionSenderIDsCreate:     {},
-		PermissionSenderIDsDelete:     {},
-		PermissionSenderDomainsRead:   {},
-		PermissionSenderDomainsCreate: {},
-		PermissionSenderDomainsDelete: {},
-		PermissionWalletRead:          {},
-		PermissionWalletTopUp:         {},
-		PermissionSMSRead:             {},
-		PermissionSMSSend:             {},
-		PermissionEmailRead:           {},
-		PermissionEmailSend:           {},
+		PermissionTeamRead: {}, PermissionTeamCreate: {}, PermissionTeamUpdate: {}, PermissionTeamDelete: {},
+		PermissionTeamMembersRead: {}, PermissionTeamMemberInvite: {}, PermissionTeamMemberRemove: {}, PermissionTeamMemberRole: {},
+		PermissionTeamTokensRead: {}, PermissionTeamTokensCreate: {}, PermissionTeamTokensUpdate: {}, PermissionTeamTokensRevoke: {},
+		PermissionSenderIDsRead: {}, PermissionSenderIDsCreate: {}, PermissionSenderIDsDelete: {},
+		PermissionSenderDomainsRead: {}, PermissionSenderDomainsCreate: {}, PermissionSenderDomainsDelete: {},
+		PermissionWalletRead: {}, PermissionWalletTopUp: {}, PermissionSMSRead: {}, PermissionSMSSend: {}, PermissionEmailRead: {}, PermissionEmailSend: {},
+		PermissionWebhooksRead: {}, PermissionWebhooksWrite: {},
 	},
 	RoleAdmin: {
-		PermissionTeamRead:            {},
-		PermissionTeamCreate:          {},
-		PermissionTeamUpdate:          {},
-		PermissionTeamMembersRead:     {},
-		PermissionTeamMemberLeave:     {},
-		PermissionTeamMemberInvite:    {},
-		PermissionTeamMemberRemove:    {},
-		PermissionTeamTokensRead:      {},
-		PermissionTeamTokensCreate:    {},
-		PermissionTeamTokensUpdate:    {},
-		PermissionTeamTokensRevoke:    {},
-		PermissionSenderIDsRead:       {},
-		PermissionSenderIDsCreate:     {},
-		PermissionSenderIDsDelete:     {},
-		PermissionSenderDomainsRead:   {},
-		PermissionSenderDomainsCreate: {},
-		PermissionSenderDomainsDelete: {},
-		PermissionWalletRead:          {},
-		PermissionWalletTopUp:         {},
-		PermissionSMSRead:             {},
-		PermissionSMSSend:             {},
-		PermissionEmailRead:           {},
-		PermissionEmailSend:           {},
+		PermissionTeamRead: {}, PermissionTeamCreate: {}, PermissionTeamUpdate: {}, PermissionTeamMembersRead: {}, PermissionTeamMemberLeave: {},
+		PermissionTeamMemberInvite: {}, PermissionTeamMemberRemove: {}, PermissionTeamTokensRead: {}, PermissionTeamTokensCreate: {}, PermissionTeamTokensUpdate: {}, PermissionTeamTokensRevoke: {},
+		PermissionSenderIDsRead: {}, PermissionSenderIDsCreate: {}, PermissionSenderIDsDelete: {}, PermissionSenderDomainsRead: {}, PermissionSenderDomainsCreate: {}, PermissionSenderDomainsDelete: {},
+		PermissionWalletRead: {}, PermissionWalletTopUp: {}, PermissionSMSRead: {}, PermissionSMSSend: {}, PermissionEmailRead: {}, PermissionEmailSend: {},
+		PermissionWebhooksRead: {}, PermissionWebhooksWrite: {},
 	},
 	RoleMember: {
-		PermissionTeamRead:          {},
-		PermissionTeamCreate:        {},
-		PermissionTeamMembersRead:   {},
-		PermissionTeamMemberLeave:   {},
-		PermissionSenderIDsRead:     {},
-		PermissionSenderDomainsRead: {},
-		PermissionWalletRead:        {},
-		PermissionSMSRead:           {},
-		PermissionEmailRead:         {},
+		PermissionTeamRead: {}, PermissionTeamCreate: {}, PermissionTeamMembersRead: {}, PermissionTeamMemberLeave: {},
+		PermissionSenderIDsRead: {}, PermissionSenderDomainsRead: {}, PermissionWalletRead: {}, PermissionSMSRead: {}, PermissionEmailRead: {}, PermissionWebhooksRead: {},
 	},
 }
 
 func Can(role string, permission Permission) bool {
 	permissions, ok := permissionsByRole[role]
-	if !ok {
-		return false
-	}
+	if !ok { return false }
 	_, ok = permissions[permission]
 	return ok
 }
 
 func HasPermission(permissions []Permission, permission Permission) bool {
-	for _, candidate := range permissions {
-		if candidate == permission {
-			return true
-		}
-	}
+	for _, candidate := range permissions { if candidate == permission { return true } }
 	return false
 }
 
 func ContextCan(tenantContext Context, permission Permission) bool {
-	if HasPermission(tenantContext.Permissions, permission) {
-		return true
-	}
+	if HasPermission(tenantContext.Permissions, permission) { return true }
 	return Can(tenantContext.Role, permission)
 }
