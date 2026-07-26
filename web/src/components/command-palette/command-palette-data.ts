@@ -87,6 +87,13 @@ const staticItems: CommandItem[] = [
         href: "/status",
         keywords: ["uptime", "incidents", "outage"],
     },
+    {
+        group: "Resources",
+        title: "Sitemap",
+        description: "Every page on Dugble, in one place.",
+        href: "/sitemap",
+        keywords: ["pages", "site map", "directory"],
+    },
 
     // Company
     {
