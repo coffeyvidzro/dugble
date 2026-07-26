@@ -97,6 +97,34 @@ func (r *Repository) CancelTx(ctx context.Context, tx pgx.Tx, id, teamID uuid.UU
 	return nil
 }
 
+func (r *Repository) RescheduleTx(ctx context.Context, tx pgx.Tx, id, teamID uuid.UUID, scheduledAt time.Time) error {
+	var status string
+	var currentSchedule *time.Time
+	err := tx.QueryRow(ctx, `
+		SELECT status, scheduled_at
+		FROM email_messages
+		WHERE id = $1 AND team_id = $2
+		FOR UPDATE
+	`, id, teamID).Scan(&status, &currentSchedule)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("lock email message for rescheduling: %w", err)
+	}
+	if status != StatusQueued || currentSchedule == nil || !currentSchedule.After(time.Now().UTC()) {
+		return ErrNotCancelable
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE email_messages
+		SET scheduled_at = $3, updated_at = now()
+		WHERE id = $1 AND team_id = $2
+	`, id, teamID, scheduledAt); err != nil {
+		return fmt.Errorf("reschedule email message: %w", err)
+	}
+	return nil
+}
+
 func (r *Repository) Get(ctx context.Context, id, teamID uuid.UUID) (Message, error) {
 	row, err := r.queries.GetEmailMessage(ctx, dbsqlc.GetEmailMessageParams{ID: id, TeamID: teamID})
 	if errors.Is(err, pgx.ErrNoRows) {

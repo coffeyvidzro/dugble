@@ -13,10 +13,17 @@ import (
 )
 
 type recordingStore struct {
-	event   outbox.Event
-	deleted uuid.UUID
-	usedTx  bool
-	enqueue int
+	event     outbox.Event
+	deleted   uuid.UUID
+	updated   uuid.UUID
+	updatedAt time.Time
+	usedTx    bool
+	enqueue   int
+}
+
+func (s *recordingStore) UpdatePendingAvailableAtTx(_ context.Context, _ pgx.Tx, eventID uuid.UUID, availableAt time.Time) error {
+	s.updated, s.updatedAt = eventID, availableAt
+	return nil
 }
 
 func (s *recordingStore) DeletePendingTx(_ context.Context, _ pgx.Tx, eventID uuid.UUID) error {
@@ -93,6 +100,20 @@ func TestQueueCancelEmailDeliveryTxDeletesDeterministicEvent(t *testing.T) {
 	want := uuid.NewSHA1(uuid.NameSpaceURL, []byte(deliveryNamespace+messageID.String()))
 	if store.deleted != want {
 		t.Fatalf("deleted event = %s, want %s", store.deleted, want)
+	}
+}
+
+func TestQueueRescheduleEmailDeliveryTxUpdatesDeterministicEvent(t *testing.T) {
+	store := &recordingStore{}
+	messageID := uuid.New()
+	availableAt := time.Now().UTC().Add(2 * time.Hour)
+
+	if err := NewQueue(store).RescheduleEmailDeliveryTx(context.Background(), nil, messageID, uuid.New(), availableAt); err != nil {
+		t.Fatalf("reschedule email delivery: %v", err)
+	}
+	want := uuid.NewSHA1(uuid.NameSpaceURL, []byte(deliveryNamespace+messageID.String()))
+	if store.updated != want || !store.updatedAt.Equal(availableAt) {
+		t.Fatalf("updated event = %s at %s, want %s at %s", store.updated, store.updatedAt, want, availableAt)
 	}
 }
 

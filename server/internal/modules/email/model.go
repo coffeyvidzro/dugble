@@ -158,9 +158,13 @@ type SendResponse struct {
 	ID string `json:"id"`
 }
 
-type CancelResponse struct {
+type MutationResponse struct {
 	Object string `json:"object"`
 	ID     string `json:"id"`
+}
+
+type UpdateRequest struct {
+	ScheduledAt string `json:"scheduled_at"`
 }
 
 func SendResponses(messages []Message) []SendResponse {

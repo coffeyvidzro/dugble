@@ -271,6 +271,18 @@ func normalizeSchedule(value string) (*time.Time, error) {
 	return &when, nil
 }
 
+func normalizeUpdateSchedule(value string) (time.Time, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return time.Time{}, apperrors.NewBadRequest("scheduled_at is required")
+	}
+	when, err := time.Parse(time.RFC3339Nano, value)
+	if err != nil || !when.After(time.Now().UTC()) {
+		return time.Time{}, apperrors.NewBadRequest("scheduled_at must be a future ISO 8601 time")
+	}
+	return when.UTC(), nil
+}
+
 func normalizeEmail(value string, label string) (string, error) {
 	value = strings.TrimSpace(value)
 	if value == "" {

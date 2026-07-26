@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -113,6 +114,36 @@ func TestCancelScheduledEmailUpdatesMessageAndRemovesOutboxEvent(t *testing.T) {
 	}
 	if status != StatusCanceled || events != 0 {
 		t.Fatalf("status = %q, events = %d; want canceled and 0", status, events)
+	}
+}
+
+func TestUpdateScheduledEmailChangesMessageAndOutboxSchedule(t *testing.T) {
+	pool := openEmailTestDatabase(t)
+	teamID := createEmailTestTeam(t, pool)
+	service := NewService(NewRepository(pool), emaildelivery.NewQueue(outbox.NewRepository(pool)), ServiceConfig{DefaultFromEmail: "sender@example.com"})
+	request := emailTestRequest("recipient@example.com")
+	request.ScheduledAt = "in 1 hour"
+	message, err := service.Send(emailTestContext(teamID), request)
+	if err != nil {
+		t.Fatalf("send scheduled email: %v", err)
+	}
+	updatedAt := time.Now().UTC().Add(2 * time.Hour).Truncate(time.Microsecond)
+	response, err := service.Update(emailTestContext(teamID), message.ID, UpdateRequest{ScheduledAt: updatedAt.Format(time.RFC3339Nano)})
+	if err != nil {
+		t.Fatalf("update scheduled email: %v", err)
+	}
+	if response.ID != message.ID || response.Object != "email" {
+		t.Fatalf("unexpected update response: %#v", response)
+	}
+	var messageSchedule, eventSchedule time.Time
+	if err := pool.QueryRow(t.Context(), `SELECT scheduled_at FROM email_messages WHERE id = $1`, message.ID).Scan(&messageSchedule); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(t.Context(), `SELECT available_at FROM outbox_events WHERE aggregate_id = $1`, message.ID).Scan(&eventSchedule); err != nil {
+		t.Fatal(err)
+	}
+	if !messageSchedule.Equal(updatedAt) || !eventSchedule.Equal(updatedAt) {
+		t.Fatalf("message schedule = %s, event schedule = %s, want %s", messageSchedule, eventSchedule, updatedAt)
 	}
 }
 

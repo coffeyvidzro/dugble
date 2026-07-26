@@ -28,6 +28,15 @@ type eventStore interface {
 	Enqueue(context.Context, outbox.Event) (uuid.UUID, error)
 	EnqueueTx(context.Context, pgx.Tx, outbox.Event) (uuid.UUID, error)
 	DeletePendingTx(context.Context, pgx.Tx, uuid.UUID) error
+	UpdatePendingAvailableAtTx(context.Context, pgx.Tx, uuid.UUID, time.Time) error
+}
+
+func (q *Queue) RescheduleEmailDeliveryTx(ctx context.Context, tx pgx.Tx, messageID uuid.UUID, _ uuid.UUID, availableAt time.Time) error {
+	if q == nil || q.store == nil {
+		return errors.New("email delivery outbox is not configured")
+	}
+	eventID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(deliveryNamespace+messageID.String()))
+	return q.store.UpdatePendingAvailableAtTx(ctx, tx, eventID, availableAt)
 }
 
 func (q *Queue) CancelEmailDeliveryTx(ctx context.Context, tx pgx.Tx, messageID uuid.UUID, _ uuid.UUID) error {

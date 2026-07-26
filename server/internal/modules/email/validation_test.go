@@ -66,3 +66,19 @@ func TestNormalizeAttachmentsUsesExactDecodedSize(t *testing.T) {
 		}
 	}
 }
+
+func TestNormalizeUpdateScheduleRequiresFutureISOTime(t *testing.T) {
+	future := time.Now().UTC().Add(time.Hour).Format(time.RFC3339Nano)
+	when, err := normalizeUpdateSchedule(future)
+	if err != nil {
+		t.Fatalf("normalize update schedule: %v", err)
+	}
+	if when.Format(time.RFC3339Nano) != future {
+		t.Fatalf("schedule = %s, want %s", when.Format(time.RFC3339Nano), future)
+	}
+	for _, invalid := range []string{"", "in 5 min", time.Now().UTC().Add(-time.Hour).Format(time.RFC3339Nano)} {
+		if _, err := normalizeUpdateSchedule(invalid); err == nil {
+			t.Fatalf("expected %q to be rejected", invalid)
+		}
+	}
+}
