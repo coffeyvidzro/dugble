@@ -14,8 +14,8 @@ func NewClient(arcjetKey string) (*arcjet.Client, error) {
 				Mode: arcjet.ModeLive,
 			}),
 			arcjet.DetectBot(arcjet.BotOptions{
-				Mode:  arcjet.ModeLive,
-				Allow: []string{}, // empty = block all bots
+				Mode:  arcjet.ModeDryRun,
+				Allow: []string{}, // observe all detected bots without blocking requests
 			}),
 		},
 	})
