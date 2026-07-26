@@ -15,6 +15,7 @@ const (
 	maxSubjectCharacters   = 255
 	maxBodyBytes           = 1 << 20
 	maxMetadataBytes       = 16 << 10
+	maxBatchPayloadBytes   = 5 << 20
 )
 
 type validatedSend struct {
@@ -106,6 +107,16 @@ func validateSend(req SendRequest, config ServiceConfig) (validatedSend, error) 
 		ReplyToEmail: replyTo, ToEmail: toEmail, ToName: toName, Subject: subject,
 		HTMLBody: htmlBody, TextBody: textBody, Metadata: metadata,
 	}, nil
+}
+
+func validatedPayloadBytes(value validatedSend) int {
+	total := len(value.MessageType) + len(value.FromEmail) + len(value.ToEmail) + len(value.Subject) + len(value.Metadata)
+	for _, optional := range []*string{value.FromName, value.ReplyToEmail, value.ToName, value.HTMLBody, value.TextBody} {
+		if optional != nil {
+			total += len(*optional)
+		}
+	}
+	return total
 }
 
 func normalizeEmail(value string, label string) (string, error) {
