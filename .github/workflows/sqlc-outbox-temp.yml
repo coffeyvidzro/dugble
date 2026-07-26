@@ -1,0 +1,41 @@
+name: Temporary outbox SQLC generation
+
+on:
+  pull_request:
+    paths:
+      - server/migrations/**
+      - server/sqlc.yaml
+      - .github/workflows/sqlc-outbox-temp.yml
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pull request head
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      - name: Generate SQLC code
+        working-directory: server
+        run: go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
+
+      - name: Show generated diff
+        run: git diff -- server/internal/database/sqlc
+
+      - name: Upload generated SQLC code
+        uses: actions/upload-artifact@v7
+        with:
+          name: outbox-sqlc-generated
+          path: server/internal/database/sqlc
+          retention-days: 1
