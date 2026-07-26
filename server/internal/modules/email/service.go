@@ -20,8 +20,16 @@ const (
 type DeliveryQueue interface {
 	EnqueueEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error
 }
+
+type MessageRepository interface {
+	BeginTx(context.Context) (pgx.Tx, error)
+	CreateTx(context.Context, pgx.Tx, uuid.UUID, validatedSend) (Message, error)
+	Get(context.Context, uuid.UUID, uuid.UUID) (Message, error)
+	List(context.Context, uuid.UUID, int32, int32) ([]MessageSummary, error)
+}
+
 type Service struct {
-	repository *Repository
+	repository MessageRepository
 	delivery   DeliveryQueue
 	config     ServiceConfig
 }
@@ -31,7 +39,7 @@ type ServiceConfig struct {
 	DefaultFromName  string
 }
 
-func NewService(repository *Repository, delivery DeliveryQueue, config ServiceConfig) *Service {
+func NewService(repository MessageRepository, delivery DeliveryQueue, config ServiceConfig) *Service {
 	return &Service{repository: repository, delivery: delivery, config: config}
 }
 
@@ -55,25 +63,34 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	if err != nil {
 		return Message{}, err
 	}
+	if s.repository == nil {
+		return Message{}, apperrors.NewInternal("Email repository is not configured", nil)
+	}
 	if s.delivery == nil {
 		return Message{}, apperrors.NewInternal("Email delivery queue is not configured", nil)
 	}
+
 	tx, err := s.repository.BeginTx(ctx)
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to begin email transaction", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	m, err := s.repository.CreateTx(ctx, tx, tc.TeamID, validated)
+
+	message, err := s.repository.CreateTx(ctx, tx, tc.TeamID, validated)
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to create email message", err)
 	}
-	if err := s.delivery.EnqueueEmailDeliveryTx(ctx, tx, uuid.MustParse(m.ID), tc.TeamID); err != nil {
+	messageID, err := uuid.Parse(message.ID)
+	if err != nil {
+		return Message{}, apperrors.NewInternal("Created email message has an invalid id", err)
+	}
+	if err := s.delivery.EnqueueEmailDeliveryTx(ctx, tx, messageID, tc.TeamID); err != nil {
 		return Message{}, apperrors.NewInternal("Unable to enqueue email delivery", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return Message{}, apperrors.NewInternal("Unable to commit email transaction", err)
 	}
-	return m, nil
+	return message, nil
 }
 
 func (s *Service) Get(ctx context.Context, value string) (Message, error) {
@@ -81,18 +98,21 @@ func (s *Service) Get(ctx context.Context, value string) (Message, error) {
 	if err != nil {
 		return Message{}, err
 	}
+	if s.repository == nil {
+		return Message{}, apperrors.NewInternal("Email repository is not configured", nil)
+	}
 	id, err := uuid.Parse(strings.TrimSpace(value))
 	if err != nil {
 		return Message{}, apperrors.NewBadRequest("Email message id must be a valid UUID")
 	}
-	m, err := s.repository.Get(ctx, id, tc.TeamID)
+	message, err := s.repository.Get(ctx, id, tc.TeamID)
 	if errors.Is(err, ErrNotFound) {
 		return Message{}, apperrors.NewNotFound("Email message not found")
 	}
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to get email message", err)
 	}
-	return m, nil
+	return message, nil
 }
 
 func (s *Service) List(ctx context.Context, req ListRequest) ([]MessageSummary, error) {
@@ -100,17 +120,20 @@ func (s *Service) List(ctx context.Context, req ListRequest) ([]MessageSummary, 
 	if err != nil {
 		return nil, err
 	}
+	if s.repository == nil {
+		return nil, apperrors.NewInternal("Email repository is not configured", nil)
+	}
 	if req.Limit <= 0 || req.Limit > 100 {
 		req.Limit = 50
 	}
 	if req.Offset < 0 {
 		req.Offset = 0
 	}
-	m, err := s.repository.List(ctx, tc.TeamID, req.Limit, req.Offset)
+	messages, err := s.repository.List(ctx, tc.TeamID, req.Limit, req.Offset)
 	if err != nil {
 		return nil, apperrors.NewInternal("Unable to list email messages", err)
 	}
-	return m, nil
+	return messages, nil
 }
 
 func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Message, error) {
@@ -120,6 +143,9 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 	tc, err := requireTenant(ctx, tenant.PermissionEmailSend)
 	if err != nil {
 		return nil, err
+	}
+	if s.repository == nil {
+		return nil, apperrors.NewInternal("Email repository is not configured", nil)
 	}
 	if s.delivery == nil {
 		return nil, apperrors.NewInternal("Email delivery queue is not configured", nil)
@@ -150,7 +176,11 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 		if createErr != nil {
 			return nil, apperrors.NewInternal("Unable to create email message", createErr)
 		}
-		if enqueueErr := s.delivery.EnqueueEmailDeliveryTx(ctx, tx, uuid.MustParse(message.ID), tc.TeamID); enqueueErr != nil {
+		messageID, parseErr := uuid.Parse(message.ID)
+		if parseErr != nil {
+			return nil, apperrors.NewInternal("Created email message has an invalid id", parseErr)
+		}
+		if enqueueErr := s.delivery.EnqueueEmailDeliveryTx(ctx, tx, messageID, tc.TeamID); enqueueErr != nil {
 			return nil, apperrors.NewInternal("Unable to enqueue email delivery", enqueueErr)
 		}
 		result = append(result, message)
