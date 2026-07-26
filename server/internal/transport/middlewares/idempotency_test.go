@@ -1,12 +1,14 @@
 package middlewares
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
 
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
@@ -48,6 +50,37 @@ func TestRequestIdempotencyScopeUsesBearerToken(t *testing.T) {
 	}
 }
 
+func TestRequestIdempotencyScopeSeparatesTeams(t *testing.T) {
+	t.Parallel()
+
+	teamA := uuid.New()
+	teamB := uuid.New()
+	requestA := httptest.NewRequest(http.MethodPost, "/emails", nil)
+	requestA.AddCookie(&http.Cookie{Name: authnz.SessionCookieName, Value: "session-secret"})
+	requestA.Header.Set(idempotencyTenantHeader, teamA.String())
+	requestB := httptest.NewRequest(http.MethodPost, "/emails", nil)
+	requestB.AddCookie(&http.Cookie{Name: authnz.SessionCookieName, Value: "session-secret"})
+	requestB.Header.Set(idempotencyTenantHeader, teamB.String())
+
+	scopeA, ok := requestIdempotencyScope(requestA)
+	if !ok {
+		t.Fatal("expected team A scope")
+	}
+	scopeB, ok := requestIdempotencyScope(requestB)
+	if !ok {
+		t.Fatal("expected team B scope")
+	}
+	if scopeA == scopeB {
+		t.Fatal("expected the same credential to have different idempotency scopes per team")
+	}
+	if !strings.HasSuffix(scopeA, ":team:"+teamA.String()) {
+		t.Fatalf("scope A = %q, want canonical team suffix", scopeA)
+	}
+	if !strings.HasSuffix(scopeB, ":team:"+teamB.String()) {
+		t.Fatalf("scope B = %q, want canonical team suffix", scopeB)
+	}
+}
+
 func TestHashRequestIncludesQueryAndBody(t *testing.T) {
 	t.Parallel()
 
@@ -64,7 +97,7 @@ func TestReadAndRestoreBodyAllowsDownstreamRead(t *testing.T) {
 	t.Parallel()
 
 	request := httptest.NewRequest(http.MethodPost, "/sms/messages", strings.NewReader(`{"message":"hello"}`))
-	body, err := readAndRestoreBody(request)
+	body, err := readAndRestoreBody(request, 1024)
 	if err != nil {
 		t.Fatalf("readAndRestoreBody returned error: %v", err)
 	}
@@ -78,6 +111,16 @@ func TestReadAndRestoreBodyAllowsDownstreamRead(t *testing.T) {
 	}
 	if string(restored) != string(body) {
 		t.Fatalf("restored body = %q, want %q", restored, body)
+	}
+}
+
+func TestReadAndRestoreBodyRejectsOversizedBody(t *testing.T) {
+	t.Parallel()
+
+	request := httptest.NewRequest(http.MethodPost, "/emails/batch", strings.NewReader("12345"))
+	_, err := readAndRestoreBody(request, 4)
+	if !errors.Is(err, errIdempotencyBodyTooLarge) {
+		t.Fatalf("error = %v, want errIdempotencyBodyTooLarge", err)
 	}
 }
 
