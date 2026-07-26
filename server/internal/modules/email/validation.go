@@ -208,14 +208,11 @@ func normalizeAttachments(items []Attachment) ([]Attachment, error) {
 			return nil, apperrors.NewBadRequest("Attachment must provide exactly one of content or path")
 		}
 		if items[i].Content != "" {
-			decoded, err := base64.StdEncoding.DecodedLen(len(items[i].Content)), error(nil)
-			if _, decodeErr := base64.StdEncoding.DecodeString(items[i].Content); decodeErr != nil {
-				err = decodeErr
-			}
+			decodedSize, err := attachmentContentSize(items[i].Content)
 			if err != nil {
 				return nil, apperrors.NewBadRequest("Attachment content must be valid Base64")
 			}
-			total += decoded
+			total += decodedSize
 		} else {
 			parsed, err := url.ParseRequestURI(items[i].Path)
 			if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
@@ -227,6 +224,14 @@ func normalizeAttachments(items []Attachment) ([]Attachment, error) {
 		return nil, apperrors.NewPayloadTooLarge("Email attachments exceed 40MB")
 	}
 	return items, nil
+}
+
+func attachmentContentSize(content string) (int, error) {
+	decoded, err := base64.StdEncoding.DecodeString(content)
+	if err != nil {
+		return 0, err
+	}
+	return len(decoded), nil
 }
 
 func normalizeTags(tags []Tag) ([]Tag, error) {

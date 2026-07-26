@@ -54,3 +54,15 @@ func TestValidateSendLimitsAllRecipientsTogether(t *testing.T) {
 		t.Fatal("expected recipient limit error")
 	}
 }
+
+func TestNormalizeAttachmentsUsesExactDecodedSize(t *testing.T) {
+	for encoded, expected := range map[string]int{"YQ==": 1, "YWI=": 2, "YWJj": 3} {
+		size, err := attachmentContentSize(encoded)
+		if err != nil {
+			t.Fatalf("measure %q: %v", encoded, err)
+		}
+		if size != expected {
+			t.Fatalf("decoded size of %q = %d, want %d", encoded, size, expected)
+		}
+	}
+}
