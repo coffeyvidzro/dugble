@@ -10,8 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/riverqueue/river"
-
 	"github.com/coffeyvidzro/dugble/server/internal/config"
 	"github.com/coffeyvidzro/dugble/server/internal/database"
 	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
@@ -19,11 +17,11 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/arkesel"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/mnotify"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/routing"
+	"github.com/coffeyvidzro/dugble/server/internal/messaging/inbox"
 	jetstreammessaging "github.com/coffeyvidzro/dugble/server/internal/messaging/jetstream"
 	"github.com/coffeyvidzro/dugble/server/internal/messaging/outbox"
 	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/wallet"
-	"github.com/coffeyvidzro/dugble/server/internal/worker"
 )
 
 func main() {
@@ -50,10 +48,6 @@ func run() error {
 		return fmt.Errorf("initialize PostgreSQL: %w", err)
 	}
 	defer db.Close()
-
-	if err := worker.Migrate(startupCtx, db); err != nil {
-		return fmt.Errorf("migrate River schema: %w", err)
-	}
 
 	messagingClient, err := jetstreammessaging.New(startupCtx, cfg.Messaging.URL, "dugble-worker")
 	if err != nil {
@@ -84,23 +78,22 @@ func run() error {
 		return fmt.Errorf("initialize SMS sender: %w", err)
 	}
 
-	workers := river.NewWorkers()
-	river.AddWorker(workers, smsdelivery.NewWorker(
+	smsHandler := smsdelivery.NewHandler(
 		smsmodule.NewRepository(db),
 		smsSender,
 		wallet.NewRepository(db),
-	))
-
-	riverClient, err := worker.NewConsumer(db, workers, map[string]river.QueueConfig{
-		smsdelivery.DeliverQueue: {MaxWorkers: worker.DefaultMaxWorkers},
-	})
-	if err != nil {
-		return fmt.Errorf("initialize River consumer: %w", err)
-	}
-
-	if err := riverClient.Start(ctx); err != nil {
-		return fmt.Errorf("start River worker: %w", err)
-	}
+	)
+	smsConsumer := smsdelivery.NewConsumer(
+		messagingClient,
+		inbox.NewRepository(db),
+		smsHandler,
+		smsdelivery.ConsumerConfig{
+			Concurrency:    cfg.Messaging.SMSConsumerConcurrency,
+			AckWait:        cfg.Messaging.SMSConsumerAckWait,
+			HandlerTimeout: cfg.Messaging.SMSHandlerTimeout,
+			MaxDeliver:     cfg.Messaging.SMSConsumerMaxDeliver,
+		},
+	)
 
 	outboxRelay := outbox.NewRelay(
 		outbox.NewRepository(db),
@@ -111,27 +104,52 @@ func run() error {
 			LockTimeout:  cfg.Messaging.OutboxLockTimeout,
 		},
 	)
-	relayErrors := make(chan error, 1)
+
+	type componentResult struct {
+		name string
+		err  error
+	}
+	results := make(chan componentResult, 2)
 	go func() {
-		relayErrors <- outboxRelay.Run(ctx)
+		results <- componentResult{name: "outbox relay", err: outboxRelay.Run(ctx)}
+	}()
+	go func() {
+		results <- componentResult{name: "SMS JetStream consumer", err: smsConsumer.Run(ctx)}
 	}()
 
-	slog.Info("worker started", "jetstream", "ready", "outbox_relay", "running")
+	slog.Info(
+		"worker started",
+		"jetstream", "ready",
+		"outbox_relay", "running",
+		"sms_consumer", smsdelivery.DeliverConsumerName,
+	)
 
+	completed := 0
 	var runErr error
 	select {
 	case <-ctx.Done():
-	case relayErr := <-relayErrors:
-		if relayErr != nil && !errors.Is(relayErr, context.Canceled) {
-			runErr = fmt.Errorf("run outbox relay: %w", relayErr)
+		stop()
+	case result := <-results:
+		completed++
+		if result.err != nil && !errors.Is(result.err, context.Canceled) {
+			runErr = errors.Join(runErr, fmt.Errorf("run %s: %w", result.name, result.err))
 		}
 		stop()
 	}
 
-	shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancelShutdown()
-	if err := riverClient.Stop(shutdownCtx); err != nil {
-		return errors.Join(runErr, fmt.Errorf("stop River worker: %w", err))
+	shutdownTimer := time.NewTimer(30 * time.Second)
+	defer shutdownTimer.Stop()
+	for completed < 2 {
+		select {
+		case result := <-results:
+			completed++
+			if result.err != nil && !errors.Is(result.err, context.Canceled) {
+				runErr = errors.Join(runErr, fmt.Errorf("run %s: %w", result.name, result.err))
+			}
+		case <-shutdownTimer.C:
+			runErr = errors.Join(runErr, errors.New("worker components did not stop within 30 seconds"))
+			completed = 2
+		}
 	}
 
 	slog.Info("worker stopped")
