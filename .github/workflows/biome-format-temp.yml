@@ -1,0 +1,34 @@
+name: Temporary Biome formatting
+
+on:
+  push:
+    branches:
+      - agent/arcjet-auth-fix
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        working-directory: web
+        run: bun install --frozen-lockfile >/dev/null
+
+      - name: Apply Biome fixes
+        working-directory: web
+        run: bunx biome check --write 'src/app/(auth)/layout.tsx'
+
+      - name: Upload formatted layout
+        uses: actions/upload-artifact@v7
+        with:
+          name: formatted-auth-layout
+          path: web/src/app/(auth)/layout.tsx
+          retention-days: 1
