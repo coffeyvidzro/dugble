@@ -137,7 +137,7 @@ func lockScheduledSMS(ctx context.Context, tx pgx.Tx, id, teamID uuid.UUID) erro
 	if err != nil {
 		return fmt.Errorf("lock scheduled SMS message: %w", err)
 	}
-	if status != StatusQueued || scheduledAt == nil || !scheduledAt.After(time.Now().UTC()) {
+	if status != StatusQueued || scheduledAt == nil || !scheduledAt.After(time.Now().UTC().Add(scheduleMutationCutoff)) {
 		return ErrMessageNotSchedulable
 	}
 	return nil

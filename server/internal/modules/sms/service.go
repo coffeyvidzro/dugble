@@ -342,7 +342,7 @@ func scheduledMutationError(err error, action string) error {
 		return apperrors.NewNotFound("SMS message not found")
 	}
 	if errors.Is(err, ErrMessageNotSchedulable) {
-		return apperrors.NewConflict("Only pending scheduled SMS messages can be " + action)
+		return apperrors.NewConflict("Only pending scheduled SMS messages outside the delivery cutoff can be " + action)
 	}
 	return apperrors.NewInternal("Unable to update SMS message", err)
 }

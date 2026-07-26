@@ -15,8 +15,10 @@ import (
 )
 
 const (
-	maxBodyCharacters = 1600
-	maxBatchMessages  = 100
+	maxBodyCharacters       = 1600
+	maxBatchMessages        = 100
+	minimumScheduleLeadTime = 30 * time.Second
+	scheduleMutationCutoff  = 15 * time.Second
 )
 
 var (
@@ -100,7 +102,7 @@ func normalizeSMSSchedule(value string, allowRelative bool) (*time.Time, error) 
 			}
 		}
 	}
-	if err != nil || !when.After(time.Now().UTC()) {
+	if err != nil || time.Until(when) < minimumScheduleLeadTime {
 		return nil, apperrors.NewBadRequest("scheduled_at must be a future ISO 8601 time" + relativeScheduleSuffix(allowRelative))
 	}
 	when = when.UTC()

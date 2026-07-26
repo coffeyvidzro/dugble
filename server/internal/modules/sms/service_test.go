@@ -246,6 +246,17 @@ func TestValidateSendNormalizesSchedule(t *testing.T) {
 	}
 }
 
+func TestScheduleRequiresLeadTime(t *testing.T) {
+	tooSoon := time.Now().UTC().Add(minimumScheduleLeadTime / 2).Format(time.RFC3339Nano)
+	if _, err := normalizeSMSSchedule(tooSoon, false); err == nil {
+		t.Fatal("expected schedule inside minimum lead time to be rejected")
+	}
+	valid := time.Now().UTC().Add(minimumScheduleLeadTime + time.Minute).Format(time.RFC3339Nano)
+	if _, err := normalizeSMSSchedule(valid, false); err != nil {
+		t.Fatalf("expected schedule outside minimum lead time to pass: %v", err)
+	}
+}
+
 func TestResponsesMapsEveryMessageToPublicDTO(t *testing.T) {
 	responses := Responses([]Message{{ID: "first"}, {ID: "second"}})
 	if len(responses) != 2 || responses[0].ID != "first" || responses[1].ID != "second" {

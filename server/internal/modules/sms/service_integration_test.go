@@ -146,6 +146,58 @@ func TestScheduledSMSCanBeUpdatedAndCanceledWithAtomicRefund(t *testing.T) {
 	}
 }
 
+func TestScheduledSMSDispatchAndCancellationAreRaceSafe(t *testing.T) {
+	pool := openSMSTestDatabase(t)
+	teamID, service := setupSMSBatchTest(t, pool, 100_000)
+	repository := sms.NewRepository(pool)
+	message, err := service.Send(smsBatchTestContext(teamID), sms.SendRequest{
+		To: "+233241234567", From: "DUGBLE", Body: "race", ScheduledAt: "in 1 hour",
+	})
+	if err != nil {
+		t.Fatalf("send scheduled SMS: %v", err)
+	}
+	messageID := uuid.MustParse(message.ID)
+	start := make(chan struct{})
+	processResult, cancelResult := make(chan error, 1), make(chan error, 1)
+	go func() {
+		<-start
+		_, err := repository.MarkProcessing(context.Background(), messageID, teamID)
+		processResult <- err
+	}()
+	go func() {
+		<-start
+		_, err := service.Cancel(smsBatchTestContext(teamID), message.ID)
+		cancelResult <- err
+	}()
+	close(start)
+	processErr, cancelErr := <-processResult, <-cancelResult
+	if (processErr == nil) == (cancelErr == nil) {
+		t.Fatalf("exactly one operation must win: processing=%v cancellation=%v", processErr, cancelErr)
+	}
+	var status string
+	var balance int64
+	var events, refunds int
+	if err := pool.QueryRow(t.Context(), `SELECT status FROM sms_messages WHERE id = $1`, message.ID).Scan(&status); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(t.Context(), `SELECT balance FROM wallets WHERE team_id = $1`, teamID).Scan(&balance); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(t.Context(), `SELECT count(*) FROM outbox_events WHERE aggregate_id = $1`, message.ID).Scan(&events); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(t.Context(), `SELECT count(*) FROM wallet_transactions WHERE team_id = $1 AND transaction_type = 'refund'`, teamID).Scan(&refunds); err != nil {
+		t.Fatal(err)
+	}
+	if cancelErr == nil {
+		if status != sms.StatusCanceled || balance != 100_000 || events != 0 || refunds != 1 {
+			t.Fatalf("cancellation win left status=%s balance=%d events=%d refunds=%d", status, balance, events, refunds)
+		}
+	} else if status != sms.StatusProcessing || balance != 90_000 || events != 1 || refunds != 0 {
+		t.Fatalf("dispatch win left status=%s balance=%d events=%d refunds=%d", status, balance, events, refunds)
+	}
+}
+
 func assertSMSBatchCounts(t *testing.T, pool *pgxpool.Pool, teamID uuid.UUID, messages, events, charges int, balance int64) {
 	t.Helper()
 	var gotMessages, gotEvents, gotCharges int

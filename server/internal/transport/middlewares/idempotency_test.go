@@ -82,6 +82,19 @@ func TestHashRequestIncludesQueryAndBody(t *testing.T) {
 	}
 }
 
+func TestSMSMutationIdempotencyHashesIncludePathAndSchedule(t *testing.T) {
+	update := hashRequest(http.MethodPatch, "/sms/message-id", "", []byte(`{"scheduled_at":"2026-08-05T13:00:00Z"}`))
+	if update == hashRequest(http.MethodPatch, "/sms/other-id", "", []byte(`{"scheduled_at":"2026-08-05T13:00:00Z"}`)) {
+		t.Fatal("different SMS IDs must produce different idempotency hashes")
+	}
+	if update == hashRequest(http.MethodPatch, "/sms/message-id", "", []byte(`{"scheduled_at":"2026-08-05T14:00:00Z"}`)) {
+		t.Fatal("different SMS schedules must produce different idempotency hashes")
+	}
+	if update == hashRequest(http.MethodPost, "/sms/message-id/cancel", "", nil) {
+		t.Fatal("SMS update and cancellation must produce different idempotency hashes")
+	}
+}
+
 func TestReadAndRestoreBodyAllowsDownstreamRead(t *testing.T) {
 	t.Parallel()
 

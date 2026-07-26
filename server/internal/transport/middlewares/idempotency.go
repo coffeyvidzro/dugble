@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
@@ -74,6 +75,9 @@ func Idempotency(config IdempotencyConfig) echo.MiddlewareFunc {
 			key := strings.TrimSpace(c.Request().Header.Get(idempotencyHeader))
 			if key == "" || isCookieSessionRoute(path) {
 				return next(c)
+			}
+			if utf8.RuneCountInString(key) > 256 {
+				return httputil.Error(c, apperrors.NewBadRequest("Idempotency-Key must be at most 256 characters"))
 			}
 
 			scope, ok := requestIdempotencyScope(c.Request())
