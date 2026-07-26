@@ -20,10 +20,16 @@ type DeliveryQueue interface {
 type Service struct {
 	repository *Repository
 	delivery   DeliveryQueue
+	config     ServiceConfig
 }
 
-func NewService(repository *Repository, delivery DeliveryQueue) *Service {
-	return &Service{repository: repository, delivery: delivery}
+type ServiceConfig struct {
+	DefaultFromEmail string
+	DefaultFromName  string
+}
+
+func NewService(repository *Repository, delivery DeliveryQueue, config ServiceConfig) *Service {
+	return &Service{repository: repository, delivery: delivery, config: config}
 }
 
 func requireTenant(ctx context.Context, permission tenant.Permission) (tenant.Context, error) {
@@ -42,7 +48,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	if err != nil {
 		return Message{}, err
 	}
-	req, err = validate(req)
+	validated, err := validateSend(req, s.config)
 	if err != nil {
 		return Message{}, err
 	}
@@ -54,7 +60,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 		return Message{}, apperrors.NewInternal("Unable to begin email transaction", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	m, err := s.repository.CreateTx(ctx, tx, tc.TeamID, req)
+	m, err := s.repository.CreateTx(ctx, tx, tc.TeamID, validated)
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to create email message", err)
 	}

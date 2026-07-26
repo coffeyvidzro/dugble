@@ -169,7 +169,11 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		tenantMiddleware,
 	)
 
-	emailServiceAPI := emailmodule.NewService(emailmodule.NewRepository(deps.DB), deps.EmailDelivery)
+	emailServiceAPI := emailmodule.NewService(
+		emailmodule.NewRepository(deps.DB),
+		deps.EmailDelivery,
+		emailmodule.ServiceConfig{DefaultFromEmail: cfg.AWS.FromEmail},
+	)
 	emailmodule.RegisterRoutes(router, emailmodule.NewHandler(emailServiceAPI), authMiddleware, csrfMiddleware, tenantMiddleware)
 
 	sessionService := session.NewService(sessionRepository)

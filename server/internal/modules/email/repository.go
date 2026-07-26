@@ -30,7 +30,7 @@ func (r *Repository) BeginTx(ctx context.Context) (pgx.Tx, error) {
 	return r.db.BeginTx(ctx, pgx.TxOptions{})
 }
 
-func (r *Repository) CreateTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, req SendRequest) (Message, error) {
+func (r *Repository) CreateTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, req validatedSend) (Message, error) {
 	row, err := r.queries.WithTx(tx).CreateEmailMessage(ctx, dbsqlc.CreateEmailMessageParams{
 		TeamID:       teamID,
 		MessageType:  req.MessageType,

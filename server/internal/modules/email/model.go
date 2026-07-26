@@ -5,7 +5,10 @@ import (
 	"time"
 )
 
-const StatusQueued = "queued"
+const (
+	StatusQueued             = "queued"
+	MessageTypeTransactional = "transactional"
+)
 
 type Message struct {
 	ID                string          `json:"id"`
@@ -35,16 +38,18 @@ type Message struct {
 }
 
 type SendRequest struct {
-	MessageType  string          `json:"message_type,omitempty"`
-	FromEmail    string          `json:"from_email"`
-	FromName     *string         `json:"from_name,omitempty"`
-	ReplyToEmail *string         `json:"reply_to_email,omitempty"`
-	ToEmail      string          `json:"to_email"`
-	ToName       *string         `json:"to_name,omitempty"`
-	Subject      string          `json:"subject"`
-	HTMLBody     *string         `json:"html_body,omitempty"`
-	TextBody     *string         `json:"text_body,omitempty"`
-	Metadata     json.RawMessage `json:"metadata,omitempty"`
+	From     *EmailAddress   `json:"from,omitempty"`
+	ReplyTo  string          `json:"reply_to,omitempty"`
+	To       EmailAddress    `json:"to"`
+	Subject  string          `json:"subject"`
+	HTML     string          `json:"html,omitempty"`
+	Text     string          `json:"text,omitempty"`
+	Metadata json.RawMessage `json:"metadata,omitempty"`
+}
+
+type EmailAddress struct {
+	Email string `json:"email"`
+	Name  string `json:"name,omitempty"`
 }
 
 type BatchSendRequest struct {
