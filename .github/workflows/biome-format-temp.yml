@@ -1,9 +1,10 @@
 name: Temporary Biome formatting
 
 on:
-  push:
-    branches:
-      - agent/arcjet-auth-fix
+  pull_request:
+    paths:
+      - web/src/app/(auth)/layout.tsx
+      - .github/workflows/biome-format-temp.yml
 
 permissions:
   contents: read
@@ -12,8 +13,10 @@ jobs:
   format:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout branch
+      - name: Checkout pull request head
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
