@@ -78,6 +78,26 @@ func (c *Client) Provision(ctx context.Context, limits StreamLimits) error {
 	return nil
 }
 
+func (c *Client) CreateOrUpdateConsumer(
+	ctx context.Context,
+	stream string,
+	config natsjs.ConsumerConfig,
+) (natsjs.Consumer, error) {
+	if c == nil || c.jetStream == nil {
+		return nil, fmt.Errorf("JetStream client is not configured")
+	}
+	stream = strings.TrimSpace(stream)
+	if stream == "" {
+		return nil, fmt.Errorf("JetStream stream name is required")
+	}
+
+	consumer, err := c.jetStream.CreateOrUpdateConsumer(ctx, stream, config)
+	if err != nil {
+		return nil, fmt.Errorf("create or update consumer %s on %s: %w", config.Durable, stream, err)
+	}
+	return consumer, nil
+}
+
 func (c *Client) Publish(
 	ctx context.Context,
 	subject string,
