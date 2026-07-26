@@ -2,19 +2,15 @@
 INSERT INTO webhook_endpoints (
     team_id,
     url,
-    description,
-    signing_secret_ciphertext,
+    signing_secret,
     enabled,
-    subscribed_events,
-    api_version
+    subscribed_events
 ) VALUES (
     sqlc.arg(team_id),
     sqlc.arg(url),
-    sqlc.narg(description),
-    sqlc.arg(signing_secret_ciphertext),
+    sqlc.arg(signing_secret),
     true,
-    sqlc.arg(subscribed_events),
-    sqlc.arg(api_version)
+    sqlc.arg(subscribed_events)
 )
 RETURNING *;
 
@@ -35,10 +31,8 @@ WHERE id = sqlc.arg(id)
 -- name: UpdateWebhookEndpoint :one
 UPDATE webhook_endpoints
 SET url = sqlc.arg(url),
-    description = sqlc.narg(description),
     enabled = sqlc.arg(enabled),
     subscribed_events = sqlc.arg(subscribed_events),
-    api_version = sqlc.arg(api_version),
     disabled_at = CASE
         WHEN sqlc.arg(enabled)::boolean THEN NULL
         ELSE COALESCE(disabled_at, now())
@@ -59,7 +53,7 @@ RETURNING *;
 
 -- name: RotateWebhookEndpointSecret :one
 UPDATE webhook_endpoints
-SET signing_secret_ciphertext = sqlc.arg(signing_secret_ciphertext),
+SET signing_secret = sqlc.arg(signing_secret),
     updated_at = now()
 WHERE id = sqlc.arg(id)
   AND team_id = sqlc.arg(team_id)
