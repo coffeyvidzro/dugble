@@ -62,8 +62,6 @@ jobs:
 
       - name: Verify transactional outbox relay
         run: |
-          event_id='00000000-0000-4000-8000-000000000016'
-
           docker compose --env-file .env.example -f compose.yml exec -T postgres \
             sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
           INSERT INTO outbox_events (
@@ -87,8 +85,11 @@ jobs:
           for attempt in $(seq 1 30); do
             published="$(
               docker compose --env-file .env.example -f compose.yml exec -T postgres \
-                sh -c 'psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
-                -c "SELECT published_at IS NOT NULL FROM outbox_events WHERE id = '${event_id}'"
+                sh -c 'psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+          SELECT published_at IS NOT NULL
+          FROM outbox_events
+          WHERE id = '00000000-0000-4000-8000-000000000016';
+          SQL
             )"
             if [ "$published" = "t" ]; then
               break
@@ -96,7 +97,15 @@ jobs:
             sleep 1
           done
 
-          test "$published" = "t"
+          if [ "$published" != "t" ]; then
+            docker compose --env-file .env.example -f compose.yml exec -T postgres \
+              sh -c 'psql -x -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+          SELECT *
+          FROM outbox_events
+          WHERE id = '00000000-0000-4000-8000-000000000016';
+          SQL
+            exit 1
+          fi
 
           docker compose --env-file .env.example -f compose.yml exec -T postgres \
             sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
