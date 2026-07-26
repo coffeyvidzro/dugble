@@ -58,6 +58,21 @@ pkg/
 - PostgreSQL persistence through `pgx` and SQLC
 - Docker and Caddy local runtime support
 
+## Email pricing
+
+Planned launch pricing for Dugble's transactional email API:
+
+| Plan | Monthly price | Included emails | Overage | Sending domains |
+| --- | ---: | ---: | ---: | ---: |
+| Free | $0 | 1,000 | No overage | 1 |
+| Developer | $29 | 50,000 | $1.00 per additional 1,000 | 5 |
+| Pro | $59 | 100,000 | $0.80 per additional 1,000 | 25 |
+| Scale | $349 | 500,000 | $0.60 per additional 1,000 | 100 |
+
+Need more than 500,000 emails per month? Contact Dugble for custom pricing.
+
+Email usage is counted per recipient. One message sent to ten recipients counts as ten emails. Paid overage is billed in blocks of 1,000 emails. Pricing is provisional and may change before public launch.
+
 ## Local development
 
 ### Requirements
