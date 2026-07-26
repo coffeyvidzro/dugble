@@ -41,6 +41,14 @@ func NewBadRequest(message string) *AppError {
 	}
 }
 
+func NewPayloadTooLarge(message string) *AppError {
+	return &AppError{
+		Code:    "PAYLOAD_TOO_LARGE",
+		Message: message,
+		Status:  http.StatusRequestEntityTooLarge,
+	}
+}
+
 func NewUnauthorized(message string) *AppError {
 	return &AppError{
 		Code:    "UNAUTHORIZED",

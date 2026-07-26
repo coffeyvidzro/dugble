@@ -90,10 +90,10 @@ func validateSend(req SendRequest, config ServiceConfig) (validatedSend, error) 
 		return validatedSend{}, apperrors.NewBadRequest("Email HTML or text body is required")
 	}
 	if htmlBody != nil && len(*htmlBody) > maxBodyBytes {
-		return validatedSend{}, apperrors.NewBadRequest("Email HTML body is too large")
+		return validatedSend{}, apperrors.NewPayloadTooLarge("Email HTML body is too large")
 	}
 	if textBody != nil && len(*textBody) > maxBodyBytes {
-		return validatedSend{}, apperrors.NewBadRequest("Email text body is too large")
+		return validatedSend{}, apperrors.NewPayloadTooLarge("Email text body is too large")
 	}
 
 	metadata, err := normalizeMetadata(req.Metadata)
@@ -143,7 +143,7 @@ func normalizeMetadata(metadata json.RawMessage) (json.RawMessage, error) {
 		return json.RawMessage(`{}`), nil
 	}
 	if len(metadata) > maxMetadataBytes {
-		return nil, apperrors.NewBadRequest("Email metadata is too large")
+		return nil, apperrors.NewPayloadTooLarge("Email metadata is too large")
 	}
 	var object map[string]any
 	if err := json.Unmarshal(metadata, &object); err != nil || object == nil {
@@ -154,7 +154,7 @@ func normalizeMetadata(metadata json.RawMessage) (json.RawMessage, error) {
 		return nil, apperrors.NewBadRequest("Email metadata must be valid JSON")
 	}
 	if len(canonical) > maxMetadataBytes {
-		return nil, apperrors.NewBadRequest("Email metadata is too large")
+		return nil, apperrors.NewPayloadTooLarge("Email metadata is too large")
 	}
 	return canonical, nil
 }

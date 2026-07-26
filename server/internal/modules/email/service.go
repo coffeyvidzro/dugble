@@ -134,7 +134,7 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 		}
 		totalPayloadBytes += bodySize(validated[index].HTMLBody) + bodySize(validated[index].TextBody) + len(validated[index].Metadata)
 		if totalPayloadBytes > maxBatchPayloadBytes {
-			return nil, apperrors.NewBadRequest("Email batch payload is too large")
+			return nil, apperrors.NewPayloadTooLarge("Email batch payload is too large")
 		}
 	}
 
