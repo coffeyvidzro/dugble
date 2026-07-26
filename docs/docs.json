@@ -24,6 +24,16 @@
         ]
       },
       {
+        "group": "SMS",
+        "pages": [
+          "sms/introduction",
+          "sms/sender-ids",
+          "sms/schedule-sms",
+          "sms/batch-sending",
+          "sms/delivery-status"
+        ]
+      },
+      {
         "group": "Domains",
         "pages": ["domains/introduction", "domains/dmarc"]
       },
