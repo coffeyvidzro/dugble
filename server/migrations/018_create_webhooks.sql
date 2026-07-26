@@ -5,16 +5,27 @@ CREATE TABLE IF NOT EXISTS webhook_endpoints (
     description TEXT,
     signing_secret TEXT NOT NULL,
     enabled BOOLEAN NOT NULL DEFAULT true,
-    subscribed_events TEXT[] NOT NULL DEFAULT '{}',
+    subscribed_events TEXT[] NOT NULL,
     api_version TEXT NOT NULL DEFAULT '2026-07-01',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     disabled_at TIMESTAMPTZ,
-    CONSTRAINT chk_webhook_endpoint_url CHECK (url ~ '^https?://'),
-    CONSTRAINT chk_webhook_endpoint_events CHECK (array_position(subscribed_events, '') IS NULL)
+
+    CONSTRAINT chk_webhook_endpoint_url CHECK (
+        length(trim(url)) > 0 AND url ~ '^https?://'
+    ),
+    CONSTRAINT chk_webhook_endpoint_secret CHECK (length(signing_secret) >= 32),
+    CONSTRAINT chk_webhook_endpoint_events CHECK (
+        cardinality(subscribed_events) > 0
+        AND array_position(subscribed_events, '') IS NULL
+    ),
+    CONSTRAINT chk_webhook_endpoint_api_version CHECK (length(trim(api_version)) > 0),
+    CONSTRAINT chk_webhook_endpoint_disabled CHECK (
+        enabled OR disabled_at IS NOT NULL
+    )
 );
 
-CREATE INDEX IF NOT EXISTS idx_webhook_endpoints_team
+CREATE INDEX IF NOT EXISTS idx_webhook_endpoints_team_created
     ON webhook_endpoints (team_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS webhook_events (
@@ -27,11 +38,16 @@ CREATE TABLE IF NOT EXISTS webhook_events (
     payload JSONB NOT NULL,
     occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT chk_webhook_event_type CHECK (length(trim(type)) > 0 AND type !~ '[[:space:]]'),
+
+    CONSTRAINT chk_webhook_event_type CHECK (
+        length(trim(type)) > 0 AND type !~ '[[:space:]]'
+    ),
+    CONSTRAINT chk_webhook_event_object_type CHECK (length(trim(object_type)) > 0),
+    CONSTRAINT chk_webhook_event_api_version CHECK (length(trim(api_version)) > 0),
     CONSTRAINT chk_webhook_event_payload CHECK (jsonb_typeof(payload) = 'object')
 );
 
-CREATE INDEX IF NOT EXISTS idx_webhook_events_team
+CREATE INDEX IF NOT EXISTS idx_webhook_events_team_created
     ON webhook_events (team_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS webhook_deliveries (
@@ -50,14 +66,27 @@ CREATE TABLE IF NOT EXISTS webhook_deliveries (
     locked_by TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (event_id, endpoint_id),
-    CONSTRAINT chk_webhook_delivery_status CHECK (status IN ('pending', 'retrying', 'succeeded', 'failed')),
-    CONSTRAINT chk_webhook_delivery_attempts CHECK (attempt_count >= 0)
+
+    CONSTRAINT uq_webhook_delivery_event_endpoint UNIQUE (event_id, endpoint_id),
+    CONSTRAINT chk_webhook_delivery_status CHECK (
+        status IN ('pending', 'retrying', 'succeeded', 'failed')
+    ),
+    CONSTRAINT chk_webhook_delivery_attempts CHECK (attempt_count >= 0),
+    CONSTRAINT chk_webhook_delivery_response_status CHECK (
+        response_status IS NULL OR response_status BETWEEN 100 AND 599
+    ),
+    CONSTRAINT chk_webhook_delivery_lock_pair CHECK (
+        (locked_at IS NULL AND locked_by IS NULL)
+        OR (locked_at IS NOT NULL AND locked_by IS NOT NULL)
+    )
 );
 
 CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_pending
     ON webhook_deliveries (next_attempt_at, created_at)
     WHERE status IN ('pending', 'retrying');
 
-CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_event
+CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_event_created
     ON webhook_deliveries (event_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_endpoint_created
+    ON webhook_deliveries (endpoint_id, created_at DESC);
