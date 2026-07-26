@@ -5,7 +5,6 @@ INSERT INTO webhook_events (
     event_type,
     object_type,
     object_id,
-    api_version,
     payload,
     occurred_at
 ) VALUES (
@@ -14,7 +13,6 @@ INSERT INTO webhook_events (
     sqlc.arg(event_type),
     sqlc.arg(object_type),
     sqlc.narg(object_id),
-    sqlc.arg(api_version),
     sqlc.arg(payload),
     sqlc.arg(occurred_at)
 )
