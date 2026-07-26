@@ -6,9 +6,18 @@ import (
 )
 
 const (
-	StatusQueued             = "queued"
-	MessageTypeTransactional = "transactional"
+	StatusQueued     = "queued"
+	StatusProcessing = "processing"
+	StatusSubmitted  = "submitted"
+	StatusDelivered  = "delivered"
+	StatusDelayed    = "delayed"
+	StatusBounced    = "bounced"
+	StatusComplained = "complained"
+	StatusRejected   = "rejected"
+	StatusFailed     = "failed"
 )
+
+const MessageTypeTransactional = "transactional"
 
 type Message struct {
 	ID                string          `json:"id"`
