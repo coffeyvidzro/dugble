@@ -19,7 +19,6 @@ type ClaimedDelivery struct {
 	AttemptCount  int32
 	TeamID        uuid.UUID
 	EventType     string
-	APIVersion    string
 	Payload       json.RawMessage
 	OccurredAt    time.Time
 	URL           string
@@ -61,12 +60,13 @@ func (h *Handler) Handle(ctx context.Context, delivery ClaimedDelivery) error {
 	body, err := json.Marshal(struct {
 		ID         string          `json:"id"`
 		Type       string          `json:"type"`
-		APIVersion string          `json:"api_version"`
 		OccurredAt time.Time       `json:"occurred_at"`
 		Data       json.RawMessage `json:"data"`
 	}{
-		ID: delivery.EventID.String(), Type: delivery.EventType,
-		APIVersion: delivery.APIVersion, OccurredAt: delivery.OccurredAt.UTC(), Data: delivery.Payload,
+		ID:         delivery.EventID.String(),
+		Type:       delivery.EventType,
+		OccurredAt: delivery.OccurredAt.UTC(),
+		Data:       delivery.Payload,
 	})
 	if err != nil {
 		return h.finishFailure(ctx, delivery, nil, nil, fmt.Errorf("encode webhook payload: %w", err))
