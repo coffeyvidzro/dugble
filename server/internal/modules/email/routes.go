@@ -7,10 +7,11 @@ import (
 
 type TenantMiddleware func(tenant.Permission) echo.MiddlewareFunc
 
-func RegisterRoutes(router *echo.Echo, handler *Handler, tenantAccess TenantMiddleware) {
+func RegisterRoutes(router *echo.Echo, handler *Handler, auth, csrf echo.MiddlewareFunc, tenantMiddleware TenantMiddleware) {
 	emails := router.Group("/emails")
-	emails.GET("", handler.List, tenantAccess(tenant.PermissionEmailRead))
-	emails.POST("", handler.Send, tenantAccess(tenant.PermissionEmailSend))
-	emails.POST("/batch", handler.BatchSend, tenantAccess(tenant.PermissionEmailSend))
-	emails.GET("/:message_id", handler.Get, tenantAccess(tenant.PermissionEmailRead))
+	emails.Use(auth, csrf)
+	emails.GET("", handler.List, tenantMiddleware(tenant.PermissionEmailRead))
+	emails.POST("", handler.Send, tenantMiddleware(tenant.PermissionEmailSend))
+	emails.POST("/batch", handler.BatchSend, tenantMiddleware(tenant.PermissionEmailSend))
+	emails.GET("/:message_id", handler.Get, tenantMiddleware(tenant.PermissionEmailRead))
 }
