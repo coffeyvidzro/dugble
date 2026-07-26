@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
 
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
@@ -21,10 +22,14 @@ import (
 )
 
 const (
-	idempotencyHeader = "Idempotency-Key"
-	defaultLockTTL    = 30 * time.Second
-	defaultRecordTTL  = 24 * time.Hour
+	idempotencyHeader          = "Idempotency-Key"
+	idempotencyTenantHeader    = "X-Team-ID"
+	defaultLockTTL             = 30 * time.Second
+	defaultRecordTTL           = 24 * time.Hour
+	defaultMaxRequestBodyBytes = 8 << 20
 )
+
+var errIdempotencyBodyTooLarge = errors.New("idempotent request body is too large")
 
 var nonReplayableResponseHeaders = map[string]struct{}{
 	"Connection":          {},
@@ -43,9 +48,10 @@ var nonReplayableResponseHeaders = map[string]struct{}{
 }
 
 type IdempotencyConfig struct {
-	Repository *idempotency.Repository
-	LockTTL    time.Duration
-	RecordTTL  time.Duration
+	Repository          *idempotency.Repository
+	LockTTL             time.Duration
+	RecordTTL           time.Duration
+	MaxRequestBodyBytes int64
 }
 
 func Idempotency(config IdempotencyConfig) echo.MiddlewareFunc {
@@ -57,6 +63,11 @@ func Idempotency(config IdempotencyConfig) echo.MiddlewareFunc {
 	recordTTL := config.RecordTTL
 	if recordTTL <= 0 {
 		recordTTL = defaultRecordTTL
+	}
+
+	maxRequestBodyBytes := config.MaxRequestBodyBytes
+	if maxRequestBodyBytes <= 0 {
+		maxRequestBodyBytes = defaultMaxRequestBodyBytes
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -80,8 +91,11 @@ func Idempotency(config IdempotencyConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			body, err := readAndRestoreBody(c.Request())
+			body, err := readAndRestoreBody(c.Request(), maxRequestBodyBytes)
 			if err != nil {
+				if errors.Is(err, errIdempotencyBodyTooLarge) {
+					return httputil.Error(c, apperrors.NewPayloadTooLarge("Request body is too large"))
+				}
 				return httputil.Error(c, apperrors.NewBadRequest("Unable to read request body"))
 			}
 
@@ -218,34 +232,62 @@ func isCookieSessionRoute(path string) bool {
 }
 
 func requestIdempotencyScope(request *http.Request) (string, bool) {
+	tenantScope := requestTenantScope(request)
+
 	cookie, err := request.Cookie(authnz.SessionCookieName)
 	if err == nil && strings.TrimSpace(cookie.Value) != "" {
-		return credentialScope("session", cookie.Value), true
+		return credentialScope("session", cookie.Value, tenantScope), true
 	}
 
 	if token, ok := parseBearerToken(request.Header.Get(echo.HeaderAuthorization)); ok {
-		return credentialScope("bearer", token), true
+		return credentialScope("bearer", token, tenantScope), true
 	}
 
 	return "", false
 }
 
-func credentialScope(kind string, credential string) string {
+func requestTenantScope(request *http.Request) string {
+	value := strings.TrimSpace(request.Header.Get(idempotencyTenantHeader))
+	if value == "" {
+		return ""
+	}
+
+	teamID, err := uuid.Parse(value)
+	if err == nil {
+		return teamID.String()
+	}
+
+	hash := sha256.Sum256([]byte(value))
+	return "invalid-" + hex.EncodeToString(hash[:])
+}
+
+func credentialScope(kind string, credential string, tenantScope string) string {
 	hash := sha256.New()
 	_, _ = hash.Write([]byte(kind))
 	_, _ = hash.Write([]byte("\n"))
 	_, _ = hash.Write([]byte(credential))
-	return kind + ":" + hex.EncodeToString(hash.Sum(nil))
+	scope := kind + ":" + hex.EncodeToString(hash.Sum(nil))
+	if tenantScope != "" {
+		scope += ":team:" + tenantScope
+	}
+	return scope
 }
 
-func readAndRestoreBody(request *http.Request) ([]byte, error) {
+func readAndRestoreBody(request *http.Request, maxBytes int64) ([]byte, error) {
 	if request.Body == nil {
 		return nil, nil
 	}
 
-	body, err := io.ReadAll(request.Body)
+	reader := io.Reader(request.Body)
+	if maxBytes > 0 {
+		reader = io.LimitReader(request.Body, maxBytes+1)
+	}
+	body, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, err
+	}
+	if maxBytes > 0 && int64(len(body)) > maxBytes {
+		return nil, errIdempotencyBodyTooLarge
 	}
 
 	request.Body = io.NopCloser(bytes.NewReader(body))
