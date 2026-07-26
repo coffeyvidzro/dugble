@@ -86,7 +86,7 @@ func (c *Client) Post(ctx context.Context, rawURL string, headers http.Header, b
 	if err != nil {
 		return HTTPResponse{}, fmt.Errorf("send webhook request: %w", err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 
 	limited := io.LimitReader(response.Body, maxResponseBodyBytes+1)
 	responseBody, err := io.ReadAll(limited)
