@@ -2,6 +2,7 @@ package config
 
 import (
 	"strings"
+	"time"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"
@@ -25,6 +26,13 @@ type AWSConfig struct {
 	SecretKey string `env:"SECRET_ACCESS_KEY,required,notEmpty"`
 }
 
+type MessagingConfig struct {
+	URL                string        `env:"URL" envDefault:"nats://localhost:4222"`
+	OutboxPollInterval time.Duration `env:"OUTBOX_POLL_INTERVAL" envDefault:"500ms"`
+	OutboxBatchSize    int           `env:"OUTBOX_BATCH_SIZE" envDefault:"100"`
+	OutboxLockTimeout  time.Duration `env:"OUTBOX_LOCK_TIMEOUT" envDefault:"30s"`
+}
+
 type BackofficeConfig struct {
 	HTTPPort    string   `env:"HTTP_PORT" envDefault:"8081"`
 	AdminEmails []string `env:"ADMIN_EMAILS" envSeparator:","`
@@ -41,6 +49,7 @@ type Config struct {
 	BackendURL   string           `env:"BACKEND_URL"  envDefault:"http://localhost:8080"`
 	CookieDomain string           `env:"COOKIE_DOMAIN"`
 	AWS          AWSConfig        `envPrefix:"AWS_"`
+	Messaging    MessagingConfig  `envPrefix:"NATS_"`
 	Arkesel      ProviderConfig   `envPrefix:"ARKESEL_"`
 	MNotify      ProviderConfig   `envPrefix:"MNOTIFY_"`
 	Hubtel       HubtelConfig     `envPrefix:"HUBTEL_"`
@@ -77,6 +86,16 @@ func (c *Config) normalize() {
 	c.AWS.Region = strings.TrimSpace(c.AWS.Region)
 	c.AWS.AccessKey = strings.TrimSpace(c.AWS.AccessKey)
 	c.AWS.SecretKey = strings.TrimSpace(c.AWS.SecretKey)
+	c.Messaging.URL = strings.TrimSpace(c.Messaging.URL)
+	if c.Messaging.OutboxPollInterval <= 0 {
+		c.Messaging.OutboxPollInterval = 500 * time.Millisecond
+	}
+	if c.Messaging.OutboxBatchSize <= 0 {
+		c.Messaging.OutboxBatchSize = 100
+	}
+	if c.Messaging.OutboxLockTimeout <= 0 {
+		c.Messaging.OutboxLockTimeout = 30 * time.Second
+	}
 	c.Arkesel.APIKey = strings.TrimSpace(c.Arkesel.APIKey)
 	c.Arkesel.BaseURL = strings.TrimRight(strings.TrimSpace(c.Arkesel.BaseURL), "/")
 	c.MNotify.APIKey = strings.TrimSpace(c.MNotify.APIKey)
