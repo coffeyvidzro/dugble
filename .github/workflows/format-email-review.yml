@@ -1,0 +1,33 @@
+name: Format email review fixes
+
+on:
+  push:
+    branches:
+      - agent/email-api-review-fixes
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Format changed files
+        run: |
+          gofmt -w \
+            server/internal/modules/email/handler.go \
+            server/internal/modules/email/service.go \
+            server/internal/modules/email/service_test.go
+
+      - name: Upload formatted files
+        uses: actions/upload-artifact@v7
+        with:
+          name: formatted-email-review
+          path: |
+            server/internal/modules/email/handler.go
+            server/internal/modules/email/service.go
+            server/internal/modules/email/service_test.go
+          retention-days: 1
