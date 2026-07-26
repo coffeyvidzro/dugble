@@ -173,6 +173,7 @@ func enqueueDelivery(ctx context.Context, queue DeliveryQueue, tx pgx.Tx, messag
 		if scheduled, ok := queue.(scheduledDeliveryQueue); ok {
 			return scheduled.EnqueueEmailDeliveryAtTx(ctx, tx, messageID, teamID, *scheduledAt)
 		}
+		return errors.New("email delivery queue does not support scheduled delivery")
 	}
 	return queue.EnqueueEmailDeliveryTx(ctx, tx, messageID, teamID)
 }

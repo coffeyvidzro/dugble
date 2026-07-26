@@ -3,6 +3,7 @@ package email
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -14,6 +15,25 @@ type configuredDeliveryQueue struct{}
 
 func (configuredDeliveryQueue) EnqueueEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error {
 	return nil
+}
+
+type immediateOnlyDeliveryQueue struct{ calls int }
+
+func (q *immediateOnlyDeliveryQueue) EnqueueEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error {
+	q.calls++
+	return nil
+}
+
+func TestEnqueueDeliveryDoesNotSilentlyIgnoreSchedule(t *testing.T) {
+	queue := &immediateOnlyDeliveryQueue{}
+	scheduledAt := time.Now().UTC().Add(time.Hour)
+	err := enqueueDelivery(context.Background(), queue, nil, uuid.New(), uuid.New(), &scheduledAt)
+	if err == nil {
+		t.Fatal("expected a queue without scheduling support to return an error")
+	}
+	if queue.calls != 0 {
+		t.Fatalf("immediate enqueue calls = %d, want 0", queue.calls)
+	}
 }
 
 func TestBatchSendValidatesEntireBatchBeforeStartingTransaction(t *testing.T) {

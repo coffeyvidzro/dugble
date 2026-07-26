@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -58,6 +59,21 @@ func TestQueueEnqueueEmailDeliveryTx(t *testing.T) {
 	}
 	if command.EventID != store.event.ID || command.MessageID != messageID || command.TeamID != teamID || command.SchemaVersion != 1 {
 		t.Fatalf("unexpected command: %+v", command)
+	}
+}
+
+func TestQueueEnqueueEmailDeliveryAtTxPreservesSchedule(t *testing.T) {
+	store := &recordingStore{}
+	scheduledAt := time.Now().UTC().Add(time.Hour).Truncate(time.Microsecond)
+
+	err := NewQueue(store).EnqueueEmailDeliveryAtTx(
+		context.Background(), nil, uuid.New(), uuid.New(), scheduledAt,
+	)
+	if err != nil {
+		t.Fatalf("enqueue scheduled email delivery: %v", err)
+	}
+	if !store.event.AvailableAt.Equal(scheduledAt) {
+		t.Fatalf("available at = %s, want %s", store.event.AvailableAt, scheduledAt)
 	}
 }
 
