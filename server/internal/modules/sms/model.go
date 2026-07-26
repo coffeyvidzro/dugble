@@ -1,6 +1,7 @@
 package sms
 
 import (
+	"bytes"
 	"encoding/json"
 	"time"
 )
@@ -17,6 +18,7 @@ const (
 	StatusFailed        = "failed"
 	StatusExpired       = "expired"
 	StatusUnknown       = "unknown"
+	StatusCanceled      = "canceled"
 )
 
 type Message struct {
@@ -34,6 +36,8 @@ type Message struct {
 	Billing            Billing         `json:"billing"`
 	ErrorMessage       *string         `json:"error_message,omitempty"`
 	Metadata           json.RawMessage `json:"metadata"`
+	Tags               []Tag           `json:"tags"`
+	ScheduledAt        *time.Time      `json:"scheduled_at,omitempty"`
 	SubmittedAt        *time.Time      `json:"submitted_at,omitempty"`
 	DeliveredAt        *time.Time      `json:"delivered_at,omitempty"`
 	CreatedAt          time.Time       `json:"created_at"`
@@ -48,14 +52,18 @@ type Destination struct {
 }
 
 type SMSResponse struct {
+	Object      string          `json:"object"`
 	ID          string          `json:"id"`
+	MessageID   *string         `json:"message_id"`
 	To          string          `json:"to"`
 	From        string          `json:"from"`
 	Body        string          `json:"body"`
-	Status      string          `json:"status"`
+	Status      string          `json:"last_event"`
 	Destination Destination     `json:"destination"`
 	Segments    int32           `json:"segments"`
 	Metadata    json.RawMessage `json:"metadata"`
+	Tags        []Tag           `json:"tags"`
+	ScheduledAt *time.Time      `json:"scheduled_at"`
 	Billing     Billing         `json:"billing"`
 	Failure     *SMSFailure     `json:"failure,omitempty"`
 	SubmittedAt *time.Time      `json:"submitted_at,omitempty"`
@@ -71,7 +79,9 @@ type SMSFailure struct {
 
 func (m Message) Response() SMSResponse {
 	return SMSResponse{
+		Object:      "sms",
 		ID:          m.ID,
+		MessageID:   m.ProviderMessageID,
 		To:          m.To,
 		From:        m.From,
 		Body:        m.Body,
@@ -79,6 +89,8 @@ func (m Message) Response() SMSResponse {
 		Destination: Destination{Country: m.DestinationCountry},
 		Segments:    m.Segments,
 		Metadata:    m.Metadata,
+		Tags:        nonNilSMSTags(m.Tags),
+		ScheduledAt: m.ScheduledAt,
 		Billing:     m.Billing,
 		Failure:     publicFailure(m.Status),
 		SubmittedAt: m.SubmittedAt,
@@ -124,6 +136,8 @@ type SendRequest struct {
 	From               string          `json:"from"`
 	Body               string          `json:"body"`
 	Metadata           json.RawMessage `json:"metadata,omitempty"`
+	Tags               []Tag           `json:"tags,omitempty"`
+	ScheduledAt        string          `json:"scheduled_at,omitempty"`
 	DestinationCountry string          `json:"-"`
 }
 
@@ -131,27 +145,44 @@ type BatchSendRequest struct {
 	Messages []SendRequest `json:"messages"`
 }
 
-type BatchSendError struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
+func (request *BatchSendRequest) UnmarshalJSON(data []byte) error {
+	data = bytes.TrimSpace(data)
+	if len(data) > 0 && data[0] == '[' {
+		return json.Unmarshal(data, &request.Messages)
+	}
+	type alias BatchSendRequest
+	return json.Unmarshal(data, (*alias)(request))
 }
 
-type BatchSendResult struct {
-	Index   int             `json:"index"`
-	Success bool            `json:"success"`
-	Message *SMSResponse    `json:"message,omitempty"`
-	Error   *BatchSendError `json:"error,omitempty"`
+type Tag struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
-type BatchSendSummary struct {
-	Requested int `json:"requested"`
-	Succeeded int `json:"succeeded"`
-	Failed    int `json:"failed"`
+type SendResponse struct {
+	Object string `json:"object"`
+	ID     string `json:"id"`
 }
 
-type BatchSendResponse struct {
-	Results []BatchSendResult `json:"results"`
-	Summary BatchSendSummary  `json:"summary"`
+type UpdateRequest struct {
+	ScheduledAt string `json:"scheduled_at"`
+}
+
+func (m Message) SendResponse() SendResponse { return SendResponse{Object: "sms", ID: m.ID} }
+
+func SendResponses(messages []Message) []SendResponse {
+	responses := make([]SendResponse, len(messages))
+	for index, message := range messages {
+		responses[index] = message.SendResponse()
+	}
+	return responses
+}
+
+func nonNilSMSTags(tags []Tag) []Tag {
+	if tags == nil {
+		return []Tag{}
+	}
+	return tags
 }
 
 type ListRequest struct {

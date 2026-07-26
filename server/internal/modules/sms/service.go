@@ -4,11 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"regexp"
 	"strings"
-	"unicode/utf16"
-	"unicode/utf8"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -17,18 +14,6 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/modules/wallet"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
-)
-
-const (
-	maxBodyCharacters = 1600
-	maxBatchMessages  = 50
-)
-
-var e164Pattern = regexp.MustCompile(`^\+[1-9]\d{7,14}$`)
-
-var (
-	gsm7BasicRunes    = runeSet("@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ ÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà")
-	gsm7ExtendedRunes = runeSet("\f^{}\\[~]|€")
 )
 
 type Sender interface {
@@ -40,6 +25,13 @@ type WalletLedger interface {
 	DebitSMSCharge(ctx context.Context, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
 	DebitSMSChargeTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
 	RefundSMSCharge(ctx context.Context, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
+	RefundSMSChargeTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
+}
+
+type scheduledDeliveryQueue interface {
+	EnqueueSMSDeliveryAtTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID, time.Time) error
+	CancelSMSDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error
+	RescheduleSMSDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID, time.Time) error
 }
 
 // DeliveryQueue enqueues durable SMS delivery work.
@@ -145,6 +137,8 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 		TeamID: tenantContext.TeamID, SenderID: senderID, To: normalized.To, From: normalized.From,
 		Body: normalized.Body, Status: StatusQueued, Segments: segments,
 		CostMicros: quote.TotalCostMicros, Metadata: normalized.Metadata,
+		Tags:               normalized.Tags,
+		ScheduledAt:        normalizedScheduledAt(normalized.ScheduledAt),
 		DestinationCountry: quote.DestinationCountry, PricingRuleID: quote.PricingRuleID,
 		UnitCostMicros: quote.UnitCostMicros,
 	})
@@ -173,7 +167,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 		return Message{}, apperrors.NewInternal("Unable to debit wallet for SMS", err)
 	}
 
-	if err := s.delivery.EnqueueSMSDeliveryTx(ctx, tx, messageID, tenantContext.TeamID); err != nil {
+	if err := enqueueSMSDelivery(ctx, s.delivery, tx, messageID, tenantContext.TeamID, created.ScheduledAt); err != nil {
 		return Message{}, apperrors.NewInternal("Unable to enqueue SMS delivery", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -183,67 +177,193 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	return created, nil
 }
 
-func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) (BatchSendResponse, error) {
+func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Message, error) {
 	if err := validateBatchSend(req); err != nil {
-		return BatchSendResponse{}, err
+		return nil, err
 	}
-	if _, err := requireTenant(ctx, tenant.PermissionSMSSend); err != nil {
-		return BatchSendResponse{}, err
+	tenantContext, err := requireTenant(ctx, tenant.PermissionSMSSend)
+	if err != nil {
+		return nil, err
 	}
 	if s.wallet == nil {
-		return BatchSendResponse{}, apperrors.NewInternal("SMS wallet ledger is not configured", nil)
+		return nil, apperrors.NewInternal("SMS wallet ledger is not configured", nil)
 	}
 	if s.delivery == nil {
-		return BatchSendResponse{}, apperrors.NewInternal("SMS delivery queue is not configured", nil)
+		return nil, apperrors.NewInternal("SMS delivery queue is not configured", nil)
 	}
 
-	response := BatchSendResponse{
-		Results: make([]BatchSendResult, 0, len(req.Messages)),
-		Summary: BatchSendSummary{Requested: len(req.Messages)},
+	type preparedMessage struct {
+		request  SendRequest
+		senderID *uuid.UUID
+		segments int32
 	}
-
-	for index, message := range req.Messages {
-		created, err := s.Send(ctx, message)
-		result := BatchSendResult{Index: index}
-		if created.ID != "" {
-			publicMessage := created.Response()
-			result.Message = &publicMessage
-		}
+	prepared := make([]preparedMessage, len(req.Messages))
+	senders := make(map[string]*uuid.UUID)
+	for index, request := range req.Messages {
+		normalized, err := validateSend(request)
 		if err != nil {
-			publicError := newBatchSendError(err)
-			result.Error = &publicError
-			response.Summary.Failed++
-		} else {
-			result.Success = true
-			response.Summary.Succeeded++
+			return nil, err
 		}
-		response.Results = append(response.Results, result)
+		senderKey := strings.ToLower(normalized.From)
+		senderID, exists := senders[senderKey]
+		if !exists {
+			senderID, err = s.repository.FindApprovedSender(ctx, tenantContext.TeamID, normalized.From)
+			if err != nil {
+				return nil, apperrors.NewInternal("Unable to validate SMS sender ID", err)
+			}
+			if senderID == nil {
+				return nil, apperrors.NewBadRequest("SMS sender ID must be approved before use")
+			}
+			senders[senderKey] = senderID
+		}
+		prepared[index] = preparedMessage{request: normalized, senderID: senderID, segments: countSegments(normalized.Body)}
 	}
 
-	return response, nil
+	tx, err := s.repository.BeginTx(ctx)
+	if err != nil {
+		return nil, apperrors.NewInternal("Unable to begin SMS batch transaction", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	txRepository := s.repository.WithTx(tx)
+	result := make([]Message, 0, len(prepared))
+	for _, item := range prepared {
+		quote, err := txRepository.QuoteSMS(ctx, tenantContext.TeamID, item.request.DestinationCountry, item.segments)
+		if err != nil {
+			if errors.Is(err, ErrSMSPricingNotConfigured) {
+				return nil, apperrors.NewBadRequest("SMS pricing is not configured for the destination country")
+			}
+			return nil, apperrors.NewInternal("Unable to calculate SMS batch price", err)
+		}
+		created, err := txRepository.Create(ctx, createMessageParams{
+			TeamID: tenantContext.TeamID, SenderID: item.senderID, To: item.request.To, From: item.request.From,
+			Body: item.request.Body, Status: StatusQueued, Segments: item.segments,
+			CostMicros: quote.TotalCostMicros, Metadata: item.request.Metadata, Tags: item.request.Tags,
+			ScheduledAt:        normalizedScheduledAt(item.request.ScheduledAt),
+			DestinationCountry: quote.DestinationCountry, PricingRuleID: quote.PricingRuleID, UnitCostMicros: quote.UnitCostMicros,
+		})
+		if err != nil {
+			return nil, apperrors.NewInternal("Unable to create SMS batch message", err)
+		}
+		messageID := uuid.MustParse(created.ID)
+		if _, err := s.wallet.DebitSMSChargeTx(ctx, tx, tenantContext.TeamID, created.CostMicros, messageID, item.request.Metadata); err != nil {
+			if errors.Is(err, wallet.ErrInsufficientBalance) {
+				return nil, apperrors.NewBadRequest("Insufficient wallet balance for SMS batch")
+			}
+			return nil, apperrors.NewInternal("Unable to debit wallet for SMS batch", err)
+		}
+		if err := enqueueSMSDelivery(ctx, s.delivery, tx, messageID, tenantContext.TeamID, created.ScheduledAt); err != nil {
+			return nil, apperrors.NewInternal("Unable to enqueue SMS batch delivery", err)
+		}
+		result = append(result, created)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, apperrors.NewInternal("Unable to commit SMS batch transaction", err)
+	}
+	return result, nil
 }
 
-func newBatchSendError(err error) BatchSendError {
-	result := BatchSendError{
-		Code:    "INTERNAL_ERROR",
-		Message: "An unexpected error occurred",
+func (s *Service) Cancel(ctx context.Context, value string) (SendResponse, error) {
+	tenantContext, id, queue, err := s.scheduledMutationContext(ctx, value)
+	if err != nil {
+		return SendResponse{}, err
 	}
-	var appErr *apperrors.AppError
-	if errors.As(err, &appErr) {
-		result.Code = appErr.Code
-		result.Message = appErr.Message
+	tx, err := s.repository.BeginTx(ctx)
+	if err != nil {
+		return SendResponse{}, apperrors.NewInternal("Unable to begin SMS cancellation transaction", err)
 	}
-	return result
+	defer func() { _ = tx.Rollback(ctx) }()
+	message, err := s.repository.CancelTx(ctx, tx, id, tenantContext.TeamID)
+	if err != nil {
+		return SendResponse{}, scheduledMutationError(err, "canceled")
+	}
+	if err := queue.CancelSMSDeliveryTx(ctx, tx, id, tenantContext.TeamID); err != nil {
+		return SendResponse{}, apperrors.NewInternal("Unable to cancel SMS delivery", err)
+	}
+	if _, err := s.wallet.RefundSMSChargeTx(ctx, tx, tenantContext.TeamID, message.CostMicros, id, message.Metadata); err != nil {
+		return SendResponse{}, apperrors.NewInternal("Unable to refund canceled SMS", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return SendResponse{}, apperrors.NewInternal("Unable to commit SMS cancellation", err)
+	}
+	return message.SendResponse(), nil
 }
 
-func validateBatchSend(req BatchSendRequest) error {
-	if len(req.Messages) == 0 {
-		return apperrors.NewBadRequest("At least one SMS message is required")
+func (s *Service) Update(ctx context.Context, value string, req UpdateRequest) (SendResponse, error) {
+	tenantContext, id, queue, err := s.scheduledMutationContext(ctx, value)
+	if err != nil {
+		return SendResponse{}, err
 	}
-	if len(req.Messages) > maxBatchMessages {
-		return apperrors.NewBadRequest(fmt.Sprintf("Batch SMS requests can include at most %d messages", maxBatchMessages))
+	scheduledAt, err := normalizeSMSSchedule(req.ScheduledAt, false)
+	if err != nil {
+		return SendResponse{}, err
 	}
-	return nil
+	if scheduledAt == nil {
+		return SendResponse{}, apperrors.NewBadRequest("scheduled_at is required")
+	}
+	tx, err := s.repository.BeginTx(ctx)
+	if err != nil {
+		return SendResponse{}, apperrors.NewInternal("Unable to begin SMS update transaction", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	message, err := s.repository.RescheduleTx(ctx, tx, id, tenantContext.TeamID, *scheduledAt)
+	if err != nil {
+		return SendResponse{}, scheduledMutationError(err, "updated")
+	}
+	if err := queue.RescheduleSMSDeliveryTx(ctx, tx, id, tenantContext.TeamID, *scheduledAt); err != nil {
+		return SendResponse{}, apperrors.NewInternal("Unable to reschedule SMS delivery", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return SendResponse{}, apperrors.NewInternal("Unable to commit SMS update", err)
+	}
+	return message.SendResponse(), nil
+}
+
+func (s *Service) scheduledMutationContext(ctx context.Context, value string) (tenant.Context, uuid.UUID, scheduledDeliveryQueue, error) {
+	tenantContext, err := requireTenant(ctx, tenant.PermissionSMSSend)
+	if err != nil {
+		return tenant.Context{}, uuid.Nil, nil, err
+	}
+	id, err := uuid.Parse(strings.TrimSpace(value))
+	if err != nil {
+		return tenant.Context{}, uuid.Nil, nil, apperrors.NewBadRequest("SMS message id must be a valid UUID")
+	}
+	queue, ok := s.delivery.(scheduledDeliveryQueue)
+	if !ok {
+		return tenant.Context{}, uuid.Nil, nil, apperrors.NewInternal("SMS delivery queue does not support scheduling", nil)
+	}
+	if s.wallet == nil {
+		return tenant.Context{}, uuid.Nil, nil, apperrors.NewInternal("SMS wallet ledger is not configured", nil)
+	}
+	return tenantContext, id, queue, nil
+}
+
+func scheduledMutationError(err error, action string) error {
+	if errors.Is(err, ErrMessageNotFound) {
+		return apperrors.NewNotFound("SMS message not found")
+	}
+	if errors.Is(err, ErrMessageNotSchedulable) {
+		return apperrors.NewConflict("Only pending scheduled SMS messages outside the delivery cutoff can be " + action)
+	}
+	return apperrors.NewInternal("Unable to update SMS message", err)
+}
+
+func normalizedScheduledAt(value string) *time.Time {
+	if value == "" {
+		return nil
+	}
+	parsed, _ := time.Parse(time.RFC3339Nano, value)
+	return &parsed
+}
+
+func enqueueSMSDelivery(ctx context.Context, queue DeliveryQueue, tx pgx.Tx, messageID, teamID uuid.UUID, scheduledAt *time.Time) error {
+	if scheduledAt == nil {
+		return queue.EnqueueSMSDeliveryTx(ctx, tx, messageID, teamID)
+	}
+	scheduled, ok := queue.(scheduledDeliveryQueue)
+	if !ok {
+		return errors.New("SMS delivery queue does not support scheduled delivery")
+	}
+	return scheduled.EnqueueSMSDeliveryAtTx(ctx, tx, messageID, teamID, *scheduledAt)
 }
 
 func (s *Service) SyncStatus(ctx context.Context, messageID string) (Message, error) {
@@ -300,7 +420,7 @@ func resolveProviderStatus(current string, providerStatus string) string {
 
 func isTerminalStatus(status string) bool {
 	switch status {
-	case StatusRefundPending, StatusDelivered, StatusUndelivered, StatusRejected, StatusFailed, StatusExpired:
+	case StatusRefundPending, StatusDelivered, StatusUndelivered, StatusRejected, StatusFailed, StatusExpired, StatusCanceled:
 		return true
 	default:
 		return false
@@ -322,77 +442,10 @@ func statusProgressRank(status string) (int, bool) {
 	}
 }
 
-func validateSend(req SendRequest) (SendRequest, error) {
-	req.To = strings.TrimSpace(req.To)
-	req.From = strings.TrimSpace(req.From)
-	if req.To == "" {
-		return SendRequest{}, apperrors.NewBadRequest("SMS recipient is required")
-	}
-	if !e164Pattern.MatchString(req.To) {
-		return SendRequest{}, apperrors.NewBadRequest("SMS recipient must be a valid E.164 phone number")
-	}
-	destinationCountry, err := smsapi.ResolveDestinationCountry(req.To)
-	if err != nil {
-		return SendRequest{}, apperrors.NewBadRequest("SMS recipient country is not supported")
-	}
-	req.DestinationCountry = destinationCountry
-	if req.From == "" {
-		return SendRequest{}, apperrors.NewBadRequest("SMS sender ID is required")
-	}
-	if utf8.RuneCountInString(req.From) > smsapi.MaxSenderIDCharacters {
-		return SendRequest{}, apperrors.NewBadRequest("SMS sender ID must be at most 11 characters")
-	}
-	if strings.TrimSpace(req.Body) == "" {
-		return SendRequest{}, apperrors.NewBadRequest("SMS body is required")
-	}
-	if utf8.RuneCountInString(req.Body) > maxBodyCharacters {
-		return SendRequest{}, apperrors.NewBadRequest(fmt.Sprintf("SMS body must be at most %d characters", maxBodyCharacters))
-	}
-	if len(req.Metadata) == 0 {
-		req.Metadata = json.RawMessage(`{}`)
-	}
-	if !json.Valid(req.Metadata) {
-		return SendRequest{}, apperrors.NewBadRequest("Metadata must be valid JSON")
-	}
-	return req, nil
-}
-
-func countSegments(body string) int32 {
-	unitCount, singleSegmentLimit, multiSegmentLimit := smsEncodingUnits(body)
-	if unitCount <= singleSegmentLimit {
-		return 1
-	}
-	return int32((unitCount + multiSegmentLimit - 1) / multiSegmentLimit)
-}
-
-func smsEncodingUnits(body string) (int, int, int) {
-	septets := 0
-	for _, value := range body {
-		if gsm7BasicRunes[value] {
-			septets++
-			continue
-		}
-		if gsm7ExtendedRunes[value] {
-			septets += 2
-			continue
-		}
-		return len(utf16.Encode([]rune(body))), 70, 67
-	}
-	return septets, 160, 153
-}
-
-func runeSet(values string) map[rune]bool {
-	set := make(map[rune]bool, utf8.RuneCountInString(values))
-	for _, value := range values {
-		set[value] = true
-	}
-	return set
-}
-
 func MapProviderStatus(status string) string {
 	status = strings.ToLower(strings.TrimSpace(status))
 	switch status {
-	case StatusQueued, StatusProcessing, StatusRefundPending, StatusSubmitted, StatusSent, StatusDelivered, StatusUndelivered, StatusRejected, StatusFailed, StatusExpired, StatusUnknown:
+	case StatusQueued, StatusProcessing, StatusRefundPending, StatusSubmitted, StatusSent, StatusDelivered, StatusUndelivered, StatusRejected, StatusFailed, StatusExpired, StatusUnknown, StatusCanceled:
 		return status
 	default:
 		return StatusUnknown

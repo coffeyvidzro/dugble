@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { ArrowLeft } from "lucide-react";
-import { baseUrl } from "@/lib/site";
 import {
     formatBlogDate,
     getBlogPost,
@@ -31,7 +30,10 @@ export async function generateMetadata({
         return {};
     }
 
-    const url = `${baseUrl}${getBlogPostPath(post.slug)}`;
+    // Pass both the title & label to dynamic OG route
+    const ogUrl = `/og?title=${encodeURIComponent(
+        post.metadata.title,
+    )}&label=${encodeURIComponent("Dugble Blog")}`;
 
     return {
         title: post.metadata.title,
@@ -41,17 +43,14 @@ export async function generateMetadata({
             description: post.metadata.summary,
             type: "article",
             publishedTime: post.metadata.publishedAt,
-            url,
+            url: getBlogPostPath(post.slug),
             images: [
-                `${baseUrl}/og?title=${encodeURIComponent(post.metadata.title)}`,
-            ],
-        },
-        twitter: {
-            card: "summary_large_image",
-            title: post.metadata.title,
-            description: post.metadata.summary,
-            images: [
-                `${baseUrl}/og?title=${encodeURIComponent(post.metadata.title)}`,
+                {
+                    url: ogUrl,
+                    width: 1200,
+                    height: 630,
+                    alt: post.metadata.title,
+                },
             ],
         },
     };

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -26,6 +27,24 @@ type DeliverCommand struct {
 type eventStore interface {
 	Enqueue(context.Context, outbox.Event) (uuid.UUID, error)
 	EnqueueTx(context.Context, pgx.Tx, outbox.Event) (uuid.UUID, error)
+	DeletePendingTx(context.Context, pgx.Tx, uuid.UUID) error
+	UpdatePendingAvailableAtTx(context.Context, pgx.Tx, uuid.UUID, time.Time) error
+}
+
+func (q *Queue) RescheduleEmailDeliveryTx(ctx context.Context, tx pgx.Tx, messageID uuid.UUID, _ uuid.UUID, availableAt time.Time) error {
+	if q == nil || q.store == nil {
+		return errors.New("email delivery outbox is not configured")
+	}
+	eventID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(deliveryNamespace+messageID.String()))
+	return q.store.UpdatePendingAvailableAtTx(ctx, tx, eventID, availableAt)
+}
+
+func (q *Queue) CancelEmailDeliveryTx(ctx context.Context, tx pgx.Tx, messageID uuid.UUID, _ uuid.UUID) error {
+	if q == nil || q.store == nil {
+		return errors.New("email delivery outbox is not configured")
+	}
+	eventID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(deliveryNamespace+messageID.String()))
+	return q.store.DeletePendingTx(ctx, tx, eventID)
 }
 
 type Queue struct {
@@ -47,6 +66,10 @@ func (q *Queue) EnqueueEmailDelivery(ctx context.Context, messageID uuid.UUID, t
 }
 
 func (q *Queue) EnqueueEmailDeliveryTx(ctx context.Context, tx pgx.Tx, messageID uuid.UUID, teamID uuid.UUID) error {
+	return q.EnqueueEmailDeliveryAtTx(ctx, tx, messageID, teamID, time.Time{})
+}
+
+func (q *Queue) EnqueueEmailDeliveryAtTx(ctx context.Context, tx pgx.Tx, messageID uuid.UUID, teamID uuid.UUID, availableAt time.Time) error {
 	if q == nil || q.store == nil {
 		return errors.New("email delivery outbox is not configured")
 	}
@@ -54,6 +77,7 @@ func (q *Queue) EnqueueEmailDeliveryTx(ctx context.Context, tx pgx.Tx, messageID
 	if err != nil {
 		return err
 	}
+	event.AvailableAt = availableAt
 	_, err = q.store.EnqueueTx(ctx, tx, event)
 	return err
 }

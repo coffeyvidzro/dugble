@@ -34,6 +34,11 @@ type EmailMessage struct {
 	FailedAt          pgtype.Timestamptz `db:"failed_at" json:"failed_at"`
 	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	Recipients        []byte             `db:"recipients" json:"recipients"`
+	Headers           []byte             `db:"headers" json:"headers"`
+	Attachments       []byte             `db:"attachments" json:"attachments"`
+	Tags              []byte             `db:"tags" json:"tags"`
+	ScheduledAt       pgtype.Timestamptz `db:"scheduled_at" json:"scheduled_at"`
 }
 
 type IdempotencyKey struct {
@@ -146,6 +151,8 @@ type SmsMessage struct {
 	CostMicros         int64              `db:"cost_micros" json:"cost_micros"`
 	ErrorMessage       *string            `db:"error_message" json:"error_message"`
 	Metadata           []byte             `db:"metadata" json:"metadata"`
+	Tags               []byte             `db:"tags" json:"tags"`
+	ScheduledAt        pgtype.Timestamptz `db:"scheduled_at" json:"scheduled_at"`
 	SubmittedAt        pgtype.Timestamptz `db:"submitted_at" json:"submitted_at"`
 	DeliveredAt        pgtype.Timestamptz `db:"delivered_at" json:"delivered_at"`
 	CreatedAt          pgtype.Timestamptz `db:"created_at" json:"created_at"`

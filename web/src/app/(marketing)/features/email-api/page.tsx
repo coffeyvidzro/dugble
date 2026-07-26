@@ -8,20 +8,15 @@ import { Separator } from "@/components/ui/separator";
 import { Cta } from "@/components/marketing/cta";
 
 export const metadata: Metadata = {
-    title: "Email API | Dugble",
+    title: "Email API",
     description:
         "Send receipts, password resets, and lifecycle emails reliably with Dugble's developer-first API.",
     openGraph: {
-        title: "Email API | Dugble",
+        title: "Email API",
         description:
             "Send receipts, password resets, and lifecycle emails reliably with Dugble's developer-first API.",
+        url: "/features/email-api",
         type: "website",
-    },
-    twitter: {
-        card: "summary_large_image",
-        title: "Email API | Dugble",
-        description:
-            "Send receipts, password resets, and lifecycle emails reliably with Dugble's developer-first API.",
     },
 };
 

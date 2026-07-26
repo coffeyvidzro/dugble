@@ -2,12 +2,9 @@ package sms
 
 import (
 	"encoding/json"
-	"errors"
 	"strings"
 	"testing"
 	"time"
-
-	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
 func TestValidateSendRequiresE164Recipient(t *testing.T) {
@@ -142,6 +139,7 @@ func TestSMSResponseJSONUsesPublicRepresentation(t *testing.T) {
 		Billing:            billingFromAmounts(9_000, 9_000),
 		ErrorMessage:       &internalError,
 		Metadata:           json.RawMessage(`{"campaign":"welcome"}`),
+		Tags:               []Tag{{Name: "category", Value: "welcome_sms"}},
 		SubmittedAt:        &now,
 		CreatedAt:          now,
 		UpdatedAt:          now,
@@ -168,6 +166,10 @@ func TestSMSResponseJSONUsesPublicRepresentation(t *testing.T) {
 		}
 	}
 	for _, expected := range []string{
+		`"object":"sms"`,
+		`"message_id":"provider-secret"`,
+		`"last_event":"failed"`,
+		`"tags":[{"name":"category","value":"welcome_sms"}]`,
 		`"metadata":{"campaign":"welcome"}`,
 		`"destination":{"country":"GH"}`,
 		`"segments":1`,
@@ -183,21 +185,82 @@ func TestSMSResponseJSONUsesPublicRepresentation(t *testing.T) {
 	}
 }
 
+func TestSMSSendResponseIsCompact(t *testing.T) {
+	payload, err := json.Marshal((Message{ID: "message-id", Body: "private"}).SendResponse())
+	if err != nil {
+		t.Fatalf("marshal send response: %v", err)
+	}
+	if string(payload) != `{"object":"sms","id":"message-id"}` {
+		t.Fatalf("send response = %s", payload)
+	}
+}
+
+func TestSMSSendResponsesPreserveBatchOrder(t *testing.T) {
+	responses := SendResponses([]Message{{ID: "first"}, {ID: "second"}})
+	if len(responses) != 2 || responses[0].ID != "first" || responses[1].ID != "second" {
+		t.Fatalf("send responses = %#v", responses)
+	}
+}
+
+func TestBatchSendRequestAcceptsTopLevelArray(t *testing.T) {
+	var request BatchSendRequest
+	if err := json.Unmarshal([]byte(`[
+		{"to":"+233241234567","from":"DUGBLE","body":"first"},
+		{"to":"+233201234567","from":"DUGBLE","body":"second"}
+	]`), &request); err != nil {
+		t.Fatalf("unmarshal batch: %v", err)
+	}
+	if len(request.Messages) != 2 || request.Messages[1].Body != "second" {
+		t.Fatalf("unexpected batch: %#v", request)
+	}
+}
+
+func TestValidateSendNormalizesTags(t *testing.T) {
+	request, err := validateSend(SendRequest{
+		To: "+233241234567", From: "DUGBLE", Body: "hello",
+		Tags: []Tag{{Name: " category ", Value: " welcome_sms "}},
+	})
+	if err != nil {
+		t.Fatalf("validate send: %v", err)
+	}
+	if len(request.Tags) != 1 || request.Tags[0].Name != "category" || request.Tags[0].Value != "welcome_sms" {
+		t.Fatalf("unexpected tags: %#v", request.Tags)
+	}
+	request.Tags[0].Value = "not valid"
+	if _, err := validateSend(request); err == nil {
+		t.Fatal("expected invalid tag to be rejected")
+	}
+}
+
+func TestValidateSendNormalizesSchedule(t *testing.T) {
+	request, err := validateSend(SendRequest{To: "+233241234567", From: "DUGBLE", Body: "hello", ScheduledAt: "in 5 min"})
+	if err != nil {
+		t.Fatalf("validate scheduled send: %v", err)
+	}
+	when, err := time.Parse(time.RFC3339Nano, request.ScheduledAt)
+	if err != nil || time.Until(when) < 4*time.Minute {
+		t.Fatalf("unexpected schedule: %q", request.ScheduledAt)
+	}
+	if _, err := normalizeSMSSchedule("in 5 min", false); err == nil {
+		t.Fatal("expected relative update schedule to be rejected")
+	}
+}
+
+func TestScheduleRequiresLeadTime(t *testing.T) {
+	tooSoon := time.Now().UTC().Add(minimumScheduleLeadTime / 2).Format(time.RFC3339Nano)
+	if _, err := normalizeSMSSchedule(tooSoon, false); err == nil {
+		t.Fatal("expected schedule inside minimum lead time to be rejected")
+	}
+	valid := time.Now().UTC().Add(minimumScheduleLeadTime + time.Minute).Format(time.RFC3339Nano)
+	if _, err := normalizeSMSSchedule(valid, false); err != nil {
+		t.Fatalf("expected schedule outside minimum lead time to pass: %v", err)
+	}
+}
+
 func TestResponsesMapsEveryMessageToPublicDTO(t *testing.T) {
 	responses := Responses([]Message{{ID: "first"}, {ID: "second"}})
 	if len(responses) != 2 || responses[0].ID != "first" || responses[1].ID != "second" {
 		t.Fatalf("Responses() = %#v", responses)
-	}
-}
-
-func TestNewBatchSendErrorDoesNotExposeWrappedCause(t *testing.T) {
-	err := apperrors.NewInternal("Unable to enqueue SMS delivery", errors.New("postgres password leaked here"))
-	result := newBatchSendError(err)
-	if result.Code != "INTERNAL_ERROR" || result.Message != "Unable to enqueue SMS delivery" {
-		t.Fatalf("newBatchSendError() = %#v", result)
-	}
-	if strings.Contains(result.Message, "postgres") {
-		t.Fatalf("newBatchSendError exposed wrapped cause: %#v", result)
 	}
 }
 

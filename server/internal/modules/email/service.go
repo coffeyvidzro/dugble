@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -13,13 +14,95 @@ import (
 )
 
 const (
-	maxBatchSize         = 50
+	maxBatchSize         = 100
 	maxBatchPayloadBytes = 10 << 20
 )
 
 type DeliveryQueue interface {
 	EnqueueEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error
 }
+type scheduledDeliveryQueue interface {
+	EnqueueEmailDeliveryAtTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID, time.Time) error
+	CancelEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error
+	RescheduleEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID, time.Time) error
+}
+
+func (s *Service) Update(ctx context.Context, value string, req UpdateRequest) (MutationResponse, error) {
+	tc, err := requireTenant(ctx, tenant.PermissionEmailSend)
+	if err != nil {
+		return MutationResponse{}, err
+	}
+	id, err := uuid.Parse(strings.TrimSpace(value))
+	if err != nil {
+		return MutationResponse{}, apperrors.NewBadRequest("Email message id must be a valid UUID")
+	}
+	scheduledAt, err := normalizeUpdateSchedule(req.ScheduledAt)
+	if err != nil {
+		return MutationResponse{}, err
+	}
+	queue, ok := s.delivery.(scheduledDeliveryQueue)
+	if !ok {
+		return MutationResponse{}, apperrors.NewInternal("Email delivery queue does not support rescheduling", nil)
+	}
+	tx, err := s.repository.BeginTx(ctx)
+	if err != nil {
+		return MutationResponse{}, apperrors.NewInternal("Unable to begin email update transaction", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := s.repository.RescheduleTx(ctx, tx, id, tc.TeamID, scheduledAt); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return MutationResponse{}, apperrors.NewNotFound("Email message not found")
+		}
+		if errors.Is(err, ErrNotCancelable) {
+			return MutationResponse{}, apperrors.NewConflict("Only pending scheduled emails can be updated")
+		}
+		return MutationResponse{}, apperrors.NewInternal("Unable to update email message", err)
+	}
+	if err := queue.RescheduleEmailDeliveryTx(ctx, tx, id, tc.TeamID, scheduledAt); err != nil {
+		return MutationResponse{}, apperrors.NewInternal("Unable to reschedule email delivery", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return MutationResponse{}, apperrors.NewInternal("Unable to commit email update", err)
+	}
+	return MutationResponse{Object: "email", ID: id.String()}, nil
+}
+
+func (s *Service) Cancel(ctx context.Context, value string) (MutationResponse, error) {
+	tc, err := requireTenant(ctx, tenant.PermissionEmailSend)
+	if err != nil {
+		return MutationResponse{}, err
+	}
+	id, err := uuid.Parse(strings.TrimSpace(value))
+	if err != nil {
+		return MutationResponse{}, apperrors.NewBadRequest("Email message id must be a valid UUID")
+	}
+	queue, ok := s.delivery.(scheduledDeliveryQueue)
+	if !ok {
+		return MutationResponse{}, apperrors.NewInternal("Email delivery queue does not support cancellation", nil)
+	}
+	tx, err := s.repository.BeginTx(ctx)
+	if err != nil {
+		return MutationResponse{}, apperrors.NewInternal("Unable to begin email cancellation transaction", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := s.repository.CancelTx(ctx, tx, id, tc.TeamID); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return MutationResponse{}, apperrors.NewNotFound("Email message not found")
+		}
+		if errors.Is(err, ErrNotCancelable) {
+			return MutationResponse{}, apperrors.NewConflict("Only pending scheduled emails can be canceled")
+		}
+		return MutationResponse{}, apperrors.NewInternal("Unable to cancel email message", err)
+	}
+	if err := queue.CancelEmailDeliveryTx(ctx, tx, id, tc.TeamID); err != nil {
+		return MutationResponse{}, apperrors.NewInternal("Unable to cancel email delivery", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return MutationResponse{}, apperrors.NewInternal("Unable to commit email cancellation", err)
+	}
+	return MutationResponse{Object: "email", ID: id.String()}, nil
+}
+
 type Service struct {
 	repository *Repository
 	delivery   DeliveryQueue
@@ -67,7 +150,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to create email message", err)
 	}
-	if err := s.delivery.EnqueueEmailDeliveryTx(ctx, tx, uuid.MustParse(m.ID), tc.TeamID); err != nil {
+	if err := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(m.ID), tc.TeamID, validated.ScheduledAt); err != nil {
 		return Message{}, apperrors.NewInternal("Unable to enqueue email delivery", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -115,7 +198,7 @@ func (s *Service) List(ctx context.Context, req ListRequest) ([]MessageSummary, 
 
 func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Message, error) {
 	if len(req.Messages) == 0 || len(req.Messages) > maxBatchSize {
-		return nil, apperrors.NewBadRequest("messages must contain between 1 and 50 items")
+		return nil, apperrors.NewBadRequest("batch must contain between 1 and 100 emails")
 	}
 	tc, err := requireTenant(ctx, tenant.PermissionEmailSend)
 	if err != nil {
@@ -128,6 +211,9 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 	validated := make([]validatedSend, len(req.Messages))
 	totalPayloadBytes := 0
 	for index, item := range req.Messages {
+		if len(item.Attachments) > 0 {
+			return nil, apperrors.NewBadRequest("attachments are not supported in batch emails")
+		}
 		validated[index], err = validateSend(item, s.config)
 		if err != nil {
 			return nil, err
@@ -150,7 +236,7 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 		if createErr != nil {
 			return nil, apperrors.NewInternal("Unable to create email message", createErr)
 		}
-		if enqueueErr := s.delivery.EnqueueEmailDeliveryTx(ctx, tx, uuid.MustParse(message.ID), tc.TeamID); enqueueErr != nil {
+		if enqueueErr := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(message.ID), tc.TeamID, item.ScheduledAt); enqueueErr != nil {
 			return nil, apperrors.NewInternal("Unable to enqueue email delivery", enqueueErr)
 		}
 		result = append(result, message)
@@ -159,6 +245,16 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 		return nil, apperrors.NewInternal("Unable to commit email batch transaction", err)
 	}
 	return result, nil
+}
+
+func enqueueDelivery(ctx context.Context, queue DeliveryQueue, tx pgx.Tx, messageID, teamID uuid.UUID, scheduledAt *time.Time) error {
+	if scheduledAt != nil {
+		if scheduled, ok := queue.(scheduledDeliveryQueue); ok {
+			return scheduled.EnqueueEmailDeliveryAtTx(ctx, tx, messageID, teamID, *scheduledAt)
+		}
+		return errors.New("email delivery queue does not support scheduled delivery")
+	}
+	return queue.EnqueueEmailDeliveryTx(ctx, tx, messageID, teamID)
 }
 
 func bodySize(body *string) int {

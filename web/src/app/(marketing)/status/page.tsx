@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-    title: "System Status | Dugble",
+    title: "System Status",
     description:
         "Check the platform health and system status for Dugble's API, dashboard, and delivery networks.",
     openGraph: {
-        title: "System Status | Dugble",
+        title: "System Status",
         description:
             "Check the platform health and system status for Dugble's API, dashboard, and delivery networks.",
-        url: "https://dugble.com/status",
+        url: "/status",
+        type: "website",
     },
 };
 

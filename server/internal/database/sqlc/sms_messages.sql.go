@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createSMSMessage = `-- name: CreateSMSMessage :one
@@ -22,6 +23,8 @@ INSERT INTO sms_messages (
     segments,
     cost_micros,
     metadata,
+    tags,
+    scheduled_at,
     destination_country,
     pricing_rule_id,
     unit_cost_micros
@@ -37,24 +40,28 @@ INSERT INTO sms_messages (
     $9,
     $10,
     $11,
-    $12
+    $12,
+    $13,
+    $14
 )
-RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, submitted_at, delivered_at, created_at, updated_at, pricing_rule_id, unit_cost_micros, destination_country
+RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, tags, scheduled_at, submitted_at, delivered_at, created_at, updated_at, pricing_rule_id, unit_cost_micros, destination_country
 `
 
 type CreateSMSMessageParams struct {
-	TeamID             uuid.UUID  `db:"team_id" json:"team_id"`
-	SenderID           *uuid.UUID `db:"sender_id" json:"sender_id"`
-	ToNumber           string     `db:"to_number" json:"to_number"`
-	FromName           string     `db:"from_name" json:"from_name"`
-	Body               string     `db:"body" json:"body"`
-	Status             string     `db:"status" json:"status"`
-	Segments           int32      `db:"segments" json:"segments"`
-	CostMicros         int64      `db:"cost_micros" json:"cost_micros"`
-	Metadata           []byte     `db:"metadata" json:"metadata"`
-	DestinationCountry string     `db:"destination_country" json:"destination_country"`
-	PricingRuleID      uuid.UUID  `db:"pricing_rule_id" json:"pricing_rule_id"`
-	UnitCostMicros     int64      `db:"unit_cost_micros" json:"unit_cost_micros"`
+	TeamID             uuid.UUID          `db:"team_id" json:"team_id"`
+	SenderID           *uuid.UUID         `db:"sender_id" json:"sender_id"`
+	ToNumber           string             `db:"to_number" json:"to_number"`
+	FromName           string             `db:"from_name" json:"from_name"`
+	Body               string             `db:"body" json:"body"`
+	Status             string             `db:"status" json:"status"`
+	Segments           int32              `db:"segments" json:"segments"`
+	CostMicros         int64              `db:"cost_micros" json:"cost_micros"`
+	Metadata           []byte             `db:"metadata" json:"metadata"`
+	Tags               []byte             `db:"tags" json:"tags"`
+	ScheduledAt        pgtype.Timestamptz `db:"scheduled_at" json:"scheduled_at"`
+	DestinationCountry string             `db:"destination_country" json:"destination_country"`
+	PricingRuleID      uuid.UUID          `db:"pricing_rule_id" json:"pricing_rule_id"`
+	UnitCostMicros     int64              `db:"unit_cost_micros" json:"unit_cost_micros"`
 }
 
 func (q *Queries) CreateSMSMessage(ctx context.Context, arg CreateSMSMessageParams) (SmsMessage, error) {
@@ -68,6 +75,8 @@ func (q *Queries) CreateSMSMessage(ctx context.Context, arg CreateSMSMessagePara
 		arg.Segments,
 		arg.CostMicros,
 		arg.Metadata,
+		arg.Tags,
+		arg.ScheduledAt,
 		arg.DestinationCountry,
 		arg.PricingRuleID,
 		arg.UnitCostMicros,
@@ -87,6 +96,8 @@ func (q *Queries) CreateSMSMessage(ctx context.Context, arg CreateSMSMessagePara
 		&i.CostMicros,
 		&i.ErrorMessage,
 		&i.Metadata,
+		&i.Tags,
+		&i.ScheduledAt,
 		&i.SubmittedAt,
 		&i.DeliveredAt,
 		&i.CreatedAt,
@@ -121,7 +132,7 @@ func (q *Queries) FindApprovedSMSSender(ctx context.Context, arg FindApprovedSMS
 }
 
 const getSMSMessage = `-- name: GetSMSMessage :one
-SELECT id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, submitted_at, delivered_at, created_at, updated_at, pricing_rule_id, unit_cost_micros, destination_country
+SELECT id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, tags, scheduled_at, submitted_at, delivered_at, created_at, updated_at, pricing_rule_id, unit_cost_micros, destination_country
 FROM sms_messages
 WHERE id = $1
   AND team_id = $2
@@ -149,6 +160,8 @@ func (q *Queries) GetSMSMessage(ctx context.Context, arg GetSMSMessageParams) (S
 		&i.CostMicros,
 		&i.ErrorMessage,
 		&i.Metadata,
+		&i.Tags,
+		&i.ScheduledAt,
 		&i.SubmittedAt,
 		&i.DeliveredAt,
 		&i.CreatedAt,
@@ -161,7 +174,7 @@ func (q *Queries) GetSMSMessage(ctx context.Context, arg GetSMSMessageParams) (S
 }
 
 const listSMSMessages = `-- name: ListSMSMessages :many
-SELECT id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, submitted_at, delivered_at, created_at, updated_at, pricing_rule_id, unit_cost_micros, destination_country
+SELECT id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, tags, scheduled_at, submitted_at, delivered_at, created_at, updated_at, pricing_rule_id, unit_cost_micros, destination_country
 FROM sms_messages
 WHERE team_id = $1
 ORDER BY created_at DESC
@@ -198,6 +211,8 @@ func (q *Queries) ListSMSMessages(ctx context.Context, arg ListSMSMessagesParams
 			&i.CostMicros,
 			&i.ErrorMessage,
 			&i.Metadata,
+			&i.Tags,
+			&i.ScheduledAt,
 			&i.SubmittedAt,
 			&i.DeliveredAt,
 			&i.CreatedAt,
@@ -223,7 +238,7 @@ SET status = 'failed',
     updated_at = now()
 WHERE id = $2
   AND team_id = $3
-RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, submitted_at, delivered_at, created_at, updated_at, pricing_rule_id, unit_cost_micros, destination_country
+RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, tags, scheduled_at, submitted_at, delivered_at, created_at, updated_at, pricing_rule_id, unit_cost_micros, destination_country
 `
 
 type MarkSMSMessageFailedParams struct {
@@ -249,6 +264,8 @@ func (q *Queries) MarkSMSMessageFailed(ctx context.Context, arg MarkSMSMessageFa
 		&i.CostMicros,
 		&i.ErrorMessage,
 		&i.Metadata,
+		&i.Tags,
+		&i.ScheduledAt,
 		&i.SubmittedAt,
 		&i.DeliveredAt,
 		&i.CreatedAt,
@@ -269,7 +286,7 @@ WHERE id = $1
   AND team_id = $2
   AND status = 'queued'
   AND provider_message_id IS NULL
-RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, submitted_at, delivered_at, created_at, updated_at, pricing_rule_id, unit_cost_micros, destination_country
+RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, tags, scheduled_at, submitted_at, delivered_at, created_at, updated_at, pricing_rule_id, unit_cost_micros, destination_country
 `
 
 type MarkSMSMessageProcessingParams struct {
@@ -294,6 +311,8 @@ func (q *Queries) MarkSMSMessageProcessing(ctx context.Context, arg MarkSMSMessa
 		&i.CostMicros,
 		&i.ErrorMessage,
 		&i.Metadata,
+		&i.Tags,
+		&i.ScheduledAt,
 		&i.SubmittedAt,
 		&i.DeliveredAt,
 		&i.CreatedAt,
@@ -313,7 +332,7 @@ SET status = 'refund_pending',
 WHERE id = $2
   AND team_id = $3
   AND provider_message_id IS NULL
-RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, submitted_at, delivered_at, created_at, updated_at, pricing_rule_id, unit_cost_micros, destination_country
+RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, tags, scheduled_at, submitted_at, delivered_at, created_at, updated_at, pricing_rule_id, unit_cost_micros, destination_country
 `
 
 type MarkSMSMessageRefundPendingParams struct {
@@ -339,6 +358,8 @@ func (q *Queries) MarkSMSMessageRefundPending(ctx context.Context, arg MarkSMSMe
 		&i.CostMicros,
 		&i.ErrorMessage,
 		&i.Metadata,
+		&i.Tags,
+		&i.ScheduledAt,
 		&i.SubmittedAt,
 		&i.DeliveredAt,
 		&i.CreatedAt,
@@ -360,7 +381,7 @@ SET provider_id = $1,
     updated_at = now()
 WHERE id = $4
   AND team_id = $5
-RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, submitted_at, delivered_at, created_at, updated_at, pricing_rule_id, unit_cost_micros, destination_country
+RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, tags, scheduled_at, submitted_at, delivered_at, created_at, updated_at, pricing_rule_id, unit_cost_micros, destination_country
 `
 
 type MarkSMSMessageSubmittedParams struct {
@@ -394,6 +415,8 @@ func (q *Queries) MarkSMSMessageSubmitted(ctx context.Context, arg MarkSMSMessag
 		&i.CostMicros,
 		&i.ErrorMessage,
 		&i.Metadata,
+		&i.Tags,
+		&i.ScheduledAt,
 		&i.SubmittedAt,
 		&i.DeliveredAt,
 		&i.CreatedAt,
@@ -416,7 +439,7 @@ SET status = $1,
     updated_at = now()
 WHERE id = $2
   AND team_id = $3
-RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, submitted_at, delivered_at, created_at, updated_at, pricing_rule_id, unit_cost_micros, destination_country
+RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, tags, scheduled_at, submitted_at, delivered_at, created_at, updated_at, pricing_rule_id, unit_cost_micros, destination_country
 `
 
 type UpdateSMSMessageStatusParams struct {
@@ -442,6 +465,8 @@ func (q *Queries) UpdateSMSMessageStatus(ctx context.Context, arg UpdateSMSMessa
 		&i.CostMicros,
 		&i.ErrorMessage,
 		&i.Metadata,
+		&i.Tags,
+		&i.ScheduledAt,
 		&i.SubmittedAt,
 		&i.DeliveredAt,
 		&i.CreatedAt,

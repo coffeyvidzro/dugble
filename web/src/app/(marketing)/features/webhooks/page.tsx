@@ -8,20 +8,15 @@ import { Separator } from "@/components/ui/separator";
 import { Cta } from "@/components/marketing/cta";
 
 export const metadata: Metadata = {
-    title: "Webhooks | Dugble",
+    title: "Webhooks",
     description:
         "Trace your message lifecycle with real-time delivery events, automated retries, and secure cryptographic signatures.",
     openGraph: {
-        title: "Webhooks | Dugble",
+        title: "Webhooks",
         description:
             "Trace your message lifecycle with real-time delivery events, automated retries, and secure cryptographic signatures.",
+        url: "/features/webhooks",
         type: "website",
-    },
-    twitter: {
-        card: "summary_large_image",
-        title: "Webhooks | Dugble",
-        description:
-            "Trace your message lifecycle with real-time delivery events, automated retries, and secure cryptographic signatures.",
     },
 };
 
