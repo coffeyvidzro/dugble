@@ -2,21 +2,197 @@ package webhooks
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
+	platformwebhook "github.com/coffeyvidzro/dugble/server/internal/platform/webhook"
 )
 
-type repositoryStore interface {
-	BeginTx(context.Context) (pgx.Tx, error)
-	CreateEndpoint(context.Context, uuid.UUID, validatedEndpoint, []byte) (Endpoint, error)
-	ListEndpoints(context.Context, uuid.UUID, int32, int32) ([]Endpoint, error)
-	GetEndpoint(context.Context, uuid.UUID, uuid.UUID) (Endpoint, error)
-	UpdateEndpoint(context.Context, uuid.UUID, uuid.UUID, validatedEndpoint) (Endpoint, error)
-	DisableEndpoint(context.Context, uuid.UUID, uuid.UUID) (Endpoint, error)
-	RotateSecret(context.Context, uuid.UUID, uuid.UUID, []byte) (Endpoint, error)
-	ListEvents(context.Context, uuid.UUID, int32, int32) ([]Event, error)
-	GetEvent(context.Context, uuid.UUID, uuid.UUID) (Event, error)
-	GetDelivery(context.Context, uuid.UUID, uuid.UUID) (Delivery, error)
-	RetryDelivery(context.Context, uuid.UUID, uuid.UUID) (Delivery, error)
+type Repository struct {
+	db      *pgxpool.Pool
+	queries *dbsqlc.Queries
+}
+
+func NewRepository(db *pgxpool.Pool) *Repository {
+	return &Repository{db: db, queries: dbsqlc.New(db)}
+}
+
+func (r *Repository) BeginTx(ctx context.Context) (pgx.Tx, error) {
+	return r.db.BeginTx(ctx, pgx.TxOptions{})
+}
+
+func (r *Repository) CreateEndpoint(ctx context.Context, teamID uuid.UUID, endpoint validatedEndpoint, secret []byte) (Endpoint, error) {
+	row, err := r.queries.CreateWebhookEndpoint(ctx, dbsqlc.CreateWebhookEndpointParams{
+		TeamID: teamID, Url: endpoint.URL, SigningSecret: secret, SubscribedEvents: endpoint.SubscribedEvents,
+	})
+	if err != nil {
+		return Endpoint{}, fmt.Errorf("create webhook endpoint: %w", err)
+	}
+	return endpointFromSQLC(row), nil
+}
+
+func (r *Repository) ListEndpoints(ctx context.Context, teamID uuid.UUID, limit, offset int32) ([]Endpoint, error) {
+	rows, err := r.queries.ListWebhookEndpoints(ctx, dbsqlc.ListWebhookEndpointsParams{
+		TeamID: teamID, LimitCount: limit, OffsetCount: offset,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list webhook endpoints: %w", err)
+	}
+	endpoints := make([]Endpoint, 0, len(rows))
+	for _, row := range rows {
+		endpoints = append(endpoints, endpointFromSQLC(row))
+	}
+	return endpoints, nil
+}
+
+func (r *Repository) GetEndpoint(ctx context.Context, id, teamID uuid.UUID) (Endpoint, error) {
+	row, err := r.queries.GetWebhookEndpoint(ctx, dbsqlc.GetWebhookEndpointParams{ID: id, TeamID: teamID})
+	if err != nil {
+		return Endpoint{}, fmt.Errorf("get webhook endpoint: %w", err)
+	}
+	return endpointFromSQLC(row), nil
+}
+
+func (r *Repository) UpdateEndpoint(ctx context.Context, id, teamID uuid.UUID, endpoint validatedEndpoint) (Endpoint, error) {
+	row, err := r.queries.UpdateWebhookEndpoint(ctx, dbsqlc.UpdateWebhookEndpointParams{
+		ID: id, TeamID: teamID, Url: endpoint.URL, Enabled: endpoint.Enabled, SubscribedEvents: endpoint.SubscribedEvents,
+	})
+	if err != nil {
+		return Endpoint{}, fmt.Errorf("update webhook endpoint: %w", err)
+	}
+	return endpointFromSQLC(row), nil
+}
+
+func (r *Repository) DisableEndpoint(ctx context.Context, id, teamID uuid.UUID) (Endpoint, error) {
+	row, err := r.queries.DisableWebhookEndpoint(ctx, dbsqlc.DisableWebhookEndpointParams{ID: id, TeamID: teamID})
+	if err != nil {
+		return Endpoint{}, fmt.Errorf("disable webhook endpoint: %w", err)
+	}
+	return endpointFromSQLC(row), nil
+}
+
+func (r *Repository) RotateSecret(ctx context.Context, id, teamID uuid.UUID, secret []byte) (Endpoint, error) {
+	row, err := r.queries.RotateWebhookEndpointSecret(ctx, dbsqlc.RotateWebhookEndpointSecretParams{
+		ID: id, TeamID: teamID, SigningSecret: secret,
+	})
+	if err != nil {
+		return Endpoint{}, fmt.Errorf("rotate webhook endpoint secret: %w", err)
+	}
+	return endpointFromSQLC(row), nil
+}
+
+func (r *Repository) ListEvents(ctx context.Context, teamID uuid.UUID, limit, offset int32) ([]Event, error) {
+	rows, err := r.queries.ListWebhookEvents(ctx, dbsqlc.ListWebhookEventsParams{
+		TeamID: teamID, LimitCount: limit, OffsetCount: offset,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list webhook events: %w", err)
+	}
+	events := make([]Event, 0, len(rows))
+	for _, row := range rows {
+		events = append(events, eventFromSQLC(row))
+	}
+	return events, nil
+}
+
+func (r *Repository) GetEvent(ctx context.Context, id, teamID uuid.UUID) (Event, error) {
+	row, err := r.queries.GetWebhookEvent(ctx, dbsqlc.GetWebhookEventParams{ID: id, TeamID: teamID})
+	if err != nil {
+		return Event{}, fmt.Errorf("get webhook event: %w", err)
+	}
+	return eventFromSQLC(row), nil
+}
+
+func (r *Repository) GetDelivery(ctx context.Context, id, teamID uuid.UUID) (Delivery, error) {
+	row, err := r.queries.GetWebhookDelivery(ctx, dbsqlc.GetWebhookDeliveryParams{ID: id, TeamID: teamID})
+	if err != nil {
+		return Delivery{}, fmt.Errorf("get webhook delivery: %w", err)
+	}
+	return deliveryFromSQLC(row), nil
+}
+
+func (r *Repository) RetryDelivery(ctx context.Context, id, teamID uuid.UUID) (Delivery, error) {
+	row, err := r.queries.RetryWebhookDelivery(ctx, dbsqlc.RetryWebhookDeliveryParams{ID: id, TeamID: teamID})
+	if err != nil {
+		return Delivery{}, fmt.Errorf("retry webhook delivery: %w", err)
+	}
+	return deliveryFromSQLC(row), nil
+}
+
+func (r *Repository) CreateEventTx(ctx context.Context, tx pgx.Tx, event platformwebhook.Event) (uuid.UUID, error) {
+	row, err := r.queries.WithTx(tx).CreateWebhookEvent(ctx, dbsqlc.CreateWebhookEventParams{
+		ID: event.ID, TeamID: event.TeamID, EventType: event.Type, ObjectType: event.ObjectType,
+		ObjectID: event.ObjectID, Payload: event.Payload, OccurredAt: timestamptz(event.OccurredAt),
+	})
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("create webhook event: %w", err)
+	}
+	return row.ID, nil
+}
+
+func (r *Repository) CreateDeliveriesForEventTx(ctx context.Context, tx pgx.Tx, eventID uuid.UUID, nextAttemptAt time.Time) (int64, error) {
+	count, err := r.queries.WithTx(tx).CreateWebhookDeliveriesForEvent(ctx, dbsqlc.CreateWebhookDeliveriesForEventParams{
+		EventID: eventID, NextAttemptAt: timestamptz(nextAttemptAt),
+	})
+	if err != nil {
+		return 0, fmt.Errorf("create webhook deliveries: %w", err)
+	}
+	return count, nil
+}
+
+func (r *Repository) CreateDeliveryTx(ctx context.Context, tx pgx.Tx, eventID, endpointID uuid.UUID, nextAttemptAt time.Time) (uuid.UUID, error) {
+	row, err := r.queries.WithTx(tx).CreateWebhookDelivery(ctx, dbsqlc.CreateWebhookDeliveryParams{
+		EventID: eventID, EndpointID: endpointID, NextAttemptAt: timestamptz(nextAttemptAt),
+	})
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("create webhook delivery: %w", err)
+	}
+	return row.ID, nil
+}
+
+func endpointFromSQLC(row dbsqlc.WebhookEndpoint) Endpoint {
+	return Endpoint{
+		ID: row.ID.String(), TeamID: row.TeamID.String(), URL: row.Url, Enabled: row.Enabled,
+		SubscribedEvents: row.SubscribedEvents, CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
+		DisabledAt: optionalTime(row.DisabledAt),
+	}
+}
+
+func eventFromSQLC(row dbsqlc.WebhookEvent) Event {
+	var objectID *string
+	if row.ObjectID != nil {
+		value := row.ObjectID.String()
+		objectID = &value
+	}
+	return Event{
+		ID: row.ID.String(), TeamID: row.TeamID.String(), Type: row.EventType, ObjectType: row.ObjectType,
+		ObjectID: objectID, Payload: json.RawMessage(row.Payload), OccurredAt: row.OccurredAt.Time, CreatedAt: row.CreatedAt.Time,
+	}
+}
+
+func deliveryFromSQLC(row dbsqlc.WebhookDelivery) Delivery {
+	return Delivery{
+		ID: row.ID.String(), EventID: row.EventID.String(), EndpointID: row.EndpointID.String(), Status: row.Status,
+		AttemptCount: row.AttemptCount, NextAttemptAt: row.NextAttemptAt.Time, LastAttemptAt: optionalTime(row.LastAttemptAt),
+		ResponseStatus: row.ResponseStatus, ResponseBody: row.ResponseBody, LastError: row.LastError,
+		DeliveredAt: optionalTime(row.DeliveredAt), CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
+	}
+}
+
+func timestamptz(value time.Time) pgtype.Timestamptz {
+	return pgtype.Timestamptz{Time: value, Valid: true}
+}
+
+func optionalTime(value pgtype.Timestamptz) *time.Time {
+	if !value.Valid {
+		return nil
+	}
+	return &value.Time
 }
