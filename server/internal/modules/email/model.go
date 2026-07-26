@@ -1,7 +1,11 @@
 package email
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"net/mail"
+	"strings"
 	"time"
 )
 
@@ -20,45 +24,117 @@ const (
 const MessageTypeTransactional = "transactional"
 
 type Message struct {
-	ID                string          `json:"id"`
-	TeamID            string          `json:"team_id"`
-	MessageType       string          `json:"message_type"`
-	FromEmail         string          `json:"from_email"`
-	FromName          *string         `json:"from_name,omitempty"`
-	ReplyToEmail      *string         `json:"reply_to_email,omitempty"`
-	ToEmail           string          `json:"to_email"`
-	ToName            *string         `json:"to_name,omitempty"`
-	Subject           string          `json:"subject"`
-	HTMLBody          *string         `json:"html_body,omitempty"`
-	TextBody          *string         `json:"text_body,omitempty"`
-	Status            string          `json:"status"`
-	Provider          *string         `json:"provider,omitempty"`
-	ProviderMessageID *string         `json:"provider_message_id,omitempty"`
-	ErrorCode         *string         `json:"error_code,omitempty"`
-	ErrorMessage      *string         `json:"error_message,omitempty"`
-	Metadata          json.RawMessage `json:"metadata"`
-	QueuedAt          time.Time       `json:"queued_at"`
-	ProcessingAt      *time.Time      `json:"processing_at,omitempty"`
-	SubmittedAt       *time.Time      `json:"submitted_at,omitempty"`
-	DeliveredAt       *time.Time      `json:"delivered_at,omitempty"`
-	FailedAt          *time.Time      `json:"failed_at,omitempty"`
-	CreatedAt         time.Time       `json:"created_at"`
-	UpdatedAt         time.Time       `json:"updated_at"`
+	ID                string            `json:"id"`
+	TeamID            string            `json:"team_id"`
+	MessageType       string            `json:"message_type"`
+	FromEmail         string            `json:"from_email"`
+	FromName          *string           `json:"from_name,omitempty"`
+	ReplyToEmail      *string           `json:"reply_to_email,omitempty"`
+	To                []EmailAddress    `json:"to"`
+	CC                []EmailAddress    `json:"cc,omitempty"`
+	BCC               []EmailAddress    `json:"bcc,omitempty"`
+	ReplyTo           []EmailAddress    `json:"reply_to,omitempty"`
+	ToEmail           string            `json:"to_email"`
+	ToName            *string           `json:"to_name,omitempty"`
+	Subject           string            `json:"subject"`
+	HTMLBody          *string           `json:"html_body,omitempty"`
+	TextBody          *string           `json:"text_body,omitempty"`
+	Status            string            `json:"status"`
+	Provider          *string           `json:"provider,omitempty"`
+	ProviderMessageID *string           `json:"provider_message_id,omitempty"`
+	ErrorCode         *string           `json:"error_code,omitempty"`
+	ErrorMessage      *string           `json:"error_message,omitempty"`
+	Metadata          json.RawMessage   `json:"metadata"`
+	Headers           map[string]string `json:"headers,omitempty"`
+	Attachments       []Attachment      `json:"attachments,omitempty"`
+	Tags              []Tag             `json:"tags,omitempty"`
+	ScheduledAt       *time.Time        `json:"scheduled_at,omitempty"`
+	QueuedAt          time.Time         `json:"queued_at"`
+	ProcessingAt      *time.Time        `json:"processing_at,omitempty"`
+	SubmittedAt       *time.Time        `json:"submitted_at,omitempty"`
+	DeliveredAt       *time.Time        `json:"delivered_at,omitempty"`
+	FailedAt          *time.Time        `json:"failed_at,omitempty"`
+	CreatedAt         time.Time         `json:"created_at"`
+	UpdatedAt         time.Time         `json:"updated_at"`
 }
 
 type SendRequest struct {
-	From     *EmailAddress   `json:"from,omitempty"`
-	ReplyTo  string          `json:"reply_to,omitempty"`
-	To       EmailAddress    `json:"to"`
-	Subject  string          `json:"subject"`
-	HTML     string          `json:"html,omitempty"`
-	Text     string          `json:"text,omitempty"`
-	Metadata json.RawMessage `json:"metadata,omitempty"`
+	From        *EmailAddress     `json:"from,omitempty"`
+	ReplyTo     EmailAddressList  `json:"reply_to,omitempty"`
+	To          EmailAddressList  `json:"to"`
+	CC          EmailAddressList  `json:"cc,omitempty"`
+	BCC         EmailAddressList  `json:"bcc,omitempty"`
+	Subject     string            `json:"subject"`
+	HTML        string            `json:"html,omitempty"`
+	Text        string            `json:"text,omitempty"`
+	Headers     map[string]string `json:"headers,omitempty"`
+	Attachments []Attachment      `json:"attachments,omitempty"`
+	Tags        []Tag             `json:"tags,omitempty"`
+	ScheduledAt string            `json:"scheduled_at,omitempty"`
+	Metadata    json.RawMessage   `json:"metadata,omitempty"`
 }
 
 type EmailAddress struct {
 	Email string `json:"email"`
 	Name  string `json:"name,omitempty"`
+}
+
+// UnmarshalJSON accepts both Resend's "Name <email>" string form and Dugble's
+// original {"email":"...","name":"..."} form.
+func (a *EmailAddress) UnmarshalJSON(data []byte) error {
+	if len(data) > 0 && data[0] == '"' {
+		var value string
+		if err := json.Unmarshal(data, &value); err != nil {
+			return err
+		}
+		parsed, err := parseEmailAddress(value)
+		if err != nil {
+			return err
+		}
+		*a = parsed
+		return nil
+	}
+	type alias EmailAddress
+	return json.Unmarshal(data, (*alias)(a))
+}
+
+type EmailAddressList []EmailAddress
+
+func (list *EmailAddressList) UnmarshalJSON(data []byte) error {
+	data = bytes.TrimSpace(data)
+	if bytes.Equal(data, []byte("null")) || len(data) == 0 {
+		return nil
+	}
+	if data[0] == '[' {
+		return json.Unmarshal(data, (*[]EmailAddress)(list))
+	}
+	var address EmailAddress
+	if err := json.Unmarshal(data, &address); err != nil {
+		return err
+	}
+	*list = []EmailAddress{address}
+	return nil
+}
+
+type Attachment struct {
+	Content     string `json:"content,omitempty"`
+	Filename    string `json:"filename,omitempty"`
+	Path        string `json:"path,omitempty"`
+	ContentType string `json:"content_type,omitempty"`
+	ContentID   string `json:"content_id,omitempty"`
+}
+
+type Tag struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+func parseEmailAddress(value string) (EmailAddress, error) {
+	parsed, err := mail.ParseAddress(strings.TrimSpace(value))
+	if err != nil {
+		return EmailAddress{}, fmt.Errorf("invalid email address")
+	}
+	return EmailAddress{Email: parsed.Address, Name: parsed.Name}, nil
 }
 
 type BatchSendRequest struct {

@@ -11,7 +11,12 @@ INSERT INTO email_messages (
     html_body,
     text_body,
     status,
-    metadata
+    metadata,
+    recipients,
+    headers,
+    attachments,
+    tags,
+    scheduled_at
 ) VALUES (
     sqlc.arg(team_id),
     sqlc.arg(message_type),
@@ -24,7 +29,12 @@ INSERT INTO email_messages (
     sqlc.narg(html_body),
     sqlc.narg(text_body),
     'queued',
-    sqlc.arg(metadata)
+    sqlc.arg(metadata),
+    sqlc.arg(recipients),
+    sqlc.arg(headers),
+    sqlc.arg(attachments),
+    sqlc.arg(tags),
+    sqlc.narg(scheduled_at)
 )
 RETURNING *;
 

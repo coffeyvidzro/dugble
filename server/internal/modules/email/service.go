@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -19,6 +20,9 @@ const (
 
 type DeliveryQueue interface {
 	EnqueueEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error
+}
+type scheduledDeliveryQueue interface {
+	EnqueueEmailDeliveryAtTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID, time.Time) error
 }
 type Service struct {
 	repository *Repository
@@ -67,7 +71,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to create email message", err)
 	}
-	if err := s.delivery.EnqueueEmailDeliveryTx(ctx, tx, uuid.MustParse(m.ID), tc.TeamID); err != nil {
+	if err := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(m.ID), tc.TeamID, validated.ScheduledAt); err != nil {
 		return Message{}, apperrors.NewInternal("Unable to enqueue email delivery", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -150,7 +154,7 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 		if createErr != nil {
 			return nil, apperrors.NewInternal("Unable to create email message", createErr)
 		}
-		if enqueueErr := s.delivery.EnqueueEmailDeliveryTx(ctx, tx, uuid.MustParse(message.ID), tc.TeamID); enqueueErr != nil {
+		if enqueueErr := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(message.ID), tc.TeamID, item.ScheduledAt); enqueueErr != nil {
 			return nil, apperrors.NewInternal("Unable to enqueue email delivery", enqueueErr)
 		}
 		result = append(result, message)
@@ -159,6 +163,15 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 		return nil, apperrors.NewInternal("Unable to commit email batch transaction", err)
 	}
 	return result, nil
+}
+
+func enqueueDelivery(ctx context.Context, queue DeliveryQueue, tx pgx.Tx, messageID, teamID uuid.UUID, scheduledAt *time.Time) error {
+	if scheduledAt != nil {
+		if scheduled, ok := queue.(scheduledDeliveryQueue); ok {
+			return scheduled.EnqueueEmailDeliveryAtTx(ctx, tx, messageID, teamID, *scheduledAt)
+		}
+	}
+	return queue.EnqueueEmailDeliveryTx(ctx, tx, messageID, teamID)
 }
 
 func bodySize(body *string) int {

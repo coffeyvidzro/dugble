@@ -31,6 +31,22 @@ func (r *Repository) BeginTx(ctx context.Context) (pgx.Tx, error) {
 }
 
 func (r *Repository) CreateTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, req validatedSend) (Message, error) {
+	recipients, err := json.Marshal(map[string][]EmailAddress{"to": req.To, "cc": req.CC, "bcc": req.BCC, "reply_to": req.ReplyTo})
+	if err != nil {
+		return Message{}, fmt.Errorf("encode email recipients: %w", err)
+	}
+	headers, err := json.Marshal(req.Headers)
+	if err != nil {
+		return Message{}, fmt.Errorf("encode email headers: %w", err)
+	}
+	attachments, err := json.Marshal(req.Attachments)
+	if err != nil {
+		return Message{}, fmt.Errorf("encode email attachments: %w", err)
+	}
+	tags, err := json.Marshal(req.Tags)
+	if err != nil {
+		return Message{}, fmt.Errorf("encode email tags: %w", err)
+	}
 	row, err := r.queries.WithTx(tx).CreateEmailMessage(ctx, dbsqlc.CreateEmailMessageParams{
 		TeamID:       teamID,
 		MessageType:  req.MessageType,
@@ -43,6 +59,8 @@ func (r *Repository) CreateTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, 
 		HtmlBody:     req.HTMLBody,
 		TextBody:     req.TextBody,
 		Metadata:     req.Metadata,
+		Recipients:   recipients, Headers: headers, Attachments: attachments, Tags: tags,
+		ScheduledAt: timestamptz(req.ScheduledAt),
 	})
 	if err != nil {
 		return Message{}, fmt.Errorf("create email message: %w", err)
@@ -81,7 +99,7 @@ func (r *Repository) List(ctx context.Context, teamID uuid.UUID, limit, offset i
 }
 
 func messageFromSQLC(row dbsqlc.EmailMessage) Message {
-	return Message{
+	message := Message{
 		ID:                row.ID.String(),
 		TeamID:            row.TeamID.String(),
 		MessageType:       row.MessageType,
@@ -99,6 +117,7 @@ func messageFromSQLC(row dbsqlc.EmailMessage) Message {
 		ErrorCode:         row.ErrorCode,
 		ErrorMessage:      row.ErrorMessage,
 		Metadata:          json.RawMessage(row.Metadata),
+		ScheduledAt:       optionalTime(row.ScheduledAt),
 		QueuedAt:          row.QueuedAt.Time,
 		ProcessingAt:      optionalTime(row.ProcessingAt),
 		SubmittedAt:       optionalTime(row.SubmittedAt),
@@ -107,6 +126,18 @@ func messageFromSQLC(row dbsqlc.EmailMessage) Message {
 		CreatedAt:         row.CreatedAt.Time,
 		UpdatedAt:         row.UpdatedAt.Time,
 	}
+	var recipients struct {
+		To      []EmailAddress `json:"to"`
+		CC      []EmailAddress `json:"cc"`
+		BCC     []EmailAddress `json:"bcc"`
+		ReplyTo []EmailAddress `json:"reply_to"`
+	}
+	_ = json.Unmarshal(row.Recipients, &recipients)
+	message.To, message.CC, message.BCC, message.ReplyTo = recipients.To, recipients.CC, recipients.BCC, recipients.ReplyTo
+	_ = json.Unmarshal(row.Headers, &message.Headers)
+	_ = json.Unmarshal(row.Attachments, &message.Attachments)
+	_ = json.Unmarshal(row.Tags, &message.Tags)
+	return message
 }
 
 func optionalTime(value pgtype.Timestamptz) *time.Time {
@@ -114,4 +145,11 @@ func optionalTime(value pgtype.Timestamptz) *time.Time {
 		return nil
 	}
 	return &value.Time
+}
+
+func timestamptz(value *time.Time) pgtype.Timestamptz {
+	if value == nil {
+		return pgtype.Timestamptz{}
+	}
+	return pgtype.Timestamptz{Time: *value, Valid: true}
 }

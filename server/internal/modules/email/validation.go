@@ -1,10 +1,15 @@
 package email
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/mail"
+	"net/url"
+	"regexp"
+	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
@@ -15,19 +20,31 @@ const (
 	maxSubjectCharacters   = 255
 	maxBodyBytes           = 1 << 20
 	maxMetadataBytes       = 16 << 10
+	maxRecipients          = 50
+	maxAttachmentsBytes    = 40 << 20
 )
+
+var tagPattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
 type validatedSend struct {
 	MessageType  string
 	FromEmail    string
 	FromName     *string
 	ReplyToEmail *string
+	To           []EmailAddress
+	CC           []EmailAddress
+	BCC          []EmailAddress
+	ReplyTo      []EmailAddress
 	ToEmail      string
 	ToName       *string
 	Subject      string
 	HTMLBody     *string
 	TextBody     *string
 	Metadata     json.RawMessage
+	Headers      map[string]string
+	Attachments  []Attachment
+	Tags         []Tag
+	ScheduledAt  *time.Time
 }
 
 func validateSend(req SendRequest, config ServiceConfig) (validatedSend, error) {
@@ -36,14 +53,23 @@ func validateSend(req SendRequest, config ServiceConfig) (validatedSend, error) 
 		return validatedSend{}, apperrors.NewInternal("Email sender is not configured", err)
 	}
 
-	toEmail, err := normalizeEmail(req.To.Email, "Email recipient")
-	if err != nil {
-		return validatedSend{}, apperrors.NewBadRequest(err.Error())
-	}
-	toName, err := normalizeName(req.To.Name, "Email recipient name")
+	to, err := normalizeAddresses(req.To, "To", true)
 	if err != nil {
 		return validatedSend{}, err
 	}
+	cc, err := normalizeAddresses(req.CC, "Cc", false)
+	if err != nil {
+		return validatedSend{}, err
+	}
+	bcc, err := normalizeAddresses(req.BCC, "Bcc", false)
+	if err != nil {
+		return validatedSend{}, err
+	}
+	if len(to)+len(cc)+len(bcc) > maxRecipients {
+		return validatedSend{}, apperrors.NewBadRequest("Email may have at most 50 recipients")
+	}
+	toEmail := to[0].Email
+	toName := stringPointer(to[0].Name)
 
 	fromEmail := defaultFrom
 	fromNameValue := strings.TrimSpace(config.DefaultFromName)
@@ -67,13 +93,13 @@ func validateSend(req SendRequest, config ServiceConfig) (validatedSend, error) 
 		return validatedSend{}, err
 	}
 
+	replyToAddresses, err := normalizeAddresses(req.ReplyTo, "Reply-to", false)
+	if err != nil {
+		return validatedSend{}, err
+	}
 	var replyTo *string
-	if strings.TrimSpace(req.ReplyTo) != "" {
-		normalizedReplyTo, replyErr := normalizeEmail(req.ReplyTo, "Reply-to email")
-		if replyErr != nil {
-			return validatedSend{}, apperrors.NewBadRequest(replyErr.Error())
-		}
-		replyTo = &normalizedReplyTo
+	if len(replyToAddresses) > 0 {
+		replyTo = &replyToAddresses[0].Email
 	}
 
 	subject := strings.TrimSpace(req.Subject)
@@ -101,11 +127,143 @@ func validateSend(req SendRequest, config ServiceConfig) (validatedSend, error) 
 		return validatedSend{}, err
 	}
 
+	headers, err := normalizeHeaders(req.Headers)
+	if err != nil {
+		return validatedSend{}, err
+	}
+	attachments, err := normalizeAttachments(req.Attachments)
+	if err != nil {
+		return validatedSend{}, err
+	}
+	tags, err := normalizeTags(req.Tags)
+	if err != nil {
+		return validatedSend{}, err
+	}
+	scheduledAt, err := normalizeSchedule(req.ScheduledAt)
+	if err != nil {
+		return validatedSend{}, err
+	}
+
 	return validatedSend{
 		MessageType: MessageTypeTransactional, FromEmail: fromEmail, FromName: fromName,
-		ReplyToEmail: replyTo, ToEmail: toEmail, ToName: toName, Subject: subject,
-		HTMLBody: htmlBody, TextBody: textBody, Metadata: metadata,
+		ReplyToEmail: replyTo, ToEmail: toEmail, ToName: toName, To: to, CC: cc, BCC: bcc,
+		ReplyTo: replyToAddresses, Subject: subject, HTMLBody: htmlBody, TextBody: textBody,
+		Metadata: metadata, Headers: headers, Attachments: attachments, Tags: tags, ScheduledAt: scheduledAt,
 	}, nil
+}
+
+func normalizeAddresses(values []EmailAddress, label string, required bool) ([]EmailAddress, error) {
+	if required && len(values) == 0 {
+		return nil, apperrors.NewBadRequest(label + " recipient is required")
+	}
+	result := make([]EmailAddress, 0, len(values))
+	for _, value := range values {
+		email, err := normalizeEmail(value.Email, label+" recipient")
+		if err != nil {
+			return nil, apperrors.NewBadRequest(err.Error())
+		}
+		name, err := normalizeName(value.Name, label+" recipient name")
+		if err != nil {
+			return nil, err
+		}
+		address := EmailAddress{Email: email}
+		if name != nil {
+			address.Name = *name
+		}
+		result = append(result, address)
+	}
+	return result, nil
+}
+
+func stringPointer(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
+func normalizeHeaders(headers map[string]string) (map[string]string, error) {
+	if len(headers) > 100 {
+		return nil, apperrors.NewBadRequest("Email may have at most 100 custom headers")
+	}
+	result := make(map[string]string, len(headers))
+	for key, value := range headers {
+		key = strings.TrimSpace(key)
+		if key == "" || strings.ContainsAny(key+value, "\r\n") {
+			return nil, apperrors.NewBadRequest("Email headers must not be empty or contain newlines")
+		}
+		result[key] = value
+	}
+	return result, nil
+}
+
+func normalizeAttachments(items []Attachment) ([]Attachment, error) {
+	total := 0
+	for i := range items {
+		items[i].Filename = strings.TrimSpace(items[i].Filename)
+		if items[i].Filename == "" {
+			return nil, apperrors.NewBadRequest("Attachment filename is required")
+		}
+		if (items[i].Content == "") == (items[i].Path == "") {
+			return nil, apperrors.NewBadRequest("Attachment must provide exactly one of content or path")
+		}
+		if items[i].Content != "" {
+			decoded, err := base64.StdEncoding.DecodedLen(len(items[i].Content)), error(nil)
+			if _, decodeErr := base64.StdEncoding.DecodeString(items[i].Content); decodeErr != nil {
+				err = decodeErr
+			}
+			if err != nil {
+				return nil, apperrors.NewBadRequest("Attachment content must be valid Base64")
+			}
+			total += decoded
+		} else {
+			parsed, err := url.ParseRequestURI(items[i].Path)
+			if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+				return nil, apperrors.NewBadRequest("Attachment path must be an HTTP or HTTPS URL")
+			}
+		}
+	}
+	if total > maxAttachmentsBytes {
+		return nil, apperrors.NewPayloadTooLarge("Email attachments exceed 40MB")
+	}
+	return items, nil
+}
+
+func normalizeTags(tags []Tag) ([]Tag, error) {
+	for i := range tags {
+		tags[i].Name, tags[i].Value = strings.TrimSpace(tags[i].Name), strings.TrimSpace(tags[i].Value)
+		if len(tags[i].Name) > 256 || len(tags[i].Value) > 256 || !tagPattern.MatchString(tags[i].Name) || !tagPattern.MatchString(tags[i].Value) {
+			return nil, apperrors.NewBadRequest("Email tag names and values must use letters, numbers, underscores, or dashes and be at most 256 characters")
+		}
+	}
+	return tags, nil
+}
+
+func normalizeSchedule(value string) (*time.Time, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil, nil
+	}
+	when, err := time.Parse(time.RFC3339Nano, value)
+	if err != nil {
+		parts := strings.Fields(strings.ToLower(value))
+		if len(parts) == 3 && parts[0] == "in" {
+			n, numberErr := strconv.Atoi(parts[1])
+			if numberErr == nil && n > 0 {
+				units := map[string]time.Duration{"second": time.Second, "seconds": time.Second, "sec": time.Second, "minute": time.Minute, "minutes": time.Minute, "min": time.Minute, "hour": time.Hour, "hours": time.Hour, "day": 24 * time.Hour, "days": 24 * time.Hour}
+				if unit, ok := units[parts[2]]; ok {
+					candidate := time.Now().UTC().Add(time.Duration(n) * unit)
+					when = candidate
+					err = nil
+				}
+			}
+		}
+	}
+	if err != nil || !when.After(time.Now().UTC()) {
+		return nil, apperrors.NewBadRequest("scheduled_at must be a future ISO 8601 time or a value such as 'in 5 min'")
+	}
+	when = when.UTC()
+	return &when, nil
 }
 
 func normalizeEmail(value string, label string) (string, error) {

@@ -24,8 +24,8 @@ func TestBatchSendValidatesEntireBatchBeforeStartingTransaction(t *testing.T) {
 	})
 
 	_, err := service.BatchSend(ctx, BatchSendRequest{Messages: []SendRequest{
-		{To: EmailAddress{Email: "first@example.com"}, Subject: "First", Text: "valid"},
-		{To: EmailAddress{Email: "not-an-email"}, Subject: "Second", Text: "invalid"},
+		{To: EmailAddressList{{Email: "first@example.com"}}, Subject: "First", Text: "valid"},
+		{To: EmailAddressList{{Email: "not-an-email"}}, Subject: "Second", Text: "invalid"},
 	}})
 	if err == nil {
 		t.Fatal("expected the invalid second message to reject the batch")

@@ -56,7 +56,7 @@ func emailTestContext(teamID uuid.UUID) context.Context {
 }
 
 func emailTestRequest(recipient string) SendRequest {
-	return SendRequest{To: EmailAddress{Email: recipient}, Subject: "Integration test", Text: "queued only"}
+	return SendRequest{To: EmailAddressList{{Email: recipient}}, Subject: "Integration test", Text: "queued only"}
 }
 
 func TestSendPersistsMessageAndMatchingOutboxEventAtomically(t *testing.T) {

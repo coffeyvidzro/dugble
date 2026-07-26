@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -47,6 +48,10 @@ func (q *Queue) EnqueueEmailDelivery(ctx context.Context, messageID uuid.UUID, t
 }
 
 func (q *Queue) EnqueueEmailDeliveryTx(ctx context.Context, tx pgx.Tx, messageID uuid.UUID, teamID uuid.UUID) error {
+	return q.EnqueueEmailDeliveryAtTx(ctx, tx, messageID, teamID, time.Time{})
+}
+
+func (q *Queue) EnqueueEmailDeliveryAtTx(ctx context.Context, tx pgx.Tx, messageID uuid.UUID, teamID uuid.UUID, availableAt time.Time) error {
 	if q == nil || q.store == nil {
 		return errors.New("email delivery outbox is not configured")
 	}
@@ -54,6 +59,7 @@ func (q *Queue) EnqueueEmailDeliveryTx(ctx context.Context, tx pgx.Tx, messageID
 	if err != nil {
 		return err
 	}
+	event.AvailableAt = availableAt
 	_, err = q.store.EnqueueTx(ctx, tx, event)
 	return err
 }
