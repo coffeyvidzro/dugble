@@ -100,11 +100,21 @@ func (c *Consumer) processBatch(ctx context.Context) (int, error) {
 
 	semaphore := make(chan struct{}, c.config.Concurrency)
 	var group sync.WaitGroup
+
+dispatchLoop:
 	for _, delivery := range deliveries {
 		if ctx.Err() != nil {
 			break
 		}
-		semaphore <- struct{}{}
+		select {
+		case semaphore <- struct{}{}:
+		case <-ctx.Done():
+			break dispatchLoop
+		}
+		if ctx.Err() != nil {
+			<-semaphore
+			break
+		}
 		group.Add(1)
 		go func(delivery ClaimedDelivery) {
 			defer group.Done()
