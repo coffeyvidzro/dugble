@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -80,8 +81,8 @@ func (r *Repository) Create(ctx context.Context, params createMessageParams) (Me
 
 func (r *Repository) List(ctx context.Context, teamID uuid.UUID, limit, offset int32) ([]Message, error) {
 	rows, err := r.queries.ListEmailMessages(ctx, dbsqlc.ListEmailMessagesParams{
-		TeamID:     teamID,
-		LimitCount: limit,
+		TeamID:      teamID,
+		LimitCount:  limit,
 		OffsetCount: offset,
 	})
 	if err != nil {
