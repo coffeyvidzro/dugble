@@ -21,10 +21,10 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/arkesel"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/mnotify"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/routing"
+	"github.com/coffeyvidzro/dugble/server/internal/messaging/outbox"
 	"github.com/coffeyvidzro/dugble/server/internal/notifications"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/cache"
 	"github.com/coffeyvidzro/dugble/server/internal/transport"
-	"github.com/coffeyvidzro/dugble/server/internal/worker"
 )
 
 func main() {
@@ -61,15 +61,6 @@ func run() error {
 		return fmt.Errorf("initialize PostgreSQL: %w", err)
 	}
 	defer db.Close()
-
-	if err := worker.Migrate(startupCtx, db); err != nil {
-		return fmt.Errorf("migrate River schema: %w", err)
-	}
-
-	riverClient, err := worker.NewProducer(db)
-	if err != nil {
-		return fmt.Errorf("initialize River producer: %w", err)
-	}
 
 	redisClient, err := cache.NewRedis(
 		startupCtx,
@@ -120,6 +111,7 @@ func run() error {
 		return fmt.Errorf("initialize SMS sender: %w", err)
 	}
 
+	outboxRepository := outbox.NewRepository(db)
 	router, err := transport.NewRouter(
 		cfg,
 		transport.Dependencies{
@@ -129,7 +121,7 @@ func run() error {
 			Sender:      notificationSender,
 			Renderer:    renderer,
 			SMSSender:   smsSender,
-			SMSDelivery: smsdelivery.NewQueue(riverClient),
+			SMSDelivery: smsdelivery.NewQueue(outboxRepository),
 		},
 	)
 	if err != nil {
