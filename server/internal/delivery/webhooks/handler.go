@@ -13,17 +13,17 @@ import (
 )
 
 type ClaimedDelivery struct {
-	ID                      uuid.UUID
-	EventID                 uuid.UUID
-	EndpointID              uuid.UUID
-	AttemptCount            int32
-	TeamID                  uuid.UUID
-	EventType               string
-	APIVersion              string
-	Payload                 json.RawMessage
-	OccurredAt              time.Time
-	URL                     string
-	SigningSecretCiphertext []byte
+	ID            uuid.UUID
+	EventID       uuid.UUID
+	EndpointID    uuid.UUID
+	AttemptCount  int32
+	TeamID        uuid.UUID
+	EventType     string
+	APIVersion    string
+	Payload       json.RawMessage
+	OccurredAt    time.Time
+	URL           string
+	SigningSecret []byte
 }
 
 type SecretDecryptor interface {
@@ -72,7 +72,7 @@ func (h *Handler) Handle(ctx context.Context, delivery ClaimedDelivery) error {
 		return h.finishFailure(ctx, delivery, nil, nil, fmt.Errorf("encode webhook payload: %w", err))
 	}
 
-	secret, err := h.decryptor.Decrypt(ctx, delivery.SigningSecretCiphertext)
+	secret, err := h.decryptor.Decrypt(ctx, delivery.SigningSecret)
 	if err != nil {
 		return h.finishFailure(ctx, delivery, nil, nil, fmt.Errorf("decrypt webhook signing secret: %w", err))
 	}
@@ -105,7 +105,7 @@ func (h *Handler) Handle(ctx context.Context, delivery ClaimedDelivery) error {
 
 	cause := fmt.Errorf("webhook endpoint returned HTTP %d", response.StatusCode)
 	if response.StatusCode == http.StatusTooManyRequests {
-		if retryAt, ok := retryAfter(response.Header.Get("Retry-After"), h.now()); ok {
+		if retryAt, ok := retryAfter(response.Header.Get("Retry-After"), h.now); ok {
 			return h.store.ScheduleRetry(ctx, delivery.ID, h.workerID, retryAt, &status, &responseBody, cause.Error())
 		}
 	}
