@@ -25,10 +25,6 @@ type ClaimedDelivery struct {
 	SigningSecret []byte
 }
 
-type SecretDecryptor interface {
-	Decrypt(context.Context, []byte) ([]byte, error)
-}
-
 type deliveryResultStore interface {
 	MarkSucceeded(context.Context, uuid.UUID, string, int32, *string) error
 	ScheduleRetry(context.Context, uuid.UUID, string, time.Time, *int32, *string, string) error
@@ -37,24 +33,26 @@ type deliveryResultStore interface {
 }
 
 type Handler struct {
-	store     deliveryResultStore
-	client    HTTPClient
-	decryptor SecretDecryptor
-	policy    RetryPolicy
-	workerID  string
-	now       func() time.Time
+	store    deliveryResultStore
+	client   HTTPClient
+	policy   RetryPolicy
+	workerID string
+	now      func() time.Time
 }
 
-func NewHandler(store deliveryResultStore, client HTTPClient, decryptor SecretDecryptor, policy RetryPolicy, workerID string) *Handler {
-	return &Handler{store: store, client: client, decryptor: decryptor, policy: policy, workerID: workerID, now: time.Now}
+func NewHandler(store deliveryResultStore, client HTTPClient, policy RetryPolicy, workerID string) *Handler {
+	return &Handler{store: store, client: client, policy: policy, workerID: workerID, now: time.Now}
 }
 
 func (h *Handler) Handle(ctx context.Context, delivery ClaimedDelivery) error {
-	if h == nil || h.store == nil || h.client == nil || h.decryptor == nil {
+	if h == nil || h.store == nil || h.client == nil {
 		return errors.New("webhook delivery handler is not configured")
 	}
 	if delivery.ID == uuid.Nil || delivery.EventID == uuid.Nil || delivery.EndpointID == uuid.Nil {
 		return errors.New("webhook delivery requires delivery, event, and endpoint IDs")
+	}
+	if len(delivery.SigningSecret) == 0 {
+		return h.finishFailure(ctx, delivery, nil, nil, errors.New("webhook signing secret is empty"))
 	}
 
 	body, err := json.Marshal(struct {
@@ -72,14 +70,6 @@ func (h *Handler) Handle(ctx context.Context, delivery ClaimedDelivery) error {
 		return h.finishFailure(ctx, delivery, nil, nil, fmt.Errorf("encode webhook payload: %w", err))
 	}
 
-	secret, err := h.decryptor.Decrypt(ctx, delivery.SigningSecret)
-	if err != nil {
-		return h.finishFailure(ctx, delivery, nil, nil, fmt.Errorf("decrypt webhook signing secret: %w", err))
-	}
-	if len(secret) == 0 {
-		return h.finishFailure(ctx, delivery, nil, nil, errors.New("webhook signing secret is empty"))
-	}
-
 	timestamp := h.now().UTC().Unix()
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
@@ -87,7 +77,7 @@ func (h *Handler) Handle(ctx context.Context, delivery ClaimedDelivery) error {
 	headers.Set("X-Dugble-Event", delivery.EventType)
 	headers.Set("X-Dugble-Event-Id", delivery.EventID.String())
 	headers.Set("X-Dugble-Delivery-Id", delivery.ID.String())
-	headers.Set(SignatureHeader, Sign(secret, timestamp, body))
+	headers.Set(SignatureHeader, Sign(delivery.SigningSecret, timestamp, body))
 
 	response, err := h.client.Post(ctx, delivery.URL, headers, body)
 	if err != nil {
