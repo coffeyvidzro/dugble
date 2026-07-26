@@ -14,7 +14,7 @@ curl --request POST \
   --url https://api.dugble.com/emails/batch \
   --header "Authorization: Bearer $DUGBLE_TOKEN" \
   --header "Content-Type: application/json" \
-  --header "Idempotency-Key: weekly-reports-2026-30" \
+  --header "Idempotency-Key: <unique-request-key>" \
   --data '[
     {
       "to": "ada@example.com",

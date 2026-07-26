@@ -14,7 +14,7 @@ curl --request POST \
   --url https://api.dugble.com/emails \
   --header "Authorization: Bearer $DUGBLE_TOKEN" \
   --header "Content-Type: application/json" \
-  --header "Idempotency-Key: reminder-order-1234" \
+  --header "Idempotency-Key: <unique-request-key>" \
   --data '{
     "to": "ada@example.com",
     "subject": "Your appointment is tomorrow",
@@ -42,7 +42,7 @@ curl --request PATCH \
   --url https://api.dugble.com/emails/49a3999c-0ce1-4ea6-ab68-afcd6dc2e794 \
   --header "Authorization: Bearer $DUGBLE_TOKEN" \
   --header "Content-Type: application/json" \
-  --header "Idempotency-Key: reschedule-order-1234-v2" \
+  --header "Idempotency-Key: <unique-request-key>" \
   --data '{
     "scheduled_at": "2026-08-05T13:00:00Z"
   }'
@@ -64,7 +64,7 @@ curl --request PATCH \
 curl --request POST \
   --url https://api.dugble.com/emails/49a3999c-0ce1-4ea6-ab68-afcd6dc2e794/cancel \
   --header "Authorization: Bearer $DUGBLE_TOKEN" \
-  --header "Idempotency-Key: cancel-order-1234"
+  --header "Idempotency-Key: <unique-request-key>"
 ```
 
 Cancellation removes the pending delivery job and changes the message state to `canceled` in the same database transaction.

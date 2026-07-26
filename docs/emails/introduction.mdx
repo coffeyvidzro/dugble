@@ -27,7 +27,7 @@ curl --request POST \
   --url https://api.dugble.com/emails \
   --header "Authorization: Bearer $DUGBLE_TOKEN" \
   --header "Content-Type: application/json" \
-  --header "Idempotency-Key: welcome-user-42" \
+  --header "Idempotency-Key: <unique-request-key>" \
   --data '{
     "from": "Dugble <notifications@example.com>",
     "to": "Ada Lovelace <ada@example.com>",
