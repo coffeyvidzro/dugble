@@ -2,11 +2,9 @@ CREATE TABLE IF NOT EXISTS webhook_endpoints (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     url TEXT NOT NULL,
-    description TEXT,
-    signing_secret_ciphertext BYTEA NOT NULL,
+    signing_secret BYTEA NOT NULL,
     enabled BOOLEAN NOT NULL DEFAULT true,
     subscribed_events TEXT[] NOT NULL,
-    api_version TEXT NOT NULL DEFAULT '2026-07-01',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     disabled_at TIMESTAMPTZ,
@@ -14,12 +12,11 @@ CREATE TABLE IF NOT EXISTS webhook_endpoints (
     CONSTRAINT chk_webhook_endpoint_url CHECK (
         length(trim(url)) > 0 AND url ~ '^https://'
     ),
-    CONSTRAINT chk_webhook_endpoint_secret CHECK (octet_length(signing_secret_ciphertext) > 0),
+    CONSTRAINT chk_webhook_endpoint_secret CHECK (octet_length(signing_secret) > 0),
     CONSTRAINT chk_webhook_endpoint_events CHECK (
         cardinality(subscribed_events) > 0
         AND array_position(subscribed_events, '') IS NULL
     ),
-    CONSTRAINT chk_webhook_endpoint_api_version CHECK (length(trim(api_version)) > 0),
     CONSTRAINT chk_webhook_endpoint_disabled CHECK (
         (enabled AND disabled_at IS NULL)
         OR (NOT enabled AND disabled_at IS NOT NULL)
