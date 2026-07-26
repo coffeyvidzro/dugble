@@ -10,11 +10,11 @@ import { Hero } from "@/components/marketing/hero/hero";
 import { Cta } from "@/components/marketing/cta";
 
 export const metadata: Metadata = {
-    title: "Dugble | Reliable A2P Messaging & Developer Infrastructure",
+    title: "Reliable A2P Messaging & Developer Infrastructure",
     description:
         "Send OTPs, receipts, alerts, and customer notifications with complete delivery transparency, signed webhooks, and developer-first logs.",
     openGraph: {
-        title: "Dugble | Reliable A2P Messaging & Developer Infrastructure",
+        title: "Reliable A2P Messaging & Developer Infrastructure",
         description:
             "Send OTPs, receipts, alerts, and customer notifications with complete delivery transparency, signed webhooks, and developer-first logs.",
         url: "https://dugble.com",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: "summary_large_image",
-        title: "Dugble | Reliable A2P Messaging Infrastructure",
+        title: "Reliable A2P Messaging Infrastructure",
         description:
             "Send OTPs, receipts, alerts, and customer notifications with complete delivery transparency.",
     },

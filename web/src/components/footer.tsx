@@ -92,6 +92,12 @@ export function Footer() {
                     >
                         Privacy
                     </Link>
+                    <Link
+                        href="/sitemap"
+                        className="hover:text-foreground transition-colors"
+                    >
+                        Sitemap
+                    </Link>
                 </div>
                 <ThemeToggle />
             </div>
