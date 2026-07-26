@@ -12,6 +12,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/integration/hubtel"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/auth"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/domain"
+	emailmodule "github.com/coffeyvidzro/dugble/server/internal/modules/email"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/senderid"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
 	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
@@ -29,13 +30,14 @@ import (
 
 // Dependencies contains infrastructure required by the HTTP transport.
 type Dependencies struct {
-	DB          *pgxpool.Pool
-	Redis       *redis.Client
-	Arcjet      *arcjet.Client
-	Sender      notifications.EmailSender
-	Renderer    *notifications.Renderer
-	SMSSender   smsmodule.Sender
-	SMSDelivery smsmodule.DeliveryQueue
+	DB            *pgxpool.Pool
+	Redis         *redis.Client
+	Arcjet        *arcjet.Client
+	Sender        notifications.EmailSender
+	Renderer      *notifications.Renderer
+	SMSSender     smsmodule.Sender
+	SMSDelivery   smsmodule.DeliveryQueue
+	EmailDelivery emailmodule.DeliveryQueue
 }
 
 // NewRouter creates and configures the HTTP router.
@@ -62,14 +64,14 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	router.GET("/health", healthHandler.Live)
 	router.GET("/ready", healthHandler.Ready)
 
-	emailService := notifications.NewEmailService(deps.Sender, deps.Renderer, cfg.FrontendURL)
+	notificationEmailService := notifications.NewEmailService(deps.Sender, deps.Renderer, cfg.FrontendURL)
 
 	sessionRepository := session.NewRepository(deps.DB)
 	authRepository := auth.NewRepository(deps.DB)
 	authService := auth.NewService(
 		authRepository,
 		sessionRepository,
-		emailService,
+		notificationEmailService,
 	)
 	authMiddleware := middlewares.SessionAuth(middlewares.SessionAuthConfig{
 		Sessions: sessionRepository,
@@ -96,11 +98,12 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	user.RegisterRoutes(router, user.NewHandler(userService), authMiddleware, csrfMiddleware)
 
 	teamRepository := team.NewRepository(deps.DB)
-	teamService := team.NewService(teamRepository, emailService)
+	teamService := team.NewService(teamRepository, notificationEmailService)
 	teamTokenRepository := teamtoken.NewRepository(deps.DB)
 	domainRepository := domain.NewRepository(deps.DB)
 	senderIDRepository := senderid.NewRepository(deps.DB)
 	smsRepository := smsmodule.NewRepository(deps.DB)
+	emailRepository := emailmodule.NewRepository(deps.DB)
 	walletRepository := wallet.NewRepository(deps.DB)
 	hubtelProvider := hubtel.NewProvider(hubtel.NewClient(cfg.Hubtel))
 	fxClient := fx.NewCachedProvider(fx.NewFrankfurterClient(), deps.Redis)
@@ -162,6 +165,18 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	smsmodule.RegisterRoutes(
 		router,
 		smsmodule.NewHandler(smsService),
+		authMiddleware,
+		csrfMiddleware,
+		tenantMiddleware,
+	)
+
+	emailService := emailmodule.NewService(emailRepository, deps.EmailDelivery, emailmodule.ServiceConfig{
+		DefaultFromEmail: cfg.AWS.FromEmail,
+		DefaultFromName:  "Dugble",
+	})
+	emailmodule.RegisterRoutes(
+		router,
+		emailmodule.NewHandler(emailService),
 		authMiddleware,
 		csrfMiddleware,
 		tenantMiddleware,
