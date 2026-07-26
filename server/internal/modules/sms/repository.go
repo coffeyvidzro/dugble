@@ -47,12 +47,17 @@ type createMessageParams struct {
 	Segments           int32
 	CostMicros         int64
 	Metadata           json.RawMessage
+	Tags               []Tag
 	DestinationCountry string
 	PricingRuleID      uuid.UUID
 	UnitCostMicros     int64
 }
 
 func (r *Repository) Create(ctx context.Context, params createMessageParams) (Message, error) {
+	tags, err := json.Marshal(params.Tags)
+	if err != nil {
+		return Message{}, fmt.Errorf("encode SMS tags: %w", err)
+	}
 	row, err := r.queries.CreateSMSMessage(ctx, dbsqlc.CreateSMSMessageParams{
 		TeamID:             params.TeamID,
 		SenderID:           params.SenderID,
@@ -63,6 +68,7 @@ func (r *Repository) Create(ctx context.Context, params createMessageParams) (Me
 		Segments:           params.Segments,
 		CostMicros:         params.CostMicros,
 		Metadata:           ensureMetadata(params.Metadata),
+		Tags:               tags,
 		DestinationCountry: params.DestinationCountry,
 		PricingRuleID:      params.PricingRuleID,
 		UnitCostMicros:     params.UnitCostMicros,
@@ -170,6 +176,7 @@ func messageFromSQLC(row dbsqlc.SmsMessage) Message {
 		CostMicros:         row.CostMicros,
 		ErrorMessage:       row.ErrorMessage,
 		Metadata:           ensureMetadata(row.Metadata),
+		Tags:               decodeTags(row.Tags),
 		CreatedAt:          row.CreatedAt.Time,
 		UpdatedAt:          row.UpdatedAt.Time,
 		DestinationCountry: row.DestinationCountry,
@@ -188,6 +195,12 @@ func messageFromSQLC(row dbsqlc.SmsMessage) Message {
 	}
 	message.Billing = billingFromAmounts(message.UnitCostMicros, message.CostMicros)
 	return message
+}
+
+func decodeTags(value []byte) []Tag {
+	result := []Tag{}
+	_ = json.Unmarshal(value, &result)
+	return result
 }
 
 func billingFromAmounts(unitCostMicros int64, totalCostMicros int64) Billing {

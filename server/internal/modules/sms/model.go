@@ -1,6 +1,7 @@
 package sms
 
 import (
+	"bytes"
 	"encoding/json"
 	"time"
 )
@@ -34,6 +35,7 @@ type Message struct {
 	Billing            Billing         `json:"billing"`
 	ErrorMessage       *string         `json:"error_message,omitempty"`
 	Metadata           json.RawMessage `json:"metadata"`
+	Tags               []Tag           `json:"tags"`
 	SubmittedAt        *time.Time      `json:"submitted_at,omitempty"`
 	DeliveredAt        *time.Time      `json:"delivered_at,omitempty"`
 	CreatedAt          time.Time       `json:"created_at"`
@@ -48,14 +50,17 @@ type Destination struct {
 }
 
 type SMSResponse struct {
+	Object      string          `json:"object"`
 	ID          string          `json:"id"`
+	MessageID   *string         `json:"message_id"`
 	To          string          `json:"to"`
 	From        string          `json:"from"`
 	Body        string          `json:"body"`
-	Status      string          `json:"status"`
+	Status      string          `json:"last_event"`
 	Destination Destination     `json:"destination"`
 	Segments    int32           `json:"segments"`
 	Metadata    json.RawMessage `json:"metadata"`
+	Tags        []Tag           `json:"tags"`
 	Billing     Billing         `json:"billing"`
 	Failure     *SMSFailure     `json:"failure,omitempty"`
 	SubmittedAt *time.Time      `json:"submitted_at,omitempty"`
@@ -71,7 +76,9 @@ type SMSFailure struct {
 
 func (m Message) Response() SMSResponse {
 	return SMSResponse{
+		Object:      "sms",
 		ID:          m.ID,
+		MessageID:   m.ProviderMessageID,
 		To:          m.To,
 		From:        m.From,
 		Body:        m.Body,
@@ -79,6 +86,7 @@ func (m Message) Response() SMSResponse {
 		Destination: Destination{Country: m.DestinationCountry},
 		Segments:    m.Segments,
 		Metadata:    m.Metadata,
+		Tags:        nonNilSMSTags(m.Tags),
 		Billing:     m.Billing,
 		Failure:     publicFailure(m.Status),
 		SubmittedAt: m.SubmittedAt,
@@ -124,11 +132,40 @@ type SendRequest struct {
 	From               string          `json:"from"`
 	Body               string          `json:"body"`
 	Metadata           json.RawMessage `json:"metadata,omitempty"`
+	Tags               []Tag           `json:"tags,omitempty"`
 	DestinationCountry string          `json:"-"`
 }
 
 type BatchSendRequest struct {
 	Messages []SendRequest `json:"messages"`
+}
+
+func (request *BatchSendRequest) UnmarshalJSON(data []byte) error {
+	data = bytes.TrimSpace(data)
+	if len(data) > 0 && data[0] == '[' {
+		return json.Unmarshal(data, &request.Messages)
+	}
+	type alias BatchSendRequest
+	return json.Unmarshal(data, (*alias)(request))
+}
+
+type Tag struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+type SendResponse struct {
+	Object string `json:"object"`
+	ID     string `json:"id"`
+}
+
+func (m Message) SendResponse() SendResponse { return SendResponse{Object: "sms", ID: m.ID} }
+
+func nonNilSMSTags(tags []Tag) []Tag {
+	if tags == nil {
+		return []Tag{}
+	}
+	return tags
 }
 
 type BatchSendError struct {

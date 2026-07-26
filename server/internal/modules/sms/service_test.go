@@ -142,6 +142,7 @@ func TestSMSResponseJSONUsesPublicRepresentation(t *testing.T) {
 		Billing:            billingFromAmounts(9_000, 9_000),
 		ErrorMessage:       &internalError,
 		Metadata:           json.RawMessage(`{"campaign":"welcome"}`),
+		Tags:               []Tag{{Name: "category", Value: "welcome_sms"}},
 		SubmittedAt:        &now,
 		CreatedAt:          now,
 		UpdatedAt:          now,
@@ -168,6 +169,10 @@ func TestSMSResponseJSONUsesPublicRepresentation(t *testing.T) {
 		}
 	}
 	for _, expected := range []string{
+		`"object":"sms"`,
+		`"message_id":"provider-secret"`,
+		`"last_event":"failed"`,
+		`"tags":[{"name":"category","value":"welcome_sms"}]`,
 		`"metadata":{"campaign":"welcome"}`,
 		`"destination":{"country":"GH"}`,
 		`"segments":1`,
@@ -180,6 +185,46 @@ func TestSMSResponseJSONUsesPublicRepresentation(t *testing.T) {
 		if !strings.Contains(body, expected) {
 			t.Fatalf("SMS response JSON missing %s: %s", expected, body)
 		}
+	}
+}
+
+func TestSMSSendResponseIsCompact(t *testing.T) {
+	payload, err := json.Marshal((Message{ID: "message-id", Body: "private"}).SendResponse())
+	if err != nil {
+		t.Fatalf("marshal send response: %v", err)
+	}
+	if string(payload) != `{"object":"sms","id":"message-id"}` {
+		t.Fatalf("send response = %s", payload)
+	}
+}
+
+func TestBatchSendRequestAcceptsTopLevelArray(t *testing.T) {
+	var request BatchSendRequest
+	if err := json.Unmarshal([]byte(`[
+		{"to":"+233241234567","from":"DUGBLE","body":"first"},
+		{"to":"+233201234567","from":"DUGBLE","body":"second"}
+	]`), &request); err != nil {
+		t.Fatalf("unmarshal batch: %v", err)
+	}
+	if len(request.Messages) != 2 || request.Messages[1].Body != "second" {
+		t.Fatalf("unexpected batch: %#v", request)
+	}
+}
+
+func TestValidateSendNormalizesTags(t *testing.T) {
+	request, err := validateSend(SendRequest{
+		To: "+233241234567", From: "DUGBLE", Body: "hello",
+		Tags: []Tag{{Name: " category ", Value: " welcome_sms "}},
+	})
+	if err != nil {
+		t.Fatalf("validate send: %v", err)
+	}
+	if len(request.Tags) != 1 || request.Tags[0].Name != "category" || request.Tags[0].Value != "welcome_sms" {
+		t.Fatalf("unexpected tags: %#v", request.Tags)
+	}
+	request.Tags[0].Value = "not valid"
+	if _, err := validateSend(request); err == nil {
+		t.Fatal("expected invalid tag to be rejected")
 	}
 }
 

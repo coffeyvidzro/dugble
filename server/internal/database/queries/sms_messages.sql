@@ -9,6 +9,7 @@ INSERT INTO sms_messages (
     segments,
     cost_micros,
     metadata,
+    tags,
     destination_country,
     pricing_rule_id,
     unit_cost_micros
@@ -22,6 +23,7 @@ INSERT INTO sms_messages (
     sqlc.arg(segments),
     sqlc.arg(cost_micros),
     sqlc.arg(metadata),
+    sqlc.arg(tags),
     sqlc.arg(destination_country),
     sqlc.arg(pricing_rule_id),
     sqlc.arg(unit_cost_micros)

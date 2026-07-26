@@ -151,6 +151,7 @@ type SmsMessage struct {
 	CostMicros         int64              `db:"cost_micros" json:"cost_micros"`
 	ErrorMessage       *string            `db:"error_message" json:"error_message"`
 	Metadata           []byte             `db:"metadata" json:"metadata"`
+	Tags               []byte             `db:"tags" json:"tags"`
 	SubmittedAt        pgtype.Timestamptz `db:"submitted_at" json:"submitted_at"`
 	DeliveredAt        pgtype.Timestamptz `db:"delivered_at" json:"delivered_at"`
 	CreatedAt          pgtype.Timestamptz `db:"created_at" json:"created_at"`

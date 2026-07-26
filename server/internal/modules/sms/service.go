@@ -21,10 +21,11 @@ import (
 
 const (
 	maxBodyCharacters = 1600
-	maxBatchMessages  = 50
+	maxBatchMessages  = 100
 )
 
 var e164Pattern = regexp.MustCompile(`^\+[1-9]\d{7,14}$`)
+var tagPattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
 var (
 	gsm7BasicRunes    = runeSet("@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ ÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà")
@@ -145,6 +146,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 		TeamID: tenantContext.TeamID, SenderID: senderID, To: normalized.To, From: normalized.From,
 		Body: normalized.Body, Status: StatusQueued, Segments: segments,
 		CostMicros: quote.TotalCostMicros, Metadata: normalized.Metadata,
+		Tags:               normalized.Tags,
 		DestinationCountry: quote.DestinationCountry, PricingRuleID: quote.PricingRuleID,
 		UnitCostMicros: quote.UnitCostMicros,
 	})
@@ -354,7 +356,24 @@ func validateSend(req SendRequest) (SendRequest, error) {
 	if !json.Valid(req.Metadata) {
 		return SendRequest{}, apperrors.NewBadRequest("Metadata must be valid JSON")
 	}
+	tags, err := normalizeSMSTags(req.Tags)
+	if err != nil {
+		return SendRequest{}, err
+	}
+	req.Tags = tags
 	return req, nil
+}
+
+func normalizeSMSTags(tags []Tag) ([]Tag, error) {
+	for index := range tags {
+		tags[index].Name = strings.TrimSpace(tags[index].Name)
+		tags[index].Value = strings.TrimSpace(tags[index].Value)
+		if len(tags[index].Name) == 0 || len(tags[index].Value) == 0 || len(tags[index].Name) > 256 || len(tags[index].Value) > 256 ||
+			!tagPattern.MatchString(tags[index].Name) || !tagPattern.MatchString(tags[index].Value) {
+			return nil, apperrors.NewBadRequest("SMS tag names and values must use letters, numbers, underscores, or dashes and be at most 256 characters")
+		}
+	}
+	return tags, nil
 }
 
 func countSegments(body string) int32 {

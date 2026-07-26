@@ -40,7 +40,7 @@ func (h *Handler) Send(c *echo.Context) error {
 		return httputil.Error(c, err)
 	}
 	c.Response().Header().Set("Location", "/sms/"+message.ID)
-	return httputil.Created(c, message.Response())
+	return httputil.Accepted(c, message.SendResponse())
 }
 
 func (h *Handler) BatchSend(c *echo.Context) error {
