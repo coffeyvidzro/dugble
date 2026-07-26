@@ -35,6 +35,30 @@ type OauthIdentity struct {
 	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
+type OutboxEvent struct {
+	ID            uuid.UUID          `db:"id" json:"id"`
+	Subject       string             `db:"subject" json:"subject"`
+	AggregateType string             `db:"aggregate_type" json:"aggregate_type"`
+	AggregateID   uuid.UUID          `db:"aggregate_id" json:"aggregate_id"`
+	Payload       []byte             `db:"payload" json:"payload"`
+	Headers       []byte             `db:"headers" json:"headers"`
+	AvailableAt   pgtype.Timestamptz `db:"available_at" json:"available_at"`
+	PublishedAt   pgtype.Timestamptz `db:"published_at" json:"published_at"`
+	Attempts      int32              `db:"attempts" json:"attempts"`
+	LastError     *string            `db:"last_error" json:"last_error"`
+	LockedAt      pgtype.Timestamptz `db:"locked_at" json:"locked_at"`
+	LockedBy      *string            `db:"locked_by" json:"locked_by"`
+	CreatedAt     pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type ProcessedEvent struct {
+	ConsumerName string             `db:"consumer_name" json:"consumer_name"`
+	EventID      uuid.UUID          `db:"event_id" json:"event_id"`
+	ProcessedAt  pgtype.Timestamptz `db:"processed_at" json:"processed_at"`
+	Metadata     []byte             `db:"metadata" json:"metadata"`
+}
+
 type SenderDomain struct {
 	ID                  uuid.UUID          `db:"id" json:"id"`
 	TeamID              uuid.UUID          `db:"team_id" json:"team_id"`
