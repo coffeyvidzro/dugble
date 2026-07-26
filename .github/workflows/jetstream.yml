@@ -47,7 +47,8 @@ jobs:
           docker compose --env-file .env.example -f compose.yml exec -T nats \
             wget -q -O /tmp/health.json \
             'http://127.0.0.1:8222/healthz?js-enabled-only=true'
-          cat < <(docker compose --env-file .env.example -f compose.yml exec -T nats cat /tmp/health.json)
+          docker compose --env-file .env.example -f compose.yml exec -T nats \
+            cat /tmp/health.json
 
           docker compose --env-file .env.example -f compose.yml exec -T nats \
             wget -q -O /tmp/jsz.json \
@@ -62,10 +63,9 @@ jobs:
       - name: Verify transactional outbox relay
         run: |
           event_id='00000000-0000-4000-8000-000000000016'
-          aggregate_id='00000000-0000-4000-8000-000000000041'
 
           docker compose --env-file .env.example -f compose.yml exec -T postgres \
-            sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<SQL
+            sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
           INSERT INTO outbox_events (
               id,
               subject,
@@ -74,10 +74,10 @@ jobs:
               payload,
               headers
           ) VALUES (
-              '${event_id}',
+              '00000000-0000-4000-8000-000000000016',
               'dugble.event.foundation.verified.v1',
               'foundation_check',
-              '${aggregate_id}',
+              '00000000-0000-4000-8000-000000000041',
               '{"source":"github-actions"}'::jsonb,
               '{"Trace-Id":"jetstream-foundation"}'::jsonb
           );
@@ -99,13 +99,13 @@ jobs:
           test "$published" = "t"
 
           docker compose --env-file .env.example -f compose.yml exec -T postgres \
-            sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<SQL
+            sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
           DO $$
           BEGIN
               IF NOT EXISTS (
                   SELECT 1
                   FROM outbox_events
-                  WHERE id = '${event_id}'
+                  WHERE id = '00000000-0000-4000-8000-000000000016'
                     AND published_at IS NOT NULL
                     AND attempts >= 1
                     AND last_error IS NULL
