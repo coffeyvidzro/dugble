@@ -27,10 +27,14 @@ type AWSConfig struct {
 }
 
 type MessagingConfig struct {
-	URL                string        `env:"URL" envDefault:"nats://localhost:4222"`
-	OutboxPollInterval time.Duration `env:"OUTBOX_POLL_INTERVAL" envDefault:"500ms"`
-	OutboxBatchSize    int           `env:"OUTBOX_BATCH_SIZE" envDefault:"100"`
-	OutboxLockTimeout  time.Duration `env:"OUTBOX_LOCK_TIMEOUT" envDefault:"30s"`
+	URL                    string        `env:"URL" envDefault:"nats://localhost:4222"`
+	OutboxPollInterval     time.Duration `env:"OUTBOX_POLL_INTERVAL" envDefault:"500ms"`
+	OutboxBatchSize        int           `env:"OUTBOX_BATCH_SIZE" envDefault:"100"`
+	OutboxLockTimeout      time.Duration `env:"OUTBOX_LOCK_TIMEOUT" envDefault:"30s"`
+	SMSConsumerConcurrency int           `env:"SMS_CONSUMER_CONCURRENCY" envDefault:"10"`
+	SMSConsumerAckWait     time.Duration `env:"SMS_CONSUMER_ACK_WAIT" envDefault:"2m"`
+	SMSConsumerMaxDeliver  int           `env:"SMS_CONSUMER_MAX_DELIVER" envDefault:"6"`
+	SMSHandlerTimeout      time.Duration `env:"SMS_HANDLER_TIMEOUT" envDefault:"45s"`
 }
 
 type BackofficeConfig struct {
@@ -95,6 +99,18 @@ func (c *Config) normalize() {
 	}
 	if c.Messaging.OutboxLockTimeout <= 0 {
 		c.Messaging.OutboxLockTimeout = 30 * time.Second
+	}
+	if c.Messaging.SMSConsumerConcurrency <= 0 {
+		c.Messaging.SMSConsumerConcurrency = 10
+	}
+	if c.Messaging.SMSConsumerAckWait <= 0 {
+		c.Messaging.SMSConsumerAckWait = 2 * time.Minute
+	}
+	if c.Messaging.SMSConsumerMaxDeliver <= 0 {
+		c.Messaging.SMSConsumerMaxDeliver = 6
+	}
+	if c.Messaging.SMSHandlerTimeout <= 0 {
+		c.Messaging.SMSHandlerTimeout = 45 * time.Second
 	}
 	c.Arkesel.APIKey = strings.TrimSpace(c.Arkesel.APIKey)
 	c.Arkesel.BaseURL = strings.TrimRight(strings.TrimSpace(c.Arkesel.BaseURL), "/")

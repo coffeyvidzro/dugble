@@ -8,22 +8,21 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/riverqueue/river"
 
 	smsapi "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
 	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/wallet"
 )
 
-func TestWorkerSafeProviderRejectionRefundsAndMarksFailed(t *testing.T) {
+func TestHandlerSafeProviderRejectionRefundsAndMarksFailed(t *testing.T) {
 	messageID := uuid.New()
 	teamID := uuid.New()
 	repo := newFakeRepository(messageID, teamID, smsmodule.StatusQueued)
 	senderErr := &smsapi.SendError{Attempts: []smsapi.ProviderAttempt{{ProviderID: "test", Err: safeSendError{}}}}
-	worker := newTestWorker(repo, &fakeSender{sendErr: senderErr}, &fakeWallet{})
+	handler := newTestHandler(repo, &fakeSender{sendErr: senderErr}, &fakeWallet{})
 
-	if err := worker.Work(context.Background(), testJob(messageID, teamID)); err != nil {
-		t.Fatalf("Work returned error: %v", err)
+	if err := handler.Handle(context.Background(), testCommand(messageID, teamID)); err != nil {
+		t.Fatalf("Handle returned error: %v", err)
 	}
 	if repo.message.Status != smsmodule.StatusFailed {
 		t.Fatalf("status = %q, want %q", repo.message.Status, smsmodule.StatusFailed)
@@ -31,19 +30,19 @@ func TestWorkerSafeProviderRejectionRefundsAndMarksFailed(t *testing.T) {
 	if repo.refundPendingCalls != 1 {
 		t.Fatalf("refundPendingCalls = %d, want 1", repo.refundPendingCalls)
 	}
-	if worker.wallet.(*fakeWallet).refundCalls != 1 {
-		t.Fatalf("refundCalls = %d, want 1", worker.wallet.(*fakeWallet).refundCalls)
+	if handler.wallet.(*fakeWallet).refundCalls != 1 {
+		t.Fatalf("refundCalls = %d, want 1", handler.wallet.(*fakeWallet).refundCalls)
 	}
 }
 
-func TestWorkerAmbiguousProviderErrorStaysProcessingAndRetries(t *testing.T) {
+func TestHandlerAmbiguousProviderErrorStaysProcessingAndRetries(t *testing.T) {
 	messageID := uuid.New()
 	teamID := uuid.New()
 	repo := newFakeRepository(messageID, teamID, smsmodule.StatusQueued)
-	worker := newTestWorker(repo, &fakeSender{sendErr: errors.New("connection reset")}, &fakeWallet{})
+	handler := newTestHandler(repo, &fakeSender{sendErr: errors.New("connection reset")}, &fakeWallet{})
 
-	if err := worker.Work(context.Background(), testJob(messageID, teamID)); err == nil {
-		t.Fatal("Work returned nil error for ambiguous provider failure")
+	if err := handler.Handle(context.Background(), testCommand(messageID, teamID)); err == nil {
+		t.Fatal("Handle returned nil error for ambiguous provider failure")
 	}
 	if repo.message.Status != smsmodule.StatusProcessing {
 		t.Fatalf("status = %q, want %q", repo.message.Status, smsmodule.StatusProcessing)
@@ -51,22 +50,22 @@ func TestWorkerAmbiguousProviderErrorStaysProcessingAndRetries(t *testing.T) {
 	if repo.refundPendingCalls != 0 {
 		t.Fatalf("refundPendingCalls = %d, want 0", repo.refundPendingCalls)
 	}
-	if worker.wallet.(*fakeWallet).refundCalls != 0 {
-		t.Fatalf("refundCalls = %d, want 0", worker.wallet.(*fakeWallet).refundCalls)
+	if handler.wallet.(*fakeWallet).refundCalls != 0 {
+		t.Fatalf("refundCalls = %d, want 0", handler.wallet.(*fakeWallet).refundCalls)
 	}
 }
 
-func TestWorkerRefundPendingRetryDoesNotResend(t *testing.T) {
+func TestHandlerRefundPendingRetryDoesNotResend(t *testing.T) {
 	messageID := uuid.New()
 	teamID := uuid.New()
 	repo := newFakeRepository(messageID, teamID, smsmodule.StatusRefundPending)
 	reason := "provider rejected recipient"
 	repo.message.ErrorMessage = &reason
 	sender := &fakeSender{}
-	worker := newTestWorker(repo, sender, &fakeWallet{})
+	handler := newTestHandler(repo, sender, &fakeWallet{})
 
-	if err := worker.Work(context.Background(), testJob(messageID, teamID)); err != nil {
-		t.Fatalf("Work returned error: %v", err)
+	if err := handler.Handle(context.Background(), testCommand(messageID, teamID)); err != nil {
+		t.Fatalf("Handle returned error: %v", err)
 	}
 	if sender.sendCalls != 0 {
 		t.Fatalf("sendCalls = %d, want 0", sender.sendCalls)
@@ -76,17 +75,17 @@ func TestWorkerRefundPendingRetryDoesNotResend(t *testing.T) {
 	}
 }
 
-func TestWorkerProcessingRetryDoesNotResendBeforeStale(t *testing.T) {
+func TestHandlerProcessingRetryDoesNotResendBeforeStale(t *testing.T) {
 	messageID := uuid.New()
 	teamID := uuid.New()
 	repo := newFakeRepository(messageID, teamID, smsmodule.StatusProcessing)
 	repo.message.UpdatedAt = time.Now()
 	sender := &fakeSender{}
-	worker := newTestWorker(repo, sender, &fakeWallet{})
-	worker.staleProcessingAfter = time.Hour
+	handler := newTestHandler(repo, sender, &fakeWallet{})
+	handler.staleProcessingAfter = time.Hour
 
-	if err := worker.Work(context.Background(), testJob(messageID, teamID)); err == nil {
-		t.Fatal("Work returned nil error for active processing message")
+	if err := handler.Handle(context.Background(), testCommand(messageID, teamID)); err == nil {
+		t.Fatal("Handle returned nil error for active processing message")
 	}
 	if sender.sendCalls != 0 {
 		t.Fatalf("sendCalls = %d, want 0", sender.sendCalls)
@@ -96,17 +95,17 @@ func TestWorkerProcessingRetryDoesNotResendBeforeStale(t *testing.T) {
 	}
 }
 
-func TestWorkerStaleProcessingRefundsWithoutResend(t *testing.T) {
+func TestHandlerStaleProcessingRefundsWithoutResend(t *testing.T) {
 	messageID := uuid.New()
 	teamID := uuid.New()
 	repo := newFakeRepository(messageID, teamID, smsmodule.StatusProcessing)
 	repo.message.UpdatedAt = time.Now().Add(-2 * time.Hour)
 	sender := &fakeSender{}
-	worker := newTestWorker(repo, sender, &fakeWallet{})
-	worker.staleProcessingAfter = time.Hour
+	handler := newTestHandler(repo, sender, &fakeWallet{})
+	handler.staleProcessingAfter = time.Hour
 
-	if err := worker.Work(context.Background(), testJob(messageID, teamID)); err != nil {
-		t.Fatalf("Work returned error: %v", err)
+	if err := handler.Handle(context.Background(), testCommand(messageID, teamID)); err != nil {
+		t.Fatalf("Handle returned error: %v", err)
 	}
 	if sender.sendCalls != 0 {
 		t.Fatalf("sendCalls = %d, want 0", sender.sendCalls)
@@ -116,12 +115,12 @@ func TestWorkerStaleProcessingRefundsWithoutResend(t *testing.T) {
 	}
 }
 
-func newTestWorker(repo *fakeRepository, sender *fakeSender, wallet *fakeWallet) *Worker {
-	return &Worker{repository: repo, sender: sender, wallet: wallet, staleProcessingAfter: defaultStaleProcessingAfter}
+func newTestHandler(repo *fakeRepository, sender *fakeSender, wallet *fakeWallet) *Handler {
+	return &Handler{repository: repo, sender: sender, wallet: wallet, staleProcessingAfter: defaultStaleProcessingAfter}
 }
 
-func testJob(messageID uuid.UUID, teamID uuid.UUID) *river.Job[DeliverArgs] {
-	return &river.Job[DeliverArgs]{Args: DeliverArgs{MessageID: messageID, TeamID: teamID}}
+func testCommand(messageID uuid.UUID, teamID uuid.UUID) DeliverCommand {
+	return DeliverCommand{EventID: uuid.New(), MessageID: messageID, TeamID: teamID}
 }
 
 type fakeRepository struct {

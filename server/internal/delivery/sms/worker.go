@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/riverqueue/river"
 
 	smsapi "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
 	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
@@ -29,29 +28,31 @@ type refundLedger interface {
 	RefundSMSCharge(ctx context.Context, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
 }
 
-type Worker struct {
-	river.WorkerDefaults[DeliverArgs]
-
+type Handler struct {
 	repository           messageRepository
 	sender               smsmodule.Sender
 	wallet               refundLedger
 	staleProcessingAfter time.Duration
 }
 
-func NewWorker(repository *smsmodule.Repository, sender smsmodule.Sender, wallet smsmodule.WalletLedger) *Worker {
-	return &Worker{repository: repository, sender: sender, wallet: wallet, staleProcessingAfter: defaultStaleProcessingAfter}
+func NewHandler(repository *smsmodule.Repository, sender smsmodule.Sender, wallet smsmodule.WalletLedger) *Handler {
+	return &Handler{repository: repository, sender: sender, wallet: wallet, staleProcessingAfter: defaultStaleProcessingAfter}
 }
 
-func (w *Worker) Work(ctx context.Context, job *river.Job[DeliverArgs]) error {
-	message, err := w.repository.MarkProcessing(ctx, job.Args.MessageID, job.Args.TeamID)
+func (h *Handler) Handle(ctx context.Context, command DeliverCommand) error {
+	if command.MessageID == uuid.Nil || command.TeamID == uuid.Nil {
+		return errors.New("SMS delivery command requires message and team IDs")
+	}
+
+	message, err := h.repository.MarkProcessing(ctx, command.MessageID, command.TeamID)
 	if err != nil {
 		if !errors.Is(err, smsmodule.ErrMessageNotFound) {
 			return err
 		}
-		return w.handleAlreadyClaimed(ctx, job.Args)
+		return h.handleAlreadyClaimed(ctx, command)
 	}
 
-	response, err := w.sender.Send(ctx, smsapi.SendRequest{
+	response, err := h.sender.Send(ctx, smsapi.SendRequest{
 		To:                 message.To,
 		From:               message.From,
 		Message:            message.Body,
@@ -64,19 +65,19 @@ func (w *Worker) Work(ctx context.Context, job *river.Job[DeliverArgs]) error {
 			// stale-processing recovery will eventually close it out operationally.
 			return err
 		}
-		pending, updateErr := w.repository.MarkRefundPending(ctx, job.Args.MessageID, job.Args.TeamID, err.Error())
+		pending, updateErr := h.repository.MarkRefundPending(ctx, command.MessageID, command.TeamID, err.Error())
 		if updateErr != nil {
 			return updateErr
 		}
-		return w.refundAndFail(ctx, job.Args, pending, err)
+		return h.refundAndFail(ctx, command, pending, err)
 	}
 
-	_, err = w.repository.MarkSubmitted(ctx, job.Args.MessageID, job.Args.TeamID, response.ProviderID, response.ProviderMsgID, smsmodule.MapProviderStatus(response.Status))
+	_, err = h.repository.MarkSubmitted(ctx, command.MessageID, command.TeamID, response.ProviderID, response.ProviderMsgID, smsmodule.MapProviderStatus(response.Status))
 	return err
 }
 
-func (w *Worker) handleAlreadyClaimed(ctx context.Context, args DeliverArgs) error {
-	message, err := w.repository.Get(ctx, args.MessageID, args.TeamID)
+func (h *Handler) handleAlreadyClaimed(ctx context.Context, command DeliverCommand) error {
+	message, err := h.repository.Get(ctx, command.MessageID, command.TeamID)
 	if err != nil {
 		if errors.Is(err, smsmodule.ErrMessageNotFound) {
 			return nil
@@ -89,38 +90,38 @@ func (w *Worker) handleAlreadyClaimed(ctx context.Context, args DeliverArgs) err
 		if message.ErrorMessage != nil && *message.ErrorMessage != "" {
 			reason = *message.ErrorMessage
 		}
-		return w.refundAndFail(ctx, args, message, errors.New(reason))
+		return h.refundAndFail(ctx, command, message, errors.New(reason))
 	case smsmodule.StatusProcessing:
-		if !w.processingIsStale(message) {
+		if !h.processingIsStale(message) {
 			return fmt.Errorf("sms message %s is already processing", message.ID)
 		}
 		const reason = "SMS delivery outcome unknown after processing timeout"
-		pending, updateErr := w.repository.MarkRefundPending(ctx, args.MessageID, args.TeamID, reason)
+		pending, updateErr := h.repository.MarkRefundPending(ctx, command.MessageID, command.TeamID, reason)
 		if updateErr != nil {
 			return updateErr
 		}
-		return w.refundAndFail(ctx, args, pending, errors.New(reason))
+		return h.refundAndFail(ctx, command, pending, errors.New(reason))
 	default:
 		// Provider requests are not guaranteed idempotent across upstreams. A
 		// non-queued message was already claimed or completed, so do not submit it
-		// again from a duplicate or retried River job.
+		// again from a duplicate or redelivered JetStream command.
 		return nil
 	}
 }
 
-func (w *Worker) processingIsStale(message smsmodule.Message) bool {
-	threshold := w.staleProcessingAfter
+func (h *Handler) processingIsStale(message smsmodule.Message) bool {
+	threshold := h.staleProcessingAfter
 	if threshold <= 0 {
 		threshold = defaultStaleProcessingAfter
 	}
 	return time.Since(message.UpdatedAt) >= threshold
 }
 
-func (w *Worker) refundAndFail(ctx context.Context, args DeliverArgs, message smsmodule.Message, cause error) error {
-	if _, refundErr := w.wallet.RefundSMSCharge(ctx, args.TeamID, message.CostMicros, args.MessageID, message.Metadata); refundErr != nil {
+func (h *Handler) refundAndFail(ctx context.Context, command DeliverCommand, message smsmodule.Message, cause error) error {
+	if _, refundErr := h.wallet.RefundSMSCharge(ctx, command.TeamID, message.CostMicros, command.MessageID, message.Metadata); refundErr != nil {
 		return errors.Join(cause, refundErr)
 	}
-	_, updateErr := w.repository.MarkFailed(ctx, args.MessageID, args.TeamID, cause.Error())
+	_, updateErr := h.repository.MarkFailed(ctx, command.MessageID, command.TeamID, cause.Error())
 	return updateErr
 }
 
