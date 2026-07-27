@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 )
 
 var ErrMessageNotDeliverable = errors.New("email message is not deliverable")
@@ -19,58 +21,39 @@ type DeliveryMessage struct {
 	TeamID      uuid.UUID
 	FromEmail   string
 	FromName    string
-	ReplyTo     []Address
-	To          []Address
-	CC          []Address
-	BCC         []Address
+	ReplyTo     []platformemail.Address
+	To          []platformemail.Address
+	CC          []platformemail.Address
+	BCC         []platformemail.Address
 	Subject     string
 	HTML        string
 	Text        string
 	Headers     map[string]string
-	Attachments []Attachment
+	Attachments []platformemail.Attachment
 }
 
 type Repository struct {
 	db *pgxpool.Pool
 }
 
-func NewRepository(db *pgxpool.Pool) *Repository {
-	return &Repository{db: db}
-}
+func NewRepository(db *pgxpool.Pool) *Repository { return &Repository{db: db} }
 
 func (r *Repository) Claim(ctx context.Context, messageID, teamID uuid.UUID) (DeliveryMessage, error) {
 	if r == nil || r.db == nil {
 		return DeliveryMessage{}, errors.New("email delivery repository is not configured")
 	}
-
 	var message DeliveryMessage
 	var fromName *string
 	var htmlBody, textBody *string
 	var recipientsJSON, headersJSON, attachmentsJSON []byte
 	err := r.db.QueryRow(ctx, `
 		UPDATE email_messages
-		SET status = 'processing',
-			processing_at = COALESCE(processing_at, now()),
-			error_code = NULL,
-			error_message = NULL,
-			updated_at = now()
-		WHERE id = $1
-		  AND team_id = $2
-		  AND status IN ('queued', 'processing')
+		SET status = 'processing', processing_at = COALESCE(processing_at, now()),
+			error_code = NULL, error_message = NULL, updated_at = now()
+		WHERE id = $1 AND team_id = $2 AND status IN ('queued', 'processing')
 		RETURNING id, team_id, from_email, from_name, subject, html_body, text_body,
 			recipients, headers, attachments
-	`, messageID, teamID).Scan(
-		&message.ID,
-		&message.TeamID,
-		&message.FromEmail,
-		&fromName,
-		&message.Subject,
-		&htmlBody,
-		&textBody,
-		&recipientsJSON,
-		&headersJSON,
-		&attachmentsJSON,
-	)
+	`, messageID, teamID).Scan(&message.ID, &message.TeamID, &message.FromEmail, &fromName, &message.Subject, &htmlBody, &textBody, &recipientsJSON, &headersJSON, &attachmentsJSON)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return DeliveryMessage{}, ErrMessageNotDeliverable
 	}
@@ -86,12 +69,11 @@ func (r *Repository) Claim(ctx context.Context, messageID, teamID uuid.UUID) (De
 	if textBody != nil {
 		message.Text = *textBody
 	}
-
 	var recipients struct {
-		To      []Address `json:"to"`
-		CC      []Address `json:"cc"`
-		BCC     []Address `json:"bcc"`
-		ReplyTo []Address `json:"reply_to"`
+		To      []platformemail.Address `json:"to"`
+		CC      []platformemail.Address `json:"cc"`
+		BCC     []platformemail.Address `json:"bcc"`
+		ReplyTo []platformemail.Address `json:"reply_to"`
 	}
 	if err := json.Unmarshal(recipientsJSON, &recipients); err != nil {
 		return DeliveryMessage{}, fmt.Errorf("decode email recipients: %w", err)
@@ -106,16 +88,11 @@ func (r *Repository) Claim(ctx context.Context, messageID, teamID uuid.UUID) (De
 	return message, nil
 }
 
-func (r *Repository) MarkSubmitted(ctx context.Context, messageID, teamID uuid.UUID, result ProviderResult) error {
+func (r *Repository) MarkSubmitted(ctx context.Context, messageID, teamID uuid.UUID, result platformemail.Result) error {
 	commandTag, err := r.db.Exec(ctx, `
 		UPDATE email_messages
-		SET status = 'submitted',
-			provider = $3,
-			provider_message_id = $4,
-			submitted_at = now(),
-			error_code = NULL,
-			error_message = NULL,
-			updated_at = now()
+		SET status = 'submitted', provider = $3, provider_message_id = $4,
+			submitted_at = now(), error_code = NULL, error_message = NULL, updated_at = now()
 		WHERE id = $1 AND team_id = $2 AND status = 'processing'
 	`, messageID, teamID, result.Provider, result.MessageID)
 	if err != nil {
@@ -128,12 +105,11 @@ func (r *Repository) MarkSubmitted(ctx context.Context, messageID, teamID uuid.U
 }
 
 func (r *Repository) MarkRetryable(ctx context.Context, messageID, teamID uuid.UUID, cause error) error {
-	message := truncateError(cause)
 	_, err := r.db.Exec(ctx, `
 		UPDATE email_messages
 		SET error_code = 'provider_retryable', error_message = $3, updated_at = now()
 		WHERE id = $1 AND team_id = $2 AND status = 'processing'
-	`, messageID, teamID, message)
+	`, messageID, teamID, truncateError(cause))
 	if err != nil {
 		return fmt.Errorf("record retryable email failure: %w", err)
 	}
@@ -141,16 +117,12 @@ func (r *Repository) MarkRetryable(ctx context.Context, messageID, teamID uuid.U
 }
 
 func (r *Repository) MarkFailed(ctx context.Context, messageID, teamID uuid.UUID, code string, cause error) error {
-	message := truncateError(cause)
 	_, err := r.db.Exec(ctx, `
 		UPDATE email_messages
-		SET status = 'failed',
-			error_code = $3,
-			error_message = $4,
-			failed_at = now(),
-			updated_at = now()
+		SET status = 'failed', error_code = $3, error_message = $4,
+			failed_at = now(), updated_at = now()
 		WHERE id = $1 AND team_id = $2 AND status IN ('queued', 'processing')
-	`, messageID, teamID, code, message)
+	`, messageID, teamID, code, truncateError(cause))
 	if err != nil {
 		return fmt.Errorf("mark email failed: %w", err)
 	}
