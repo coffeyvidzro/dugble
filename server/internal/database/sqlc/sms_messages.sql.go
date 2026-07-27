@@ -231,6 +231,54 @@ func (q *Queries) ListSMSMessages(ctx context.Context, arg ListSMSMessagesParams
 	return items, nil
 }
 
+const markSMSMessageDeliveryUnknown = `-- name: MarkSMSMessageDeliveryUnknown :one
+UPDATE sms_messages
+SET status = 'unknown',
+    error_message = $1,
+    updated_at = now()
+WHERE id = $2
+  AND team_id = $3
+  AND status = 'processing'
+  AND provider_message_id IS NULL
+RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, tags, scheduled_at, submitted_at, delivered_at, created_at, updated_at, pricing_rule_id, unit_cost_micros, destination_country
+`
+
+type MarkSMSMessageDeliveryUnknownParams struct {
+	ErrorMessage *string   `db:"error_message" json:"error_message"`
+	ID           uuid.UUID `db:"id" json:"id"`
+	TeamID       uuid.UUID `db:"team_id" json:"team_id"`
+}
+
+func (q *Queries) MarkSMSMessageDeliveryUnknown(ctx context.Context, arg MarkSMSMessageDeliveryUnknownParams) (SmsMessage, error) {
+	row := q.db.QueryRow(ctx, markSMSMessageDeliveryUnknown, arg.ErrorMessage, arg.ID, arg.TeamID)
+	var i SmsMessage
+	err := row.Scan(
+		&i.ID,
+		&i.TeamID,
+		&i.SenderID,
+		&i.ToNumber,
+		&i.FromName,
+		&i.Body,
+		&i.Status,
+		&i.ProviderID,
+		&i.ProviderMessageID,
+		&i.Segments,
+		&i.CostMicros,
+		&i.ErrorMessage,
+		&i.Metadata,
+		&i.Tags,
+		&i.ScheduledAt,
+		&i.SubmittedAt,
+		&i.DeliveredAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PricingRuleID,
+		&i.UnitCostMicros,
+		&i.DestinationCountry,
+	)
+	return i, err
+}
+
 const markSMSMessageFailed = `-- name: MarkSMSMessageFailed :one
 UPDATE sms_messages
 SET status = 'failed',

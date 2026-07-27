@@ -20,8 +20,49 @@ type messageRepository interface {
 	MarkProcessing(ctx context.Context, id uuid.UUID, teamID uuid.UUID) (smsmodule.Message, error)
 	Get(ctx context.Context, id uuid.UUID, teamID uuid.UUID) (smsmodule.Message, error)
 	MarkRefundPending(ctx context.Context, id uuid.UUID, teamID uuid.UUID, message string) (smsmodule.Message, error)
+	MarkDeliveryUnknown(ctx context.Context, id uuid.UUID, teamID uuid.UUID, message string) (smsmodule.Message, error)
 	MarkFailed(ctx context.Context, id uuid.UUID, teamID uuid.UUID, message string) (smsmodule.Message, error)
 	MarkSubmitted(ctx context.Context, id uuid.UUID, teamID uuid.UUID, providerID string, providerMessageID string, status string) (smsmodule.Message, error)
+}
+
+func (h *Handler) HandleExhausted(ctx context.Context, command DeliverCommand, cause error) error {
+	if command.MessageID == uuid.Nil || command.TeamID == uuid.Nil {
+		return errors.New("SMS delivery command requires message and team IDs")
+	}
+
+	message, err := h.repository.Get(ctx, command.MessageID, command.TeamID)
+	if errors.Is(err, smsmodule.ErrMessageNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if message.Status == smsmodule.StatusQueued {
+		return fmt.Errorf("SMS delivery retries exhausted before message %s was claimed", message.ID)
+	}
+	if message.Status != smsmodule.StatusProcessing {
+		return nil
+	}
+
+	reason := "SMS delivery retries exhausted with an unknown provider outcome"
+	if cause != nil {
+		reason = fmt.Sprintf("%s: %s", reason, cause)
+	}
+	_, err = h.repository.MarkDeliveryUnknown(ctx, command.MessageID, command.TeamID, reason)
+	if errors.Is(err, smsmodule.ErrMessageNotFound) {
+		current, getErr := h.repository.Get(ctx, command.MessageID, command.TeamID)
+		if errors.Is(getErr, smsmodule.ErrMessageNotFound) {
+			return nil
+		}
+		if getErr != nil {
+			return getErr
+		}
+		if current.Status == smsmodule.StatusProcessing {
+			return errors.New("SMS message remained processing after exhausted delivery finalization")
+		}
+		return nil
+	}
+	return err
 }
 
 type refundLedger interface {

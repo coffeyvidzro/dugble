@@ -175,6 +175,19 @@ func (r *Repository) MarkRefundPending(ctx context.Context, id uuid.UUID, teamID
 	return messageFromSQLC(row), nil
 }
 
+func (r *Repository) MarkDeliveryUnknown(ctx context.Context, id uuid.UUID, teamID uuid.UUID, message string) (Message, error) {
+	row, err := r.queries.MarkSMSMessageDeliveryUnknown(ctx, dbsqlc.MarkSMSMessageDeliveryUnknownParams{
+		ID: id, TeamID: teamID, ErrorMessage: &message,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Message{}, ErrMessageNotFound
+		}
+		return Message{}, fmt.Errorf("mark sms message delivery unknown: %w", err)
+	}
+	return messageFromSQLC(row), nil
+}
+
 func (r *Repository) MarkSubmitted(ctx context.Context, id uuid.UUID, teamID uuid.UUID, providerID string, providerMessageID string, status string) (Message, error) {
 	if r.tx == nil && r.emitter != nil {
 		return withSMSLifecycleTx(ctx, r, func(repository *Repository) (Message, error) {

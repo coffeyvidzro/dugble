@@ -109,3 +109,14 @@ WHERE id = sqlc.arg(id)
   AND team_id = sqlc.arg(team_id)
   AND provider_message_id IS NULL
 RETURNING *;
+
+-- name: MarkSMSMessageDeliveryUnknown :one
+UPDATE sms_messages
+SET status = 'unknown',
+    error_message = sqlc.arg(error_message),
+    updated_at = now()
+WHERE id = sqlc.arg(id)
+  AND team_id = sqlc.arg(team_id)
+  AND status = 'processing'
+  AND provider_message_id IS NULL
+RETURNING *;

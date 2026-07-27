@@ -89,6 +89,7 @@ type Querier interface {
 	ListWebhookEvents(ctx context.Context, arg ListWebhookEventsParams) ([]WebhookEvent, error)
 	ListWebhookEventsForObject(ctx context.Context, arg ListWebhookEventsForObjectParams) ([]WebhookEvent, error)
 	MarkSMSMessageFailed(ctx context.Context, arg MarkSMSMessageFailedParams) (SmsMessage, error)
+	MarkSMSMessageDeliveryUnknown(ctx context.Context, arg MarkSMSMessageDeliveryUnknownParams) (SmsMessage, error)
 	MarkSMSMessageProcessing(ctx context.Context, arg MarkSMSMessageProcessingParams) (SmsMessage, error)
 	MarkSMSMessageRefundPending(ctx context.Context, arg MarkSMSMessageRefundPendingParams) (SmsMessage, error)
 	MarkSMSMessageSubmitted(ctx context.Context, arg MarkSMSMessageSubmittedParams) (SmsMessage, error)

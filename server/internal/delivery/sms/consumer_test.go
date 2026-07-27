@@ -115,6 +115,29 @@ func TestConsumerMovesExhaustedCommandToDLQ(t *testing.T) {
 	if message.nakDelayCalls != 0 {
 		t.Fatalf("nak delay calls = %d, want 0", message.nakDelayCalls)
 	}
+	if handler := consumer.handler.(*fakeDeliveryHandler); handler.exhaustedCalls != 1 {
+		t.Fatalf("exhausted calls = %d, want 1", handler.exhaustedCalls)
+	}
+}
+
+func TestConsumerRetriesWhenExhaustedCommandCannotBeFinalized(t *testing.T) {
+	command := DeliverCommand{EventID: uuid.New(), MessageID: uuid.New(), TeamID: uuid.New()}
+	message := newTestMessage(t, command, 6)
+	handler := &fakeDeliveryHandler{err: errors.New("provider unavailable"), exhaustedErr: errors.New("database unavailable")}
+	publisher := &fakePublisher{}
+	consumer := newTestConsumer(handler, &fakeProcessedStore{}, publisher)
+
+	consumer.processMessage(context.Background(), message)
+
+	if handler.exhaustedCalls != 1 {
+		t.Fatalf("exhausted calls = %d, want 1", handler.exhaustedCalls)
+	}
+	if message.nakDelayCalls != 1 {
+		t.Fatalf("nak delay calls = %d, want 1", message.nakDelayCalls)
+	}
+	if publisher.calls != 0 || message.termCalls != 0 {
+		t.Fatalf("publisher calls = %d, term calls = %d; want both 0", publisher.calls, message.termCalls)
+	}
 }
 
 func newTestConsumer(handler deliveryHandler, processed processedEventStore, publisher messagePublisher) *Consumer {
@@ -144,8 +167,15 @@ func newTestMessage(t *testing.T, command DeliverCommand, delivered uint64) *fak
 }
 
 type fakeDeliveryHandler struct {
-	calls int
-	err   error
+	calls          int
+	err            error
+	exhaustedCalls int
+	exhaustedErr   error
+}
+
+func (h *fakeDeliveryHandler) HandleExhausted(context.Context, DeliverCommand, error) error {
+	h.exhaustedCalls++
+	return h.exhaustedErr
 }
 
 func (h *fakeDeliveryHandler) Handle(context.Context, DeliverCommand) error {

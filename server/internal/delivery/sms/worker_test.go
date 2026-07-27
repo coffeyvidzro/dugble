@@ -115,6 +115,52 @@ func TestHandlerStaleProcessingRefundsWithoutResend(t *testing.T) {
 	}
 }
 
+func TestHandlerExhaustedProcessingBecomesUnknownWithoutRefund(t *testing.T) {
+	messageID := uuid.New()
+	teamID := uuid.New()
+	repo := newFakeRepository(messageID, teamID, smsmodule.StatusProcessing)
+	wallet := &fakeWallet{}
+	handler := newTestHandler(repo, &fakeSender{}, wallet)
+
+	if err := handler.HandleExhausted(context.Background(), testCommand(messageID, teamID), errors.New("connection reset")); err != nil {
+		t.Fatalf("HandleExhausted returned error: %v", err)
+	}
+	if repo.message.Status != smsmodule.StatusUnknown {
+		t.Fatalf("status = %q, want %q", repo.message.Status, smsmodule.StatusUnknown)
+	}
+	if wallet.refundCalls != 0 {
+		t.Fatalf("refundCalls = %d, want 0", wallet.refundCalls)
+	}
+}
+
+func TestHandlerExhaustedCompletedMessageIsUnchanged(t *testing.T) {
+	messageID := uuid.New()
+	teamID := uuid.New()
+	repo := newFakeRepository(messageID, teamID, smsmodule.StatusSubmitted)
+	handler := newTestHandler(repo, &fakeSender{}, &fakeWallet{})
+
+	if err := handler.HandleExhausted(context.Background(), testCommand(messageID, teamID), errors.New("late handler error")); err != nil {
+		t.Fatalf("HandleExhausted returned error: %v", err)
+	}
+	if repo.message.Status != smsmodule.StatusSubmitted {
+		t.Fatalf("status = %q, want %q", repo.message.Status, smsmodule.StatusSubmitted)
+	}
+}
+
+func TestHandlerExhaustedQueuedMessageRequestsAnotherRetry(t *testing.T) {
+	messageID := uuid.New()
+	teamID := uuid.New()
+	repo := newFakeRepository(messageID, teamID, smsmodule.StatusQueued)
+	handler := newTestHandler(repo, &fakeSender{}, &fakeWallet{})
+
+	if err := handler.HandleExhausted(context.Background(), testCommand(messageID, teamID), errors.New("database unavailable")); err == nil {
+		t.Fatal("HandleExhausted returned nil error for an unclaimed queued message")
+	}
+	if repo.message.Status != smsmodule.StatusQueued {
+		t.Fatalf("status = %q, want %q", repo.message.Status, smsmodule.StatusQueued)
+	}
+}
+
 func newTestHandler(repo *fakeRepository, sender *fakeSender, wallet *fakeWallet) *Handler {
 	return &Handler{repository: repo, sender: sender, wallet: wallet, staleProcessingAfter: defaultStaleProcessingAfter}
 }
@@ -164,6 +210,16 @@ func (r *fakeRepository) MarkRefundPending(_ context.Context, id uuid.UUID, team
 	}
 	r.refundPendingCalls++
 	r.message.Status = smsmodule.StatusRefundPending
+	r.message.ErrorMessage = &message
+	r.message.UpdatedAt = time.Now()
+	return r.message, nil
+}
+
+func (r *fakeRepository) MarkDeliveryUnknown(_ context.Context, id uuid.UUID, teamID uuid.UUID, message string) (smsmodule.Message, error) {
+	if r.message.ID != id.String() || r.message.TeamID != teamID.String() || r.message.Status != smsmodule.StatusProcessing || r.message.ProviderMessageID != nil {
+		return smsmodule.Message{}, smsmodule.ErrMessageNotFound
+	}
+	r.message.Status = smsmodule.StatusUnknown
 	r.message.ErrorMessage = &message
 	r.message.UpdatedAt = time.Now()
 	return r.message, nil
