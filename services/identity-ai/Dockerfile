@@ -14,5 +14,6 @@ RUN uv sync --locked --no-dev --no-install-project
 COPY app ./app
 COPY models ./models
 
-# Add the internal HTTP entrypoint once the document, face, and liveness
-# pipelines are implemented and wired together.
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
