@@ -18,7 +18,7 @@ import (
 
 const (
 	DeliverConsumerName = "dugble-email-delivery-v1"
-	DeliverDLQSubject    = "dugble.dlq.email.send.v1"
+	DeliverDLQSubject   = "dugble.dlq.email.send.v1"
 )
 
 type processedEventStore interface {

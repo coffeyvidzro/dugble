@@ -110,7 +110,10 @@ func run() error {
 		HandleTimeout: cfg.WebhookDelivery.HandleTimeout,
 	}, webhookWorkerID)
 
-	type componentResult struct{ name string; err error }
+	type componentResult struct {
+		name string
+		err  error
+	}
 	components := []struct {
 		name string
 		run  func(context.Context) error
