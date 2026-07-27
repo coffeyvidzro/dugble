@@ -15,7 +15,7 @@ Dugble uses a hybrid deployment model:
 - **Frontend:** Hosted on Vercel as a Next.js web application.
 - **Database:** PostgreSQL for application and identity-verification records.
 - **Cache and queues:** Redis for caching, rate limiting, asynchronous work, and temporary state.
-- **Storage:** Private object storage for uploads, identity documents, selfies, liveness videos, and other protected media.
+- **Storage:** Cloudflare R2 private object storage for uploads, identity documents, selfies, liveness videos, and other protected media.
 
 ```text
 Users
@@ -44,9 +44,10 @@ tofu/
 │   ├── network/       # Networking, firewall rules, and private service access
 │   ├── database/      # PostgreSQL infrastructure and configuration
 │   ├── redis/         # Redis infrastructure and access controls
-│   ├── storage/       # Private object storage and lifecycle policies
+│   ├── r2_bucket/     # Cloudflare R2 bucket and lifecycle policies
 │   ├── server/        # Contabo VPS and Dugble backend runtime
-│   └── identity/      # Private identity AI runtime and service networking
+│   ├── identity/      # Private identity AI runtime and service networking
+│   └── vercel/        # Vercel frontend project and domains
 │
 ├── environments/
 │   ├── development/   # Development infrastructure
@@ -82,17 +83,21 @@ Database passwords and connection strings must be supplied through a secrets man
 
 Defines Redis resources used for caching, rate limiting, queues, idempotency, and short-lived application state.
 
-### `storage`
+### `r2_bucket`
 
-Defines private object storage for application uploads and protected identity media.
+Defines a private Cloudflare R2 bucket for application uploads and protected identity media.
 
-Storage resources should use:
+R2 resources should use:
 
 - private access by default
 - encryption at rest
 - short-lived signed access
 - retention and deletion policies
 - restricted service identities
+
+### `vercel`
+
+Defines stable Vercel frontend configuration, including the project name, framework preset, repository root directory, production branch, and environment-specific domains. Git integration remains responsible for deployments.
 
 ### `server`
 
@@ -143,7 +148,7 @@ backend.tf
 terraform.tfvars.example
 ```
 
-All environments currently pin OpenTofu to the `1.12.x` release line. No external provider is declared yet: adding one before the Contabo, object-storage, and Vercel provider choices are finalized would create a misleading dependency. Each provider must be source-addressed and version-constrained when its first resource is introduced.
+All environments currently pin OpenTofu to the `1.12.x` release line. No external provider is declared until the first Contabo, Cloudflare R2, or Vercel resource is introduced. Each provider must then be source-addressed and version-constrained.
 
 Do not commit real `terraform.tfvars`, credentials, API tokens, private keys, or generated state files.
 
@@ -270,7 +275,7 @@ The initial implementation will focus on:
 2. Contabo server provisioning and firewall rules.
 3. Vercel project and domain configuration.
 4. PostgreSQL and Redis deployment.
-5. Private object storage and access policies.
+5. Private Cloudflare R2 bucket and access policies.
 6. Private identity AI service deployment.
 7. Remote state and CI-based plan/apply workflows.
 8. Monitoring, backups, and disaster-recovery configuration.

@@ -25,13 +25,12 @@ module "redis" {
   high_availability = var.redis_high_availability
 }
 
-module "storage" {
-  source = "../../modules/storage"
+module "r2_bucket" {
+  source = "../../modules/r2_bucket"
 
-  environment        = var.environment
-  region             = var.region
-  retention_days     = var.storage_retention_days
-  versioning_enabled = var.storage_versioning_enabled
+  environment    = var.environment
+  location       = var.r2_location
+  retention_days = var.r2_retention_days
 }
 
 module "server" {
@@ -53,4 +52,14 @@ module "identity" {
   cpu             = var.identity_cpu
   memory_mb       = var.identity_memory_mb
   gpu_enabled     = var.identity_gpu_enabled
+}
+
+module "vercel" {
+  source = "../../modules/vercel"
+
+  environment       = var.environment
+  project_name      = var.vercel_project_name
+  root_directory    = var.vercel_root_directory
+  production_branch = var.vercel_production_branch
+  domains           = var.vercel_domains
 }

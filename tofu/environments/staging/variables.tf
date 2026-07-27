@@ -8,10 +8,6 @@ variable "environment" {
   }
 }
 
-variable "region" {
-  description = "Primary region used by regional providers."
-  type        = string
-}
 
 variable "network_cidr" {
   description = "Private CIDR shared by internal services."
@@ -32,8 +28,12 @@ variable "database_version" { type = string }
 variable "database_backup_retention_days" { type = number }
 variable "redis_instance_size" { type = string }
 variable "redis_high_availability" { type = bool }
-variable "storage_retention_days" { type = number }
-variable "storage_versioning_enabled" { type = bool }
+variable "r2_location" { type = string }
+variable "r2_retention_days" { type = number }
+variable "vercel_project_name" { type = string }
+variable "vercel_root_directory" { type = string }
+variable "vercel_production_branch" { type = string }
+variable "vercel_domains" { type = set(string) }
 variable "identity_container_image" { type = string }
 variable "identity_cpu" { type = number }
 variable "identity_memory_mb" { type = number }
