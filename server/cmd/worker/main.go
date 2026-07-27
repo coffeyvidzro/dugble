@@ -14,6 +14,7 @@ import (
 
 	"github.com/coffeyvidzro/dugble/server/internal/config"
 	"github.com/coffeyvidzro/dugble/server/internal/database"
+	emaildelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/email"
 	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
 	webhookdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/webhooks"
 	smsintegration "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
@@ -44,7 +45,6 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("load configuration: %w", err)
 	}
-
 	startupCtx, cancelStartup := context.WithTimeout(ctx, 15*time.Second)
 	defer cancelStartup()
 
@@ -63,10 +63,28 @@ func run() error {
 			slog.Warn("close JetStream client", "error", closeErr)
 		}
 	}()
-
 	if err := messagingClient.Provision(startupCtx, jetstreammessaging.DefaultStreamLimits()); err != nil {
 		return fmt.Errorf("provision JetStream topology: %w", err)
 	}
+
+	processedEvents := inbox.NewRepository(db)
+	emailRepository := emaildelivery.NewRepository(db)
+	emailHandler := emaildelivery.NewHandler(
+		emailRepository,
+		emaildelivery.NewSESProvider(cfg.AWS.Region, cfg.AWS.AccessKey, cfg.AWS.SecretKey),
+	)
+	emailConsumer := emaildelivery.NewConsumer(
+		messagingClient,
+		processedEvents,
+		emailHandler,
+		emaildelivery.ConsumerConfig{
+			Concurrency:    cfg.Messaging.SMSConsumerConcurrency,
+			AckWait:        cfg.Messaging.SMSConsumerAckWait,
+			HandlerTimeout: cfg.Messaging.SMSHandlerTimeout,
+			MaxDeliver:     cfg.Messaging.SMSConsumerMaxDeliver,
+			RetryPolicy:    emaildelivery.DefaultRetryPolicy(),
+		},
+	)
 
 	smsRouter, err := routing.NewService(
 		routing.DefaultConfig(),
@@ -77,7 +95,6 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("initialize SMS router: %w", err)
 	}
-
 	smsSender, err := smsintegration.NewService(smsRouter)
 	if err != nil {
 		return fmt.Errorf("initialize SMS sender: %w", err)
@@ -92,7 +109,7 @@ func run() error {
 	)
 	smsConsumer := smsdelivery.NewConsumer(
 		messagingClient,
-		inbox.NewRepository(db),
+		processedEvents,
 		smsHandler,
 		smsdelivery.ConsumerConfig{
 			Concurrency:    cfg.Messaging.SMSConsumerConcurrency,
@@ -113,9 +130,7 @@ func run() error {
 	)
 
 	webhookWorkerID := "webhook-delivery-" + uuid.NewString()
-	webhookRepository := webhookdelivery.NewRepository(db, webhookdelivery.RepositoryConfig{
-		AutoDisableAfter: cfg.WebhookDelivery.AutoDisableAfter,
-	})
+	webhookRepository := webhookdelivery.NewRepository(db, webhookdelivery.RepositoryConfig{AutoDisableAfter: cfg.WebhookDelivery.AutoDisableAfter})
 	webhookHandler := webhookdelivery.NewHandler(
 		webhookRepository,
 		webhookdelivery.NewClient(cfg.WebhookDelivery.HTTPTimeout),
@@ -126,10 +141,10 @@ func run() error {
 		webhookRepository,
 		webhookHandler,
 		webhookdelivery.ConsumerConfig{
-			PollInterval:  cfg.WebhookDelivery.PollInterval,
-			BatchSize:     cfg.WebhookDelivery.BatchSize,
-			Concurrency:   cfg.WebhookDelivery.Concurrency,
-			LockTimeout:   cfg.WebhookDelivery.LockTimeout,
+			PollInterval: cfg.WebhookDelivery.PollInterval,
+			BatchSize: cfg.WebhookDelivery.BatchSize,
+			Concurrency: cfg.WebhookDelivery.Concurrency,
+			LockTimeout: cfg.WebhookDelivery.LockTimeout,
 			HandleTimeout: cfg.WebhookDelivery.HandleTimeout,
 		},
 		webhookWorkerID,
@@ -144,20 +159,20 @@ func run() error {
 		run  func(context.Context) error
 	}{
 		{name: "outbox relay", run: outboxRelay.Run},
+		{name: "email JetStream consumer", run: emailConsumer.Run},
 		{name: "SMS JetStream consumer", run: smsConsumer.Run},
 		{name: "webhook delivery consumer", run: webhookConsumer.Run},
 	}
 	results := make(chan componentResult, len(components))
 	for _, component := range components {
-		go func() {
-			results <- componentResult{name: component.name, err: component.run(ctx)}
-		}()
+		go func() { results <- componentResult{name: component.name, err: component.run(ctx)} }()
 	}
 
 	slog.Info(
 		"worker started",
 		"jetstream", "ready",
 		"outbox_relay", "running",
+		"email_consumer", emaildelivery.DeliverConsumerName,
 		"sms_consumer", smsdelivery.DeliverConsumerName,
 		"webhook_consumer", webhookWorkerID,
 	)
