@@ -13,8 +13,6 @@ Dugble uses a hybrid deployment model:
 - **Backend:** Hosted on a Contabo VPS, including the Go API server, background workers, and supporting runtime services.
 - **Identity AI:** Deployed as a private Python service and accessible only by the Dugble backend.
 - **Frontend:** Hosted on Vercel as a Next.js web application.
-- **Database:** PostgreSQL for application and identity-verification records.
-- **Cache and queues:** Redis for caching, rate limiting, asynchronous work, and temporary state.
 - **Storage:** Cloudflare R2 private object storage for uploads, identity documents, selfies, liveness videos, and other protected media.
 
 ```text

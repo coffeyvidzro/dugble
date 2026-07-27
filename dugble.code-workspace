@@ -1,0 +1,28 @@
+{
+    "folders": [
+        {
+            "path": "web",
+            "name": "web",
+        },
+        {
+            "path": "server",
+            "name": "server",
+        },
+        {
+            "path": "services",
+            "name": "services",
+        },
+        {
+            "path": "tofu",
+            "name": "opentofu",
+        },
+        {
+            "path": ".",
+            "name": "root",
+        },
+        {
+            "path": "docs",
+            "name": "mintlify",
+        },
+    ],
+}
