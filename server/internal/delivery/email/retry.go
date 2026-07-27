@@ -1,14 +1,6 @@
 package emaildelivery
 
-import (
-	"context"
-	"errors"
-	"net"
-	"strings"
-	"time"
-
-	"github.com/aws/smithy-go"
-)
+import "time"
 
 var defaultRetryDelays = []time.Duration{
 	5 * time.Second,
@@ -41,41 +33,4 @@ func (p RetryPolicy) Delay(delivery uint64) time.Duration {
 		index = len(delays) - 1
 	}
 	return delays[index]
-}
-
-func IsRetryable(err error) bool {
-	if err == nil || errors.Is(err, context.Canceled) {
-		return false
-	}
-	if errors.Is(err, context.DeadlineExceeded) {
-		return true
-	}
-	var networkError net.Error
-	if errors.As(err, &networkError) {
-		return true
-	}
-	var apiError smithy.APIError
-	if errors.As(err, &apiError) {
-		switch strings.ToLower(apiError.ErrorCode()) {
-		case "throttling", "throttlingexception", "requesttimeout", "requesttimeoutexception", "serviceunavailable", "internalfailure", "internalservererror":
-			return true
-		default:
-			return false
-		}
-	}
-	return false
-}
-
-func FailureCode(err error) string {
-	if errors.Is(err, ErrUnsupportedAttachmentPath) {
-		return "unsupported_attachment_path"
-	}
-	var apiError smithy.APIError
-	if errors.As(err, &apiError) {
-		code := strings.TrimSpace(apiError.ErrorCode())
-		if code != "" {
-			return strings.ToLower(code)
-		}
-	}
-	return "provider_rejected"
 }
