@@ -1,6 +1,9 @@
 package webhookdelivery
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -18,5 +21,20 @@ func TestSignUsesDisplayedSigningSecretAsKey(t *testing.T) {
 	}
 	if !strings.HasPrefix(secret, platformwebhook.SigningSecretPrefix) {
 		t.Fatalf("NewSigningSecret() = %q, missing prefix", secret)
+	}
+
+	_, currentFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("resolve webhook signing test path")
+	}
+	documentPath := filepath.Join(filepath.Dir(currentFile), "..", "..", "..", "..", "docs", "webhooks", "signatures.mdx")
+	document, err := os.ReadFile(documentPath)
+	if err != nil {
+		t.Fatalf("read webhook signature documentation: %v", err)
+	}
+	for _, fixtureValue := range []string{secret, `{"event":"sms.delivered"}`, want} {
+		if !strings.Contains(string(document), fixtureValue) {
+			t.Errorf("signature documentation does not contain test vector value %q", fixtureValue)
+		}
 	}
 }

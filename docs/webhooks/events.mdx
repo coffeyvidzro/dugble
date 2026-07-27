@@ -63,6 +63,10 @@ expected digest with HMAC-SHA256, using the endpoint signing secret as the key
 and `<unix_timestamp>.<raw_request_body>` as the signed bytes. Compare digests
 with a constant-time function and reject timestamps outside your tolerance.
 
+<Card title="Signature verification" icon="key" href="/webhooks/signatures">
+    Follow the complete signing contract and verification examples.
+</Card>
+
 ## Idempotent handling
 
 Your endpoint should:

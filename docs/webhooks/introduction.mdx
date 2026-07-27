@@ -55,6 +55,10 @@ app.post("/webhooks/dugble", async (request, response) => {
 
 See the event catalog for the signature header and HMAC input format.
 
+<Card title="Verify signatures" icon="key" href="/webhooks/signatures">
+    Authenticate requests with the raw body and your endpoint signing secret.
+</Card>
+
 ## Current alternative
 
 For event types not included in the preview, retrieve message state directly:
