@@ -17,6 +17,7 @@ import (
 	emaildelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/email"
 	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
 	webhookdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/webhooks"
+	emailintegration "github.com/coffeyvidzro/dugble/server/internal/integration/email"
 	smsintegration "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/arkesel"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/mnotify"
@@ -40,20 +41,17 @@ func main() {
 func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("load configuration: %w", err)
 	}
 	startupCtx, cancelStartup := context.WithTimeout(ctx, 15*time.Second)
 	defer cancelStartup()
-
 	db, err := database.NewPostgres(startupCtx, cfg.DatabaseURL)
 	if err != nil {
 		return fmt.Errorf("initialize PostgreSQL: %w", err)
 	}
 	defer db.Close()
-
 	messagingClient, err := jetstreammessaging.New(startupCtx, cfg.Messaging.URL, "dugble-worker")
 	if err != nil {
 		return fmt.Errorf("initialize JetStream: %w", err)
@@ -68,15 +66,14 @@ func run() error {
 	}
 
 	processedEvents := inbox.NewRepository(db)
-	emailRepository := emaildelivery.NewRepository(db)
-	emailHandler := emaildelivery.NewHandler(
-		emailRepository,
-		emaildelivery.NewSESProvider(cfg.AWS.Region, cfg.AWS.AccessKey, cfg.AWS.SecretKey),
-	)
+	emailSender, err := emailintegration.NewSESSender(startupCtx, cfg.AWS.Region, cfg.AWS.FromEmail, cfg.AWS.AccessKey, cfg.AWS.SecretKey)
+	if err != nil {
+		return fmt.Errorf("initialize SES email sender: %w", err)
+	}
 	emailConsumer := emaildelivery.NewConsumer(
 		messagingClient,
 		processedEvents,
-		emailHandler,
+		emaildelivery.NewHandler(emaildelivery.NewRepository(db), emailSender),
 		emaildelivery.ConsumerConfig{
 			Concurrency:    cfg.Messaging.SMSConsumerConcurrency,
 			AckWait:        cfg.Messaging.SMSConsumerAckWait,
@@ -86,12 +83,7 @@ func run() error {
 		},
 	)
 
-	smsRouter, err := routing.NewService(
-		routing.DefaultConfig(),
-		routing.NewPriorityStrategy(),
-		arkesel.NewProvider(arkesel.NewClient(cfg.Arkesel)),
-		mnotify.NewProvider(mnotify.NewClient(cfg.MNotify)),
-	)
+	smsRouter, err := routing.NewService(routing.DefaultConfig(), routing.NewPriorityStrategy(), arkesel.NewProvider(arkesel.NewClient(cfg.Arkesel)), mnotify.NewProvider(mnotify.NewClient(cfg.MNotify)))
 	if err != nil {
 		return fmt.Errorf("initialize SMS router: %w", err)
 	}
@@ -99,61 +91,26 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("initialize SMS sender: %w", err)
 	}
-
 	webhookModuleRepository := webhookmodule.NewRepository(db)
 	webhookEmitter := platformwebhook.NewEmitter(webhookModuleRepository)
-	smsHandler := smsdelivery.NewHandler(
-		smsmodule.NewRepositoryWithWebhookEmitter(db, webhookEmitter),
-		smsSender,
-		wallet.NewRepository(db),
-	)
-	smsConsumer := smsdelivery.NewConsumer(
-		messagingClient,
-		processedEvents,
-		smsHandler,
-		smsdelivery.ConsumerConfig{
-			Concurrency:    cfg.Messaging.SMSConsumerConcurrency,
-			AckWait:        cfg.Messaging.SMSConsumerAckWait,
-			HandlerTimeout: cfg.Messaging.SMSHandlerTimeout,
-			MaxDeliver:     cfg.Messaging.SMSConsumerMaxDeliver,
-		},
-	)
-
-	outboxRelay := outbox.NewRelay(
-		outbox.NewRepository(db),
-		messagingClient,
-		outbox.Config{
-			PollInterval: cfg.Messaging.OutboxPollInterval,
-			BatchSize:    cfg.Messaging.OutboxBatchSize,
-			LockTimeout:  cfg.Messaging.OutboxLockTimeout,
-		},
-	)
-
+	smsHandler := smsdelivery.NewHandler(smsmodule.NewRepositoryWithWebhookEmitter(db, webhookEmitter), smsSender, wallet.NewRepository(db))
+	smsConsumer := smsdelivery.NewConsumer(messagingClient, processedEvents, smsHandler, smsdelivery.ConsumerConfig{
+		Concurrency: cfg.Messaging.SMSConsumerConcurrency, AckWait: cfg.Messaging.SMSConsumerAckWait,
+		HandlerTimeout: cfg.Messaging.SMSHandlerTimeout, MaxDeliver: cfg.Messaging.SMSConsumerMaxDeliver,
+	})
+	outboxRelay := outbox.NewRelay(outbox.NewRepository(db), messagingClient, outbox.Config{
+		PollInterval: cfg.Messaging.OutboxPollInterval, BatchSize: cfg.Messaging.OutboxBatchSize, LockTimeout: cfg.Messaging.OutboxLockTimeout,
+	})
 	webhookWorkerID := "webhook-delivery-" + uuid.NewString()
 	webhookRepository := webhookdelivery.NewRepository(db, webhookdelivery.RepositoryConfig{AutoDisableAfter: cfg.WebhookDelivery.AutoDisableAfter})
-	webhookHandler := webhookdelivery.NewHandler(
-		webhookRepository,
-		webhookdelivery.NewClient(cfg.WebhookDelivery.HTTPTimeout),
-		webhookdelivery.DefaultRetryPolicy(),
-		webhookWorkerID,
-	)
-	webhookConsumer := webhookdelivery.NewConsumer(
-		webhookRepository,
-		webhookHandler,
-		webhookdelivery.ConsumerConfig{
-			PollInterval: cfg.WebhookDelivery.PollInterval,
-			BatchSize: cfg.WebhookDelivery.BatchSize,
-			Concurrency: cfg.WebhookDelivery.Concurrency,
-			LockTimeout: cfg.WebhookDelivery.LockTimeout,
-			HandleTimeout: cfg.WebhookDelivery.HandleTimeout,
-		},
-		webhookWorkerID,
-	)
+	webhookHandler := webhookdelivery.NewHandler(webhookRepository, webhookdelivery.NewClient(cfg.WebhookDelivery.HTTPTimeout), webhookdelivery.DefaultRetryPolicy(), webhookWorkerID)
+	webhookConsumer := webhookdelivery.NewConsumer(webhookRepository, webhookHandler, webhookdelivery.ConsumerConfig{
+		PollInterval: cfg.WebhookDelivery.PollInterval, BatchSize: cfg.WebhookDelivery.BatchSize,
+		Concurrency: cfg.WebhookDelivery.Concurrency, LockTimeout: cfg.WebhookDelivery.LockTimeout,
+		HandleTimeout: cfg.WebhookDelivery.HandleTimeout,
+	}, webhookWorkerID)
 
-	type componentResult struct {
-		name string
-		err  error
-	}
+	type componentResult struct{ name string; err error }
 	components := []struct {
 		name string
 		run  func(context.Context) error
@@ -167,16 +124,7 @@ func run() error {
 	for _, component := range components {
 		go func() { results <- componentResult{name: component.name, err: component.run(ctx)} }()
 	}
-
-	slog.Info(
-		"worker started",
-		"jetstream", "ready",
-		"outbox_relay", "running",
-		"email_consumer", emaildelivery.DeliverConsumerName,
-		"sms_consumer", smsdelivery.DeliverConsumerName,
-		"webhook_consumer", webhookWorkerID,
-	)
-
+	slog.Info("worker started", "jetstream", "ready", "outbox_relay", "running", "email_consumer", emaildelivery.DeliverConsumerName, "sms_consumer", smsdelivery.DeliverConsumerName, "webhook_consumer", webhookWorkerID)
 	completed := 0
 	var runErr error
 	select {
@@ -189,7 +137,6 @@ func run() error {
 		}
 		stop()
 	}
-
 	shutdownTimer := time.NewTimer(30 * time.Second)
 	defer shutdownTimer.Stop()
 	for completed < len(components) {
@@ -204,7 +151,6 @@ func run() error {
 			completed = len(components)
 		}
 	}
-
 	slog.Info("worker stopped")
 	return runErr
 }
