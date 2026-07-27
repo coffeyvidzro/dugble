@@ -10,9 +10,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/coffeyvidzro/dugble/server/internal/config"
 	"github.com/coffeyvidzro/dugble/server/internal/database"
 	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
+	webhookdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/webhooks"
 	smsintegration "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/arkesel"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/mnotify"
@@ -105,23 +108,52 @@ func run() error {
 		},
 	)
 
+	webhookWorkerID := "webhook-delivery-" + uuid.NewString()
+	webhookRepository := webhookdelivery.NewRepository(db)
+	webhookHandler := webhookdelivery.NewHandler(
+		webhookRepository,
+		webhookdelivery.NewClient(cfg.WebhookDelivery.HTTPTimeout),
+		webhookdelivery.DefaultRetryPolicy(),
+		webhookWorkerID,
+	)
+	webhookConsumer := webhookdelivery.NewConsumer(
+		webhookRepository,
+		webhookHandler,
+		webhookdelivery.ConsumerConfig{
+			PollInterval:  cfg.WebhookDelivery.PollInterval,
+			BatchSize:     cfg.WebhookDelivery.BatchSize,
+			Concurrency:   cfg.WebhookDelivery.Concurrency,
+			LockTimeout:   cfg.WebhookDelivery.LockTimeout,
+			HandleTimeout: cfg.WebhookDelivery.HandleTimeout,
+		},
+		webhookWorkerID,
+	)
+
 	type componentResult struct {
 		name string
 		err  error
 	}
-	results := make(chan componentResult, 2)
-	go func() {
-		results <- componentResult{name: "outbox relay", err: outboxRelay.Run(ctx)}
-	}()
-	go func() {
-		results <- componentResult{name: "SMS JetStream consumer", err: smsConsumer.Run(ctx)}
-	}()
+	components := []struct {
+		name string
+		run  func(context.Context) error
+	}{
+		{name: "outbox relay", run: outboxRelay.Run},
+		{name: "SMS JetStream consumer", run: smsConsumer.Run},
+		{name: "webhook delivery consumer", run: webhookConsumer.Run},
+	}
+	results := make(chan componentResult, len(components))
+	for _, component := range components {
+		go func() {
+			results <- componentResult{name: component.name, err: component.run(ctx)}
+		}()
+	}
 
 	slog.Info(
 		"worker started",
 		"jetstream", "ready",
 		"outbox_relay", "running",
 		"sms_consumer", smsdelivery.DeliverConsumerName,
+		"webhook_consumer", webhookWorkerID,
 	)
 
 	completed := 0
@@ -139,7 +171,7 @@ func run() error {
 
 	shutdownTimer := time.NewTimer(30 * time.Second)
 	defer shutdownTimer.Stop()
-	for completed < 2 {
+	for completed < len(components) {
 		select {
 		case result := <-results:
 			completed++
@@ -148,7 +180,7 @@ func run() error {
 			}
 		case <-shutdownTimer.C:
 			runErr = errors.Join(runErr, errors.New("worker components did not stop within 30 seconds"))
-			completed = 2
+			completed = len(components)
 		}
 	}
 
