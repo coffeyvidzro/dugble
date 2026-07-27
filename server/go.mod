@@ -4,8 +4,8 @@ go 1.26.5
 
 require (
 	github.com/arcjet/arcjet-go v0.1.0
-	github.com/aws/aws-sdk-go-v2 v1.42.1
-	github.com/aws/aws-sdk-go-v2/credentials v1.19.29
+	github.com/aws/aws-sdk-go-v2 v1.43.0
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.30
 	github.com/aws/aws-sdk-go-v2/service/ses v1.36.1
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/google/uuid v1.6.0
@@ -19,8 +19,8 @@ require (
 
 require (
 	connectrpc.com/connect v1.20.0 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.30 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.30 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.31 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.31 // indirect
 	github.com/aws/smithy-go v1.27.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/gofrs/uuid/v5 v5.4.0 // indirect
