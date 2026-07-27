@@ -26,12 +26,15 @@ Next.js frontend
   |
   v
 Contabo VPS
-Go API and workers
+Docker Compose
   |
+  +--> Go API and worker
+  +--> Identity service
   +--> PostgreSQL
   +--> Redis
-  +--> Private object storage
-  +--> Private identity AI service
+  +--> NATS JetStream
+  +--> Caddy
+  +--> Cloudflare R2
 ```
 
 The identity AI service must not be exposed directly to the public internet. Requests should flow through the Go API, which owns authentication, authorization, verification state, policy decisions, and audit logging.
@@ -48,42 +51,14 @@ tofu/
 ├── backend.tf         # State backend configuration
 ├── terraform.tfvars.example
 ├── modules/
-│   ├── network/       # Networking, firewall rules, and private service access
-│   ├── database/      # PostgreSQL infrastructure and configuration
-│   ├── redis/         # Redis infrastructure and access controls
 │   ├── r2_bucket/     # Cloudflare R2 bucket and lifecycle policies
-│   ├── server/        # Contabo VPS and Dugble backend runtime
-│   ├── identity/      # Private identity AI runtime and service networking
+│   ├── server/        # Contabo VPS and cloud firewall
 │   └── vercel/        # Vercel frontend project and domains
 │
 └── README.md
 ```
 
 ## Module responsibilities
-
-### `network`
-
-Defines shared networking and security boundaries, including:
-
-- allowed ingress and egress rules
-- internal service communication
-- public API exposure
-- restricted database, Redis, storage, and AI access
-
-### `database`
-
-Defines PostgreSQL resources and operational settings, including:
-
-- database provisioning
-- network access rules
-- backups and retention
-- connection outputs
-
-Database passwords and connection strings must be supplied through a secrets manager or CI environment and must never be committed to the repository.
-
-### `redis`
-
-Defines Redis resources used for caching, rate limiting, queues, idempotency, and short-lived application state.
 
 ### `r2_bucket`
 
@@ -103,25 +78,13 @@ Defines stable Vercel frontend configuration, including the project name, framew
 
 ### `server`
 
-Defines the Contabo VPS and the runtime required by the Dugble backend, such as:
+Defines the Contabo VPS instances, cloud-init bootstrap configuration, and cloud firewall. Application processes and data services running on the VPS are owned by Docker Compose rather than OpenTofu.
 
-- the Go API server
-- background workers
-- container runtime configuration
-- service networking
-- logging and monitoring
+## Responsibility boundary
 
-### `identity`
+OpenTofu creates or records the VPS, configures cloud firewall rules, manages DNS, Cloudflare R2, and Vercel resources, and outputs infrastructure information.
 
-Defines the runtime for the private Python identity AI service.
-
-This module should ensure that:
-
-- the service is not publicly reachable
-- only authorized backend services can call it
-- model and media access is restricted
-- CPU, memory, and optional GPU resources are configurable
-- health checks and logs are available
+Docker Compose owns the Go API, worker, identity service, PostgreSQL, Redis, NATS JetStream, and Caddy runtime services. OpenTofu must not model those containers as cloud resources.
 
 ## Root configuration
 
@@ -275,11 +238,9 @@ The remaining implementation will focus on:
 1. Contabo private networking and server bootstrapping.
 2. Vercel environment variables and Cloudflare DNS records.
 3. Cloudflare R2 application credentials and CORS policy.
-4. PostgreSQL and Redis deployment.
-5. Additional Cloudflare R2 access policies.
-6. Private identity AI service deployment.
-7. Remote state and CI-based plan/apply workflows.
-8. Monitoring, backups, and disaster-recovery configuration.
+4. Additional Cloudflare R2 access policies.
+5. Remote state and CI-based plan/apply workflows.
+6. VPS monitoring, backups, and disaster-recovery configuration.
 
 ## Contributing
 
