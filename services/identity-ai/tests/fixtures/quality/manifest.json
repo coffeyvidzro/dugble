@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "fixture_set": "synthetic-quality-v1",
+  "notice": "Fictional generated documents only; contains no personal data.",
+  "fixtures": [
+    {
+      "id": "clean_front",
+      "side": "front",
+      "degradation": "none",
+      "expected_acceptable": true,
+      "expected_reasons": []
+    },
+    {
+      "id": "clean_back",
+      "side": "back",
+      "degradation": "none",
+      "expected_acceptable": true,
+      "expected_reasons": []
+    },
+    {
+      "id": "low_resolution",
+      "side": "front",
+      "degradation": "downsample",
+      "expected_acceptable": false,
+      "expected_reasons": [
+        "resolution_too_low"
+      ]
+    },
+    {
+      "id": "dark",
+      "side": "front",
+      "degradation": "underexposure",
+      "expected_acceptable": false,
+      "expected_reasons": [
+        "image_too_dark",
+        "contrast_too_low"
+      ]
+    },
+    {
+      "id": "overexposed",
+      "side": "front",
+      "degradation": "overexposure",
+      "expected_acceptable": false,
+      "expected_reasons": [
+        "image_too_bright",
+        "contrast_too_low",
+        "image_too_blurry",
+        "excessive_glare"
+      ]
+    },
+    {
+      "id": "blurred",
+      "side": "front",
+      "degradation": "gaussian_blur",
+      "expected_acceptable": false,
+      "expected_reasons": [
+        "image_too_blurry"
+      ]
+    },
+    {
+      "id": "glare",
+      "side": "front",
+      "degradation": "local_glare",
+      "expected_acceptable": false,
+      "expected_reasons": [
+        "excessive_glare"
+      ]
+    },
+    {
+      "id": "compressed",
+      "side": "front",
+      "degradation": "jpeg_quality_8",
+      "expected_acceptable": true,
+      "expected_reasons": []
+    },
+    {
+      "id": "exif_rotated",
+      "side": "front",
+      "degradation": "exif_orientation",
+      "expected_acceptable": true,
+      "expected_reasons": []
+    }
+  ]
+}
