@@ -1,59 +1,234 @@
 package email
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
+	"errors"
+	"fmt"
+	"mime"
+	"mime/multipart"
+	"mime/quotedprintable"
+	"net/mail"
+	"net/textproto"
+	"path/filepath"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ses"
-	"github.com/aws/aws-sdk-go-v2/service/ses/types"
+	"github.com/aws/smithy-go"
 
-	"github.com/coffeyvidzro/dugble/server/internal/notifications"
+	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 )
 
+const ProviderSES = "ses"
+
+var ErrUnsupportedAttachmentPath = errors.New("attachment paths are not supported by the SES integration")
+
+type sesAPI interface {
+	SendRawEmail(context.Context, *ses.SendRawEmailInput, ...func(*ses.Options)) (*ses.SendRawEmailOutput, error)
+}
+
 type SESSender struct {
-	client *ses.Client
-	from   string
+	client      sesAPI
+	defaultFrom string
 }
 
-func NewSESSender(
-	ctx context.Context,
-	region string,
-	from string,
-	accessKey string,
-	secretKey string,
-) (*SESSender, error) {
-	awsConfig := aws.Config{
+func NewSESSender(_ context.Context, region, defaultFrom, accessKey, secretKey string) (*SESSender, error) {
+	cfg := aws.Config{
+		Region:      strings.TrimSpace(region),
 		Credentials: credentials.NewStaticCredentialsProvider(accessKey, secretKey, ""),
-		Region:      region,
 	}
-
-	return &SESSender{
-		client: ses.NewFromConfig(awsConfig),
-		from:   from,
-	}, nil
+	return &SESSender{client: ses.NewFromConfig(cfg), defaultFrom: strings.TrimSpace(defaultFrom)}, nil
 }
 
-func (s *SESSender) Send(ctx context.Context, msg notifications.EmailMessage) error {
+func (s *SESSender) Send(ctx context.Context, message platformemail.Message) (platformemail.Result, error) {
+	if s == nil || s.client == nil {
+		return platformemail.Result{}, errors.New("SES sender is not configured")
+	}
+	if strings.TrimSpace(message.From.Email) == "" {
+		message.From.Email = s.defaultFrom
+	}
+	raw, err := buildMIME(message)
+	if err != nil {
+		code := "invalid_message"
+		if errors.Is(err, ErrUnsupportedAttachmentPath) {
+			code = "unsupported_attachment_path"
+		}
+		return platformemail.Result{}, platformemail.NewSendError(code, false, err)
+	}
+	output, err := s.client.SendRawEmail(ctx, &ses.SendRawEmailInput{RawMessage: &ses.RawMessage{Data: raw}})
+	if err != nil {
+		return platformemail.Result{}, classifySESFailure(err)
+	}
+	if output.MessageId == nil || strings.TrimSpace(*output.MessageId) == "" {
+		return platformemail.Result{}, platformemail.NewSendError("empty_provider_message_id", true, errors.New("SES returned an empty message ID"))
+	}
+	return platformemail.Result{Provider: ProviderSES, MessageID: strings.TrimSpace(*output.MessageId)}, nil
+}
 
-	_, err := s.client.SendEmail(ctx, &ses.SendEmailInput{
-		Source: aws.String(s.from),
-		Destination: &types.Destination{
-			ToAddresses: []string{msg.To},
-		},
-		Message: &types.Message{
-			Subject: &types.Content{
-				Charset: aws.String("UTF-8"),
-				Data:    aws.String(msg.Subject),
-			},
-			Body: &types.Body{
-				Html: &types.Content{
-					Charset: aws.String("UTF-8"),
-					Data:    aws.String(msg.Body),
-				},
-			},
-		},
-	})
+func classifySESFailure(err error) error {
+	var apiError smithy.APIError
+	if !errors.As(err, &apiError) {
+		return platformemail.NewSendError("ses_request_failed", platformemail.IsRetryable(err), err)
+	}
+	code := strings.ToLower(strings.TrimSpace(apiError.ErrorCode()))
+	retryable := false
+	switch code {
+	case "throttling", "throttlingexception", "requesttimeout", "requesttimeoutexception", "serviceunavailable", "internalfailure", "internalservererror":
+		retryable = true
+	}
+	return platformemail.NewSendError(code, retryable, err)
+}
 
-	return err
+func buildMIME(message platformemail.Message) ([]byte, error) {
+	if strings.TrimSpace(message.From.Email) == "" || len(message.To)+len(message.CC)+len(message.BCC) == 0 {
+		return nil, errors.New("email requires a sender and at least one recipient")
+	}
+	var output bytes.Buffer
+	writeHeader(&output, "From", formatAddress(message.From))
+	writeHeader(&output, "To", joinAddresses(message.To))
+	if len(message.CC) > 0 {
+		writeHeader(&output, "Cc", joinAddresses(message.CC))
+	}
+	if len(message.ReplyTo) > 0 {
+		writeHeader(&output, "Reply-To", joinAddresses(message.ReplyTo))
+	}
+	writeHeader(&output, "Subject", mime.QEncoding.Encode("UTF-8", message.Subject))
+	writeHeader(&output, "MIME-Version", "1.0")
+	for key, value := range message.Headers {
+		canonical := textproto.CanonicalMIMEHeaderKey(strings.TrimSpace(key))
+		if canonical == "" || reservedHeader(canonical) {
+			continue
+		}
+		writeHeader(&output, canonical, value)
+	}
+	mixed := multipart.NewWriter(&output)
+	writeHeader(&output, "Content-Type", fmt.Sprintf("multipart/mixed; boundary=%q", mixed.Boundary()))
+	output.WriteString("\r\n")
+	alternativeHeader := textproto.MIMEHeader{}
+	alternativeBoundary := randomBoundary()
+	alternativeHeader.Set("Content-Type", fmt.Sprintf("multipart/alternative; boundary=%q", alternativeBoundary))
+	alternativePart, err := mixed.CreatePart(alternativeHeader)
+	if err != nil {
+		return nil, fmt.Errorf("create email body: %w", err)
+	}
+	alternative := multipart.NewWriter(alternativePart)
+	if err := alternative.SetBoundary(alternativeBoundary); err != nil {
+		return nil, fmt.Errorf("set email body boundary: %w", err)
+	}
+	if message.Text != "" {
+		if err := writeQuotedPrintablePart(alternative, "text/plain; charset=UTF-8", message.Text); err != nil {
+			return nil, err
+		}
+	}
+	if message.HTML != "" {
+		if err := writeQuotedPrintablePart(alternative, "text/html; charset=UTF-8", message.HTML); err != nil {
+			return nil, err
+		}
+	}
+	if message.Text == "" && message.HTML == "" {
+		return nil, errors.New("email requires a text or HTML body")
+	}
+	if err := alternative.Close(); err != nil {
+		return nil, fmt.Errorf("close email body: %w", err)
+	}
+	for _, attachment := range message.Attachments {
+		if strings.TrimSpace(attachment.Path) != "" && strings.TrimSpace(attachment.Content) == "" {
+			return nil, ErrUnsupportedAttachmentPath
+		}
+		data, err := base64.StdEncoding.DecodeString(strings.TrimSpace(attachment.Content))
+		if err != nil {
+			return nil, fmt.Errorf("decode attachment %q: %w", attachment.Filename, err)
+		}
+		contentType := strings.TrimSpace(attachment.ContentType)
+		if contentType == "" {
+			contentType = "application/octet-stream"
+		}
+		filename := filepath.Base(strings.TrimSpace(attachment.Filename))
+		if filename == "." || filename == "" {
+			return nil, errors.New("attachment filename is required")
+		}
+		header := textproto.MIMEHeader{}
+		header.Set("Content-Type", contentType)
+		header.Set("Content-Transfer-Encoding", "base64")
+		header.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+		if strings.TrimSpace(attachment.ContentID) != "" {
+			header.Set("Content-ID", "<"+sanitizeHeaderValue(attachment.ContentID)+">")
+		}
+		part, err := mixed.CreatePart(header)
+		if err != nil {
+			return nil, fmt.Errorf("create attachment %q: %w", filename, err)
+		}
+		encoder := base64.NewEncoder(base64.StdEncoding, part)
+		if _, err := encoder.Write(data); err != nil {
+			return nil, fmt.Errorf("write attachment %q: %w", filename, err)
+		}
+		if err := encoder.Close(); err != nil {
+			return nil, fmt.Errorf("close attachment %q: %w", filename, err)
+		}
+	}
+	if err := mixed.Close(); err != nil {
+		return nil, fmt.Errorf("close MIME message: %w", err)
+	}
+	return output.Bytes(), nil
+}
+
+func writeQuotedPrintablePart(writer *multipart.Writer, contentType, body string) error {
+	header := textproto.MIMEHeader{}
+	header.Set("Content-Type", contentType)
+	header.Set("Content-Transfer-Encoding", "quoted-printable")
+	part, err := writer.CreatePart(header)
+	if err != nil {
+		return fmt.Errorf("create MIME body part: %w", err)
+	}
+	encoded := quotedprintable.NewWriter(part)
+	if _, err := encoded.Write([]byte(body)); err != nil {
+		return fmt.Errorf("write MIME body part: %w", err)
+	}
+	if err := encoded.Close(); err != nil {
+		return fmt.Errorf("close MIME body part: %w", err)
+	}
+	return nil
+}
+
+func formatAddress(address platformemail.Address) string {
+	return (&mail.Address{Name: strings.TrimSpace(address.Name), Address: strings.TrimSpace(address.Email)}).String()
+}
+
+func joinAddresses(addresses []platformemail.Address) string {
+	values := make([]string, 0, len(addresses))
+	for _, address := range addresses {
+		values = append(values, formatAddress(address))
+	}
+	return strings.Join(values, ", ")
+}
+
+func writeHeader(output *bytes.Buffer, key, value string) {
+	if strings.TrimSpace(value) == "" {
+		return
+	}
+	output.WriteString(key + ": " + sanitizeHeaderValue(value) + "\r\n")
+}
+
+func sanitizeHeaderValue(value string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(strings.TrimSpace(value), "\r", ""), "\n", "")
+}
+
+func reservedHeader(key string) bool {
+	switch key {
+	case "From", "To", "Cc", "Bcc", "Reply-To", "Subject", "MIME-Version", "Content-Type", "Content-Transfer-Encoding":
+		return true
+	default:
+		return false
+	}
+}
+
+func randomBoundary() string {
+	var buffer bytes.Buffer
+	writer := multipart.NewWriter(&buffer)
+	boundary := writer.Boundary()
+	_ = writer.Close()
+	return boundary
 }
