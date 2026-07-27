@@ -5,10 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type claimStore interface {
@@ -34,7 +33,7 @@ type Consumer struct {
 	workerID string
 }
 
-func NewConsumer(store claimStore, handler deliveryHandler, config ConsumerConfig) *Consumer {
+func NewConsumer(store claimStore, handler deliveryHandler, config ConsumerConfig, workerID string) *Consumer {
 	if config.PollInterval <= 0 {
 		config.PollInterval = 500 * time.Millisecond
 	}
@@ -52,7 +51,7 @@ func NewConsumer(store claimStore, handler deliveryHandler, config ConsumerConfi
 	}
 	return &Consumer{
 		store: store, handler: handler, config: config,
-		workerID: "webhook-delivery-" + uuid.NewString(),
+		workerID: strings.TrimSpace(workerID),
 	}
 }
 
@@ -62,6 +61,9 @@ func (c *Consumer) Run(ctx context.Context) error {
 	}
 	if c.handler == nil {
 		return errors.New("webhook delivery handler is not configured")
+	}
+	if c.workerID == "" {
+		return errors.New("webhook delivery worker id is required")
 	}
 
 	for {

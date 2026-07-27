@@ -181,26 +181,22 @@ func (s *Service) TestEndpoint(ctx context.Context, value string) (Delivery, err
 		return Delivery{}, apperrors.NewInternal("Unable to encode webhook test payload", err)
 	}
 
-	tx, err := s.repository.BeginTx(ctx)
-	if err != nil {
-		return Delivery{}, apperrors.NewInternal("Unable to begin webhook test transaction", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	_, deliveryID, err := s.emitter.EmitToEndpointTx(ctx, tx, platformwebhook.Event{
-		ID:         uuid.New(),
-		TeamID:     tenantContext.TeamID,
-		Type:       platformwebhook.EventTest,
-		ObjectType: "webhook_endpoint",
-		ObjectID:   &endpointID,
-		Payload:    payload,
-		OccurredAt: s.now().UTC(),
-	}, endpointID)
+	var deliveryID uuid.UUID
+	err = s.repository.InTransaction(ctx, func(tx pgx.Tx) error {
+		_, createdDeliveryID, emitErr := s.emitter.EmitToEndpointTx(ctx, tx, platformwebhook.Event{
+			ID:         uuid.New(),
+			TeamID:     tenantContext.TeamID,
+			Type:       platformwebhook.EventTest,
+			ObjectType: "webhook_endpoint",
+			ObjectID:   &endpointID,
+			Payload:    payload,
+			OccurredAt: s.now().UTC(),
+		}, endpointID)
+		deliveryID = createdDeliveryID
+		return emitErr
+	})
 	if err != nil {
 		return Delivery{}, apperrors.NewInternal("Unable to create webhook test delivery", err)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return Delivery{}, apperrors.NewInternal("Unable to commit webhook test transaction", err)
 	}
 	delivery, err := s.repository.GetDelivery(ctx, deliveryID, tenantContext.TeamID)
 	if err != nil {

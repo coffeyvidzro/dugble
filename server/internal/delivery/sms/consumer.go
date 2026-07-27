@@ -29,6 +29,7 @@ var defaultRetryDelays = []time.Duration{
 
 type deliveryHandler interface {
 	Handle(context.Context, DeliverCommand) error
+	HandleExhausted(context.Context, DeliverCommand, error) error
 }
 
 type processedEventStore interface {
@@ -231,6 +232,13 @@ func (c *Consumer) processMessage(parent context.Context, message natsjs.Msg) {
 			return
 		}
 		if int(metadata.NumDelivered) >= c.config.MaxDeliver {
+			finalizeContext, cancelFinalize := context.WithTimeout(parent, c.config.HandlerTimeout)
+			finalizeErr := c.handler.HandleExhausted(finalizeContext, command, err)
+			cancelFinalize()
+			if finalizeErr != nil {
+				c.retryMessage(message, metadata.NumDelivered, errors.Join(err, finalizeErr))
+				return
+			}
 			c.deadLetter(parent, message, metadata, command.EventID, err)
 			return
 		}

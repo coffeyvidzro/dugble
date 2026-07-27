@@ -1,19 +1,17 @@
 ---
 title: "Webhooks overview"
-description: "Plan event-driven delivery updates for Dugble messages"
+description: "Receive event-driven delivery updates for Dugble SMS messages"
 ---
 
-Webhooks let an application react to message lifecycle changes without repeatedly polling the Email or SMS retrieve endpoints.
+Webhooks let an application react to SMS lifecycle changes without repeatedly polling the SMS retrieve endpoint.
 
 <Warning>
-    Customer-configurable outgoing webhooks are currently in development. The
-    event names on these pages describe the planned public contract and may
-    change before general availability.
+    Customer-configurable outgoing webhooks are currently a preview. Preview
+    endpoints support the SMS events listed in the event catalog; email events
+    are not emitted yet.
 </Warning>
 
-## How webhook delivery will work
-
-When outgoing webhooks become available, the flow will be:
+## How webhook delivery works
 
 <Steps>
     <Step title="Register an HTTPS endpoint">
@@ -36,7 +34,7 @@ You can prepare an endpoint around a small dispatcher:
 
 ```ts
 app.post("/webhooks/dugble", async (request, response) => {
-    // Signature verification will be documented with the public webhook release.
+    // Verify X-Dugble-Signature against the raw body before decoding JSON.
     const event = request.body;
 
     if (await eventStore.has(event.id)) {
@@ -46,12 +44,6 @@ app.post("/webhooks/dugble", async (request, response) => {
     await eventStore.save(event.id, event);
 
     switch (event.type) {
-        case "email.delivered":
-            await markEmailDelivered(event.data.id);
-            break;
-        case "email.bounced":
-            await suppressBouncedAddress(event.data.to);
-            break;
         case "sms.delivered":
             await markSmsDelivered(event.data.id);
             break;
@@ -61,16 +53,24 @@ app.post("/webhooks/dugble", async (request, response) => {
 });
 ```
 
-Do not deploy signature verification based on guessed header names or algorithms. Dugble will publish the signing scheme and test tooling before outgoing webhooks are enabled.
+See the event catalog for the signature header and HMAC input format.
+
+<Card title="Verify signatures" icon="key" href="/webhooks/signatures">
+    Authenticate requests with the raw body and your endpoint signing secret.
+</Card>
 
 ## Current alternative
 
-Until outgoing webhooks are available, retrieve message state directly:
+For event types not included in the preview, retrieve message state directly:
 
 - `GET /emails/{message_id}` for email
 - `GET /sms/{message_id}` for SMS
 - `POST /sms/{message_id}/sync-status` to request an SMS provider status refresh
 
 <Card title="Event catalog" icon="bolt" href="/webhooks/events">
-    Review the planned lifecycle events and suggested application behavior.
+    Review the supported lifecycle events and suggested application behavior.
+</Card>
+
+<Card title="Operational controls" icon="gauge" href="/webhooks/operations">
+    Monitor endpoint health, recover failures, and control delivery traffic.
 </Card>

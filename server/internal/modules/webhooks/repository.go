@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/coffeyvidzro/dugble/server/internal/database"
 	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
 	platformwebhook "github.com/coffeyvidzro/dugble/server/internal/platform/webhook"
 	"github.com/coffeyvidzro/dugble/server/pkg/pgconv"
@@ -24,8 +25,8 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 	return &Repository{db: db, queries: dbsqlc.New(db)}
 }
 
-func (r *Repository) BeginTx(ctx context.Context) (pgx.Tx, error) {
-	return r.db.BeginTx(ctx, pgx.TxOptions{})
+func (r *Repository) InTransaction(ctx context.Context, operation func(pgx.Tx) error) error {
+	return database.InTransaction(ctx, r.db, operation)
 }
 
 func (r *Repository) CreateEndpoint(ctx context.Context, teamID uuid.UUID, endpoint validatedEndpoint, secret []byte) (Endpoint, error) {
@@ -160,10 +161,13 @@ func (r *Repository) CreateDeliveryTx(ctx context.Context, tx pgx.Tx, eventID, e
 func endpointFromSQLC(row dbsqlc.WebhookEndpoint) Endpoint {
 	return Endpoint{
 		ID: row.ID.String(), TeamID: row.TeamID.String(), URL: row.Url, Enabled: row.Enabled,
-		SubscribedEvents: row.SubscribedEvents,
-		CreatedAt:        pgconv.TimestamptzToTime(row.CreatedAt),
-		UpdatedAt:        pgconv.TimestamptzToTime(row.UpdatedAt),
-		DisabledAt:       pgconv.TimestamptzToTimePtr(row.DisabledAt),
+		SubscribedEvents:    row.SubscribedEvents,
+		CreatedAt:           pgconv.TimestamptzToTime(row.CreatedAt),
+		UpdatedAt:           pgconv.TimestamptzToTime(row.UpdatedAt),
+		DisabledAt:          pgconv.TimestamptzToTimePtr(row.DisabledAt),
+		ConsecutiveFailures: row.ConsecutiveFailures,
+		LastFailureAt:       pgconv.TimestamptzToTimePtr(row.LastFailureAt),
+		DisabledReason:      row.DisabledReason,
 	}
 }
 

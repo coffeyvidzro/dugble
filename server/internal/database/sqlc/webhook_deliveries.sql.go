@@ -276,7 +276,8 @@ func (q *Queries) ListWebhookDeliveriesForEvent(ctx context.Context, arg ListWeb
 }
 
 const markWebhookDeliveryFailed = `-- name: MarkWebhookDeliveryFailed :one
-UPDATE webhook_deliveries
+WITH failed AS (
+UPDATE webhook_deliveries AS delivery
 SET status = 'failed',
     response_status = $1,
     response_body = $2,
@@ -284,28 +285,69 @@ SET status = 'failed',
     locked_at = NULL,
     locked_by = NULL,
     updated_at = now()
-WHERE id = $4
-  AND locked_by = $5
-RETURNING id, event_id, endpoint_id, status, attempt_count, next_attempt_at, last_attempt_at, response_status, response_body, last_error, delivered_at, locked_at, locked_by, created_at, updated_at
+WHERE delivery.id = $4
+  AND delivery.locked_by = $5
+RETURNING delivery.id, delivery.event_id, delivery.endpoint_id, delivery.status, delivery.attempt_count, delivery.next_attempt_at, delivery.last_attempt_at, delivery.response_status, delivery.response_body, delivery.last_error, delivery.delivered_at, delivery.locked_at, delivery.locked_by, delivery.created_at, delivery.updated_at
+), update_endpoint AS (
+UPDATE webhook_endpoints
+SET consecutive_failures = consecutive_failures + 1,
+    last_failure_at = now(),
+    enabled = CASE
+        WHEN consecutive_failures + 1 >= $6::integer THEN false
+        ELSE enabled
+    END,
+    disabled_at = CASE
+        WHEN consecutive_failures + 1 >= $6::integer THEN COALESCE(disabled_at, now())
+        ELSE disabled_at
+    END,
+    disabled_reason = CASE
+        WHEN enabled AND consecutive_failures + 1 >= $6::integer THEN 'failure_threshold'
+        ELSE disabled_reason
+    END,
+    updated_at = now()
+WHERE id = (SELECT endpoint_id FROM failed)
+RETURNING id
+)
+SELECT id, event_id, endpoint_id, status, attempt_count, next_attempt_at, last_attempt_at, response_status, response_body, last_error, delivered_at, locked_at, locked_by, created_at, updated_at FROM failed
 `
 
 type MarkWebhookDeliveryFailedParams struct {
-	ResponseStatus *int32    `db:"response_status" json:"response_status"`
-	ResponseBody   *string   `db:"response_body" json:"response_body"`
-	LastError      *string   `db:"last_error" json:"last_error"`
-	ID             uuid.UUID `db:"id" json:"id"`
-	WorkerID       *string   `db:"worker_id" json:"worker_id"`
+	ResponseStatus   *int32    `db:"response_status" json:"response_status"`
+	ResponseBody     *string   `db:"response_body" json:"response_body"`
+	LastError        *string   `db:"last_error" json:"last_error"`
+	ID               uuid.UUID `db:"id" json:"id"`
+	WorkerID         *string   `db:"worker_id" json:"worker_id"`
+	AutoDisableAfter int32     `db:"auto_disable_after" json:"auto_disable_after"`
 }
 
-func (q *Queries) MarkWebhookDeliveryFailed(ctx context.Context, arg MarkWebhookDeliveryFailedParams) (WebhookDelivery, error) {
+type MarkWebhookDeliveryFailedRow struct {
+	ID             uuid.UUID          `db:"id" json:"id"`
+	EventID        uuid.UUID          `db:"event_id" json:"event_id"`
+	EndpointID     uuid.UUID          `db:"endpoint_id" json:"endpoint_id"`
+	Status         string             `db:"status" json:"status"`
+	AttemptCount   int32              `db:"attempt_count" json:"attempt_count"`
+	NextAttemptAt  pgtype.Timestamptz `db:"next_attempt_at" json:"next_attempt_at"`
+	LastAttemptAt  pgtype.Timestamptz `db:"last_attempt_at" json:"last_attempt_at"`
+	ResponseStatus *int32             `db:"response_status" json:"response_status"`
+	ResponseBody   *string            `db:"response_body" json:"response_body"`
+	LastError      *string            `db:"last_error" json:"last_error"`
+	DeliveredAt    pgtype.Timestamptz `db:"delivered_at" json:"delivered_at"`
+	LockedAt       pgtype.Timestamptz `db:"locked_at" json:"locked_at"`
+	LockedBy       *string            `db:"locked_by" json:"locked_by"`
+	CreatedAt      pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+func (q *Queries) MarkWebhookDeliveryFailed(ctx context.Context, arg MarkWebhookDeliveryFailedParams) (MarkWebhookDeliveryFailedRow, error) {
 	row := q.db.QueryRow(ctx, markWebhookDeliveryFailed,
 		arg.ResponseStatus,
 		arg.ResponseBody,
 		arg.LastError,
 		arg.ID,
 		arg.WorkerID,
+		arg.AutoDisableAfter,
 	)
-	var i WebhookDelivery
+	var i MarkWebhookDeliveryFailedRow
 	err := row.Scan(
 		&i.ID,
 		&i.EventID,
@@ -327,7 +369,8 @@ func (q *Queries) MarkWebhookDeliveryFailed(ctx context.Context, arg MarkWebhook
 }
 
 const markWebhookDeliverySucceeded = `-- name: MarkWebhookDeliverySucceeded :one
-UPDATE webhook_deliveries
+WITH succeeded AS (
+UPDATE webhook_deliveries AS delivery
 SET status = 'succeeded',
     response_status = $1,
     response_body = $2,
@@ -336,9 +379,21 @@ SET status = 'succeeded',
     locked_at = NULL,
     locked_by = NULL,
     updated_at = now()
-WHERE id = $3
-  AND locked_by = $4
-RETURNING id, event_id, endpoint_id, status, attempt_count, next_attempt_at, last_attempt_at, response_status, response_body, last_error, delivered_at, locked_at, locked_by, created_at, updated_at
+WHERE delivery.id = $3
+  AND delivery.locked_by = $4
+RETURNING delivery.id, delivery.event_id, delivery.endpoint_id, delivery.status, delivery.attempt_count, delivery.next_attempt_at, delivery.last_attempt_at, delivery.response_status, delivery.response_body, delivery.last_error, delivery.delivered_at, delivery.locked_at, delivery.locked_by, delivery.created_at, delivery.updated_at
+), reset_endpoint AS (
+UPDATE webhook_endpoints
+SET consecutive_failures = 0,
+    last_failure_at = NULL,
+    disabled_reason = NULL,
+    updated_at = now()
+WHERE id = (SELECT endpoint_id FROM succeeded)
+  AND enabled = true
+  AND consecutive_failures > 0
+RETURNING id
+)
+SELECT id, event_id, endpoint_id, status, attempt_count, next_attempt_at, last_attempt_at, response_status, response_body, last_error, delivered_at, locked_at, locked_by, created_at, updated_at FROM succeeded
 `
 
 type MarkWebhookDeliverySucceededParams struct {
@@ -348,14 +403,32 @@ type MarkWebhookDeliverySucceededParams struct {
 	WorkerID       *string   `db:"worker_id" json:"worker_id"`
 }
 
-func (q *Queries) MarkWebhookDeliverySucceeded(ctx context.Context, arg MarkWebhookDeliverySucceededParams) (WebhookDelivery, error) {
+type MarkWebhookDeliverySucceededRow struct {
+	ID             uuid.UUID          `db:"id" json:"id"`
+	EventID        uuid.UUID          `db:"event_id" json:"event_id"`
+	EndpointID     uuid.UUID          `db:"endpoint_id" json:"endpoint_id"`
+	Status         string             `db:"status" json:"status"`
+	AttemptCount   int32              `db:"attempt_count" json:"attempt_count"`
+	NextAttemptAt  pgtype.Timestamptz `db:"next_attempt_at" json:"next_attempt_at"`
+	LastAttemptAt  pgtype.Timestamptz `db:"last_attempt_at" json:"last_attempt_at"`
+	ResponseStatus *int32             `db:"response_status" json:"response_status"`
+	ResponseBody   *string            `db:"response_body" json:"response_body"`
+	LastError      *string            `db:"last_error" json:"last_error"`
+	DeliveredAt    pgtype.Timestamptz `db:"delivered_at" json:"delivered_at"`
+	LockedAt       pgtype.Timestamptz `db:"locked_at" json:"locked_at"`
+	LockedBy       *string            `db:"locked_by" json:"locked_by"`
+	CreatedAt      pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+func (q *Queries) MarkWebhookDeliverySucceeded(ctx context.Context, arg MarkWebhookDeliverySucceededParams) (MarkWebhookDeliverySucceededRow, error) {
 	row := q.db.QueryRow(ctx, markWebhookDeliverySucceeded,
 		arg.ResponseStatus,
 		arg.ResponseBody,
 		arg.ID,
 		arg.WorkerID,
 	)
-	var i WebhookDelivery
+	var i MarkWebhookDeliverySucceededRow
 	err := row.Scan(
 		&i.ID,
 		&i.EventID,
@@ -446,7 +519,7 @@ func (q *Queries) RetryWebhookDelivery(ctx context.Context, arg RetryWebhookDeli
 }
 
 const scheduleWebhookDeliveryRetry = `-- name: ScheduleWebhookDeliveryRetry :one
-UPDATE webhook_deliveries
+UPDATE webhook_deliveries AS delivery
 SET status = 'retrying',
     next_attempt_at = $1,
     response_status = $2,
@@ -455,9 +528,9 @@ SET status = 'retrying',
     locked_at = NULL,
     locked_by = NULL,
     updated_at = now()
-WHERE id = $5
-  AND locked_by = $6
-RETURNING id, event_id, endpoint_id, status, attempt_count, next_attempt_at, last_attempt_at, response_status, response_body, last_error, delivered_at, locked_at, locked_by, created_at, updated_at
+WHERE delivery.id = $5
+  AND delivery.locked_by = $6
+RETURNING delivery.id, delivery.event_id, delivery.endpoint_id, delivery.status, delivery.attempt_count, delivery.next_attempt_at, delivery.last_attempt_at, delivery.response_status, delivery.response_body, delivery.last_error, delivery.delivered_at, delivery.locked_at, delivery.locked_by, delivery.created_at, delivery.updated_at
 `
 
 type ScheduleWebhookDeliveryRetryParams struct {

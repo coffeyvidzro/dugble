@@ -104,7 +104,9 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	teamTokenRepository := teamtoken.NewRepository(deps.DB)
 	domainRepository := domain.NewRepository(deps.DB)
 	senderIDRepository := senderid.NewRepository(deps.DB)
-	smsRepository := smsmodule.NewRepository(deps.DB)
+	webhookRepository := webhooks.NewRepository(deps.DB)
+	webhookEmitter := platformwebhook.NewEmitter(webhookRepository)
+	smsRepository := smsmodule.NewRepositoryWithWebhookEmitter(deps.DB, webhookEmitter)
 	walletRepository := wallet.NewRepository(deps.DB)
 	hubtelProvider := hubtel.NewProvider(hubtel.NewClient(cfg.Hubtel))
 	fxClient := fx.NewCachedProvider(fx.NewFrankfurterClient(), deps.Redis)
@@ -186,8 +188,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	)
 	emailmodule.RegisterRoutes(router, emailmodule.NewHandler(emailServiceAPI), authMiddleware, csrfMiddleware, tenantMiddleware)
 
-	webhookRepository := webhooks.NewRepository(deps.DB)
-	webhookService := webhooks.NewService(webhookRepository, platformwebhook.NewEmitter(webhookRepository))
+	webhookService := webhooks.NewService(webhookRepository, webhookEmitter)
 	webhooks.RegisterRoutes(
 		router,
 		webhooks.NewHandler(webhookService),

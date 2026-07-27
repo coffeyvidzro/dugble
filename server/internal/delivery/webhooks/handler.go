@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -41,12 +42,15 @@ type Handler struct {
 }
 
 func NewHandler(store deliveryResultStore, client HTTPClient, policy RetryPolicy, workerID string) *Handler {
-	return &Handler{store: store, client: client, policy: policy, workerID: workerID, now: time.Now}
+	return &Handler{store: store, client: client, policy: policy, workerID: strings.TrimSpace(workerID), now: time.Now}
 }
 
 func (h *Handler) Handle(ctx context.Context, delivery ClaimedDelivery) error {
 	if h == nil || h.store == nil || h.client == nil {
 		return errors.New("webhook delivery handler is not configured")
+	}
+	if h.workerID == "" {
+		return errors.New("webhook delivery worker id is required")
 	}
 	if delivery.ID == uuid.Nil || delivery.EventID == uuid.Nil || delivery.EndpointID == uuid.Nil {
 		return errors.New("webhook delivery requires delivery, event, and endpoint IDs")

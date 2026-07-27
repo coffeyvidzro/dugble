@@ -37,27 +37,38 @@ type MessagingConfig struct {
 	SMSHandlerTimeout      time.Duration `env:"SMS_HANDLER_TIMEOUT" envDefault:"45s"`
 }
 
+type WebhookDeliveryConfig struct {
+	PollInterval     time.Duration `env:"POLL_INTERVAL" envDefault:"500ms"`
+	BatchSize        int32         `env:"BATCH_SIZE" envDefault:"50"`
+	Concurrency      int           `env:"CONCURRENCY" envDefault:"10"`
+	LockTimeout      time.Duration `env:"LOCK_TIMEOUT" envDefault:"30s"`
+	HandleTimeout    time.Duration `env:"HANDLE_TIMEOUT" envDefault:"15s"`
+	HTTPTimeout      time.Duration `env:"HTTP_TIMEOUT" envDefault:"10s"`
+	AutoDisableAfter int32         `env:"AUTO_DISABLE_AFTER" envDefault:"20"`
+}
+
 type BackofficeConfig struct {
 	HTTPPort    string   `env:"HTTP_PORT" envDefault:"8081"`
 	AdminEmails []string `env:"ADMIN_EMAILS" envSeparator:","`
 }
 
 type Config struct {
-	AppEnv       string           `env:"APP_ENV"   envDefault:"development"`
-	HTTPPort     string           `env:"HTTP_PORT" envDefault:"8080"`
-	DatabaseURL  string           `env:"DATABASE_URL,required,notEmpty"`
-	RedisURL     string           `env:"REDIS_URL" envDefault:"redis://localhost:6379/0"`
-	CORSOrigins  []string         `env:"CORS_ORIGINS" envSeparator:"," envDefault:"http://localhost:3000,http://127.0.0.1:3000"`
-	ArcjetKey    string           `env:"ARCJET_KEY,required,notEmpty"`
-	FrontendURL  string           `env:"FRONTEND_URL" envDefault:"http://localhost:3000"`
-	BackendURL   string           `env:"BACKEND_URL"  envDefault:"http://localhost:8080"`
-	CookieDomain string           `env:"COOKIE_DOMAIN"`
-	AWS          AWSConfig        `envPrefix:"AWS_"`
-	Messaging    MessagingConfig  `envPrefix:"NATS_"`
-	Arkesel      ProviderConfig   `envPrefix:"ARKESEL_"`
-	MNotify      ProviderConfig   `envPrefix:"MNOTIFY_"`
-	Hubtel       HubtelConfig     `envPrefix:"HUBTEL_"`
-	Backoffice   BackofficeConfig `envPrefix:"BACKOFFICE_"`
+	AppEnv          string                `env:"APP_ENV"   envDefault:"development"`
+	HTTPPort        string                `env:"HTTP_PORT" envDefault:"8080"`
+	DatabaseURL     string                `env:"DATABASE_URL,required,notEmpty"`
+	RedisURL        string                `env:"REDIS_URL" envDefault:"redis://localhost:6379/0"`
+	CORSOrigins     []string              `env:"CORS_ORIGINS" envSeparator:"," envDefault:"http://localhost:3000,http://127.0.0.1:3000"`
+	ArcjetKey       string                `env:"ARCJET_KEY,required,notEmpty"`
+	FrontendURL     string                `env:"FRONTEND_URL" envDefault:"http://localhost:3000"`
+	BackendURL      string                `env:"BACKEND_URL"  envDefault:"http://localhost:8080"`
+	CookieDomain    string                `env:"COOKIE_DOMAIN"`
+	AWS             AWSConfig             `envPrefix:"AWS_"`
+	Messaging       MessagingConfig       `envPrefix:"NATS_"`
+	WebhookDelivery WebhookDeliveryConfig `envPrefix:"WEBHOOK_DELIVERY_"`
+	Arkesel         ProviderConfig        `envPrefix:"ARKESEL_"`
+	MNotify         ProviderConfig        `envPrefix:"MNOTIFY_"`
+	Hubtel          HubtelConfig          `envPrefix:"HUBTEL_"`
+	Backoffice      BackofficeConfig      `envPrefix:"BACKOFFICE_"`
 }
 
 func Load() (*Config, error) {
@@ -111,6 +122,27 @@ func (c *Config) normalize() {
 	}
 	if c.Messaging.SMSHandlerTimeout <= 0 {
 		c.Messaging.SMSHandlerTimeout = 45 * time.Second
+	}
+	if c.WebhookDelivery.PollInterval <= 0 {
+		c.WebhookDelivery.PollInterval = 500 * time.Millisecond
+	}
+	if c.WebhookDelivery.BatchSize <= 0 {
+		c.WebhookDelivery.BatchSize = 50
+	}
+	if c.WebhookDelivery.Concurrency <= 0 {
+		c.WebhookDelivery.Concurrency = 10
+	}
+	if c.WebhookDelivery.LockTimeout <= 0 {
+		c.WebhookDelivery.LockTimeout = 30 * time.Second
+	}
+	if c.WebhookDelivery.HandleTimeout <= 0 {
+		c.WebhookDelivery.HandleTimeout = 15 * time.Second
+	}
+	if c.WebhookDelivery.HTTPTimeout <= 0 {
+		c.WebhookDelivery.HTTPTimeout = 10 * time.Second
+	}
+	if c.WebhookDelivery.AutoDisableAfter <= 0 {
+		c.WebhookDelivery.AutoDisableAfter = 20
 	}
 	c.Arkesel.APIKey = strings.TrimSpace(c.Arkesel.APIKey)
 	c.Arkesel.BaseURL = strings.TrimRight(strings.TrimSpace(c.Arkesel.BaseURL), "/")

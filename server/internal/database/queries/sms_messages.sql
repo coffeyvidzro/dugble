@@ -78,6 +78,24 @@ SET status = sqlc.arg(status),
     updated_at = now()
 WHERE id = sqlc.arg(id)
   AND team_id = sqlc.arg(team_id)
+  AND status <> sqlc.arg(status)
+  AND status NOT IN ('refund_pending', 'delivered', 'undelivered', 'rejected', 'failed', 'expired', 'unknown', 'canceled')
+  AND (
+      sqlc.arg(status) IN ('delivered', 'undelivered', 'rejected', 'failed', 'expired')
+      OR CASE status
+          WHEN 'queued' THEN 0
+          WHEN 'processing' THEN 1
+          WHEN 'submitted' THEN 2
+          WHEN 'sent' THEN 3
+          ELSE 4
+      END < CASE sqlc.arg(status)
+          WHEN 'queued' THEN 0
+          WHEN 'processing' THEN 1
+          WHEN 'submitted' THEN 2
+          WHEN 'sent' THEN 3
+          ELSE -1
+      END
+  )
 RETURNING *;
 
 -- name: FindApprovedSMSSender :one
@@ -107,5 +125,16 @@ SET status = 'refund_pending',
     updated_at = now()
 WHERE id = sqlc.arg(id)
   AND team_id = sqlc.arg(team_id)
+  AND provider_message_id IS NULL
+RETURNING *;
+
+-- name: MarkSMSMessageDeliveryUnknown :one
+UPDATE sms_messages
+SET status = 'unknown',
+    error_message = sqlc.arg(error_message),
+    updated_at = now()
+WHERE id = sqlc.arg(id)
+  AND team_id = sqlc.arg(team_id)
+  AND status = 'processing'
   AND provider_message_id IS NULL
 RETURNING *;

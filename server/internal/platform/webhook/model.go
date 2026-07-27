@@ -2,10 +2,27 @@ package webhook
 
 import (
 	"encoding/json"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+var subscribableEventTypes = []string{
+	EventSMSSubmitted,
+	EventSMSSent,
+	EventSMSDelivered,
+	EventSMSUndelivered,
+	EventSMSFailed,
+}
+
+func SubscribableEventTypes() []string {
+	return slices.Clone(subscribableEventTypes)
+}
+
+func IsSubscribableEventType(eventType string) bool {
+	return slices.Contains(subscribableEventTypes, eventType)
+}
 
 const (
 	EventSMSSubmitted   = "sms.submitted"

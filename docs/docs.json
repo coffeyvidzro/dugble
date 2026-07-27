@@ -39,7 +39,12 @@
       },
       {
         "group": "Webhooks",
-        "pages": ["webhooks/introduction", "webhooks/events"]
+        "pages": [
+          "webhooks/introduction",
+          "webhooks/events",
+          "webhooks/signatures",
+          "webhooks/operations"
+        ]
       }
     ]
   },

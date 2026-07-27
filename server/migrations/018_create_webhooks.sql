@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS webhook_endpoints (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     disabled_at TIMESTAMPTZ,
+    consecutive_failures INTEGER NOT NULL DEFAULT 0,
+    last_failure_at TIMESTAMPTZ,
+    disabled_reason TEXT,
 
     CONSTRAINT chk_webhook_endpoint_url CHECK (
         length(trim(url)) > 0 AND url ~ '^https://'
@@ -20,6 +23,12 @@ CREATE TABLE IF NOT EXISTS webhook_endpoints (
     CONSTRAINT chk_webhook_endpoint_disabled CHECK (
         (enabled AND disabled_at IS NULL)
         OR (NOT enabled AND disabled_at IS NOT NULL)
+    ),
+    CONSTRAINT chk_webhook_endpoint_consecutive_failures CHECK (
+        consecutive_failures >= 0
+    ),
+    CONSTRAINT chk_webhook_endpoint_disabled_reason CHECK (
+        disabled_reason IS NULL OR disabled_reason IN ('manual', 'failure_threshold')
     )
 );
 

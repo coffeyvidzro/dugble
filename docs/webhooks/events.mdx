@@ -1,26 +1,27 @@
 ---
 title: "Webhook events"
-description: "Understand the planned Email and SMS lifecycle event catalog"
+description: "Understand the outgoing SMS lifecycle event catalog"
 ---
 
 <Warning>
-    This is a preview of the planned outgoing webhook contract.
-    Customer-configurable webhooks are not generally available yet.
+    Outgoing webhooks are currently a preview. The catalog below is the
+    complete set of events that endpoints can subscribe to during the preview.
 </Warning>
 
-Event types use a resource and lifecycle name, such as `email.delivered` or `sms.failed`.
+Event types use a resource and lifecycle name, such as `sms.delivered` or `sms.failed`.
 
 ## Common envelope
 
-The planned envelope includes a stable event ID, an event type, a creation time, and resource data:
+The envelope includes a UUID event ID, an event type, the time the lifecycle
+transition occurred, and a snapshot of the SMS resource:
 
 ```json
 {
-    "id": "evt_01J2YQ3M6K4D5A7N8P9R0S1T2V",
-    "type": "email.delivered",
-    "created_at": "2026-07-26T12:01:10Z",
+    "id": "7fccf29e-d21e-4bc9-85a3-a4ec9c35a8dd",
+    "type": "sms.delivered",
+    "occurred_at": "2026-07-26T12:01:10Z",
     "data": {
-        "object": "email",
+        "object": "sms",
         "id": "49a3999c-0ce1-4ea6-ab68-afcd6dc2e794",
         "last_event": "delivered"
     }
@@ -29,41 +30,48 @@ The planned envelope includes a stable event ID, an event type, a creation time,
 
 Treat unknown fields and event types as forward-compatible additions. Do not fail an entire endpoint because it receives an event your application does not use.
 
-## Email events
-
-| Event              | Meaning                                     | Suggested action                                     |
-| ------------------ | ------------------------------------------- | ---------------------------------------------------- |
-| `email.queued`     | Dugble accepted the email for delivery.     | Store the Dugble message ID.                         |
-| `email.processing` | Delivery processing started.                | Usually no action is required.                       |
-| `email.submitted`  | The provider accepted the message.          | Mark the message as sent from your application.      |
-| `email.delivered`  | The recipient server reported delivery.     | Mark the notification delivered.                     |
-| `email.delayed`    | Delivery was temporarily delayed.           | Keep waiting and optionally show a delayed state.    |
-| `email.bounced`    | The recipient server rejected the message.  | Review or suppress the recipient address.            |
-| `email.complained` | The recipient reported the message as spam. | Suppress non-essential mail to the recipient.        |
-| `email.rejected`   | The message was rejected before delivery.   | Inspect sender, recipient, and policy configuration. |
-| `email.failed`     | Dugble could not complete delivery.         | Record the failure and decide whether to retry.      |
-| `email.canceled`   | A scheduled email was canceled.             | Mark the scheduled operation canceled.               |
-
 ## SMS events
 
 | Event             | Meaning                                      | Suggested action                                            |
 | ----------------- | -------------------------------------------- | ----------------------------------------------------------- |
-| `sms.queued`      | Dugble accepted the SMS for delivery.        | Store the Dugble message ID.                                |
-| `sms.processing`  | Delivery processing started.                 | Usually no action is required.                              |
 | `sms.submitted`   | The provider accepted the SMS.               | Mark the message submitted.                                 |
 | `sms.sent`        | The provider reported that the SMS was sent. | Continue waiting for final delivery when supported.         |
 | `sms.delivered`   | The provider reported delivery.              | Mark the notification delivered.                            |
 | `sms.undelivered` | The provider could not deliver the SMS.      | Verify the destination number before retrying.              |
-| `sms.rejected`    | The provider rejected the SMS.               | Review sender ID, content, and destination rules.           |
-| `sms.expired`     | The provider's delivery window expired.      | Decide whether the message is still useful before retrying. |
 | `sms.failed`      | Dugble could not complete delivery.          | Record the failure and review any refund state.             |
-| `sms.canceled`    | A scheduled SMS was canceled.                | Mark the operation canceled and reconcile its refund.       |
+
+Email lifecycle webhooks and additional intermediate SMS states are not emitted
+during the preview. New event types will be documented before they become
+subscribable.
+
+## Test events
+
+Sending a test from an endpoint creates a `webhook.test` event for that endpoint.
+It uses the common envelope but is not a subscribable lifecycle event.
+
+## Delivery headers and signature
+
+Each request includes:
+
+- `X-Dugble-Event`: event type
+- `X-Dugble-Event-Id`: stable event UUID
+- `X-Dugble-Delivery-Id`: UUID for this endpoint delivery
+- `X-Dugble-Signature`: timestamped HMAC signature
+
+The signature has the form `t=<unix_timestamp>,v1=<hex_digest>`. Compute the
+expected digest with HMAC-SHA256, using the endpoint signing secret as the key
+and `<unix_timestamp>.<raw_request_body>` as the signed bytes. Compare digests
+with a constant-time function and reject timestamps outside your tolerance.
+
+<Card title="Signature verification" icon="key" href="/webhooks/signatures">
+    Follow the complete signing contract and verification examples.
+</Card>
 
 ## Idempotent handling
 
 Your endpoint should:
 
-1. Verify the webhook signature after the signing contract is published.
+1. Verify the webhook signature against the raw request body.
 2. Store the event ID with a unique constraint.
 3. Acknowledge duplicate IDs without repeating side effects.
 4. Queue application work and respond quickly.
