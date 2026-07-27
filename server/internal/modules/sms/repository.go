@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/coffeyvidzro/dugble/server/internal/database"
 	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
 	platformwebhook "github.com/coffeyvidzro/dugble/server/internal/platform/webhook"
 )
@@ -252,19 +253,9 @@ func (r *Repository) UpdateStatus(ctx context.Context, id uuid.UUID, teamID uuid
 }
 
 func withSMSLifecycleTx(ctx context.Context, repository *Repository, operation func(*Repository) (Message, error)) (Message, error) {
-	tx, err := repository.BeginTx(ctx)
-	if err != nil {
-		return Message{}, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	message, err := operation(repository.WithTx(tx))
-	if err != nil {
-		return Message{}, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return Message{}, fmt.Errorf("commit SMS lifecycle transaction: %w", err)
-	}
-	return message, nil
+	return database.InTransactionResult(ctx, repository.db, func(tx pgx.Tx) (Message, error) {
+		return operation(repository.WithTx(tx))
+	})
 }
 
 func (r *Repository) emitLifecycle(ctx context.Context, message Message) error {
