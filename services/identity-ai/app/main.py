@@ -40,7 +40,7 @@ class LivenessRequest(BaseModel):
 def require_internal_auth(
     authorization: Annotated[str | None, Header()] = None,
 ) -> None:
-    configured_key = os.getenv("IDENTITY_AI_API_KEY", "").strip()
+    configured_key = os.getenv("IDENTITY_API_KEY", "").strip()
     if not configured_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

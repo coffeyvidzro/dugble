@@ -13,7 +13,6 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/modules/auth"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/domain"
 	emailmodule "github.com/coffeyvidzro/dugble/server/internal/modules/email"
-	"github.com/coffeyvidzro/dugble/server/internal/modules/identity"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/senderid"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
 	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
@@ -126,23 +125,6 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 			Required:    permission,
 		})
 	}
-
-	var identityAnalyzer identity.Analyzer
-	identityAIConfig := cfg.IdentityAI()
-	if identityAIConfig.BaseURL != "" || identityAIConfig.APIKey != "" {
-		configuredAnalyzer, err := identity.NewHTTPAnalyzer(identity.HTTPAnalyzerConfig{
-			BaseURL: identityAIConfig.BaseURL,
-			APIKey:  identityAIConfig.APIKey,
-			Timeout: identityAIConfig.Timeout,
-		})
-		if err != nil {
-			return nil, err
-		}
-		identityAnalyzer = configuredAnalyzer
-	}
-	identityService := identity.NewService(nil, identityAnalyzer)
-	identity.RegisterRoutes(router, identity.NewHandler(identityService), tenantAccess)
-
 	team.RegisterRoutes(
 		router,
 		team.NewHandler(teamService),
