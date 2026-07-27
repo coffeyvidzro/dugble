@@ -1,16 +1,43 @@
 package identityverification
 
-import "context"
+import (
+	"context"
+	"errors"
+)
 
-type Service struct {
-	analyzer Analyzer
+var ErrAnalyzerNotConfigured = errors.New("identity analyzer is not configured")
+
+// Analyzer defines the boundary between Dugble and the private identity AI service.
+type Analyzer interface {
+	AnalyzeDocument(context.Context, DocumentAnalysisRequest) (DocumentAnalysisResult, error)
+	CompareFaces(context.Context, FaceComparisonRequest) (FaceComparisonResult, error)
+	CheckLiveness(context.Context, LivenessRequest) (LivenessResult, error)
 }
 
-func NewService(analyzer Analyzer) *Service {
+type unavailableAnalyzer struct{}
+
+func (unavailableAnalyzer) AnalyzeDocument(context.Context, DocumentAnalysisRequest) (DocumentAnalysisResult, error) {
+	return DocumentAnalysisResult{}, ErrAnalyzerNotConfigured
+}
+
+func (unavailableAnalyzer) CompareFaces(context.Context, FaceComparisonRequest) (FaceComparisonResult, error) {
+	return FaceComparisonResult{}, ErrAnalyzerNotConfigured
+}
+
+func (unavailableAnalyzer) CheckLiveness(context.Context, LivenessRequest) (LivenessResult, error) {
+	return LivenessResult{}, ErrAnalyzerNotConfigured
+}
+
+type Service struct {
+	repository Repository
+	analyzer   Analyzer
+}
+
+func NewService(repository Repository, analyzer Analyzer) *Service {
 	if analyzer == nil {
-		analyzer = UnavailableAnalyzer{}
+		analyzer = unavailableAnalyzer{}
 	}
-	return &Service{analyzer: analyzer}
+	return &Service{repository: repository, analyzer: analyzer}
 }
 
 func (s *Service) AnalyzeDocument(ctx context.Context, req DocumentAnalysisRequest) (DocumentAnalysisResult, error) {
