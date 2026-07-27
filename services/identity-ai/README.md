@@ -6,7 +6,9 @@ The service is responsible for producing document, image-quality, face-compariso
 
 ## Current status
 
-Deterministic image-quality checks are implemented. The model pipelines and internal HTTP entrypoint are not implemented yet.
+The deterministic image-quality core is implemented with bounded decoding,
+EXIF normalization, configurable thresholds, and per-check results. The model
+pipelines and internal HTTP entrypoint are not implemented yet.
 
 The document, face-match, and liveness functions intentionally raise `NotImplementedError`. Do not expose this service publicly or describe its output as official NIA verification.
 
@@ -32,6 +34,7 @@ services/identity-ai/
 ├── app/
 │   ├── document.py       # Ghana Card quality, OCR, parsing, and document checks
 │   ├── face_match.py     # Ghana Card portrait-to-selfie comparison
+│   ├── imaging.py        # Bounded decoding and EXIF orientation normalization
 │   ├── liveness.py       # Active-liveness challenge analysis
 │   └── quality.py        # Blur, glare, brightness, framing, and resolution checks
 ├── models/               # Locally managed model files; large weights are not committed
@@ -96,6 +99,16 @@ Install `requirements-dev.txt` instead to include the test tooling, then run
 `python -m pytest` from this directory.
 
 The current dependency file contains the HTTP-service foundation and Pillow for deterministic image analysis. OCR, computer-vision, model-runtime, and media-processing dependencies should be added when each pipeline is implemented and evaluated.
+
+### Quality core
+
+`app.quality.assess_image` analyzes an already decoded Pillow image.
+`app.quality.assess_image_quality` is the convenience boundary for bounded
+encoded bytes, binary streams, and local paths. Results contain an analyzer
+version, the overall suitability measurement, and individual resolution,
+brightness, contrast, sharpness, and glare checks. `passed` remains a
+compatibility alias for `meets_quality_thresholds`; neither value is a final
+identity approval decision.
 
 ## Docker
 
