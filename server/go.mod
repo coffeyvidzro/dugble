@@ -4,7 +4,7 @@ go 1.26.5
 
 require (
 	github.com/arcjet/arcjet-go v0.1.0
-	github.com/aws/aws-sdk-go-v2 v1.42.1
+	github.com/aws/aws-sdk-go-v2 v1.43.0
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.29
 	github.com/aws/aws-sdk-go-v2/service/ses v1.36.1
 	github.com/caarlos0/env/v11 v11.4.1
