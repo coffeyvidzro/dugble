@@ -25,6 +25,8 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/messaging/outbox"
 	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/wallet"
+	webhookmodule "github.com/coffeyvidzro/dugble/server/internal/modules/webhooks"
+	platformwebhook "github.com/coffeyvidzro/dugble/server/internal/platform/webhook"
 )
 
 func main() {
@@ -81,8 +83,10 @@ func run() error {
 		return fmt.Errorf("initialize SMS sender: %w", err)
 	}
 
+	webhookModuleRepository := webhookmodule.NewRepository(db)
+	webhookEmitter := platformwebhook.NewEmitter(webhookModuleRepository)
 	smsHandler := smsdelivery.NewHandler(
-		smsmodule.NewRepository(db),
+		smsmodule.NewRepositoryWithWebhookEmitter(db, webhookEmitter),
 		smsSender,
 		wallet.NewRepository(db),
 	)

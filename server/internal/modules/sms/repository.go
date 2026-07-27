@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
+	platformwebhook "github.com/coffeyvidzro/dugble/server/internal/platform/webhook"
 )
 
 var ErrMessageNotFound = errors.New("sms message not found")
@@ -22,10 +23,22 @@ type Repository struct {
 	db      *pgxpool.Pool
 	dbtx    dbsqlc.DBTX
 	queries *dbsqlc.Queries
+	tx      pgx.Tx
+	emitter webhookEmitter
+}
+
+type webhookEmitter interface {
+	EmitTx(context.Context, pgx.Tx, platformwebhook.Event) (uuid.UUID, int64, error)
 }
 
 func NewRepository(db *pgxpool.Pool) *Repository {
 	return &Repository{db: db, dbtx: db, queries: dbsqlc.New(db)}
+}
+
+func NewRepositoryWithWebhookEmitter(db *pgxpool.Pool, emitter webhookEmitter) *Repository {
+	repository := NewRepository(db)
+	repository.emitter = emitter
+	return repository
 }
 
 func (r *Repository) BeginTx(ctx context.Context) (pgx.Tx, error) {
@@ -37,7 +50,7 @@ func (r *Repository) BeginTx(ctx context.Context) (pgx.Tx, error) {
 }
 
 func (r *Repository) WithTx(tx pgx.Tx) *Repository {
-	return &Repository{db: r.db, dbtx: tx, queries: r.queries.WithTx(tx)}
+	return &Repository{db: r.db, dbtx: tx, queries: r.queries.WithTx(tx), tx: tx, emitter: r.emitter}
 }
 
 type createMessageParams struct {
@@ -163,6 +176,11 @@ func (r *Repository) MarkRefundPending(ctx context.Context, id uuid.UUID, teamID
 }
 
 func (r *Repository) MarkSubmitted(ctx context.Context, id uuid.UUID, teamID uuid.UUID, providerID string, providerMessageID string, status string) (Message, error) {
+	if r.tx == nil && r.emitter != nil {
+		return withSMSLifecycleTx(ctx, r, func(repository *Repository) (Message, error) {
+			return repository.MarkSubmitted(ctx, id, teamID, providerID, providerMessageID, status)
+		})
+	}
 	row, err := r.queries.MarkSMSMessageSubmitted(ctx, dbsqlc.MarkSMSMessageSubmittedParams{
 		ID:                id,
 		TeamID:            teamID,
@@ -173,23 +191,111 @@ func (r *Repository) MarkSubmitted(ctx context.Context, id uuid.UUID, teamID uui
 	if err != nil {
 		return Message{}, fmt.Errorf("mark sms message submitted: %w", err)
 	}
-	return messageFromSQLC(row), nil
+	message := messageFromSQLC(row)
+	if err := r.emitLifecycle(ctx, message); err != nil {
+		return Message{}, err
+	}
+	return message, nil
 }
 
 func (r *Repository) MarkFailed(ctx context.Context, id uuid.UUID, teamID uuid.UUID, message string) (Message, error) {
+	if r.tx == nil && r.emitter != nil {
+		return withSMSLifecycleTx(ctx, r, func(repository *Repository) (Message, error) {
+			return repository.MarkFailed(ctx, id, teamID, message)
+		})
+	}
 	row, err := r.queries.MarkSMSMessageFailed(ctx, dbsqlc.MarkSMSMessageFailedParams{ID: id, TeamID: teamID, ErrorMessage: &message})
 	if err != nil {
 		return Message{}, fmt.Errorf("mark sms message failed: %w", err)
 	}
-	return messageFromSQLC(row), nil
+	updated := messageFromSQLC(row)
+	if err := r.emitLifecycle(ctx, updated); err != nil {
+		return Message{}, err
+	}
+	return updated, nil
 }
 
 func (r *Repository) UpdateStatus(ctx context.Context, id uuid.UUID, teamID uuid.UUID, status string) (Message, error) {
+	if r.tx == nil && r.emitter != nil {
+		return withSMSLifecycleTx(ctx, r, func(repository *Repository) (Message, error) {
+			return repository.UpdateStatus(ctx, id, teamID, status)
+		})
+	}
 	row, err := r.queries.UpdateSMSMessageStatus(ctx, dbsqlc.UpdateSMSMessageStatusParams{ID: id, TeamID: teamID, Status: status})
 	if err != nil {
 		return Message{}, fmt.Errorf("update sms message status: %w", err)
 	}
-	return messageFromSQLC(row), nil
+	message := messageFromSQLC(row)
+	if err := r.emitLifecycle(ctx, message); err != nil {
+		return Message{}, err
+	}
+	return message, nil
+}
+
+func withSMSLifecycleTx(ctx context.Context, repository *Repository, operation func(*Repository) (Message, error)) (Message, error) {
+	tx, err := repository.BeginTx(ctx)
+	if err != nil {
+		return Message{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	message, err := operation(repository.WithTx(tx))
+	if err != nil {
+		return Message{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Message{}, fmt.Errorf("commit SMS lifecycle transaction: %w", err)
+	}
+	return message, nil
+}
+
+func (r *Repository) emitLifecycle(ctx context.Context, message Message) error {
+	if r.emitter == nil {
+		return nil
+	}
+	if r.tx == nil {
+		return errors.New("SMS lifecycle webhook transaction is required")
+	}
+	event, ok, err := smsLifecycleEvent(message)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return nil
+	}
+	if _, _, err := r.emitter.EmitTx(ctx, r.tx, event); err != nil {
+		return fmt.Errorf("emit SMS lifecycle webhook: %w", err)
+	}
+	return nil
+}
+
+func smsLifecycleEvent(message Message) (platformwebhook.Event, bool, error) {
+	eventTypes := map[string]string{
+		StatusSubmitted:   platformwebhook.EventSMSSubmitted,
+		StatusSent:        platformwebhook.EventSMSSent,
+		StatusDelivered:   platformwebhook.EventSMSDelivered,
+		StatusUndelivered: platformwebhook.EventSMSUndelivered,
+		StatusFailed:      platformwebhook.EventSMSFailed,
+	}
+	eventType, ok := eventTypes[message.Status]
+	if !ok {
+		return platformwebhook.Event{}, false, nil
+	}
+	messageID, err := uuid.Parse(message.ID)
+	if err != nil {
+		return platformwebhook.Event{}, false, fmt.Errorf("parse SMS message id for webhook: %w", err)
+	}
+	teamID, err := uuid.Parse(message.TeamID)
+	if err != nil {
+		return platformwebhook.Event{}, false, fmt.Errorf("parse SMS team id for webhook: %w", err)
+	}
+	payload, err := json.Marshal(message.Response())
+	if err != nil {
+		return platformwebhook.Event{}, false, fmt.Errorf("encode SMS webhook payload: %w", err)
+	}
+	return platformwebhook.Event{
+		ID: uuid.New(), TeamID: teamID, Type: eventType, ObjectType: "sms", ObjectID: &messageID,
+		Payload: payload, OccurredAt: message.UpdatedAt,
+	}, true, nil
 }
 
 func (r *Repository) FindApprovedSender(ctx context.Context, teamID uuid.UUID, name string) (*uuid.UUID, error) {
