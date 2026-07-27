@@ -73,16 +73,28 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.post("/v1/documents/analyze", dependencies=[Depends(require_internal_auth)])
-def analyze_document(_: DocumentAnalysisRequest) -> NoReturn:
+@app.post(
+    "/v1/documents/analyze",
+    dependencies=[Depends(require_internal_auth)],
+    response_model=None,
+)
+def analyze_document(_: DocumentAnalysisRequest) -> None:
     not_implemented("document analysis")
 
 
-@app.post("/v1/faces/compare", dependencies=[Depends(require_internal_auth)])
-def compare_faces(_: FaceComparisonRequest) -> NoReturn:
+@app.post(
+    "/v1/faces/compare",
+    dependencies=[Depends(require_internal_auth)],
+    response_model=None,
+)
+def compare_faces(_: FaceComparisonRequest) -> None:
     not_implemented("face comparison")
 
 
-@app.post("/v1/liveness/check", dependencies=[Depends(require_internal_auth)])
-def check_liveness(_: LivenessRequest) -> NoReturn:
+@app.post(
+    "/v1/liveness/check",
+    dependencies=[Depends(require_internal_auth)],
+    response_model=None,
+)
+def check_liveness(_: LivenessRequest) -> None:
     not_implemented("liveness detection")
