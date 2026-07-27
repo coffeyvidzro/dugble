@@ -13,14 +13,17 @@ const (
 )
 
 type Endpoint struct {
-	ID               string     `json:"id"`
-	TeamID           string     `json:"team_id"`
-	URL              string     `json:"url"`
-	Enabled          bool       `json:"enabled"`
-	SubscribedEvents []string   `json:"subscribed_events"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	DisabledAt       *time.Time `json:"disabled_at,omitempty"`
+	ID                  string     `json:"id"`
+	TeamID              string     `json:"team_id"`
+	URL                 string     `json:"url"`
+	Enabled             bool       `json:"enabled"`
+	SubscribedEvents    []string   `json:"subscribed_events"`
+	CreatedAt           time.Time  `json:"created_at"`
+	UpdatedAt           time.Time  `json:"updated_at"`
+	DisabledAt          *time.Time `json:"disabled_at,omitempty"`
+	ConsecutiveFailures int32      `json:"consecutive_failures"`
+	LastFailureAt       *time.Time `json:"last_failure_at,omitempty"`
+	DisabledReason      *string    `json:"disabled_reason,omitempty"`
 }
 
 type CreatedEndpoint struct {

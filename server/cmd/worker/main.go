@@ -113,7 +113,9 @@ func run() error {
 	)
 
 	webhookWorkerID := "webhook-delivery-" + uuid.NewString()
-	webhookRepository := webhookdelivery.NewRepository(db)
+	webhookRepository := webhookdelivery.NewRepository(db, webhookdelivery.RepositoryConfig{
+		AutoDisableAfter: cfg.WebhookDelivery.AutoDisableAfter,
+	})
 	webhookHandler := webhookdelivery.NewHandler(
 		webhookRepository,
 		webhookdelivery.NewClient(cfg.WebhookDelivery.HTTPTimeout),

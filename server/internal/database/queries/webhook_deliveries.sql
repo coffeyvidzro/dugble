@@ -89,7 +89,8 @@ RETURNING
     endpoint.signing_secret;
 
 -- name: MarkWebhookDeliverySucceeded :one
-UPDATE webhook_deliveries
+WITH succeeded AS (
+UPDATE webhook_deliveries AS delivery
 SET status = 'succeeded',
     response_status = sqlc.arg(response_status),
     response_body = sqlc.narg(response_body),
@@ -98,12 +99,24 @@ SET status = 'succeeded',
     locked_at = NULL,
     locked_by = NULL,
     updated_at = now()
-WHERE id = sqlc.arg(id)
-  AND locked_by = sqlc.arg(worker_id)
-RETURNING *;
+WHERE delivery.id = sqlc.arg(id)
+  AND delivery.locked_by = sqlc.arg(worker_id)
+RETURNING delivery.*
+), reset_endpoint AS (
+UPDATE webhook_endpoints
+SET consecutive_failures = 0,
+    last_failure_at = NULL,
+    disabled_reason = NULL,
+    updated_at = now()
+WHERE id = (SELECT endpoint_id FROM succeeded)
+  AND enabled = true
+  AND consecutive_failures > 0
+RETURNING id
+)
+SELECT * FROM succeeded;
 
 -- name: ScheduleWebhookDeliveryRetry :one
-UPDATE webhook_deliveries
+UPDATE webhook_deliveries AS delivery
 SET status = 'retrying',
     next_attempt_at = sqlc.arg(next_attempt_at),
     response_status = sqlc.narg(response_status),
@@ -112,12 +125,13 @@ SET status = 'retrying',
     locked_at = NULL,
     locked_by = NULL,
     updated_at = now()
-WHERE id = sqlc.arg(id)
-  AND locked_by = sqlc.arg(worker_id)
-RETURNING *;
+WHERE delivery.id = sqlc.arg(id)
+  AND delivery.locked_by = sqlc.arg(worker_id)
+RETURNING delivery.*;
 
 -- name: MarkWebhookDeliveryFailed :one
-UPDATE webhook_deliveries
+WITH failed AS (
+UPDATE webhook_deliveries AS delivery
 SET status = 'failed',
     response_status = sqlc.narg(response_status),
     response_body = sqlc.narg(response_body),
@@ -125,9 +139,30 @@ SET status = 'failed',
     locked_at = NULL,
     locked_by = NULL,
     updated_at = now()
-WHERE id = sqlc.arg(id)
-  AND locked_by = sqlc.arg(worker_id)
-RETURNING *;
+WHERE delivery.id = sqlc.arg(id)
+  AND delivery.locked_by = sqlc.arg(worker_id)
+RETURNING delivery.*
+), update_endpoint AS (
+UPDATE webhook_endpoints
+SET consecutive_failures = consecutive_failures + 1,
+    last_failure_at = now(),
+    enabled = CASE
+        WHEN consecutive_failures + 1 >= sqlc.arg(auto_disable_after)::integer THEN false
+        ELSE enabled
+    END,
+    disabled_at = CASE
+        WHEN consecutive_failures + 1 >= sqlc.arg(auto_disable_after)::integer THEN COALESCE(disabled_at, now())
+        ELSE disabled_at
+    END,
+    disabled_reason = CASE
+        WHEN enabled AND consecutive_failures + 1 >= sqlc.arg(auto_disable_after)::integer THEN 'failure_threshold'
+        ELSE disabled_reason
+    END,
+    updated_at = now()
+WHERE id = (SELECT endpoint_id FROM failed)
+RETURNING id
+)
+SELECT * FROM failed;
 
 -- name: ReleaseWebhookDeliveryClaim :execrows
 UPDATE webhook_deliveries

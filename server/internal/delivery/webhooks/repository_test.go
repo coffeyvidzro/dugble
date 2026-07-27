@@ -15,15 +15,16 @@ import (
 
 type fakeDeliveryQueries struct {
 	claim       func(context.Context, dbsqlc.ClaimWebhookDeliveriesParams) ([]dbsqlc.ClaimWebhookDeliveriesRow, error)
-	markSuccess func(context.Context, dbsqlc.MarkWebhookDeliverySucceededParams) (dbsqlc.WebhookDelivery, error)
+	markSuccess func(context.Context, dbsqlc.MarkWebhookDeliverySucceededParams) (dbsqlc.MarkWebhookDeliverySucceededRow, error)
 	release     func(context.Context, dbsqlc.ReleaseWebhookDeliveryClaimParams) (int64, error)
+	markFailed  func(context.Context, dbsqlc.MarkWebhookDeliveryFailedParams) (dbsqlc.MarkWebhookDeliveryFailedRow, error)
 }
 
 func (f *fakeDeliveryQueries) ClaimWebhookDeliveries(ctx context.Context, params dbsqlc.ClaimWebhookDeliveriesParams) ([]dbsqlc.ClaimWebhookDeliveriesRow, error) {
 	return f.claim(ctx, params)
 }
 
-func (f *fakeDeliveryQueries) MarkWebhookDeliverySucceeded(ctx context.Context, params dbsqlc.MarkWebhookDeliverySucceededParams) (dbsqlc.WebhookDelivery, error) {
+func (f *fakeDeliveryQueries) MarkWebhookDeliverySucceeded(ctx context.Context, params dbsqlc.MarkWebhookDeliverySucceededParams) (dbsqlc.MarkWebhookDeliverySucceededRow, error) {
 	return f.markSuccess(ctx, params)
 }
 
@@ -31,8 +32,28 @@ func (f *fakeDeliveryQueries) ScheduleWebhookDeliveryRetry(context.Context, dbsq
 	panic("unexpected ScheduleWebhookDeliveryRetry call")
 }
 
-func (f *fakeDeliveryQueries) MarkWebhookDeliveryFailed(context.Context, dbsqlc.MarkWebhookDeliveryFailedParams) (dbsqlc.WebhookDelivery, error) {
-	panic("unexpected MarkWebhookDeliveryFailed call")
+func (f *fakeDeliveryQueries) MarkWebhookDeliveryFailed(ctx context.Context, params dbsqlc.MarkWebhookDeliveryFailedParams) (dbsqlc.MarkWebhookDeliveryFailedRow, error) {
+	return f.markFailed(ctx, params)
+}
+
+func TestRepositoryMarkFailedUsesAutoDisableThreshold(t *testing.T) {
+	deliveryID := uuid.New()
+	queries := &fakeDeliveryQueries{
+		markFailed: func(_ context.Context, params dbsqlc.MarkWebhookDeliveryFailedParams) (dbsqlc.MarkWebhookDeliveryFailedRow, error) {
+			if params.AutoDisableAfter != 7 {
+				t.Fatalf("MarkWebhookDeliveryFailed auto-disable threshold = %d, want 7", params.AutoDisableAfter)
+			}
+			if params.WorkerID == nil || *params.WorkerID != "worker-1" || params.ID != deliveryID {
+				t.Fatalf("MarkWebhookDeliveryFailed ownership params = %+v", params)
+			}
+			return dbsqlc.MarkWebhookDeliveryFailedRow{}, nil
+		},
+	}
+	repository := &Repository{queries: queries, autoDisableAfter: 7}
+
+	if err := repository.MarkFailed(context.Background(), deliveryID, "worker-1", nil, nil, "exhausted retries"); err != nil {
+		t.Fatalf("MarkFailed() error = %v", err)
+	}
 }
 
 func (f *fakeDeliveryQueries) ReleaseWebhookDeliveryClaim(ctx context.Context, params dbsqlc.ReleaseWebhookDeliveryClaimParams) (int64, error) {
@@ -86,8 +107,8 @@ func TestRepositoryClaimMapsDeliveryAndWorkerID(t *testing.T) {
 func TestRepositoryResultReportsLostClaim(t *testing.T) {
 	deliveryID := uuid.New()
 	repository := &Repository{queries: &fakeDeliveryQueries{
-		markSuccess: func(context.Context, dbsqlc.MarkWebhookDeliverySucceededParams) (dbsqlc.WebhookDelivery, error) {
-			return dbsqlc.WebhookDelivery{}, pgx.ErrNoRows
+		markSuccess: func(context.Context, dbsqlc.MarkWebhookDeliverySucceededParams) (dbsqlc.MarkWebhookDeliverySucceededRow, error) {
+			return dbsqlc.MarkWebhookDeliverySucceededRow{}, pgx.ErrNoRows
 		},
 		release: func(context.Context, dbsqlc.ReleaseWebhookDeliveryClaimParams) (int64, error) {
 			return 0, nil

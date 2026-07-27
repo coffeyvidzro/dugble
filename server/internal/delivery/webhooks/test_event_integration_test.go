@@ -123,6 +123,73 @@ func TestTestEventIsDeliveredAndMarkedSucceeded(t *testing.T) {
 	}
 }
 
+func TestExhaustedDeliveryAutoDisablesEndpoint(t *testing.T) {
+	databaseURL := os.Getenv("TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("TEST_DATABASE_URL is not set; skipping PostgreSQL integration test")
+	}
+	pool, err := pgxpool.New(t.Context(), databaseURL)
+	if err != nil {
+		t.Fatalf("open PostgreSQL test database: %v", err)
+	}
+	if err := pool.Ping(t.Context()); err != nil {
+		pool.Close()
+		t.Fatalf("ping PostgreSQL test database: %v", err)
+	}
+	t.Cleanup(pool.Close)
+
+	teamID := uuid.New()
+	if _, err := pool.Exec(t.Context(), `INSERT INTO teams (id, name) VALUES ($1, $2)`, teamID, "webhook-health-"+teamID.String()); err != nil {
+		t.Fatalf("create test team (has the test database been migrated?): %v", err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(context.Background(), `DELETE FROM teams WHERE id = $1`, teamID) })
+	ctx := tenant.ContextWithTenant(t.Context(), tenant.Context{
+		TeamID:      teamID,
+		Permissions: []tenant.Permission{tenant.PermissionWebhooksRead, tenant.PermissionWebhooksWrite},
+	})
+	moduleRepository := webhookmodule.NewRepository(pool)
+	service := webhookmodule.NewService(moduleRepository, platformwebhook.NewEmitter(moduleRepository))
+	endpoint, err := service.CreateEndpoint(ctx, webhookmodule.CreateEndpointRequest{
+		URL: "https://example.com/webhooks", SubscribedEvents: []string{platformwebhook.EventSMSFailed},
+	})
+	if err != nil {
+		t.Fatalf("create webhook endpoint: %v", err)
+	}
+	delivery, err := service.TestEndpoint(ctx, endpoint.ID)
+	if err != nil {
+		t.Fatalf("create webhook test event: %v", err)
+	}
+
+	const workerID = "webhook-health-integration-test"
+	repository := NewRepository(pool, RepositoryConfig{AutoDisableAfter: 1})
+	claimed, err := repository.Claim(t.Context(), workerID, 100, time.Now().UTC().Add(-time.Minute))
+	if err != nil {
+		t.Fatalf("claim webhook delivery: %v", err)
+	}
+	deliveryID := uuid.MustParse(delivery.ID)
+	found := false
+	for _, item := range claimed {
+		if item.ID == deliveryID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("delivery %s was not claimed", delivery.ID)
+	}
+	if err := repository.MarkFailed(t.Context(), deliveryID, workerID, nil, nil, "retry schedule exhausted"); err != nil {
+		t.Fatalf("mark webhook delivery failed: %v", err)
+	}
+
+	got, err := service.GetEndpoint(ctx, endpoint.ID)
+	if err != nil {
+		t.Fatalf("get auto-disabled endpoint: %v", err)
+	}
+	if got.Enabled || got.ConsecutiveFailures != 1 || got.DisabledAt == nil || got.DisabledReason == nil || *got.DisabledReason != "failure_threshold" {
+		t.Fatalf("auto-disabled endpoint = %+v", got)
+	}
+}
+
 func assertTestEventRequest(t *testing.T, request recordedWebhookRequest, eventID, deliveryID, secret string) {
 	t.Helper()
 	if request.url != "https://example.com/webhooks" || request.headers.Get("Content-Type") != "application/json" {

@@ -37,6 +37,9 @@ SET url = sqlc.arg(url),
         WHEN sqlc.arg(enabled)::boolean THEN NULL
         ELSE COALESCE(disabled_at, now())
     END,
+    consecutive_failures = CASE WHEN sqlc.arg(enabled)::boolean THEN 0 ELSE consecutive_failures END,
+    last_failure_at = CASE WHEN sqlc.arg(enabled)::boolean THEN NULL ELSE last_failure_at END,
+    disabled_reason = CASE WHEN sqlc.arg(enabled)::boolean THEN NULL ELSE COALESCE(disabled_reason, 'manual') END,
     updated_at = now()
 WHERE id = sqlc.arg(id)
   AND team_id = sqlc.arg(team_id)
@@ -46,6 +49,7 @@ RETURNING *;
 UPDATE webhook_endpoints
 SET enabled = false,
     disabled_at = COALESCE(disabled_at, now()),
+    disabled_reason = 'manual',
     updated_at = now()
 WHERE id = sqlc.arg(id)
   AND team_id = sqlc.arg(team_id)

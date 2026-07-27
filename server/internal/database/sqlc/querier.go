@@ -93,8 +93,8 @@ type Querier interface {
 	MarkSMSMessageRefundPending(ctx context.Context, arg MarkSMSMessageRefundPendingParams) (SmsMessage, error)
 	MarkSMSMessageSubmitted(ctx context.Context, arg MarkSMSMessageSubmittedParams) (SmsMessage, error)
 	MarkUserEmailVerifiedByEmail(ctx context.Context, arg MarkUserEmailVerifiedByEmailParams) (User, error)
-	MarkWebhookDeliveryFailed(ctx context.Context, arg MarkWebhookDeliveryFailedParams) (WebhookDelivery, error)
-	MarkWebhookDeliverySucceeded(ctx context.Context, arg MarkWebhookDeliverySucceededParams) (WebhookDelivery, error)
+	MarkWebhookDeliveryFailed(ctx context.Context, arg MarkWebhookDeliveryFailedParams) (MarkWebhookDeliveryFailedRow, error)
+	MarkWebhookDeliverySucceeded(ctx context.Context, arg MarkWebhookDeliverySucceededParams) (MarkWebhookDeliverySucceededRow, error)
 	ReleaseWebhookDeliveryClaim(ctx context.Context, arg ReleaseWebhookDeliveryClaimParams) (int64, error)
 	RemoveTeamMember(ctx context.Context, arg RemoveTeamMemberParams) error
 	RetryWebhookDelivery(ctx context.Context, arg RetryWebhookDeliveryParams) (WebhookDelivery, error)

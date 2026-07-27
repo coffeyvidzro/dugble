@@ -160,10 +160,13 @@ func (r *Repository) CreateDeliveryTx(ctx context.Context, tx pgx.Tx, eventID, e
 func endpointFromSQLC(row dbsqlc.WebhookEndpoint) Endpoint {
 	return Endpoint{
 		ID: row.ID.String(), TeamID: row.TeamID.String(), URL: row.Url, Enabled: row.Enabled,
-		SubscribedEvents: row.SubscribedEvents,
-		CreatedAt:        pgconv.TimestamptzToTime(row.CreatedAt),
-		UpdatedAt:        pgconv.TimestamptzToTime(row.UpdatedAt),
-		DisabledAt:       pgconv.TimestamptzToTimePtr(row.DisabledAt),
+		SubscribedEvents:    row.SubscribedEvents,
+		CreatedAt:           pgconv.TimestamptzToTime(row.CreatedAt),
+		UpdatedAt:           pgconv.TimestamptzToTime(row.UpdatedAt),
+		DisabledAt:          pgconv.TimestamptzToTimePtr(row.DisabledAt),
+		ConsecutiveFailures: row.ConsecutiveFailures,
+		LastFailureAt:       pgconv.TimestamptzToTimePtr(row.LastFailureAt),
+		DisabledReason:      row.DisabledReason,
 	}
 }
 

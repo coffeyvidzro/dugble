@@ -25,7 +25,7 @@ INSERT INTO webhook_endpoints (
     true,
     $4
 )
-RETURNING id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at
+RETURNING id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at, consecutive_failures, last_failure_at, disabled_reason
 `
 
 type CreateWebhookEndpointParams struct {
@@ -53,6 +53,9 @@ func (q *Queries) CreateWebhookEndpoint(ctx context.Context, arg CreateWebhookEn
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DisabledAt,
+		&i.ConsecutiveFailures,
+		&i.LastFailureAt,
+		&i.DisabledReason,
 	)
 	return i, err
 }
@@ -61,10 +64,11 @@ const disableWebhookEndpoint = `-- name: DisableWebhookEndpoint :one
 UPDATE webhook_endpoints
 SET enabled = false,
     disabled_at = COALESCE(disabled_at, now()),
+    disabled_reason = 'manual',
     updated_at = now()
 WHERE id = $1
   AND team_id = $2
-RETURNING id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at
+RETURNING id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at, consecutive_failures, last_failure_at, disabled_reason
 `
 
 type DisableWebhookEndpointParams struct {
@@ -85,12 +89,15 @@ func (q *Queries) DisableWebhookEndpoint(ctx context.Context, arg DisableWebhook
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DisabledAt,
+		&i.ConsecutiveFailures,
+		&i.LastFailureAt,
+		&i.DisabledReason,
 	)
 	return i, err
 }
 
 const getWebhookEndpoint = `-- name: GetWebhookEndpoint :one
-SELECT id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at
+SELECT id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at, consecutive_failures, last_failure_at, disabled_reason
 FROM webhook_endpoints
 WHERE id = $1
   AND team_id = $2
@@ -114,12 +121,15 @@ func (q *Queries) GetWebhookEndpoint(ctx context.Context, arg GetWebhookEndpoint
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DisabledAt,
+		&i.ConsecutiveFailures,
+		&i.LastFailureAt,
+		&i.DisabledReason,
 	)
 	return i, err
 }
 
 const listSubscribedWebhookEndpoints = `-- name: ListSubscribedWebhookEndpoints :many
-SELECT id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at
+SELECT id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at, consecutive_failures, last_failure_at, disabled_reason
 FROM webhook_endpoints
 WHERE team_id = $1
   AND enabled = true
@@ -152,6 +162,9 @@ func (q *Queries) ListSubscribedWebhookEndpoints(ctx context.Context, arg ListSu
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DisabledAt,
+			&i.ConsecutiveFailures,
+			&i.LastFailureAt,
+			&i.DisabledReason,
 		); err != nil {
 			return nil, err
 		}
@@ -164,7 +177,7 @@ func (q *Queries) ListSubscribedWebhookEndpoints(ctx context.Context, arg ListSu
 }
 
 const listWebhookEndpoints = `-- name: ListWebhookEndpoints :many
-SELECT id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at
+SELECT id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at, consecutive_failures, last_failure_at, disabled_reason
 FROM webhook_endpoints
 WHERE team_id = $1
 ORDER BY created_at DESC
@@ -197,6 +210,9 @@ func (q *Queries) ListWebhookEndpoints(ctx context.Context, arg ListWebhookEndpo
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DisabledAt,
+			&i.ConsecutiveFailures,
+			&i.LastFailureAt,
+			&i.DisabledReason,
 		); err != nil {
 			return nil, err
 		}
@@ -214,7 +230,7 @@ SET signing_secret = $1,
     updated_at = now()
 WHERE id = $2
   AND team_id = $3
-RETURNING id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at
+RETURNING id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at, consecutive_failures, last_failure_at, disabled_reason
 `
 
 type RotateWebhookEndpointSecretParams struct {
@@ -236,6 +252,9 @@ func (q *Queries) RotateWebhookEndpointSecret(ctx context.Context, arg RotateWeb
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DisabledAt,
+		&i.ConsecutiveFailures,
+		&i.LastFailureAt,
+		&i.DisabledReason,
 	)
 	return i, err
 }
@@ -249,10 +268,13 @@ SET url = $1,
         WHEN $2::boolean THEN NULL
         ELSE COALESCE(disabled_at, now())
     END,
+    consecutive_failures = CASE WHEN $2::boolean THEN 0 ELSE consecutive_failures END,
+    last_failure_at = CASE WHEN $2::boolean THEN NULL ELSE last_failure_at END,
+    disabled_reason = CASE WHEN $2::boolean THEN NULL ELSE COALESCE(disabled_reason, 'manual') END,
     updated_at = now()
 WHERE id = $4
   AND team_id = $5
-RETURNING id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at
+RETURNING id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at, consecutive_failures, last_failure_at, disabled_reason
 `
 
 type UpdateWebhookEndpointParams struct {
@@ -282,6 +304,9 @@ func (q *Queries) UpdateWebhookEndpoint(ctx context.Context, arg UpdateWebhookEn
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DisabledAt,
+		&i.ConsecutiveFailures,
+		&i.LastFailureAt,
+		&i.DisabledReason,
 	)
 	return i, err
 }

@@ -38,12 +38,13 @@ type MessagingConfig struct {
 }
 
 type WebhookDeliveryConfig struct {
-	PollInterval  time.Duration `env:"POLL_INTERVAL" envDefault:"500ms"`
-	BatchSize     int32         `env:"BATCH_SIZE" envDefault:"50"`
-	Concurrency   int           `env:"CONCURRENCY" envDefault:"10"`
-	LockTimeout   time.Duration `env:"LOCK_TIMEOUT" envDefault:"30s"`
-	HandleTimeout time.Duration `env:"HANDLE_TIMEOUT" envDefault:"15s"`
-	HTTPTimeout   time.Duration `env:"HTTP_TIMEOUT" envDefault:"10s"`
+	PollInterval     time.Duration `env:"POLL_INTERVAL" envDefault:"500ms"`
+	BatchSize        int32         `env:"BATCH_SIZE" envDefault:"50"`
+	Concurrency      int           `env:"CONCURRENCY" envDefault:"10"`
+	LockTimeout      time.Duration `env:"LOCK_TIMEOUT" envDefault:"30s"`
+	HandleTimeout    time.Duration `env:"HANDLE_TIMEOUT" envDefault:"15s"`
+	HTTPTimeout      time.Duration `env:"HTTP_TIMEOUT" envDefault:"10s"`
+	AutoDisableAfter int32         `env:"AUTO_DISABLE_AFTER" envDefault:"20"`
 }
 
 type BackofficeConfig struct {
@@ -139,6 +140,9 @@ func (c *Config) normalize() {
 	}
 	if c.WebhookDelivery.HTTPTimeout <= 0 {
 		c.WebhookDelivery.HTTPTimeout = 10 * time.Second
+	}
+	if c.WebhookDelivery.AutoDisableAfter <= 0 {
+		c.WebhookDelivery.AutoDisableAfter = 20
 	}
 	c.Arkesel.APIKey = strings.TrimSpace(c.Arkesel.APIKey)
 	c.Arkesel.BaseURL = strings.TrimRight(strings.TrimSpace(c.Arkesel.BaseURL), "/")

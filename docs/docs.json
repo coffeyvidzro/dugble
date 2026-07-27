@@ -42,7 +42,8 @@
         "pages": [
           "webhooks/introduction",
           "webhooks/events",
-          "webhooks/signatures"
+          "webhooks/signatures",
+          "webhooks/operations"
         ]
       }
     ]

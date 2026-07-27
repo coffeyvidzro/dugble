@@ -14,6 +14,7 @@ func TestWebhookDeliveryConfigParsesEnvironment(t *testing.T) {
 	t.Setenv("WEBHOOK_DELIVERY_LOCK_TIMEOUT", "45s")
 	t.Setenv("WEBHOOK_DELIVERY_HANDLE_TIMEOUT", "20s")
 	t.Setenv("WEBHOOK_DELIVERY_HTTP_TIMEOUT", "18s")
+	t.Setenv("WEBHOOK_DELIVERY_AUTO_DISABLE_AFTER", "12")
 
 	var parsed struct {
 		WebhookDelivery WebhookDeliveryConfig `envPrefix:"WEBHOOK_DELIVERY_"`
@@ -23,12 +24,13 @@ func TestWebhookDeliveryConfigParsesEnvironment(t *testing.T) {
 	}
 
 	want := WebhookDeliveryConfig{
-		PollInterval:  2 * time.Second,
-		BatchSize:     75,
-		Concurrency:   12,
-		LockTimeout:   45 * time.Second,
-		HandleTimeout: 20 * time.Second,
-		HTTPTimeout:   18 * time.Second,
+		PollInterval:     2 * time.Second,
+		BatchSize:        75,
+		Concurrency:      12,
+		LockTimeout:      45 * time.Second,
+		HandleTimeout:    20 * time.Second,
+		HTTPTimeout:      18 * time.Second,
+		AutoDisableAfter: 12,
 	}
 	if parsed.WebhookDelivery != want {
 		t.Fatalf("WebhookDelivery = %+v, want %+v", parsed.WebhookDelivery, want)
@@ -58,16 +60,20 @@ func TestNormalizeWebhookDeliveryDefaults(t *testing.T) {
 	if cfg.WebhookDelivery.HTTPTimeout != 10*time.Second {
 		t.Errorf("WebhookDelivery.HTTPTimeout = %v, want 10s", cfg.WebhookDelivery.HTTPTimeout)
 	}
+	if cfg.WebhookDelivery.AutoDisableAfter != 20 {
+		t.Errorf("WebhookDelivery.AutoDisableAfter = %d, want 20", cfg.WebhookDelivery.AutoDisableAfter)
+	}
 }
 
 func TestNormalizeWebhookDeliveryPreservesPositiveValues(t *testing.T) {
 	want := WebhookDeliveryConfig{
-		PollInterval:  time.Second,
-		BatchSize:     25,
-		Concurrency:   5,
-		LockTimeout:   time.Minute,
-		HandleTimeout: 20 * time.Second,
-		HTTPTimeout:   12 * time.Second,
+		PollInterval:     time.Second,
+		BatchSize:        25,
+		Concurrency:      5,
+		LockTimeout:      time.Minute,
+		HandleTimeout:    20 * time.Second,
+		HTTPTimeout:      12 * time.Second,
+		AutoDisableAfter: 8,
 	}
 	cfg := Config{WebhookDelivery: want}
 

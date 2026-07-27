@@ -20,21 +20,33 @@ var ErrClaimLost = errors.New("webhook delivery claim was lost")
 
 type deliveryQueries interface {
 	ClaimWebhookDeliveries(context.Context, dbsqlc.ClaimWebhookDeliveriesParams) ([]dbsqlc.ClaimWebhookDeliveriesRow, error)
-	MarkWebhookDeliverySucceeded(context.Context, dbsqlc.MarkWebhookDeliverySucceededParams) (dbsqlc.WebhookDelivery, error)
+	MarkWebhookDeliverySucceeded(context.Context, dbsqlc.MarkWebhookDeliverySucceededParams) (dbsqlc.MarkWebhookDeliverySucceededRow, error)
 	ScheduleWebhookDeliveryRetry(context.Context, dbsqlc.ScheduleWebhookDeliveryRetryParams) (dbsqlc.WebhookDelivery, error)
-	MarkWebhookDeliveryFailed(context.Context, dbsqlc.MarkWebhookDeliveryFailedParams) (dbsqlc.WebhookDelivery, error)
+	MarkWebhookDeliveryFailed(context.Context, dbsqlc.MarkWebhookDeliveryFailedParams) (dbsqlc.MarkWebhookDeliveryFailedRow, error)
 	ReleaseWebhookDeliveryClaim(context.Context, dbsqlc.ReleaseWebhookDeliveryClaimParams) (int64, error)
 }
 
 type Repository struct {
-	queries deliveryQueries
+	queries          deliveryQueries
+	autoDisableAfter int32
 }
 
-func NewRepository(db *pgxpool.Pool) *Repository {
-	if db == nil {
-		return &Repository{}
+type RepositoryConfig struct {
+	AutoDisableAfter int32
+}
+
+func NewRepository(db *pgxpool.Pool, configs ...RepositoryConfig) *Repository {
+	config := RepositoryConfig{AutoDisableAfter: 20}
+	if len(configs) > 0 {
+		config = configs[0]
 	}
-	return &Repository{queries: dbsqlc.New(db)}
+	if config.AutoDisableAfter <= 0 {
+		config.AutoDisableAfter = 20
+	}
+	if db == nil {
+		return &Repository{autoDisableAfter: config.AutoDisableAfter}
+	}
+	return &Repository{queries: dbsqlc.New(db), autoDisableAfter: config.AutoDisableAfter}
 }
 
 func (r *Repository) Claim(ctx context.Context, workerID string, limit int32, staleBefore time.Time) ([]ClaimedDelivery, error) {
@@ -96,6 +108,7 @@ func (r *Repository) MarkFailed(ctx context.Context, id uuid.UUID, workerID stri
 	}
 	_, err = r.queries.MarkWebhookDeliveryFailed(ctx, dbsqlc.MarkWebhookDeliveryFailedParams{
 		ID: id, WorkerID: &workerID, ResponseStatus: status, ResponseBody: body, LastError: &lastError,
+		AutoDisableAfter: r.autoDisableAfter,
 	})
 	return resultError("mark webhook delivery failed", err)
 }

@@ -310,15 +310,18 @@ type WebhookDelivery struct {
 }
 
 type WebhookEndpoint struct {
-	ID               uuid.UUID          `db:"id" json:"id"`
-	TeamID           uuid.UUID          `db:"team_id" json:"team_id"`
-	Url              string             `db:"url" json:"url"`
-	SigningSecret    []byte             `db:"signing_secret" json:"signing_secret"`
-	Enabled          bool               `db:"enabled" json:"enabled"`
-	SubscribedEvents []string           `db:"subscribed_events" json:"subscribed_events"`
-	CreatedAt        pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt        pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	DisabledAt       pgtype.Timestamptz `db:"disabled_at" json:"disabled_at"`
+	ID                  uuid.UUID          `db:"id" json:"id"`
+	TeamID              uuid.UUID          `db:"team_id" json:"team_id"`
+	Url                 string             `db:"url" json:"url"`
+	SigningSecret       []byte             `db:"signing_secret" json:"signing_secret"`
+	Enabled             bool               `db:"enabled" json:"enabled"`
+	SubscribedEvents    []string           `db:"subscribed_events" json:"subscribed_events"`
+	CreatedAt           pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	DisabledAt          pgtype.Timestamptz `db:"disabled_at" json:"disabled_at"`
+	ConsecutiveFailures int32              `db:"consecutive_failures" json:"consecutive_failures"`
+	LastFailureAt       pgtype.Timestamptz `db:"last_failure_at" json:"last_failure_at"`
+	DisabledReason      *string            `db:"disabled_reason" json:"disabled_reason"`
 }
 
 type WebhookEvent struct {
