@@ -487,6 +487,24 @@ SET status = $1,
     updated_at = now()
 WHERE id = $2
   AND team_id = $3
+  AND status <> $1
+  AND status NOT IN ('refund_pending', 'delivered', 'undelivered', 'rejected', 'failed', 'expired', 'unknown', 'canceled')
+  AND (
+      $1 IN ('delivered', 'undelivered', 'rejected', 'failed', 'expired')
+      OR CASE status
+          WHEN 'queued' THEN 0
+          WHEN 'processing' THEN 1
+          WHEN 'submitted' THEN 2
+          WHEN 'sent' THEN 3
+          ELSE 4
+      END < CASE $1
+          WHEN 'queued' THEN 0
+          WHEN 'processing' THEN 1
+          WHEN 'submitted' THEN 2
+          WHEN 'sent' THEN 3
+          ELSE -1
+      END
+  )
 RETURNING id, team_id, sender_id, to_number, from_name, body, status, provider_id, provider_message_id, segments, cost_micros, error_message, metadata, tags, scheduled_at, submitted_at, delivered_at, created_at, updated_at, pricing_rule_id, unit_cost_micros, destination_country
 `
 

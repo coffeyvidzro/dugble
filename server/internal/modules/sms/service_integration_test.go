@@ -198,6 +198,36 @@ func TestScheduledSMSDispatchAndCancellationAreRaceSafe(t *testing.T) {
 	}
 }
 
+func TestSMSStatusUpdateCannotRegressDeliveredMessage(t *testing.T) {
+	pool := openSMSTestDatabase(t)
+	teamID, service := setupSMSBatchTest(t, pool, 100_000)
+	repository := sms.NewRepository(pool)
+	message, err := service.Send(smsBatchTestContext(teamID), sms.SendRequest{
+		To: "+233241234567", From: "DUGBLE", Body: "status progression",
+	})
+	if err != nil {
+		t.Fatalf("send SMS: %v", err)
+	}
+	messageID := uuid.MustParse(message.ID)
+	if _, err := repository.MarkProcessing(t.Context(), messageID, teamID); err != nil {
+		t.Fatalf("mark SMS processing: %v", err)
+	}
+	if _, err := repository.MarkSubmitted(t.Context(), messageID, teamID, "test-provider", uuid.NewString(), sms.StatusSubmitted); err != nil {
+		t.Fatalf("mark SMS submitted: %v", err)
+	}
+	if _, err := repository.UpdateStatus(t.Context(), messageID, teamID, sms.StatusDelivered); err != nil {
+		t.Fatalf("mark SMS delivered: %v", err)
+	}
+
+	message, err = repository.UpdateStatus(t.Context(), messageID, teamID, sms.StatusSent)
+	if err != nil {
+		t.Fatalf("apply stale sent status: %v", err)
+	}
+	if message.Status != sms.StatusDelivered {
+		t.Fatalf("status = %q, want %q", message.Status, sms.StatusDelivered)
+	}
+}
+
 func assertSMSBatchCounts(t *testing.T, pool *pgxpool.Pool, teamID uuid.UUID, messages, events, charges int, balance int64) {
 	t.Helper()
 	var gotMessages, gotEvents, gotCharges int

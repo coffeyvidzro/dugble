@@ -236,6 +236,12 @@ func (r *Repository) UpdateStatus(ctx context.Context, id uuid.UUID, teamID uuid
 	}
 	row, err := r.queries.UpdateSMSMessageStatus(ctx, dbsqlc.UpdateSMSMessageStatusParams{ID: id, TeamID: teamID, Status: status})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// A concurrent status update may have already advanced or completed the
+			// message. Return that authoritative state without emitting a duplicate
+			// lifecycle event for the rejected transition.
+			return r.Get(ctx, id, teamID)
+		}
 		return Message{}, fmt.Errorf("update sms message status: %w", err)
 	}
 	message := messageFromSQLC(row)
