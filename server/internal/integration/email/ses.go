@@ -17,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ses"
+	"github.com/aws/aws-sdk-go-v2/service/ses/types"
 	"github.com/aws/smithy-go"
 
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
@@ -36,10 +37,7 @@ type SESSender struct {
 }
 
 func NewSESSender(_ context.Context, region, defaultFrom, accessKey, secretKey string) (*SESSender, error) {
-	cfg := aws.Config{
-		Region:      strings.TrimSpace(region),
-		Credentials: credentials.NewStaticCredentialsProvider(accessKey, secretKey, ""),
-	}
+	cfg := aws.Config{Region: strings.TrimSpace(region), Credentials: credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")}
 	return &SESSender{client: ses.NewFromConfig(cfg), defaultFrom: strings.TrimSpace(defaultFrom)}, nil
 }
 
@@ -58,7 +56,7 @@ func (s *SESSender) Send(ctx context.Context, message platformemail.Message) (pl
 		}
 		return platformemail.Result{}, platformemail.NewSendError(code, false, err)
 	}
-	output, err := s.client.SendRawEmail(ctx, &ses.SendRawEmailInput{RawMessage: &ses.RawMessage{Data: raw}})
+	output, err := s.client.SendRawEmail(ctx, &ses.SendRawEmailInput{RawMessage: &types.RawMessage{Data: raw}})
 	if err != nil {
 		return platformemail.Result{}, classifySESFailure(err)
 	}
@@ -86,50 +84,45 @@ func buildMIME(message platformemail.Message) ([]byte, error) {
 	if strings.TrimSpace(message.From.Email) == "" || len(message.To)+len(message.CC)+len(message.BCC) == 0 {
 		return nil, errors.New("email requires a sender and at least one recipient")
 	}
+	if message.Text == "" && message.HTML == "" {
+		return nil, errors.New("email requires a text or HTML body")
+	}
 	var output bytes.Buffer
 	writeHeader(&output, "From", formatAddress(message.From))
 	writeHeader(&output, "To", joinAddresses(message.To))
-	if len(message.CC) > 0 {
-		writeHeader(&output, "Cc", joinAddresses(message.CC))
-	}
-	if len(message.ReplyTo) > 0 {
-		writeHeader(&output, "Reply-To", joinAddresses(message.ReplyTo))
-	}
+	writeHeader(&output, "Cc", joinAddresses(message.CC))
+	writeHeader(&output, "Reply-To", joinAddresses(message.ReplyTo))
 	writeHeader(&output, "Subject", mime.QEncoding.Encode("UTF-8", message.Subject))
 	writeHeader(&output, "MIME-Version", "1.0")
 	for key, value := range message.Headers {
-		canonical := textproto.CanonicalMIMEHeaderKey(strings.TrimSpace(key))
-		if canonical == "" || reservedHeader(canonical) {
-			continue
+		key = textproto.CanonicalMIMEHeaderKey(strings.TrimSpace(key))
+		if key != "" && !reservedHeader(key) {
+			writeHeader(&output, key, value)
 		}
-		writeHeader(&output, canonical, value)
 	}
 	mixed := multipart.NewWriter(&output)
 	writeHeader(&output, "Content-Type", fmt.Sprintf("multipart/mixed; boundary=%q", mixed.Boundary()))
 	output.WriteString("\r\n")
-	alternativeHeader := textproto.MIMEHeader{}
-	alternativeBoundary := randomBoundary()
-	alternativeHeader.Set("Content-Type", fmt.Sprintf("multipart/alternative; boundary=%q", alternativeBoundary))
-	alternativePart, err := mixed.CreatePart(alternativeHeader)
+	bodyHeader := textproto.MIMEHeader{}
+	bodyBoundary := randomBoundary()
+	bodyHeader.Set("Content-Type", fmt.Sprintf("multipart/alternative; boundary=%q", bodyBoundary))
+	bodyPart, err := mixed.CreatePart(bodyHeader)
 	if err != nil {
 		return nil, fmt.Errorf("create email body: %w", err)
 	}
-	alternative := multipart.NewWriter(alternativePart)
-	if err := alternative.SetBoundary(alternativeBoundary); err != nil {
+	alternative := multipart.NewWriter(bodyPart)
+	if err := alternative.SetBoundary(bodyBoundary); err != nil {
 		return nil, fmt.Errorf("set email body boundary: %w", err)
 	}
 	if message.Text != "" {
-		if err := writeQuotedPrintablePart(alternative, "text/plain; charset=UTF-8", message.Text); err != nil {
+		if err := writeBodyPart(alternative, "text/plain; charset=UTF-8", message.Text); err != nil {
 			return nil, err
 		}
 	}
 	if message.HTML != "" {
-		if err := writeQuotedPrintablePart(alternative, "text/html; charset=UTF-8", message.HTML); err != nil {
+		if err := writeBodyPart(alternative, "text/html; charset=UTF-8", message.HTML); err != nil {
 			return nil, err
 		}
-	}
-	if message.Text == "" && message.HTML == "" {
-		return nil, errors.New("email requires a text or HTML body")
 	}
 	if err := alternative.Close(); err != nil {
 		return nil, fmt.Errorf("close email body: %w", err)
@@ -142,20 +135,20 @@ func buildMIME(message platformemail.Message) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("decode attachment %q: %w", attachment.Filename, err)
 		}
+		filename := filepath.Base(strings.TrimSpace(attachment.Filename))
+		if filename == "" || filename == "." {
+			return nil, errors.New("attachment filename is required")
+		}
 		contentType := strings.TrimSpace(attachment.ContentType)
 		if contentType == "" {
 			contentType = "application/octet-stream"
-		}
-		filename := filepath.Base(strings.TrimSpace(attachment.Filename))
-		if filename == "." || filename == "" {
-			return nil, errors.New("attachment filename is required")
 		}
 		header := textproto.MIMEHeader{}
 		header.Set("Content-Type", contentType)
 		header.Set("Content-Transfer-Encoding", "base64")
 		header.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
-		if strings.TrimSpace(attachment.ContentID) != "" {
-			header.Set("Content-ID", "<"+sanitizeHeaderValue(attachment.ContentID)+">")
+		if id := sanitizeHeaderValue(attachment.ContentID); id != "" {
+			header.Set("Content-ID", "<"+id+">")
 		}
 		part, err := mixed.CreatePart(header)
 		if err != nil {
@@ -175,7 +168,7 @@ func buildMIME(message platformemail.Message) ([]byte, error) {
 	return output.Bytes(), nil
 }
 
-func writeQuotedPrintablePart(writer *multipart.Writer, contentType, body string) error {
+func writeBodyPart(writer *multipart.Writer, contentType, body string) error {
 	header := textproto.MIMEHeader{}
 	header.Set("Content-Type", contentType)
 	header.Set("Content-Transfer-Encoding", "quoted-printable")
@@ -206,10 +199,10 @@ func joinAddresses(addresses []platformemail.Address) string {
 }
 
 func writeHeader(output *bytes.Buffer, key, value string) {
-	if strings.TrimSpace(value) == "" {
-		return
+	value = sanitizeHeaderValue(value)
+	if value != "" {
+		fmt.Fprintf(output, "%s: %s\r\n", key, value)
 	}
-	output.WriteString(key + ": " + sanitizeHeaderValue(value) + "\r\n")
 }
 
 func sanitizeHeaderValue(value string) string {
