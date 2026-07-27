@@ -78,12 +78,12 @@ jobs:
             golangci-lint config verify --config ../.golangci.yml
 
       - name: Validate Compose config
-        run: docker compose --env-file .env.example -f compose.yml config --quiet
+        run: docker compose --env-file .env.example -f deploy/compose.yaml config --quiet
 
       - name: Apply migrations to fresh PostgreSQL
         run: |
           set +e
-          docker compose --env-file .env.example -f compose.yml up \
+          docker compose --env-file .env.example -f deploy/compose.yaml up \
             --abort-on-container-exit \
             --exit-code-from migrate \
             migrate > migration.log 2>&1
@@ -104,14 +104,14 @@ jobs:
           export API_DOMAIN=http://api.localhost
           export BACKOFFICE_DOMAIN=http://bo.localhost
 
-          docker compose --env-file .env.example -f compose.yml up \
+          docker compose --env-file .env.example -f deploy/compose.yaml up \
             --detach \
             --build \
             --wait \
             --wait-timeout 120 \
             caddy
 
-          docker compose --env-file .env.example -f compose.yml ps
+          docker compose --env-file .env.example -f deploy/compose.yaml ps
 
           curl --fail --silent --show-error \
             --header "Host: api.localhost" \
@@ -127,7 +127,7 @@ jobs:
 
       - name: Verify final SMS pricing schema
         run: |
-          docker compose --env-file .env.example -f compose.yml exec -T postgres \
+          docker compose --env-file .env.example -f deploy/compose.yaml exec -T postgres \
             sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
           DO $$
           BEGIN
@@ -224,4 +224,4 @@ jobs:
 
       - name: Clean up Compose services
         if: always()
-        run: docker compose --env-file .env.example -f compose.yml down -v --remove-orphans
+        run: docker compose --env-file .env.example -f deploy/compose.yaml down -v --remove-orphans

@@ -2,9 +2,9 @@
 
 Dugble uses [OpenTofu](https://opentofu.org/) to define, provision, and maintain its cloud infrastructure as code.
 
-This directory contains the reusable modules and environment-specific configuration required to operate Dugble consistently across development, staging, and production.
+This directory contains reusable modules and separate preview and production root configurations.
 
-> **Status:** This is an early infrastructure scaffold. The modules and environments will be implemented incrementally as the deployment architecture is finalized.
+> **Status:** The first cloud deployment provisions Contabo VPS instances and firewalls, a private Cloudflare R2 bucket with lifecycle rules, and a Git-connected Vercel project with its domains.
 
 ## Infrastructure overview
 
@@ -15,7 +15,7 @@ Dugble uses a hybrid deployment model:
 - **Frontend:** Hosted on Vercel as a Next.js web application.
 - **Database:** PostgreSQL for application and identity-verification records.
 - **Cache and queues:** Redis for caching, rate limiting, asynchronous work, and temporary state.
-- **Storage:** Private object storage for uploads, identity documents, selfies, liveness videos, and other protected media.
+- **Storage:** Cloudflare R2 private object storage for uploads, identity documents, selfies, liveness videos, and other protected media.
 
 ```text
 Users
@@ -26,12 +26,15 @@ Next.js frontend
   |
   v
 Contabo VPS
-Go API and workers
+Docker Compose
   |
+  +--> Go API and worker
+  +--> Identity service
   +--> PostgreSQL
   +--> Redis
-  +--> Private object storage
-  +--> Private identity AI service
+  +--> NATS JetStream
+  +--> Caddy
+  +--> Cloudflare R2
 ```
 
 The identity AI service must not be exposed directly to the public internet. Requests should flow through the Go API, which owns authentication, authorization, verification state, policy decisions, and audit logging.
@@ -40,53 +43,23 @@ The identity AI service must not be exposed directly to the public internet. Req
 
 ```text
 tofu/
+├── preview/            # Preview deployment root and state boundary
+├── production/         # Production deployment root and state boundary
 ├── modules/
-│   ├── network/       # Networking, firewall rules, and private service access
-│   ├── database/      # PostgreSQL infrastructure and configuration
-│   ├── redis/         # Redis infrastructure and access controls
-│   ├── storage/       # Private object storage and lifecycle policies
-│   ├── server/        # Contabo VPS and Dugble backend runtime
-│   └── identity/      # Private identity AI runtime and service networking
-│
-├── environments/
-│   ├── development/   # Development infrastructure
-│   ├── staging/       # Pre-production validation environment
-│   └── production/    # Production infrastructure
+│   ├── r2_bucket/     # Cloudflare R2 bucket and lifecycle policies
+│   ├── server/        # Contabo VPS and cloud firewall
+│   └── vercel/        # Vercel frontend project and domains
 │
 └── README.md
 ```
 
 ## Module responsibilities
 
-### `network`
+### `r2_bucket`
 
-Defines shared networking and security boundaries, including:
+Defines a private Cloudflare R2 bucket for application uploads and protected identity media.
 
-- allowed ingress and egress rules
-- internal service communication
-- public API exposure
-- restricted database, Redis, storage, and AI access
-
-### `database`
-
-Defines PostgreSQL resources and operational settings, including:
-
-- database provisioning
-- network access rules
-- backups and retention
-- connection outputs
-
-Database passwords and connection strings must be supplied through a secrets manager or CI environment and must never be committed to the repository.
-
-### `redis`
-
-Defines Redis resources used for caching, rate limiting, queues, idempotency, and short-lived application state.
-
-### `storage`
-
-Defines private object storage for application uploads and protected identity media.
-
-Storage resources should use:
+R2 resources should use:
 
 - private access by default
 - encryption at rest
@@ -94,44 +67,23 @@ Storage resources should use:
 - retention and deletion policies
 - restricted service identities
 
+### `vercel`
+
+Defines stable Vercel frontend configuration, including the project name, framework preset, repository root directory, production branch, and environment-specific domains. Git integration remains responsible for deployments.
+
 ### `server`
 
-Defines the Contabo VPS and the runtime required by the Dugble backend, such as:
+Defines the Contabo VPS instances, cloud-init bootstrap configuration, and cloud firewall. Application processes and data services running on the VPS are owned by Docker Compose rather than OpenTofu.
 
-- the Go API server
-- background workers
-- container runtime configuration
-- service networking
-- logging and monitoring
+## Responsibility boundary
 
-### `identity`
+OpenTofu creates or records the VPS, configures cloud firewall rules, manages DNS, Cloudflare R2, and Vercel resources, and outputs infrastructure information.
 
-Defines the runtime for the private Python identity AI service.
+Docker Compose owns the Go API, worker, identity service, PostgreSQL, Redis, NATS JetStream, and Caddy runtime services. OpenTofu must not model those containers as cloud resources.
 
-This module should ensure that:
+## Deployment roots
 
-- the service is not publicly reachable
-- only authorized backend services can call it
-- model and media access is restricted
-- CPU, memory, and optional GPU resources are configurable
-- health checks and logs are available
-
-## Environments
-
-Each environment should compose the shared modules with environment-specific values.
-
-```text
-development
-  Small, low-cost resources for active development.
-
-staging
-  Production-like infrastructure for integration and release testing.
-
-production
-  Hardened infrastructure with stricter access, backups, monitoring, and retention.
-```
-
-Environment directories will typically contain:
+Dugble has two independently initialized OpenTofu roots. `preview` provides a safe pre-production deployment, while `production` manages the live infrastructure. Each root composes the shared modules and contains:
 
 ```text
 main.tf
@@ -142,6 +94,8 @@ versions.tf
 backend.tf
 terraform.tfvars.example
 ```
+
+Both roots pin OpenTofu to the `1.12.x` release line and use locked versions of the official Contabo, Cloudflare, and Vercel providers. Each root has its own committed provider lock file and must use an independent state backend.
 
 Do not commit real `terraform.tfvars`, credentials, API tokens, private keys, or generated state files.
 
@@ -155,12 +109,31 @@ tofu version
 
 Provider credentials should be supplied using environment variables, CI secrets, or a dedicated secrets manager.
 
-## Common workflow
-
-Run OpenTofu from the environment you want to manage:
+The first deployment expects these provider environment variables:
 
 ```sh
-cd tofu/environments/development
+export CNTB_OAUTH2_CLIENT_ID=...
+export CNTB_OAUTH2_CLIENT_SECRET=...
+export CNTB_OAUTH2_USER=...
+export CNTB_OAUTH2_PASS=...
+export CLOUDFLARE_API_TOKEN=...
+export VERCEL_API_TOKEN=...
+```
+
+The Cloudflare token needs `Workers R2 Storage Write`. Replace all account-specific placeholders in `terraform.tfvars` before planning. In particular, use Contabo product, image, and SSH-key secret IDs from the same account. Restrict `ssh_ingress_cidrs` to trusted administrator addresses; never expose SSH to the entire internet.
+
+## Common workflow
+
+Run OpenTofu from the deployment root you intend to manage:
+
+```sh
+cd tofu/preview
+```
+
+Create a local values file from the safe example and adjust it for your deployment:
+
+```sh
+cp terraform.tfvars.example terraform.tfvars
 ```
 
 Initialize the working directory:
@@ -200,7 +173,7 @@ Production changes should be applied through CI after review rather than directl
 
 OpenTofu state may contain sensitive infrastructure metadata. State files must not be stored in Git.
 
-Use an encrypted remote backend with locking for shared environments. Development may begin with local state, but staging and production should use remote state before infrastructure is shared or automated.
+Use a separate encrypted remote backend with locking for each deployment. Never share state between preview and production.
 
 Recommended ignored files:
 
@@ -243,8 +216,7 @@ Vercel's Git integration should continue to handle frequent preview and producti
 
 ## Deployment principles
 
-- Reuse modules across all environments.
-- Keep environment differences in variables rather than duplicated resources.
+- Keep both root compositions aligned and delegate resource groups to shared modules.
 - Pin OpenTofu and provider versions.
 - Commit provider lock files.
 - Review every plan before applying it.
@@ -256,16 +228,14 @@ Vercel's Git integration should continue to handle frequent preview and producti
 
 ## Planned work
 
-The initial implementation will focus on:
+The remaining implementation will focus on:
 
-1. OpenTofu version and provider configuration.
-2. Contabo server provisioning and firewall rules.
-3. Vercel project and domain configuration.
-4. PostgreSQL and Redis deployment.
-5. Private object storage and access policies.
-6. Private identity AI service deployment.
-7. Remote state and CI-based plan/apply workflows.
-8. Monitoring, backups, and disaster-recovery configuration.
+1. Contabo private networking and server bootstrapping.
+2. Vercel environment variables and Cloudflare DNS records.
+3. Cloudflare R2 application credentials and CORS policy.
+4. Additional Cloudflare R2 access policies.
+5. Remote state and CI-based plan/apply workflows.
+6. VPS monitoring, backups, and disaster-recovery configuration.
 
 ## Contributing
 
