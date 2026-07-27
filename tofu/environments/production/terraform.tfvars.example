@@ -1,0 +1,17 @@
+environment                         = "production"
+region                              = "eu-central"
+network_cidr                        = "10.30.0.0/16"
+server_instance_size                = "large"
+server_replicas                     = 2
+server_container_image              = "ghcr.io/dugble/server:production"
+database_instance_size              = "large"
+database_version                    = "17"
+database_backup_retention_days      = 35
+redis_instance_size                 = "large"
+redis_high_availability             = true
+storage_retention_days              = 90
+storage_versioning_enabled          = true
+identity_container_image            = "ghcr.io/dugble/identity:production"
+identity_cpu                        = 4
+identity_memory_mb                  = 8192
+identity_gpu_enabled                = false

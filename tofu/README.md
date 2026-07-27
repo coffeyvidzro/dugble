@@ -4,7 +4,7 @@ Dugble uses [OpenTofu](https://opentofu.org/) to define, provision, and maintain
 
 This directory contains the reusable modules and environment-specific configuration required to operate Dugble consistently across development, staging, and production.
 
-> **Status:** This is an early infrastructure scaffold. The modules and environments will be implemented incrementally as the deployment architecture is finalized.
+> **Status:** The provider-neutral foundation is implemented. It validates and composes environment configuration through stable module interfaces; provider resources will be added incrementally as the deployment architecture is finalized.
 
 ## Infrastructure overview
 
@@ -143,6 +143,8 @@ backend.tf
 terraform.tfvars.example
 ```
 
+All environments currently pin OpenTofu to the `1.12.x` release line. No external provider is declared yet: adding one before the Contabo, object-storage, and Vercel provider choices are finalized would create a misleading dependency. Each provider must be source-addressed and version-constrained when its first resource is introduced.
+
 Do not commit real `terraform.tfvars`, credentials, API tokens, private keys, or generated state files.
 
 ## Prerequisites
@@ -161,6 +163,12 @@ Run OpenTofu from the environment you want to manage:
 
 ```sh
 cd tofu/environments/development
+```
+
+Create a local values file from the safe example and adjust it for your deployment:
+
+```sh
+cp terraform.tfvars.example terraform.tfvars
 ```
 
 Initialize the working directory:
@@ -258,7 +266,7 @@ Vercel's Git integration should continue to handle frequent preview and producti
 
 The initial implementation will focus on:
 
-1. OpenTofu version and provider configuration.
+1. Provider selection and configuration.
 2. Contabo server provisioning and firewall rules.
 3. Vercel project and domain configuration.
 4. PostgreSQL and Redis deployment.

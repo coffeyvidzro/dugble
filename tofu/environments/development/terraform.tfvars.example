@@ -1,0 +1,17 @@
+environment                         = "development"
+region                              = "eu-central"
+network_cidr                        = "10.10.0.0/16"
+server_instance_size                = "small"
+server_replicas                     = 1
+server_container_image              = "ghcr.io/dugble/server:development"
+database_instance_size              = "small"
+database_version                    = "17"
+database_backup_retention_days      = 1
+redis_instance_size                 = "small"
+redis_high_availability             = false
+storage_retention_days              = 7
+storage_versioning_enabled          = false
+identity_container_image            = "ghcr.io/dugble/identity:development"
+identity_cpu                        = 1
+identity_memory_mb                  = 1024
+identity_gpu_enabled                = false
