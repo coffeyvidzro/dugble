@@ -6,9 +6,9 @@ The service is responsible for producing document, image-quality, face-compariso
 
 ## Current status
 
-This directory is an initial structure only. The model pipelines and internal HTTP entrypoint are not implemented yet.
+Deterministic image-quality checks are implemented. The model pipelines and internal HTTP entrypoint are not implemented yet.
 
-The current Python functions intentionally raise `NotImplementedError`. Do not expose this service publicly or describe its output as official NIA verification.
+The document, face-match, and liveness functions intentionally raise `NotImplementedError`. Do not expose this service publicly or describe its output as official NIA verification.
 
 ## Scope
 
@@ -92,7 +92,10 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-The current dependency file contains only the HTTP-service foundation. OCR, computer-vision, model-runtime, and media-processing dependencies should be added when each pipeline is implemented and evaluated.
+Install `requirements-dev.txt` instead to include the test tooling, then run
+`python -m pytest` from this directory.
+
+The current dependency file contains the HTTP-service foundation and Pillow for deterministic image analysis. OCR, computer-vision, model-runtime, and media-processing dependencies should be added when each pipeline is implemented and evaluated.
 
 ## Docker
 
