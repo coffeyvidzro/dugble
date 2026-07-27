@@ -151,6 +151,25 @@ services:
       retries: 10
       start_period: 10s
 
+  identity-ai:
+    build:
+      context: ../services/identity-ai
+      dockerfile: Dockerfile
+    container_name: dugble-identity-ai
+    restart: unless-stopped
+    environment:
+      IDENTITY_AI_API_KEY: ${IDENTITY_AI_API_KEY:?set IDENTITY_AI_API_KEY}
+    expose:
+      - "8000"
+    networks:
+      - dugble-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   server:
     <<: *app-build
     container_name: dugble-server
@@ -159,6 +178,9 @@ services:
     environment:
       <<: *app-env
       HTTP_PORT: "8080"
+      IDENTITY_AI_BASE_URL: http://identity-ai:8000
+      IDENTITY_AI_API_KEY: ${IDENTITY_AI_API_KEY:?set IDENTITY_AI_API_KEY}
+      IDENTITY_AI_TIMEOUT: ${IDENTITY_AI_TIMEOUT:-30s}
     expose:
       - "8080"
     networks:
@@ -173,6 +195,8 @@ services:
       migrate:
         condition: service_completed_successfully
       redis:
+        condition: service_healthy
+      identity-ai:
         condition: service_healthy
 
   worker:
