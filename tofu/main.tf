@@ -1,5 +1,5 @@
 module "network" {
-  source = "../../modules/network"
+  source = "./modules/network"
 
   environment          = var.environment
   network_cidr         = var.network_cidr
@@ -7,7 +7,7 @@ module "network" {
 }
 
 module "database" {
-  source = "../../modules/database"
+  source = "./modules/database"
 
   environment           = var.environment
   network_cidr          = module.network.configuration.cidr
@@ -17,7 +17,7 @@ module "database" {
 }
 
 module "redis" {
-  source = "../../modules/redis"
+  source = "./modules/redis"
 
   environment       = var.environment
   network_cidr      = module.network.configuration.cidr
@@ -26,7 +26,7 @@ module "redis" {
 }
 
 module "r2_bucket" {
-  source = "../../modules/r2_bucket"
+  source = "./modules/r2_bucket"
 
   account_id     = var.cloudflare_account_id
   bucket_name    = var.r2_bucket_name
@@ -37,7 +37,7 @@ module "r2_bucket" {
 }
 
 module "server" {
-  source = "../../modules/server"
+  source = "./modules/server"
 
   environment       = var.environment
   product_id        = var.contabo_product_id
@@ -55,7 +55,7 @@ module "server" {
 }
 
 module "identity" {
-  source = "../../modules/identity"
+  source = "./modules/identity"
 
   environment     = var.environment
   network_cidr    = module.network.configuration.cidr
@@ -66,7 +66,7 @@ module "identity" {
 }
 
 module "vercel" {
-  source = "../../modules/vercel"
+  source = "./modules/vercel"
 
   environment       = var.environment
   project_name      = var.vercel_project_name

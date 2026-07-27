@@ -1,10 +1,11 @@
 variable "environment" {
-  description = "Deployment environment name."
+  description = "Stable deployment name used in resource names."
   type        = string
+  default     = "production"
 
   validation {
-    condition     = contains(["development", "staging", "production"], var.environment)
-    error_message = "Environment must be development, staging, or production."
+    condition     = var.environment == "production"
+    error_message = "The single Dugble deployment must be named production."
   }
 }
 

@@ -2,7 +2,7 @@
 
 Dugble uses [OpenTofu](https://opentofu.org/) to define, provision, and maintain its cloud infrastructure as code.
 
-This directory contains the reusable modules and environment-specific configuration required to operate Dugble consistently across development, staging, and production.
+This directory contains the reusable modules and the single production root configuration used to operate Dugble.
 
 > **Status:** The first cloud deployment provisions Contabo VPS instances and firewalls, a private Cloudflare R2 bucket with lifecycle rules, and a Git-connected Vercel project with its domains.
 
@@ -40,6 +40,13 @@ The identity AI service must not be exposed directly to the public internet. Req
 
 ```text
 tofu/
+├── main.tf            # Single production deployment composition
+├── providers.tf       # Provider configuration
+├── variables.tf       # Deployment inputs
+├── outputs.tf         # Provisioned resource metadata
+├── versions.tf        # OpenTofu and provider constraints
+├── backend.tf         # State backend configuration
+├── terraform.tfvars.example
 ├── modules/
 │   ├── network/       # Networking, firewall rules, and private service access
 │   ├── database/      # PostgreSQL infrastructure and configuration
@@ -48,11 +55,6 @@ tofu/
 │   ├── server/        # Contabo VPS and Dugble backend runtime
 │   ├── identity/      # Private identity AI runtime and service networking
 │   └── vercel/        # Vercel frontend project and domains
-│
-├── environments/
-│   ├── development/   # Development infrastructure
-│   ├── staging/       # Pre-production validation environment
-│   └── production/    # Production infrastructure
 │
 └── README.md
 ```
@@ -121,22 +123,9 @@ This module should ensure that:
 - CPU, memory, and optional GPU resources are configurable
 - health checks and logs are available
 
-## Environments
+## Root configuration
 
-Each environment should compose the shared modules with environment-specific values.
-
-```text
-development
-  Small, low-cost resources for active development.
-
-staging
-  Production-like infrastructure for integration and release testing.
-
-production
-  Hardened infrastructure with stricter access, backups, monitoring, and retention.
-```
-
-Environment directories will typically contain:
+Dugble has one OpenTofu deployment. The root of this directory composes the reusable modules directly and contains:
 
 ```text
 main.tf
@@ -148,7 +137,7 @@ backend.tf
 terraform.tfvars.example
 ```
 
-All environments pin OpenTofu to the `1.12.x` release line and use locked versions of the official Contabo, Cloudflare, and Vercel providers. Provider lock files are committed for reproducible installation.
+The root configuration pins OpenTofu to the `1.12.x` release line and uses locked versions of the official Contabo, Cloudflare, and Vercel providers. The provider lock file is committed for reproducible installation.
 
 Do not commit real `terraform.tfvars`, credentials, API tokens, private keys, or generated state files.
 
@@ -177,10 +166,10 @@ The Cloudflare token needs `Workers R2 Storage Write`. Replace all account-speci
 
 ## Common workflow
 
-Run OpenTofu from the environment you want to manage:
+Run OpenTofu from its single root configuration:
 
 ```sh
-cd tofu/environments/development
+cd tofu
 ```
 
 Create a local values file from the safe example and adjust it for your deployment:
@@ -226,7 +215,7 @@ Production changes should be applied through CI after review rather than directl
 
 OpenTofu state may contain sensitive infrastructure metadata. State files must not be stored in Git.
 
-Use an encrypted remote backend with locking for shared environments. Development may begin with local state, but staging and production should use remote state before infrastructure is shared or automated.
+Use an encrypted remote backend with locking before this production infrastructure is shared or automated.
 
 Recommended ignored files:
 
@@ -269,8 +258,7 @@ Vercel's Git integration should continue to handle frequent preview and producti
 
 ## Deployment principles
 
-- Reuse modules across all environments.
-- Keep environment differences in variables rather than duplicated resources.
+- Keep the single root composition small and delegate resource groups to modules.
 - Pin OpenTofu and provider versions.
 - Commit provider lock files.
 - Review every plan before applying it.
