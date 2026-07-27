@@ -75,10 +75,10 @@ func run() error {
 		processedEvents,
 		emaildelivery.NewHandler(emaildelivery.NewRepository(db), emailSender),
 		emaildelivery.ConsumerConfig{
-			Concurrency:    cfg.Messaging.SMSConsumerConcurrency,
-			AckWait:        cfg.Messaging.SMSConsumerAckWait,
-			HandlerTimeout: cfg.Messaging.SMSHandlerTimeout,
-			MaxDeliver:     cfg.Messaging.SMSConsumerMaxDeliver,
+			Concurrency:    cfg.Messaging.EmailConsumerConcurrency,
+			AckWait:        cfg.Messaging.EmailConsumerAckWait,
+			HandlerTimeout: cfg.Messaging.EmailHandlerTimeout,
+			MaxDeliver:     cfg.Messaging.EmailConsumerMaxDeliver,
 			RetryPolicy:    emaildelivery.DefaultRetryPolicy(),
 		},
 	)

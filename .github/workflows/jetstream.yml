@@ -60,6 +60,7 @@ jobs:
           grep -q 'DUGBLE_EVENTS' jetstream-topology.json
           grep -q 'DUGBLE_DLQ' jetstream-topology.json
           grep -q 'sms-delivery-v1' jetstream-topology.json
+          grep -q 'dugble-email-delivery-v1' jetstream-topology.json
 
       - name: Verify transactional outbox relay
         run: |
@@ -215,6 +216,66 @@ jobs:
           END
           $$;
           SQL
+
+
+      - name: Verify email command consumption
+        run: |
+          docker compose --env-file .env.example -f deploy/compose.yaml exec -T postgres \
+            sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+          INSERT INTO outbox_events (
+              id,
+              subject,
+              aggregate_type,
+              aggregate_id,
+              payload,
+              headers
+          ) VALUES (
+              '00000000-0000-4000-8000-000000000052',
+              'dugble.job.email.send.v1',
+              'email_message',
+              '00000000-0000-4000-8000-000000000053',
+              '{
+                  "event_id":"00000000-0000-4000-8000-000000000052",
+                  "message_id":"00000000-0000-4000-8000-000000000053",
+                  "team_id":"00000000-0000-4000-8000-000000000054",
+                  "schema_version":1
+              }'::jsonb,
+              '{"Dugble-Event-Type":"email.send.requested.v1"}'::jsonb
+          );
+          SQL
+
+          processed=''
+          for attempt in $(seq 1 30); do
+            processed="$(
+              docker compose --env-file .env.example -f deploy/compose.yaml exec -T postgres \
+                sh -c 'psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+          SELECT EXISTS (
+              SELECT 1
+              FROM processed_events
+              WHERE consumer_name = 'dugble-email-delivery-v1'
+                AND event_id = '00000000-0000-4000-8000-000000000052'
+          );
+          SQL
+            )"
+            if [ "$processed" = "t" ]; then
+              break
+            fi
+            sleep 1
+          done
+
+          if [ "$processed" != "t" ]; then
+            docker compose --env-file .env.example -f deploy/compose.yaml exec -T postgres \
+              sh -c 'psql -x -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+          SELECT *
+          FROM outbox_events
+          WHERE id = '00000000-0000-4000-8000-000000000052';
+
+          SELECT *
+          FROM processed_events
+          WHERE event_id = '00000000-0000-4000-8000-000000000052';
+          SQL
+            exit 1
+          fi
 
       - name: Upload JetStream topology
         if: always()

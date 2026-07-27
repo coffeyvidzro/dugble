@@ -27,14 +27,18 @@ type AWSConfig struct {
 }
 
 type MessagingConfig struct {
-	URL                    string        `env:"URL" envDefault:"nats://localhost:4222"`
-	OutboxPollInterval     time.Duration `env:"OUTBOX_POLL_INTERVAL" envDefault:"500ms"`
-	OutboxBatchSize        int           `env:"OUTBOX_BATCH_SIZE" envDefault:"100"`
-	OutboxLockTimeout      time.Duration `env:"OUTBOX_LOCK_TIMEOUT" envDefault:"30s"`
-	SMSConsumerConcurrency int           `env:"SMS_CONSUMER_CONCURRENCY" envDefault:"10"`
-	SMSConsumerAckWait     time.Duration `env:"SMS_CONSUMER_ACK_WAIT" envDefault:"2m"`
-	SMSConsumerMaxDeliver  int           `env:"SMS_CONSUMER_MAX_DELIVER" envDefault:"6"`
-	SMSHandlerTimeout      time.Duration `env:"SMS_HANDLER_TIMEOUT" envDefault:"45s"`
+	URL                      string        `env:"URL" envDefault:"nats://localhost:4222"`
+	OutboxPollInterval       time.Duration `env:"OUTBOX_POLL_INTERVAL" envDefault:"500ms"`
+	OutboxBatchSize          int           `env:"OUTBOX_BATCH_SIZE" envDefault:"100"`
+	OutboxLockTimeout        time.Duration `env:"OUTBOX_LOCK_TIMEOUT" envDefault:"30s"`
+	SMSConsumerConcurrency   int           `env:"SMS_CONSUMER_CONCURRENCY" envDefault:"10"`
+	SMSConsumerAckWait       time.Duration `env:"SMS_CONSUMER_ACK_WAIT" envDefault:"2m"`
+	SMSConsumerMaxDeliver    int           `env:"SMS_CONSUMER_MAX_DELIVER" envDefault:"6"`
+	SMSHandlerTimeout        time.Duration `env:"SMS_HANDLER_TIMEOUT" envDefault:"45s"`
+	EmailConsumerConcurrency int           `env:"EMAIL_CONSUMER_CONCURRENCY" envDefault:"5"`
+	EmailConsumerAckWait     time.Duration `env:"EMAIL_CONSUMER_ACK_WAIT" envDefault:"2m"`
+	EmailConsumerMaxDeliver  int           `env:"EMAIL_CONSUMER_MAX_DELIVER" envDefault:"6"`
+	EmailHandlerTimeout      time.Duration `env:"EMAIL_HANDLER_TIMEOUT" envDefault:"45s"`
 }
 
 type WebhookDeliveryConfig struct {
@@ -122,6 +126,18 @@ func (c *Config) normalize() {
 	}
 	if c.Messaging.SMSHandlerTimeout <= 0 {
 		c.Messaging.SMSHandlerTimeout = 45 * time.Second
+	}
+	if c.Messaging.EmailConsumerConcurrency <= 0 {
+		c.Messaging.EmailConsumerConcurrency = 5
+	}
+	if c.Messaging.EmailConsumerAckWait <= 0 {
+		c.Messaging.EmailConsumerAckWait = 2 * time.Minute
+	}
+	if c.Messaging.EmailConsumerMaxDeliver <= 0 {
+		c.Messaging.EmailConsumerMaxDeliver = 6
+	}
+	if c.Messaging.EmailHandlerTimeout <= 0 {
+		c.Messaging.EmailHandlerTimeout = 45 * time.Second
 	}
 	if c.WebhookDelivery.PollInterval <= 0 {
 		c.WebhookDelivery.PollInterval = 500 * time.Millisecond
