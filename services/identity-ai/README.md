@@ -85,7 +85,7 @@ Reserve an outcome such as `officially_verified` for a future successful NIA ver
 
 ## Local setup
 
-Python 3.12 is currently used by the Docker image.
+Python 3.14.6 is required for local development and used by the Docker image.
 
 ```sh
 cd services/identity-ai
