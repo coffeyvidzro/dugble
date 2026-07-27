@@ -1,2 +1,5 @@
-# Provider declarations belong here once a concrete platform is selected.
-# Every provider must declare its source and a constrained version in versions.tf.
+provider "cloudflare" {}
+provider "contabo" {}
+provider "vercel" {
+  team = var.vercel_team
+}

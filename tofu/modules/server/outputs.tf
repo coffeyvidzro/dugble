@@ -1,9 +1,4 @@
-output "configuration" {
-  value = {
-    name            = "dugble-${var.environment}-server"
-    network_cidr    = var.network_cidr
-    instance_size   = var.instance_size
-    replicas        = var.replicas
-    container_image = var.container_image
-  }
-}
+output "instance_ids" { value = contabo_instance.this[*].id }
+output "instance_names" { value = contabo_instance.this[*].name }
+output "ip_configuration" { value = contabo_instance.this[*].ip_config }
+output "firewall_id" { value = contabo_firewall.this.id }

@@ -1,20 +1,44 @@
-environment                         = "development"
-network_cidr                        = "10.10.0.0/16"
-server_instance_size                = "small"
-server_replicas                     = 1
-server_container_image              = "ghcr.io/dugble/server:development"
-database_instance_size              = "small"
-database_version                    = "17"
-database_backup_retention_days      = 1
-redis_instance_size                 = "small"
-redis_high_availability             = false
-r2_retention_days                   = 7
-r2_location                         = "WEUR"
-vercel_project_name                 = "dugble-development"
-vercel_root_directory               = "web"
-vercel_production_branch            = "main"
-vercel_domains                      = []
-identity_container_image            = "ghcr.io/dugble/identity:development"
-identity_cpu                        = 1
-identity_memory_mb                  = 1024
-identity_gpu_enabled                = false
+environment                    = "development"
+network_cidr                   = "10.10.0.0/16"
+public_ingress_cidrs           = ["0.0.0.0/0", "::/0"]
+public_tcp_ports               = [80, 443]
+ssh_ingress_cidrs              = ["203.0.113.10/32"]
+
+# Contabo: replace IDs with values from your account before planning.
+contabo_product_id             = "VPS-PRODUCT-ID"
+contabo_region                 = "EU"
+contabo_contract_period        = 1
+contabo_image_id               = "CONTABO-IMAGE-ID"
+contabo_ssh_key_ids            = [123456]
+server_replicas                = 1
+server_cloud_init              = <<-EOT
+  #cloud-config
+  package_update: true
+  packages: [docker.io, docker-compose-v2]
+  runcmd:
+    - systemctl enable --now docker
+EOT
+
+cloudflare_account_id          = "CLOUDFLARE-ACCOUNT-ID"
+r2_bucket_name                = "dugble-development"
+r2_location                   = "WEUR"
+r2_jurisdiction               = "eu"
+r2_storage_class              = "Standard"
+r2_retention_days             = 7
+
+vercel_team                    = null
+vercel_project_name            = "dugble-development"
+vercel_git_repository          = "YOUR-GITHUB-OWNER/dugble"
+vercel_root_directory          = "web"
+vercel_production_branch       = "main"
+vercel_domains                 = []
+
+database_instance_size         = "small"
+database_version               = "17"
+database_backup_retention_days = 1
+redis_instance_size            = "small"
+redis_high_availability        = false
+identity_container_image       = "ghcr.io/dugble/identity:development"
+identity_cpu                   = 1
+identity_memory_mb             = 1024
+identity_gpu_enabled           = false

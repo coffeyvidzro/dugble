@@ -4,7 +4,7 @@ Dugble uses [OpenTofu](https://opentofu.org/) to define, provision, and maintain
 
 This directory contains the reusable modules and environment-specific configuration required to operate Dugble consistently across development, staging, and production.
 
-> **Status:** The provider-neutral foundation is implemented. It validates and composes environment configuration through stable module interfaces; provider resources will be added incrementally as the deployment architecture is finalized.
+> **Status:** The first cloud deployment provisions Contabo VPS instances and firewalls, a private Cloudflare R2 bucket with lifecycle rules, and a Git-connected Vercel project with its domains.
 
 ## Infrastructure overview
 
@@ -148,7 +148,7 @@ backend.tf
 terraform.tfvars.example
 ```
 
-All environments currently pin OpenTofu to the `1.12.x` release line. No external provider is declared until the first Contabo, Cloudflare R2, or Vercel resource is introduced. Each provider must then be source-addressed and version-constrained.
+All environments pin OpenTofu to the `1.12.x` release line and use locked versions of the official Contabo, Cloudflare, and Vercel providers. Provider lock files are committed for reproducible installation.
 
 Do not commit real `terraform.tfvars`, credentials, API tokens, private keys, or generated state files.
 
@@ -161,6 +161,19 @@ tofu version
 ```
 
 Provider credentials should be supplied using environment variables, CI secrets, or a dedicated secrets manager.
+
+The first deployment expects these provider environment variables:
+
+```sh
+export CNTB_OAUTH2_CLIENT_ID=...
+export CNTB_OAUTH2_CLIENT_SECRET=...
+export CNTB_OAUTH2_USER=...
+export CNTB_OAUTH2_PASS=...
+export CLOUDFLARE_API_TOKEN=...
+export VERCEL_API_TOKEN=...
+```
+
+The Cloudflare token needs `Workers R2 Storage Write`. Replace all account-specific placeholders in `terraform.tfvars` before planning. In particular, use Contabo product, image, and SSH-key secret IDs from the same account. Restrict `ssh_ingress_cidrs` to trusted administrator addresses; never expose SSH to the entire internet.
 
 ## Common workflow
 
@@ -269,13 +282,13 @@ Vercel's Git integration should continue to handle frequent preview and producti
 
 ## Planned work
 
-The initial implementation will focus on:
+The remaining implementation will focus on:
 
-1. Provider selection and configuration.
-2. Contabo server provisioning and firewall rules.
-3. Vercel project and domain configuration.
+1. Contabo private networking and server bootstrapping.
+2. Vercel environment variables and Cloudflare DNS records.
+3. Cloudflare R2 application credentials and CORS policy.
 4. PostgreSQL and Redis deployment.
-5. Private Cloudflare R2 bucket and access policies.
+5. Additional Cloudflare R2 access policies.
 6. Private identity AI service deployment.
 7. Remote state and CI-based plan/apply workflows.
 8. Monitoring, backups, and disaster-recovery configuration.

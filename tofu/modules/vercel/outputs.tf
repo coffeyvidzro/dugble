@@ -1,11 +1,8 @@
-output "configuration" {
-  description = "Validated Vercel project settings for provider resources."
-  value = {
-    environment       = var.environment
-    project_name      = var.project_name
-    framework         = var.framework
-    root_directory    = var.root_directory
-    production_branch = var.production_branch
-    domains           = var.domains
-  }
+output "project_id" { value = vercel_project.this.id }
+output "project_name" { value = vercel_project.this.name }
+output "domains" {
+  value = { for domain, resource in vercel_project_domain.this : domain => {
+    id       = resource.id
+    verified = resource.verified
+  } }
 }

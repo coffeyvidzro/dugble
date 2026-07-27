@@ -46,3 +46,28 @@ variable "domains" {
     error_message = "Every Vercel domain must be a valid lowercase DNS name."
   }
 }
+
+variable "git_provider" {
+  description = "Git provider connected to Vercel."
+  type        = string
+  default     = "github"
+  validation {
+    condition     = contains(["github", "gitlab", "bitbucket"], var.git_provider)
+    error_message = "Git provider must be github, gitlab, or bitbucket."
+  }
+}
+
+variable "git_repository" {
+  description = "Repository in owner/name format."
+  type        = string
+  validation {
+    condition     = can(regex("^[^/]+/[^/]+$", var.git_repository))
+    error_message = "Git repository must use owner/name format."
+  }
+}
+
+variable "wait_for_domains" {
+  description = "Wait for Vercel to verify configured domains."
+  type        = bool
+  default     = true
+}

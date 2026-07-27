@@ -1,9 +1,6 @@
-output "configuration" {
-  description = "Validated Cloudflare R2 bucket settings for provider resources."
-  value = {
-    bucket_name    = "dugble-${var.environment}-private"
-    location       = var.location
-    retention_days = var.retention_days
-    public_access  = false
-  }
+output "bucket_id" { value = cloudflare_r2_bucket.this.id }
+output "bucket_name" { value = cloudflare_r2_bucket.this.name }
+output "jurisdiction" { value = cloudflare_r2_bucket.this.jurisdiction }
+output "s3_endpoint" {
+  value = "https://${var.account_id}.r2.cloudflarestorage.com"
 }

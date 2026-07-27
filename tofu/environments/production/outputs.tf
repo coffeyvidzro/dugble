@@ -1,12 +1,20 @@
-output "infrastructure_configuration" {
-  description = "Validated, provider-neutral configuration composed for this environment."
+output "infrastructure" {
+  description = "Identifiers and connection metadata for provisioned cloud resources."
   value = {
-    network   = module.network.configuration
-    database  = module.database.configuration
-    redis     = module.redis.configuration
-    r2_bucket = module.r2_bucket.configuration
-    server    = module.server.configuration
-    identity  = module.identity.configuration
-    vercel    = module.vercel.configuration
+    r2 = {
+      bucket_name = module.r2_bucket.bucket_name
+      endpoint    = module.r2_bucket.s3_endpoint
+    }
+    server = {
+      instance_ids     = module.server.instance_ids
+      instance_names   = module.server.instance_names
+      ip_configuration = module.server.ip_configuration
+      firewall_id      = module.server.firewall_id
+    }
+    vercel = {
+      project_id   = module.vercel.project_id
+      project_name = module.vercel.project_name
+      domains      = module.vercel.domains
+    }
   }
 }
