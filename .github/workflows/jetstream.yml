@@ -5,15 +5,15 @@ on:
     branches:
       - main
     paths:
-      - compose.yml
-      - nats-server.conf
+      - deploy/compose.yaml
+      - deploy/nats-server.conf
       - .env.example
       - server/**
       - .github/workflows/jetstream.yml
   pull_request:
     paths:
-      - compose.yml
-      - nats-server.conf
+      - deploy/compose.yaml
+      - deploy/nats-server.conf
       - .env.example
       - server/**
       - .github/workflows/jetstream.yml
@@ -29,31 +29,31 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Validate Compose configuration
-        run: docker compose --env-file .env.example -f compose.yml config --quiet
+        run: docker compose --env-file .env.example -f deploy/compose.yaml config --quiet
 
       - name: Start worker and JetStream dependencies
         run: |
-          docker compose --env-file .env.example -f compose.yml up \
+          docker compose --env-file .env.example -f deploy/compose.yaml up \
             --detach \
             --build \
             --wait \
             --wait-timeout 180 \
             worker
 
-          docker compose --env-file .env.example -f compose.yml ps
+          docker compose --env-file .env.example -f deploy/compose.yaml ps
 
       - name: Verify JetStream health and topology
         run: |
-          docker compose --env-file .env.example -f compose.yml exec -T nats \
+          docker compose --env-file .env.example -f deploy/compose.yaml exec -T nats \
             wget -q -O /tmp/health.json \
             'http://127.0.0.1:8222/healthz?js-enabled-only=true'
-          docker compose --env-file .env.example -f compose.yml exec -T nats \
+          docker compose --env-file .env.example -f deploy/compose.yaml exec -T nats \
             cat /tmp/health.json
 
-          docker compose --env-file .env.example -f compose.yml exec -T nats \
+          docker compose --env-file .env.example -f deploy/compose.yaml exec -T nats \
             wget -q -O /tmp/jsz.json \
             'http://127.0.0.1:8222/jsz?streams=true&consumers=true&config=true'
-          docker compose --env-file .env.example -f compose.yml exec -T nats \
+          docker compose --env-file .env.example -f deploy/compose.yaml exec -T nats \
             cat /tmp/jsz.json > jetstream-topology.json
 
           grep -q 'DUGBLE_JOBS' jetstream-topology.json
@@ -63,7 +63,7 @@ jobs:
 
       - name: Verify transactional outbox relay
         run: |
-          docker compose --env-file .env.example -f compose.yml exec -T postgres \
+          docker compose --env-file .env.example -f deploy/compose.yaml exec -T postgres \
             sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
           INSERT INTO outbox_events (
               id,
@@ -85,7 +85,7 @@ jobs:
           published=''
           for attempt in $(seq 1 30); do
             published="$(
-              docker compose --env-file .env.example -f compose.yml exec -T postgres \
+              docker compose --env-file .env.example -f deploy/compose.yaml exec -T postgres \
                 sh -c 'psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
           SELECT published_at IS NOT NULL
           FROM outbox_events
@@ -99,7 +99,7 @@ jobs:
           done
 
           if [ "$published" != "t" ]; then
-            docker compose --env-file .env.example -f compose.yml exec -T postgres \
+            docker compose --env-file .env.example -f deploy/compose.yaml exec -T postgres \
               sh -c 'psql -x -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
           SELECT *
           FROM outbox_events
@@ -108,7 +108,7 @@ jobs:
             exit 1
           fi
 
-          docker compose --env-file .env.example -f compose.yml exec -T postgres \
+          docker compose --env-file .env.example -f deploy/compose.yaml exec -T postgres \
             sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
           DO $$
           BEGIN
@@ -134,7 +134,7 @@ jobs:
 
       - name: Verify SMS command consumption
         run: |
-          docker compose --env-file .env.example -f compose.yml exec -T postgres \
+          docker compose --env-file .env.example -f deploy/compose.yaml exec -T postgres \
             sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
           INSERT INTO outbox_events (
               id,
@@ -160,7 +160,7 @@ jobs:
           processed=''
           for attempt in $(seq 1 30); do
             processed="$(
-              docker compose --env-file .env.example -f compose.yml exec -T postgres \
+              docker compose --env-file .env.example -f deploy/compose.yaml exec -T postgres \
                 sh -c 'psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
           SELECT EXISTS (
               SELECT 1
@@ -177,7 +177,7 @@ jobs:
           done
 
           if [ "$processed" != "t" ]; then
-            docker compose --env-file .env.example -f compose.yml exec -T postgres \
+            docker compose --env-file .env.example -f deploy/compose.yaml exec -T postgres \
               sh -c 'psql -x -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
           SELECT *
           FROM outbox_events
@@ -190,7 +190,7 @@ jobs:
             exit 1
           fi
 
-          docker compose --env-file .env.example -f compose.yml exec -T postgres \
+          docker compose --env-file .env.example -f deploy/compose.yaml exec -T postgres \
             sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
           DO $$
           BEGIN
@@ -228,11 +228,11 @@ jobs:
       - name: Show service logs
         if: failure()
         run: |
-          docker compose --env-file .env.example -f compose.yml logs \
+          docker compose --env-file .env.example -f deploy/compose.yaml logs \
             --no-color \
             --tail=300 \
             postgres migrate nats worker
 
       - name: Clean up
         if: always()
-        run: docker compose --env-file .env.example -f compose.yml down -v --remove-orphans
+        run: docker compose --env-file .env.example -f deploy/compose.yaml down -v --remove-orphans

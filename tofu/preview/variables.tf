@@ -1,11 +1,11 @@
 variable "environment" {
   description = "Stable deployment name used in resource names."
   type        = string
-  default     = "production"
+  default     = "preview"
 
   validation {
-    condition     = var.environment == "production"
-    error_message = "The single Dugble deployment must be named production."
+    condition     = var.environment == "preview"
+    error_message = "The Dugble preview deployment must be named preview."
   }
 }
 

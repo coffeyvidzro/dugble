@@ -1,5 +1,5 @@
 module "r2_bucket" {
-  source = "./modules/r2_bucket"
+  source = "../modules/r2_bucket"
 
   account_id     = var.cloudflare_account_id
   bucket_name    = var.r2_bucket_name
@@ -10,7 +10,7 @@ module "r2_bucket" {
 }
 
 module "server" {
-  source = "./modules/server"
+  source = "../modules/server"
 
   environment       = var.environment
   product_id        = var.contabo_product_id
@@ -28,7 +28,7 @@ module "server" {
 }
 
 module "vercel" {
-  source = "./modules/vercel"
+  source = "../modules/vercel"
 
   environment       = var.environment
   project_name      = var.vercel_project_name

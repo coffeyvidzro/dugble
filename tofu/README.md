@@ -2,7 +2,7 @@
 
 Dugble uses [OpenTofu](https://opentofu.org/) to define, provision, and maintain its cloud infrastructure as code.
 
-This directory contains the reusable modules and the single production root configuration used to operate Dugble.
+This directory contains reusable modules and separate preview and production root configurations.
 
 > **Status:** The first cloud deployment provisions Contabo VPS instances and firewalls, a private Cloudflare R2 bucket with lifecycle rules, and a Git-connected Vercel project with its domains.
 
@@ -43,13 +43,8 @@ The identity AI service must not be exposed directly to the public internet. Req
 
 ```text
 tofu/
-├── main.tf            # Single production deployment composition
-├── providers.tf       # Provider configuration
-├── variables.tf       # Deployment inputs
-├── outputs.tf         # Provisioned resource metadata
-├── versions.tf        # OpenTofu and provider constraints
-├── backend.tf         # State backend configuration
-├── terraform.tfvars.example
+├── preview/            # Preview deployment root and state boundary
+├── production/         # Production deployment root and state boundary
 ├── modules/
 │   ├── r2_bucket/     # Cloudflare R2 bucket and lifecycle policies
 │   ├── server/        # Contabo VPS and cloud firewall
@@ -86,9 +81,9 @@ OpenTofu creates or records the VPS, configures cloud firewall rules, manages DN
 
 Docker Compose owns the Go API, worker, identity service, PostgreSQL, Redis, NATS JetStream, and Caddy runtime services. OpenTofu must not model those containers as cloud resources.
 
-## Root configuration
+## Deployment roots
 
-Dugble has one OpenTofu deployment. The root of this directory composes the reusable modules directly and contains:
+Dugble has two independently initialized OpenTofu roots. `preview` provides a safe pre-production deployment, while `production` manages the live infrastructure. Each root composes the shared modules and contains:
 
 ```text
 main.tf
@@ -100,7 +95,7 @@ backend.tf
 terraform.tfvars.example
 ```
 
-The root configuration pins OpenTofu to the `1.12.x` release line and uses locked versions of the official Contabo, Cloudflare, and Vercel providers. The provider lock file is committed for reproducible installation.
+Both roots pin OpenTofu to the `1.12.x` release line and use locked versions of the official Contabo, Cloudflare, and Vercel providers. Each root has its own committed provider lock file and must use an independent state backend.
 
 Do not commit real `terraform.tfvars`, credentials, API tokens, private keys, or generated state files.
 
@@ -129,10 +124,10 @@ The Cloudflare token needs `Workers R2 Storage Write`. Replace all account-speci
 
 ## Common workflow
 
-Run OpenTofu from its single root configuration:
+Run OpenTofu from the deployment root you intend to manage:
 
 ```sh
-cd tofu
+cd tofu/preview
 ```
 
 Create a local values file from the safe example and adjust it for your deployment:
@@ -178,7 +173,7 @@ Production changes should be applied through CI after review rather than directl
 
 OpenTofu state may contain sensitive infrastructure metadata. State files must not be stored in Git.
 
-Use an encrypted remote backend with locking before this production infrastructure is shared or automated.
+Use a separate encrypted remote backend with locking for each deployment. Never share state between preview and production.
 
 Recommended ignored files:
 
@@ -221,7 +216,7 @@ Vercel's Git integration should continue to handle frequent preview and producti
 
 ## Deployment principles
 
-- Keep the single root composition small and delegate resource groups to modules.
+- Keep both root compositions aligned and delegate resource groups to shared modules.
 - Pin OpenTofu and provider versions.
 - Commit provider lock files.
 - Review every plan before applying it.
