@@ -11,14 +11,6 @@ import (
 
 const maxWebhookURLLength = 2048
 
-var supportedEvents = map[string]struct{}{
-	platformwebhook.EventSMSSubmitted:   {},
-	platformwebhook.EventSMSSent:        {},
-	platformwebhook.EventSMSDelivered:   {},
-	platformwebhook.EventSMSUndelivered: {},
-	platformwebhook.EventSMSFailed:      {},
-}
-
 type validatedEndpoint struct {
 	URL              string
 	Enabled          bool
@@ -65,7 +57,7 @@ func validateEndpoint(rawURL string, enabled bool, events []string) (validatedEn
 		if event == "" || slices.Contains(normalizedEvents, event) {
 			continue
 		}
-		if _, ok := supportedEvents[event]; !ok {
+		if !platformwebhook.IsSubscribableEventType(event) {
 			return validatedEndpoint{}, apperrors.NewBadRequest("Unsupported webhook event: " + event)
 		}
 		normalizedEvents = append(normalizedEvents, event)
