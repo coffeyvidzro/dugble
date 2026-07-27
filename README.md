@@ -95,6 +95,8 @@ The server requires PostgreSQL, Arcjet, and AWS SES email configuration at start
 
 ### Docker Compose
 
+Deployment assets live in `deploy/`: `compose.yaml` defines the runtime stack, while `Caddyfile` and `nats-server.conf` configure the edge proxy and NATS JetStream.
+
 ```sh
 make up
 make logs

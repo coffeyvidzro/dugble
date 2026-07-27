@@ -45,3 +45,13 @@ yarn-debug.log*
 .golangci-cache/
 .atlas/
 .tmp/
+
+# --- OpenTofu ---
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.auto.tfvars
+terraform.tfvars
+crash.log
+crash.*.log

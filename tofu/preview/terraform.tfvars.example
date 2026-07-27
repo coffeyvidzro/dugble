@@ -1,0 +1,32 @@
+public_ingress_cidrs           = ["0.0.0.0/0", "::/0"]
+public_tcp_ports               = [80, 443]
+ssh_ingress_cidrs              = ["203.0.113.10/32"]
+
+# Contabo: replace IDs with values from your account before planning.
+contabo_product_id             = "VPS-PRODUCT-ID"
+contabo_region                 = "EU"
+contabo_contract_period        = 1
+contabo_image_id               = "CONTABO-IMAGE-ID"
+contabo_ssh_key_ids            = [123456]
+server_replicas                = 1
+server_cloud_init              = <<-EOT
+  #cloud-config
+  package_update: true
+  packages: [docker.io, docker-compose-v2]
+  runcmd:
+    - systemctl enable --now docker
+EOT
+
+cloudflare_account_id          = "CLOUDFLARE-ACCOUNT-ID"
+r2_bucket_name                = "dugble-preview"
+r2_location                   = "WEUR"
+r2_jurisdiction               = "eu"
+r2_storage_class              = "Standard"
+r2_retention_days             = 30
+
+vercel_team                    = null
+vercel_project_name            = "dugble-preview"
+vercel_git_repository          = "YOUR-GITHUB-OWNER/dugble"
+vercel_root_directory          = "web"
+vercel_production_branch       = "main"
+vercel_domains                 = []
