@@ -1,4 +1,4 @@
-h1:YgjvoxdHoxaMm9aUU04IaLTz/xrZQcBrsGO28/Y+GSg=
+h1:ltsNpQiHArcMrIzm4d642vZbZ0+gPqal05KThQXRLAM=
 001_create_users.sql h1:eBbhTPvYBEkMnWedFTFlS/IdkL5cO2OWFiJLUfkciSo=
 003_create_sessions.sql h1:GHYsOJ7+Wella28My8yKLbt0MhHNFFvWQFwGWqDNjtA=
 004_create_oauth_identities.sql h1:cDYHOX3gOS+TXEr4/iJuq1aAPlh/0VtzVtxf5MWFjQI=
@@ -15,5 +15,4 @@ h1:YgjvoxdHoxaMm9aUU04IaLTz/xrZQcBrsGO28/Y+GSg=
 015_create_sms_pricing_audit.sql h1:4AuFVOAd3MAHYxPy27MrPNeh0WzLmbjbi+wfo8nbTqo=
 016_create_outbox.sql h1:fcS6kGOXc5mCDf/cDitO48M6PZoY1PsQKIPFVWq7lRM=
 017_create_email_messages.sql h1:TFElR2w1KAy6+XJK9iBGNJLW8/rl5fODc2W6SWKO6O0=
-018_create_webhooks.sql h1:NiUwBw0FUhyMG7aDsdkwxq+nFKalYhxo72oXEenTvAo=
-019_add_webhook_endpoint_health.sql h1:0v445cBTNCMQ4tT3KvNZepxcq4kM3ptslpjc93PyjHk=
+018_create_webhooks.sql h1:86cywALAAFsot+HZmNMUR58qUysMqT5ClzrLASOnpxM=
