@@ -52,7 +52,11 @@ The card identifies the member record, while the fresh biometric capture verifie
 
 The Stage 2 face pipeline defines validated detection, embedding, and comparison contracts; detector and embedder interfaces; cosine similarity; one-to-one orchestration; and a process-local model registry.
 
-YuNet and SFace model adapters, reviewed model artifacts, ONNX Runtime integration, storage retrieval, and the HTTP endpoint connection remain intentionally unavailable until their exact model versions, preprocessing rules, checksums, and deployment licenses are selected, so the face endpoint continues to return `501 Not Implemented` rather than simulated evidence.
+The Stage 3 capture pipeline adds a MediaPipe-facing landmark tracker boundary, deterministic framing and pose guidance, unpredictable short-lived challenge issuance, and ordered multi-observation challenge evaluation with model-version continuity.
+
+YuNet, SFace, and MediaPipe model adapters, reviewed model artifacts, ONNX Runtime integration, media retrieval and decoding, and the HTTP endpoint connections remain intentionally unavailable until their exact model versions, preprocessing rules, checksums, and deployment licenses are selected, so model-backed endpoints continue to return `501 Not Implemented` rather than simulated evidence.
+
+Completing a head-pose challenge supplies limited presence evidence only; it is not strong liveness proof and must be combined with supervised capture, replay and injection defenses, biometric comparison, calibrated policy, and manual fallback.
 
 ## Responsibility boundary
 
@@ -76,6 +80,7 @@ Never commit real Ghana Cards, selfies, videos, face embeddings, consent records
 
 - Keep the FastAPI service on a private network and authenticate every backend request.
 - Accept only server-created, short-lived verification sessions and live-camera captures.
+- Bind each randomized challenge to one verification session, persist it server-side, and reject reuse after its first evaluation.
 - Record the model, policy, and analyzer versions used for every decision.
 - Do not log raw images, extracted identity fields, card numbers, videos, or face embeddings.
 - Store only the enrollment references and audit evidence required for the declared purpose.
