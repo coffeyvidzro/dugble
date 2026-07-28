@@ -5,12 +5,18 @@ readme = "README.md"
 requires-python = ">=3.14.4"
 dependencies = [
     "fastapi==0.140.2",
+    "mediapipe==1.0.0",
     "numpy==2.5.1",
     "onnxruntime==1.28.0",
     "opencv-python-headless==5.0.0.93",
     "pillow==12.3.0",
     "pydantic==2.13.4",
     "uvicorn[standard]==0.51.0",
+]
+
+[tool.uv]
+override-dependencies = [
+    "opencv-contrib-python; sys_platform == 'never'",
 ]
 
 [dependency-groups]

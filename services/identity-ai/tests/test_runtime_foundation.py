@@ -102,6 +102,21 @@ def test_bundle_initializes_registered_non_onnx_adapter(tmp_path):
     assert loaded == [("face-detector", "test-v1", tmp_path / "face-detector.onnx")]
 
 
+def test_bundle_closes_loaded_adapters():
+    class Adapter:
+        closed = False
+
+        def close(self):
+            self.closed = True
+
+    adapter = Adapter()
+    bundle = RuntimeModelBundle({}, {"face-landmarks": adapter}, {"face-landmarks": "v1"})
+
+    bundle.close()
+
+    assert adapter.closed is True
+
+
 def test_runtime_manager_reports_safe_error_when_required_models_are_absent(tmp_path):
     manifest_path = tmp_path / "manifest.json"
     manifest_path.write_text('{"schema_version": 1, "models": []}', encoding="utf-8")

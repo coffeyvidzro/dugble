@@ -57,6 +57,21 @@ class RuntimeModelBundle:
             raise RuntimeFoundationError("face model adapters do not satisfy their contracts")
         return FaceComparisonService(detector, embedder)
 
+    def capture_guidance_service(self):
+        from app.capture.service import CaptureGuidanceService
+        from app.face.landmarks import FaceLandmarkTracker
+
+        tracker = self.adapter("face-landmarks")
+        if not isinstance(tracker, FaceLandmarkTracker):
+            raise RuntimeFoundationError("landmark adapter does not satisfy its contract")
+        return CaptureGuidanceService(tracker)
+
+    def close(self) -> None:
+        for adapter in self._adapters.values():
+            close = getattr(adapter, "close", None)
+            if callable(close):
+                close()
+
     @classmethod
     def load(
         cls,
@@ -85,6 +100,10 @@ class RuntimeModelBundle:
             from app.face.opencv_models import load_opencv_face_model
 
             loaders[ModelRuntime.OPENCV] = load_opencv_face_model
+        if ModelRuntime.MEDIAPIPE not in loaders:
+            from app.face.mediapipe_landmarks import load_mediapipe_landmark_model
+
+            loaders[ModelRuntime.MEDIAPIPE] = load_mediapipe_landmark_model
         sessions: dict[str, ONNXModelSession] = {}
         adapters: dict[str, object] = {}
         versions: dict[str, str] = {}
@@ -158,6 +177,8 @@ class RuntimeManager:
             self.error_code = "model_runtime_unavailable"
 
     def close(self) -> None:
+        if self.bundle is not None:
+            self.bundle.close()
         self.bundle = None
         self.error_code = None
         self.initialized = False

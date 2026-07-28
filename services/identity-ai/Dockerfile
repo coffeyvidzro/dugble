@@ -4,6 +4,10 @@ COPY --from=ghcr.io/astral-sh/uv:0.11.32 /uv /uvx /bin/
 
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends libportaudio2 \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV UV_NO_CACHE=1 \
     UV_PYTHON_DOWNLOADS=0 \
     PATH="/app/.venv/bin:$PATH"
