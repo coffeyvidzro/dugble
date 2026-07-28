@@ -6,8 +6,8 @@ import { cache } from "react";
 import { env } from "@/config/env";
 import {
   resolveSessionResponse,
-  SessionUnavailableError,
   type Session,
+  SessionUnavailableError,
   type SessionUser,
 } from "@/lib/session-resolver";
 

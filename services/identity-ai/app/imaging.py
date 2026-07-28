@@ -56,9 +56,7 @@ def _read_source(source: ImageSource, max_input_bytes: int) -> bytes:
     return data
 
 
-def normalize_image(
-    image: Image.Image, *, max_pixels: int = DEFAULT_MAX_PIXELS
-) -> Image.Image:
+def normalize_image(image: Image.Image, *, max_pixels: int = DEFAULT_MAX_PIXELS) -> Image.Image:
     """Apply EXIF orientation, enforce pixel limits, and return an RGB copy."""
 
     if max_pixels <= 0:
