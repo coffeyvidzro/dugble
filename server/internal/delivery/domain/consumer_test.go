@@ -75,14 +75,19 @@ func TestPollCompletesVerifiedReconciliation(t *testing.T) {
 }
 
 func TestPollRecordsTransientCheckFailure(t *testing.T) {
-	id := uuid.New()
+	id := uuid.MustParse("0a000000-0000-0000-0000-000000000000")
 	repository := &fakeRepository{claims: []domainmodule.ReconciliationClaim{{Domain: domainmodule.SenderDomain{ID: id.String()}, Attempt: 2}}}
 	consumer := NewConsumer(repository, fakeChecker{err: errors.New("SES unavailable")}, testConfig, "worker")
+	now := time.Date(2026, time.July, 28, 0, 0, 0, 0, time.UTC)
+	consumer.now = func() time.Time { return now }
 	if err := consumer.poll(context.Background()); err != nil {
 		t.Fatalf("poll: %v", err)
 	}
 	if !repository.failed || repository.completed {
 		t.Fatalf("unexpected repository result: %+v", repository)
+	}
+	if want := now.Add(time.Minute); !repository.nextCheckAt.Equal(want) {
+		t.Fatalf("next check = %s, want %s", repository.nextCheckAt, want)
 	}
 }
 
