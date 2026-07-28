@@ -62,12 +62,49 @@ jobs:
           grep -q 'sms-delivery-v1' jetstream-topology.json
           grep -q 'dugble-email-delivery-v1' jetstream-topology.json
 
-      - name: Upload JetStream topology
+      - name: Verify event publish, consume, and acknowledgement
+        env:
+          NATS_USER: dugble
+          NATS_PASSWORD: replace-with-a-separate-long-random-password
+        run: |
+          set -euo pipefail
+
+          subject="dugble.event.ci.probe.v1"
+          consumer="ci-event-flow-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          server="nats://${NATS_USER}:${NATS_PASSWORD}@nats:4222"
+          nats_cli="docker run --rm --network dugble-network natsio/nats-box:0.19.2 nats --server ${server}"
+
+          $nats_cli consumer add DUGBLE_EVENTS "$consumer" \
+            --filter "$subject" \
+            --ack explicit \
+            --pull \
+            --deliver all \
+            --max-deliver 1 \
+            --defaults
+
+          $nats_cli pub "$subject" \
+            "{\"event_id\":\"${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}\",\"type\":\"ci.probe\"}"
+
+          $nats_cli consumer next DUGBLE_EVENTS "$consumer" \
+            --count 1 \
+            --ack \
+            --timeout 10s | tee jetstream-event-flow.log
+
+          $nats_cli consumer info DUGBLE_EVENTS "$consumer" --json \
+            | tee jetstream-consumer.json
+          grep -Eq '"num_ack_pending"[[:space:]]*:[[:space:]]*0' jetstream-consumer.json
+
+          $nats_cli consumer rm DUGBLE_EVENTS "$consumer" --force
+
+      - name: Upload JetStream diagnostics
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: jetstream-topology
-          path: jetstream-topology.json
+          name: jetstream-diagnostics
+          path: |
+            jetstream-topology.json
+            jetstream-event-flow.log
+            jetstream-consumer.json
           if-no-files-found: ignore
           retention-days: 1
 
