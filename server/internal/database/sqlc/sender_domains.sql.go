@@ -9,7 +9,131 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const claimSenderDomainsForReconciliation = `-- name: ClaimSenderDomainsForReconciliation :many
+WITH candidates AS (
+    SELECT id
+    FROM sender_domains
+    WHERE sender_domains.status = 'pending'
+      AND sender_domains.disabled_at IS NULL
+      AND sender_domains.next_check_at <= now()
+      AND (sender_domains.reconcile_locked_at IS NULL OR sender_domains.reconcile_locked_at < $2)
+    ORDER BY sender_domains.next_check_at, sender_domains.created_at
+    FOR UPDATE SKIP LOCKED
+    LIMIT $3
+)
+UPDATE sender_domains AS domain
+SET reconcile_locked_at = now(),
+    reconcile_locked_by = $1,
+    verification_attempts = domain.verification_attempts + 1,
+    updated_at = now()
+FROM candidates
+WHERE domain.id = candidates.id
+RETURNING domain.id, domain.team_id, domain.domain, domain.provider, domain.provider_region, domain.status, domain.verification_records, domain.failure_reason, domain.last_checked_at, domain.next_check_at, domain.verification_attempts, domain.reconcile_locked_at, domain.reconcile_locked_by, domain.verified_at, domain.disabled_at, domain.created_by, domain.created_at, domain.updated_at
+`
+
+type ClaimSenderDomainsForReconciliationParams struct {
+	WorkerID    *string            `db:"worker_id" json:"worker_id"`
+	StaleBefore pgtype.Timestamptz `db:"stale_before" json:"stale_before"`
+	BatchSize   int32              `db:"batch_size" json:"batch_size"`
+}
+
+func (q *Queries) ClaimSenderDomainsForReconciliation(ctx context.Context, arg ClaimSenderDomainsForReconciliationParams) ([]SenderDomain, error) {
+	rows, err := q.db.Query(ctx, claimSenderDomainsForReconciliation, arg.WorkerID, arg.StaleBefore, arg.BatchSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SenderDomain{}
+	for rows.Next() {
+		var i SenderDomain
+		if err := rows.Scan(
+			&i.ID,
+			&i.TeamID,
+			&i.Domain,
+			&i.Provider,
+			&i.ProviderRegion,
+			&i.Status,
+			&i.VerificationRecords,
+			&i.FailureReason,
+			&i.LastCheckedAt,
+			&i.NextCheckAt,
+			&i.VerificationAttempts,
+			&i.ReconcileLockedAt,
+			&i.ReconcileLockedBy,
+			&i.VerifiedAt,
+			&i.DisabledAt,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const completeSenderDomainReconciliation = `-- name: CompleteSenderDomainReconciliation :one
+UPDATE sender_domains
+SET status = $1,
+    verification_records = $2,
+    failure_reason = NULL,
+    last_checked_at = now(),
+    next_check_at = $3,
+    verified_at = CASE WHEN $1 = 'verified' THEN COALESCE(verified_at, now()) ELSE verified_at END,
+    reconcile_locked_at = NULL,
+    reconcile_locked_by = NULL,
+    updated_at = now()
+WHERE id = $4
+  AND reconcile_locked_by = $5
+RETURNING id, team_id, domain, provider, provider_region, status, verification_records, failure_reason, last_checked_at, next_check_at, verification_attempts, reconcile_locked_at, reconcile_locked_by, verified_at, disabled_at, created_by, created_at, updated_at
+`
+
+type CompleteSenderDomainReconciliationParams struct {
+	Status              string             `db:"status" json:"status"`
+	VerificationRecords []byte             `db:"verification_records" json:"verification_records"`
+	NextCheckAt         pgtype.Timestamptz `db:"next_check_at" json:"next_check_at"`
+	ID                  uuid.UUID          `db:"id" json:"id"`
+	WorkerID            *string            `db:"worker_id" json:"worker_id"`
+}
+
+func (q *Queries) CompleteSenderDomainReconciliation(ctx context.Context, arg CompleteSenderDomainReconciliationParams) (SenderDomain, error) {
+	row := q.db.QueryRow(ctx, completeSenderDomainReconciliation,
+		arg.Status,
+		arg.VerificationRecords,
+		arg.NextCheckAt,
+		arg.ID,
+		arg.WorkerID,
+	)
+	var i SenderDomain
+	err := row.Scan(
+		&i.ID,
+		&i.TeamID,
+		&i.Domain,
+		&i.Provider,
+		&i.ProviderRegion,
+		&i.Status,
+		&i.VerificationRecords,
+		&i.FailureReason,
+		&i.LastCheckedAt,
+		&i.NextCheckAt,
+		&i.VerificationAttempts,
+		&i.ReconcileLockedAt,
+		&i.ReconcileLockedBy,
+		&i.VerifiedAt,
+		&i.DisabledAt,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
 
 const createSenderDomain = `-- name: CreateSenderDomain :one
 INSERT INTO sender_domains (
@@ -27,7 +151,7 @@ INSERT INTO sender_domains (
     $5,
     $6
 )
-RETURNING id, team_id, domain, provider, provider_region, status, verification_records, failure_reason, last_checked_at, verified_at, disabled_at, created_by, created_at, updated_at
+RETURNING id, team_id, domain, provider, provider_region, status, verification_records, failure_reason, last_checked_at, next_check_at, verification_attempts, reconcile_locked_at, reconcile_locked_by, verified_at, disabled_at, created_by, created_at, updated_at
 `
 
 type CreateSenderDomainParams struct {
@@ -59,6 +183,10 @@ func (q *Queries) CreateSenderDomain(ctx context.Context, arg CreateSenderDomain
 		&i.VerificationRecords,
 		&i.FailureReason,
 		&i.LastCheckedAt,
+		&i.NextCheckAt,
+		&i.VerificationAttempts,
+		&i.ReconcileLockedAt,
+		&i.ReconcileLockedBy,
 		&i.VerifiedAt,
 		&i.DisabledAt,
 		&i.CreatedBy,
@@ -72,7 +200,7 @@ const deleteSenderDomain = `-- name: DeleteSenderDomain :one
 DELETE FROM sender_domains
 WHERE id = $1
   AND team_id = $2
-RETURNING id, team_id, domain, provider, provider_region, status, verification_records, failure_reason, last_checked_at, verified_at, disabled_at, created_by, created_at, updated_at
+RETURNING id, team_id, domain, provider, provider_region, status, verification_records, failure_reason, last_checked_at, next_check_at, verification_attempts, reconcile_locked_at, reconcile_locked_by, verified_at, disabled_at, created_by, created_at, updated_at
 `
 
 type DeleteSenderDomainParams struct {
@@ -93,6 +221,10 @@ func (q *Queries) DeleteSenderDomain(ctx context.Context, arg DeleteSenderDomain
 		&i.VerificationRecords,
 		&i.FailureReason,
 		&i.LastCheckedAt,
+		&i.NextCheckAt,
+		&i.VerificationAttempts,
+		&i.ReconcileLockedAt,
+		&i.ReconcileLockedBy,
 		&i.VerifiedAt,
 		&i.DisabledAt,
 		&i.CreatedBy,
@@ -103,7 +235,7 @@ func (q *Queries) DeleteSenderDomain(ctx context.Context, arg DeleteSenderDomain
 }
 
 const getSenderDomain = `-- name: GetSenderDomain :one
-SELECT id, team_id, domain, provider, provider_region, status, verification_records, failure_reason, last_checked_at, verified_at, disabled_at, created_by, created_at, updated_at
+SELECT id, team_id, domain, provider, provider_region, status, verification_records, failure_reason, last_checked_at, next_check_at, verification_attempts, reconcile_locked_at, reconcile_locked_by, verified_at, disabled_at, created_by, created_at, updated_at
 FROM sender_domains
 WHERE id = $1
   AND team_id = $2
@@ -127,6 +259,10 @@ func (q *Queries) GetSenderDomain(ctx context.Context, arg GetSenderDomainParams
 		&i.VerificationRecords,
 		&i.FailureReason,
 		&i.LastCheckedAt,
+		&i.NextCheckAt,
+		&i.VerificationAttempts,
+		&i.ReconcileLockedAt,
+		&i.ReconcileLockedBy,
 		&i.VerifiedAt,
 		&i.DisabledAt,
 		&i.CreatedBy,
@@ -137,7 +273,7 @@ func (q *Queries) GetSenderDomain(ctx context.Context, arg GetSenderDomainParams
 }
 
 const getSenderDomainByDomain = `-- name: GetSenderDomainByDomain :one
-SELECT id, team_id, domain, provider, provider_region, status, verification_records, failure_reason, last_checked_at, verified_at, disabled_at, created_by, created_at, updated_at
+SELECT id, team_id, domain, provider, provider_region, status, verification_records, failure_reason, last_checked_at, next_check_at, verification_attempts, reconcile_locked_at, reconcile_locked_by, verified_at, disabled_at, created_by, created_at, updated_at
 FROM sender_domains
 WHERE team_id = $1
   AND domain = $2
@@ -161,6 +297,10 @@ func (q *Queries) GetSenderDomainByDomain(ctx context.Context, arg GetSenderDoma
 		&i.VerificationRecords,
 		&i.FailureReason,
 		&i.LastCheckedAt,
+		&i.NextCheckAt,
+		&i.VerificationAttempts,
+		&i.ReconcileLockedAt,
+		&i.ReconcileLockedBy,
 		&i.VerifiedAt,
 		&i.DisabledAt,
 		&i.CreatedBy,
@@ -171,7 +311,7 @@ func (q *Queries) GetSenderDomainByDomain(ctx context.Context, arg GetSenderDoma
 }
 
 const listSenderDomains = `-- name: ListSenderDomains :many
-SELECT id, team_id, domain, provider, provider_region, status, verification_records, failure_reason, last_checked_at, verified_at, disabled_at, created_by, created_at, updated_at
+SELECT id, team_id, domain, provider, provider_region, status, verification_records, failure_reason, last_checked_at, next_check_at, verification_attempts, reconcile_locked_at, reconcile_locked_by, verified_at, disabled_at, created_by, created_at, updated_at
 FROM sender_domains
 WHERE team_id = $1
 ORDER BY created_at DESC
@@ -200,6 +340,10 @@ func (q *Queries) ListSenderDomains(ctx context.Context, arg ListSenderDomainsPa
 			&i.VerificationRecords,
 			&i.FailureReason,
 			&i.LastCheckedAt,
+			&i.NextCheckAt,
+			&i.VerificationAttempts,
+			&i.ReconcileLockedAt,
+			&i.ReconcileLockedBy,
 			&i.VerifiedAt,
 			&i.DisabledAt,
 			&i.CreatedBy,
@@ -216,6 +360,57 @@ func (q *Queries) ListSenderDomains(ctx context.Context, arg ListSenderDomainsPa
 	return items, nil
 }
 
+const recordSenderDomainReconciliationFailure = `-- name: RecordSenderDomainReconciliationFailure :one
+UPDATE sender_domains
+SET failure_reason = $1,
+    last_checked_at = now(),
+    next_check_at = $2,
+    reconcile_locked_at = NULL,
+    reconcile_locked_by = NULL,
+    updated_at = now()
+WHERE id = $3
+  AND reconcile_locked_by = $4
+RETURNING id, team_id, domain, provider, provider_region, status, verification_records, failure_reason, last_checked_at, next_check_at, verification_attempts, reconcile_locked_at, reconcile_locked_by, verified_at, disabled_at, created_by, created_at, updated_at
+`
+
+type RecordSenderDomainReconciliationFailureParams struct {
+	FailureReason *string            `db:"failure_reason" json:"failure_reason"`
+	NextCheckAt   pgtype.Timestamptz `db:"next_check_at" json:"next_check_at"`
+	ID            uuid.UUID          `db:"id" json:"id"`
+	WorkerID      *string            `db:"worker_id" json:"worker_id"`
+}
+
+func (q *Queries) RecordSenderDomainReconciliationFailure(ctx context.Context, arg RecordSenderDomainReconciliationFailureParams) (SenderDomain, error) {
+	row := q.db.QueryRow(ctx, recordSenderDomainReconciliationFailure,
+		arg.FailureReason,
+		arg.NextCheckAt,
+		arg.ID,
+		arg.WorkerID,
+	)
+	var i SenderDomain
+	err := row.Scan(
+		&i.ID,
+		&i.TeamID,
+		&i.Domain,
+		&i.Provider,
+		&i.ProviderRegion,
+		&i.Status,
+		&i.VerificationRecords,
+		&i.FailureReason,
+		&i.LastCheckedAt,
+		&i.NextCheckAt,
+		&i.VerificationAttempts,
+		&i.ReconcileLockedAt,
+		&i.ReconcileLockedBy,
+		&i.VerifiedAt,
+		&i.DisabledAt,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const updateSenderDomainVerification = `-- name: UpdateSenderDomainVerification :one
 UPDATE sender_domains
 SET status = $1,
@@ -226,7 +421,7 @@ SET status = $1,
     updated_at = now()
 WHERE id = $4
   AND team_id = $5
-RETURNING id, team_id, domain, provider, provider_region, status, verification_records, failure_reason, last_checked_at, verified_at, disabled_at, created_by, created_at, updated_at
+RETURNING id, team_id, domain, provider, provider_region, status, verification_records, failure_reason, last_checked_at, next_check_at, verification_attempts, reconcile_locked_at, reconcile_locked_by, verified_at, disabled_at, created_by, created_at, updated_at
 `
 
 type UpdateSenderDomainVerificationParams struct {
@@ -256,6 +451,10 @@ func (q *Queries) UpdateSenderDomainVerification(ctx context.Context, arg Update
 		&i.VerificationRecords,
 		&i.FailureReason,
 		&i.LastCheckedAt,
+		&i.NextCheckAt,
+		&i.VerificationAttempts,
+		&i.ReconcileLockedAt,
+		&i.ReconcileLockedBy,
 		&i.VerifiedAt,
 		&i.DisabledAt,
 		&i.CreatedBy,

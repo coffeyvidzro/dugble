@@ -95,20 +95,24 @@ type ProcessedEvent struct {
 }
 
 type SenderDomain struct {
-	ID                  uuid.UUID          `db:"id" json:"id"`
-	TeamID              uuid.UUID          `db:"team_id" json:"team_id"`
-	Domain              string             `db:"domain" json:"domain"`
-	Provider            string             `db:"provider" json:"provider"`
-	ProviderRegion      string             `db:"provider_region" json:"provider_region"`
-	Status              string             `db:"status" json:"status"`
-	VerificationRecords []byte             `db:"verification_records" json:"verification_records"`
-	FailureReason       *string            `db:"failure_reason" json:"failure_reason"`
-	LastCheckedAt       pgtype.Timestamptz `db:"last_checked_at" json:"last_checked_at"`
-	VerifiedAt          pgtype.Timestamptz `db:"verified_at" json:"verified_at"`
-	DisabledAt          pgtype.Timestamptz `db:"disabled_at" json:"disabled_at"`
-	CreatedBy           *uuid.UUID         `db:"created_by" json:"created_by"`
-	CreatedAt           pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt           pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ID                   uuid.UUID          `db:"id" json:"id"`
+	TeamID               uuid.UUID          `db:"team_id" json:"team_id"`
+	Domain               string             `db:"domain" json:"domain"`
+	Provider             string             `db:"provider" json:"provider"`
+	ProviderRegion       string             `db:"provider_region" json:"provider_region"`
+	Status               string             `db:"status" json:"status"`
+	VerificationRecords  []byte             `db:"verification_records" json:"verification_records"`
+	FailureReason        *string            `db:"failure_reason" json:"failure_reason"`
+	LastCheckedAt        pgtype.Timestamptz `db:"last_checked_at" json:"last_checked_at"`
+	NextCheckAt          pgtype.Timestamptz `db:"next_check_at" json:"next_check_at"`
+	VerificationAttempts int32              `db:"verification_attempts" json:"verification_attempts"`
+	ReconcileLockedAt    pgtype.Timestamptz `db:"reconcile_locked_at" json:"reconcile_locked_at"`
+	ReconcileLockedBy    *string            `db:"reconcile_locked_by" json:"reconcile_locked_by"`
+	VerifiedAt           pgtype.Timestamptz `db:"verified_at" json:"verified_at"`
+	DisabledAt           pgtype.Timestamptz `db:"disabled_at" json:"disabled_at"`
+	CreatedBy            *uuid.UUID         `db:"created_by" json:"created_by"`
+	CreatedAt            pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
 type SenderID struct {

@@ -83,3 +83,30 @@ func TestNormalizeWebhookDeliveryPreservesPositiveValues(t *testing.T) {
 		t.Fatalf("WebhookDelivery = %+v, want %+v", cfg.WebhookDelivery, want)
 	}
 }
+
+func TestDomainReconciliationConfigParsesEnvironment(t *testing.T) {
+	t.Setenv("DOMAIN_RECONCILIATION_POLL_INTERVAL", "45s")
+	t.Setenv("DOMAIN_RECONCILIATION_BATCH_SIZE", "40")
+	t.Setenv("DOMAIN_RECONCILIATION_CONCURRENCY", "8")
+	t.Setenv("DOMAIN_RECONCILIATION_LOCK_TIMEOUT", "3m")
+	t.Setenv("DOMAIN_RECONCILIATION_CHECK_TIMEOUT", "25s")
+	var parsed struct {
+		DomainReconciliation DomainReconciliationConfig `envPrefix:"DOMAIN_RECONCILIATION_"`
+	}
+	if err := env.Parse(&parsed); err != nil {
+		t.Fatalf("parse domain reconciliation configuration: %v", err)
+	}
+	want := DomainReconciliationConfig{PollInterval: 45 * time.Second, BatchSize: 40, Concurrency: 8, LockTimeout: 3 * time.Minute, CheckTimeout: 25 * time.Second}
+	if parsed.DomainReconciliation != want {
+		t.Fatalf("DomainReconciliation = %+v, want %+v", parsed.DomainReconciliation, want)
+	}
+}
+
+func TestNormalizeDomainReconciliationDefaults(t *testing.T) {
+	cfg := Config{}
+	cfg.normalize()
+	want := DomainReconciliationConfig{PollInterval: 30 * time.Second, BatchSize: 25, Concurrency: 5, LockTimeout: 2 * time.Minute, CheckTimeout: 20 * time.Second}
+	if cfg.DomainReconciliation != want {
+		t.Fatalf("DomainReconciliation = %+v, want %+v", cfg.DomainReconciliation, want)
+	}
+}

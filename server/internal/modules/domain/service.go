@@ -17,6 +17,11 @@ type Service struct {
 	dns        platformemail.DNSVerifier
 }
 
+type ReconciliationResult struct {
+	Status              string
+	VerificationRecords []VerificationRecord
+}
+
 func NewService(repository *Repository, provider platformemail.DomainProvider, dns platformemail.DNSVerifier) *Service {
 	return &Service{repository: repository, provider: provider, dns: dns}
 }
@@ -105,33 +110,43 @@ func (s *Service) Verify(ctx context.Context, domainID string) (SenderDomain, er
 		return SenderDomain{}, apperrors.NewInternal("Sender domain verification is not configured", nil)
 	}
 
-	providerStatus, err := s.provider.GetDomainStatus(ctx, domain.Domain, domain.ProviderRegion)
+	result, err := s.Check(ctx, domain)
 	if err != nil {
 		reason := err.Error()
-		updated, updateErr := s.repository.UpdateVerification(ctx, id, tc.TeamID, StatusFailed, domain.VerificationRecords, &reason)
+		updated, updateErr := s.repository.UpdateVerification(ctx, id, tc.TeamID, domain.Status, domain.VerificationRecords, &reason)
 		if updateErr != nil {
 			return SenderDomain{}, apperrors.NewInternal("Unable to update sender domain verification", updateErr)
 		}
 		return updated, nil
 	}
 
-	for index := range domain.VerificationRecords {
-		verified := s.dns.Verify(ctx, domain.Domain, domain.VerificationRecords[index])
-		if domain.VerificationRecords[index].Record == platformemail.RecordDKIM {
-			verified = verified && providerStatus.DKIMVerified
-		}
-		domain.VerificationRecords[index].Status = platformemail.RecordStatusPending
-		if verified {
-			domain.VerificationRecords[index].Status = platformemail.RecordStatusVerified
-		}
-	}
-
-	status := verificationStatus(domain.VerificationRecords, providerStatus)
-	updated, err := s.repository.UpdateVerification(ctx, id, tc.TeamID, status, domain.VerificationRecords, nil)
+	updated, err := s.repository.UpdateVerification(ctx, id, tc.TeamID, result.Status, result.VerificationRecords, nil)
 	if err != nil {
 		return SenderDomain{}, apperrors.NewInternal("Unable to update sender domain verification", err)
 	}
 	return updated, nil
+}
+
+func (s *Service) Check(ctx context.Context, domain SenderDomain) (ReconciliationResult, error) {
+	if s.provider == nil || s.dns == nil {
+		return ReconciliationResult{}, errors.New("sender domain verification is not configured")
+	}
+	providerStatus, err := s.provider.GetDomainStatus(ctx, domain.Domain, domain.ProviderRegion)
+	if err != nil {
+		return ReconciliationResult{}, err
+	}
+	records := append([]VerificationRecord(nil), domain.VerificationRecords...)
+	for index := range records {
+		verified := s.dns.Verify(ctx, domain.Domain, records[index])
+		if records[index].Record == platformemail.RecordDKIM {
+			verified = verified && providerStatus.DKIMVerified
+		}
+		records[index].Status = platformemail.RecordStatusPending
+		if verified {
+			records[index].Status = platformemail.RecordStatusVerified
+		}
+	}
+	return ReconciliationResult{Status: verificationStatus(records, providerStatus), VerificationRecords: records}, nil
 }
 
 func verificationStatus(records []VerificationRecord, providerStatus platformemail.DomainStatus) string {
