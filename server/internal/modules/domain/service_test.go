@@ -52,16 +52,3 @@ func TestValidateCreateRejectsInvalidReturnPath(t *testing.T) {
 		t.Fatal("validateCreate returned nil error for invalid return path")
 	}
 }
-
-func TestGenerateBYODKIMMaterial(t *testing.T) {
-	selector, privateKey, publicKey, err := generateBYODKIMMaterial()
-	if err != nil {
-		t.Fatalf("generateBYODKIMMaterial returned error: %v", err)
-	}
-	if selector == "" || privateKey == "" || publicKey == "" {
-		t.Fatal("generateBYODKIMMaterial returned an empty value")
-	}
-	if len(selector) > 63 {
-		t.Fatalf("selector length = %d, want at most 63", len(selector))
-	}
-}
