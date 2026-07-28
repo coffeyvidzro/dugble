@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 
 class ModelRuntime(StrEnum):
     ONNX = "onnx"
+    OPENCV = "opencv"
     EXTERNAL = "external"
 
 

@@ -124,11 +124,13 @@ services/identity-ai/
 
 ## Current status
 
-The repository currently provides deterministic image-quality checks, evidence contracts, capture guidance, challenge issuance and observation evaluation, face-comparison orchestration, presentation-attack and biometric-quality adapter boundaries, evaluation metrics, model-artifact tooling, and the Phase 1 runtime foundation.
+The repository currently provides deterministic image-quality checks, evidence contracts, capture guidance, challenge issuance and observation evaluation, face-comparison orchestration, presentation-attack and biometric-quality adapter boundaries, evaluation metrics, model-artifact tooling, the Phase 1 runtime foundation, and the Phase 2 face pipeline.
 
 The runtime foundation installs pinned NumPy, headless OpenCV, and ONNX Runtime dependencies; validates the configured model manifest and every required artifact before inference; creates optimized ONNX sessions with an explicit provider allowlist; initializes the model bundle during FastAPI lifespan startup; releases it during shutdown; and keeps readiness false when authentication or required models are unavailable.
 
-The reviewed manifest remains empty, so enabling the service intentionally produces `model_runtime_unavailable` and a non-ready health response until exact model weights, checksums, runtimes, sources, and deployment licenses are approved. YuNet, SFace, MediaPipe, and presentation-attack adapters; frame-sequence decoding; capture-client integrity; media retrieval; single-use session persistence; and active model-backed HTTP endpoints are not implemented yet. Placeholder endpoints return `501 Not Implemented` instead of simulated biometric evidence.
+The Phase 2 pipeline pins exact OpenCV Zoo YuNet and SFace artifacts by byte size and SHA-256 checksum. Concrete, thread-safe OpenCV adapters convert normalized images to BGR, map YuNet's box and five landmarks into stable contracts, use those landmarks for SFace alignment, validate its 128-value embedding, and compose both components into the existing one-to-one comparison service. The model bundle exposes this service only after both verified adapters initialize successfully.
+
+The default required bundle also includes face landmarks and presentation-attack models, which are not pinned yet, so enabling the complete service still intentionally produces `model_runtime_unavailable`. MediaPipe and presentation-attack adapters; frame-sequence decoding; capture-client integrity; media retrieval; single-use session persistence; and active model-backed HTTP endpoints are not implemented yet. Placeholder endpoints return `501 Not Implemented` instead of simulated biometric evidence.
 
 Completing a head-pose challenge is limited presence evidence, not strong liveness proof; production policy must combine it with presentation-attack analysis, replay and injection defenses, biometric quality, calibrated thresholds, rate limits, and manual fallback.
 
@@ -171,7 +173,7 @@ python -m scripts.download_models --accept-licenses
 python -m scripts.benchmark --rounds 20
 ```
 
-`models/manifest.json` remains empty until exact model weights and deployment licenses are reviewed. Downloaded artifacts are accepted only when their basename, byte size, and SHA-256 checksum match the manifest.
+`models/manifest.json` contains the reviewed YuNet and SFace artifacts for Phase 2. Downloaded artifacts are accepted only when their basename, byte size, and SHA-256 checksum match the manifest; accepting the download flag confirms that the operator has reviewed the linked model licenses.
 
 ## Security and privacy requirements
 

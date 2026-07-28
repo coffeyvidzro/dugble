@@ -77,7 +77,7 @@ def test_readiness_succeeds_when_authentication_and_models_are_ready(monkeypatch
     monkeypatch.setenv("IDENTITY_AI_API_KEY", "test-key")
     manager = RuntimeManager()
     manager.initialized = True
-    manager.bundle = RuntimeModelBundle({}, {"face-detector": "test-v1"})
+    manager.bundle = RuntimeModelBundle({}, {}, {"face-detector": "test-v1"})
     ready_client = TestClient(create_app(manager))
 
     response = ready_client.get("/ready")

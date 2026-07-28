@@ -7,6 +7,7 @@ import onnxruntime as ort
 import pytest
 
 from app.inference.foundation import RuntimeManager, RuntimeModelBundle
+from app.inference.manifest import ModelRuntime
 from app.inference.runtime import ONNXRuntimeFactory, RuntimeFoundationError
 
 
@@ -78,6 +79,27 @@ def test_external_artifact_cannot_report_ready_without_a_runtime_loader(tmp_path
             providers=("CPUExecutionProvider",),
             session_factory=lambda *_: pytest.fail("external model must not create ONNX session"),
         )
+
+
+def test_bundle_initializes_registered_non_onnx_adapter(tmp_path):
+    manifest_path = write_bundle(tmp_path, runtime="opencv")
+    adapter = object()
+    loaded = []
+
+    def load_adapter(logical_name, version, path):
+        loaded.append((logical_name, version, path))
+        return adapter
+
+    bundle = RuntimeModelBundle.load(
+        manifest_path,
+        tmp_path,
+        required_models=("face-detector",),
+        providers=("CPUExecutionProvider",),
+        runtime_loaders={ModelRuntime.OPENCV: load_adapter},
+    )
+
+    assert bundle.adapter("face-detector") is adapter
+    assert loaded == [("face-detector", "test-v1", tmp_path / "face-detector.onnx")]
 
 
 def test_runtime_manager_reports_safe_error_when_required_models_are_absent(tmp_path):
