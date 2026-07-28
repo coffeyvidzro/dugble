@@ -56,6 +56,8 @@ The Stage 3 capture pipeline adds a MediaPipe-facing landmark tracker boundary, 
 
 The Stage 4 document-enrollment pipeline adds card-boundary, perspective-correction, and OCR interfaces; conservative label-based Ghana Card field extraction; front/back evidence separation; deterministic quality evidence; and versioned orchestration without asserting document authenticity.
 
+The Stage 5 operational layer adds a reviewed model manifest, checksum verification and license-gated download commands, bounded aggregate evaluation inputs, face/liveness/OCR metrics, and a synthetic quality benchmark without storing real identity media in Git.
+
 YuNet, SFace, MediaPipe, card-detector, perspective-correction, and PaddleOCR adapters; reviewed model artifacts; ONNX Runtime integration; media retrieval; and the HTTP endpoint connections remain intentionally unavailable until their exact versions, preprocessing rules, checksums, and deployment licenses are selected, so model-backed endpoints continue to return `501 Not Implemented` rather than simulated evidence.
 
 Completing a head-pose challenge supplies limited presence evidence only; it is not strong liveness proof and must be combined with supervised capture, replay and injection defenses, biometric comparison, calibrated policy, and manual fallback.
@@ -73,6 +75,21 @@ The supported outcomes are:
 A failed biometric comparison must not be presented as proof of fraud, and no outcome may be described as official NIA verification.
 
 OCR fields and visible card geometry are enrollment evidence only: they do not prove that NIA issued the card, that printed values are authoritative, or that the card has not been altered.
+
+## Evaluation and model operations
+
+Evaluation commands consume JSON Lines records containing randomized sample IDs and already-derived labels, scores, outcomes, or redacted field maps; raw cards, faces, videos, embeddings, names, and card numbers must remain in approved encrypted storage and must never be placed in evaluation reports.
+
+```sh
+python -m evaluation.face_verification samples/face-scores.jsonl --threshold 0.6 --output evaluation/reports/face.json
+python -m evaluation.liveness samples/challenge-outcomes.jsonl --output evaluation/reports/liveness.json
+python -m evaluation.ocr samples/redacted-ocr.jsonl --output evaluation/reports/ocr.json
+python -m scripts.verify_models
+python -m scripts.download_models --accept-licenses
+python -m scripts.benchmark --rounds 20
+```
+
+`models/manifest.json` is intentionally empty until exact model weights and their deployment licenses are reviewed; downloaded binaries are ignored by Git and are accepted only when their filename, byte size, and SHA-256 checksum match the manifest.
 
 ## Enrollment and data use
 
