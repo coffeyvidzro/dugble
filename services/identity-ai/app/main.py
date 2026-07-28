@@ -6,7 +6,7 @@ import os
 import secrets
 from typing import Annotated, NoReturn
 
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
 from pydantic import BaseModel, Field
 
 app = FastAPI(
@@ -37,10 +37,31 @@ class LivenessRequest(BaseModel):
     challenge: list[str] = Field(min_length=1)
 
 
+def identity_enabled() -> bool:
+    return os.getenv("IDENTITY_AI_ENABLED", "false").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def configured_api_key() -> str:
+    return os.getenv("IDENTITY_AI_API_KEY", "").strip()
+
+
+def require_identity_enabled() -> None:
+    if not identity_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="identity analysis is disabled",
+        )
+
+
 def require_internal_auth(
     authorization: Annotated[str | None, Header()] = None,
 ) -> None:
-    configured_key = os.getenv("IDENTITY_API_KEY", "").strip()
+    configured_key = configured_api_key()
     if not configured_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -68,14 +89,35 @@ def not_implemented(operation: str) -> NoReturn:
     )
 
 
+analysis_dependencies = [
+    Depends(require_identity_enabled),
+    Depends(require_internal_auth),
+]
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/ready")
+def readiness(response: Response) -> dict[str, str | bool]:
+    enabled = identity_enabled()
+    authenticated = bool(configured_api_key())
+    ready = enabled and authenticated
+    if not ready:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+    return {
+        "status": "ready" if ready else "not_ready",
+        "enabled": enabled,
+        "authentication_configured": authenticated,
+    }
+
+
 @app.post(
     "/v1/documents/analyze",
-    dependencies=[Depends(require_internal_auth)],
+    dependencies=analysis_dependencies,
     response_model=None,
 )
 def analyze_document(_: DocumentAnalysisRequest) -> None:
@@ -84,7 +126,7 @@ def analyze_document(_: DocumentAnalysisRequest) -> None:
 
 @app.post(
     "/v1/faces/compare",
-    dependencies=[Depends(require_internal_auth)],
+    dependencies=analysis_dependencies,
     response_model=None,
 )
 def compare_faces(_: FaceComparisonRequest) -> None:
@@ -93,7 +135,7 @@ def compare_faces(_: FaceComparisonRequest) -> None:
 
 @app.post(
     "/v1/liveness/check",
-    dependencies=[Depends(require_internal_auth)],
+    dependencies=analysis_dependencies,
     response_model=None,
 )
 def check_liveness(_: LivenessRequest) -> None:
