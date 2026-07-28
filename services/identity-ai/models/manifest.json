@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "models": [
+    {
+      "logical_name": "face-detector",
+      "version": "opencv-zoo-yunet-2026may",
+      "filename": "face_detection_yunet_2026may.onnx",
+      "sha256": "ebafce4e3c118d6554634be5c27ab333b4c047a9a8c3faf1d7cf93101c22f0f0",
+      "size_bytes": 229738,
+      "source_url": "https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/face_detection_yunet/face_detection_yunet_2026may.onnx",
+      "license_name": "MIT",
+      "license_url": "https://raw.githubusercontent.com/opencv/opencv_zoo/main/models/face_detection_yunet/LICENSE",
+      "runtime": "opencv"
+    },
+    {
+      "logical_name": "face-embedder",
+      "version": "opencv-zoo-sface-2021dec",
+      "filename": "face_recognition_sface_2021dec.onnx",
+      "sha256": "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79",
+      "size_bytes": 38696353,
+      "source_url": "https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx",
+      "license_name": "Apache-2.0",
+      "license_url": "https://raw.githubusercontent.com/opencv/opencv_zoo/main/models/face_recognition_sface/LICENSE",
+      "runtime": "opencv"
+    },
+    {
+      "logical_name": "face-landmarks",
+      "version": "mediapipe-face-landmarker-float16-v1",
+      "filename": "face_landmarker.task",
+      "sha256": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+      "size_bytes": 3758596,
+      "source_url": "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+      "license_name": "Apache-2.0",
+      "license_url": "https://github.com/google-ai-edge/mediapipe/blob/master/LICENSE",
+      "runtime": "mediapipe"
+    },
+    {
+      "logical_name": "presentation-attack",
+      "version": "facenox-minifas-98.20-2d-v1",
+      "filename": "minifas_98_20.onnx",
+      "sha256": "af2381b88f38769222ed93379e12444e2a50814575de1c46170de570c55a42b6",
+      "size_bytes": 1912594,
+      "source_url": "https://raw.githubusercontent.com/facenox/face-antispoof-onnx/2d4b33a3c0ba6e27772ac3a9b48ec495bf5c1dad/models/best/98.20/best_model.onnx",
+      "license_name": "Apache-2.0",
+      "license_url": "https://github.com/facenox/face-antispoof-onnx/blob/2d4b33a3c0ba6e27772ac3a9b48ec495bf5c1dad/LICENSE",
+      "runtime": "onnx"
+    }
+  ]
+}
