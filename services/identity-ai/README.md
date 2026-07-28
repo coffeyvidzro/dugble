@@ -54,7 +54,9 @@ The Stage 2 face pipeline defines validated detection, embedding, and comparison
 
 The Stage 3 capture pipeline adds a MediaPipe-facing landmark tracker boundary, deterministic framing and pose guidance, unpredictable short-lived challenge issuance, and ordered multi-observation challenge evaluation with model-version continuity.
 
-YuNet, SFace, and MediaPipe model adapters, reviewed model artifacts, ONNX Runtime integration, media retrieval and decoding, and the HTTP endpoint connections remain intentionally unavailable until their exact model versions, preprocessing rules, checksums, and deployment licenses are selected, so model-backed endpoints continue to return `501 Not Implemented` rather than simulated evidence.
+The Stage 4 document-enrollment pipeline adds card-boundary, perspective-correction, and OCR interfaces; conservative label-based Ghana Card field extraction; front/back evidence separation; deterministic quality evidence; and versioned orchestration without asserting document authenticity.
+
+YuNet, SFace, MediaPipe, card-detector, perspective-correction, and PaddleOCR adapters; reviewed model artifacts; ONNX Runtime integration; media retrieval; and the HTTP endpoint connections remain intentionally unavailable until their exact versions, preprocessing rules, checksums, and deployment licenses are selected, so model-backed endpoints continue to return `501 Not Implemented` rather than simulated evidence.
 
 Completing a head-pose challenge supplies limited presence evidence only; it is not strong liveness proof and must be combined with supervised capture, replay and injection defenses, biometric comparison, calibrated policy, and manual fallback.
 
@@ -69,6 +71,8 @@ The supported outcomes are:
 - `manual_review` when the evidence is valid but inconclusive.
 
 A failed biometric comparison must not be presented as proof of fraud, and no outcome may be described as official NIA verification.
+
+OCR fields and visible card geometry are enrollment evidence only: they do not prove that NIA issued the card, that printed values are authoritative, or that the card has not been altered.
 
 ## Enrollment and data use
 
