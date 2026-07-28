@@ -1,8 +1,16 @@
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.main import create_app
 
-client = TestClient(app)
+client = TestClient(create_app())
+
+
+def test_application_disables_public_api_documentation():
+    application = create_app()
+
+    assert application.docs_url is None
+    assert application.redoc_url is None
+    assert application.openapi_url is None
 
 
 def test_health_is_liveness_probe(monkeypatch):

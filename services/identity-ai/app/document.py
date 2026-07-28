@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
-from .quality import QualityResult, assess_image_quality
+from .contracts.quality import QualityResult
+from .imaging.quality import assess_image_quality
 
 
 @dataclass(frozen=True)
