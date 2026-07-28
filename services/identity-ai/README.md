@@ -1,109 +1,170 @@
 # Dugble Identity AI
 
-`identity-ai` is Dugble's private, self-hosted service for AI-assisted Ghana Card enrollment and biometric cardholder verification; it does not authenticate cards against the National Identification Authority (NIA) or make an official identity determination.
+> Detect real users and deter bad actors using spoofs in seconds during facial verification.
 
-## Initial recommendation
+`identity-ai` is Dugble's private, self-hosted, country-neutral biometric evidence service for face liveness, capture guidance, optional one-to-one face comparison, presentation-attack detection, and biometric quality assessment.
 
-The service uses a modular pipeline so that detection, recognition, capture guidance, text extraction, liveness evidence, and business decisions remain independently testable and replaceable.
+The service analyzes facial capture sessions and returns measurements with component versions; it does not establish legal identity, authenticate government-issued credentials, determine age by itself, or make a final authorization decision.
+
+## Capabilities
+
+### Face liveness
+
+Evaluates whether a facial session contains evidence of a live, physically present participant by analyzing short-lived challenges, ordered multi-frame observations, pose transitions, timing, and continuity signals.
+
+### Capture guidance
+
+Provides actionable instructions for face count, framing, distance, pose, stability, lighting, blur, and other conditions that affect genuine-user completion and downstream analysis.
+
+### Face comparison
+
+Performs optional one-to-one comparison between a caller-selected enrolled facial reference and a fresh probe, returning similarity evidence rather than identifying an unknown person from a population.
+
+### Presentation-attack detection
+
+Provides a versioned boundary for detecting supported print, screen-replay, prerecorded-video, mask, camera-injection, and synthetic-media attacks without treating any single signal as conclusive proof of fraud.
+
+### Biometric quality assessment
+
+Separates general image suitability from face-specific quality measurements so calling applications can request a retry before relying on weak liveness or comparison evidence.
+
+## Use cases
+
+1. **User onboarding:** Reduce spoof-assisted account creation by confirming that a live person participates in onboarding.
+2. **Step-up authentication:** Strengthen device changes, password recovery, money transfers, and other high-value actions with fresh liveness and optional face comparison.
+3. **Age-assurance protection:** Protect a separate age-estimation or age-verification workflow from spoofing; liveness does not determine a person's age.
+4. **Bot deterrence:** Deter automated and synthetic participation in camera-gated workflows; general API and web bot protection remains the calling application's responsibility.
+5. **Account recovery:** Compare a fresh live capture with an account's enrolled facial reference as one signal in a broader recovery policy.
+
+## Responsibility boundary
+
+The service answers questions such as:
+
+- Is exactly one usable face present?
+- Is the capture suitable for biometric analysis?
+- Was the issued challenge completed in the expected order and time window?
+- Are supported presentation-attack indicators present?
+- How similar is the live face to the selected enrolled reference?
+
+The service does not answer:
+
+- What is this person's legal identity?
+- Is an account, transaction, or recovery request authorized?
+- Is the user old enough for restricted content?
+- Is the user fraudulent or universally free of bot activity?
+
+The calling backend owns session authorization, account binding, attempt limits, risk policy, manual review, accessibility alternatives, and the final outcome.
+
+## Country-neutral design
+
+The biometric pipeline operates on facial captures, session challenges, optional enrolled references, and capture metadata; it has no dependency on a national identity system, issuing authority, or country-specific registry.
+
+The technology is country-neutral, but each deployment remains responsible for the privacy, biometric-processing, retention, accessibility, and automated-decision requirements applicable to its users and use case.
+
+## Recommended stack
 
 | Capability | Stack |
 | --- | --- |
 | Face detection | **OpenCV YuNet** |
-| Face recognition/embedding | **OpenCV SFace** |
+| Face recognition and embeddings | **OpenCV SFace** |
 | Face landmarks and capture guidance | **MediaPipe Face Landmarker** |
-| Model execution | **ONNX Runtime** |
-| Image processing | **OpenCV** |
-| QR scanning | **ZXing-compatible implementation** |
-| Ghana Card text extraction | **PaddleOCR** |
-| Liveness | **Supervised capture plus server-generated session challenges** |
-| Decision-making | **Dugble deterministic policy engine** |
-| Backend | **Private FastAPI application service exposing an internal interface** |
+| Model execution | **ONNX Runtime**, where supported by the selected adapter |
+| Frame and image processing | **OpenCV** |
+| Capture-quality analysis | Deterministic image checks plus a face-specific quality assessor |
+| Liveness | Server-generated, short-lived, single-use challenges and multi-frame evidence |
+| Presentation-attack detection | Reviewed, versioned detector adapters evaluated by attack type |
+| Decision-making | Calling backend's deterministic, versioned policy engine |
+| Service boundary | Private **FastAPI** application |
 
-## Stack usage
+## Processing flows
 
-- **OpenCV YuNet:** Detects the face and its location in each enrollment or verification frame before any quality assessment or comparison occurs.
-- **OpenCV SFace:** Converts an aligned face into an embedding and calculates one-to-one similarity between a live capture and the selected member's enrollment reference.
-- **MediaPipe Face Landmarker:** Tracks detailed facial landmarks and head pose to guide capture and measure whether the user completed the requested session movement.
-- **ONNX Runtime:** Executes the YuNet and SFace model files consistently within the self-hosted inference service.
-- **OpenCV:** Decodes, normalizes, aligns, and evaluates images before they are passed to the AI models.
-- **ZXing-compatible implementation:** Reads Dugble's signed QR credential so the backend can locate the single member record to verify.
-- **PaddleOCR:** Extracts required printed text from a Ghana Card during enrollment without claiming that the card is genuine or NIA-validated.
-- **Supervised capture plus server-generated session challenges:** Combines operator observation with unpredictable live-camera actions to provide initial liveness evidence and discourage simple print or replay attacks.
-- **Dugble deterministic policy engine:** Combines card status, capture quality, liveness evidence, and face similarity using versioned rules to return verified, retry, or manual-review outcomes.
-- **Private FastAPI application service:** Exposes authenticated internal endpoints to Dugble's backend while keeping model inference inaccessible from the public internet.
-
-## Verification pipeline
+### Liveness
 
 ```text
-Signed QR scan
-    -> member-record lookup
-    -> supervised live capture
-    -> face detection and capture guidance
-    -> image normalization and face alignment
-    -> embedding generation
-    -> one-to-one face comparison
-    -> liveness and quality evidence
-    -> deterministic policy decision
+calling backend creates a verification session
+    -> server issues a short-lived challenge
+    -> client captures a fresh frame sequence
+    -> capture and biometric quality assessment
+    -> face landmarks, pose, timing, and continuity observations
+    -> presentation-attack analysis
+    -> versioned evidence returned to the calling backend
+    -> calling backend applies policy
 ```
 
-The card identifies the member record, while the fresh biometric capture verifies continuity with that record; the system must not search every enrolled face to identify an unknown person during routine verification.
+### Optional facial verification
 
-## Implementation status
+```text
+caller selects one enrolled facial reference
+    -> fresh capture passes quality and liveness analysis
+    -> service derives a probe embedding
+    -> one-to-one similarity comparison
+    -> versioned similarity evidence returned to the caller
+```
 
-The Stage 2 face pipeline defines validated detection, embedding, and comparison contracts; detector and embedder interfaces; cosine similarity; one-to-one orchestration; and a process-local model registry.
+Routine verification must not search every enrolled face to identify an unknown participant.
 
-The Stage 3 capture pipeline adds a MediaPipe-facing landmark tracker boundary, deterministic framing and pose guidance, unpredictable short-lived challenge issuance, and ordered multi-observation challenge evaluation with model-version continuity.
+## Project structure
 
-The Stage 4 document-enrollment pipeline adds card-boundary, perspective-correction, and OCR interfaces; conservative label-based Ghana Card field extraction; front/back evidence separation; deterministic quality evidence; and versioned orchestration without asserting document authenticity.
+```text
+services/identity-ai/
+├── app/
+│   ├── api/                  # Private HTTP transport, schemas, and dependencies
+│   ├── capture/              # Capture guidance and biometric quality boundaries
+│   ├── contracts/            # Face, liveness, quality, and attack evidence
+│   ├── core/                 # Configuration and internal authentication
+│   ├── face/                 # Detection, landmarks, embeddings, and 1:1 comparison
+│   ├── imaging/              # Bounded decoding, normalization, and image quality
+│   ├── inference/            # Model registry, runtime, manifest, and lifecycle
+│   └── liveness/             # Challenges, observations, attack detection, and evidence
+├── evaluation/               # Face, liveness, and presentation-attack metrics
+├── models/                   # Reviewed manifest; downloaded binaries remain untracked
+├── scripts/                  # Model verification, download, and synthetic benchmarks
+└── tests/                    # Unit and transport tests without real biometric media
+```
 
-The Stage 5 operational layer adds a reviewed model manifest, checksum verification and license-gated download commands, bounded aggregate evaluation inputs, face/liveness/OCR metrics, and a synthetic quality benchmark without storing real identity media in Git.
+## Current status
 
-YuNet, SFace, MediaPipe, card-detector, perspective-correction, and PaddleOCR adapters; reviewed model artifacts; ONNX Runtime integration; media retrieval; and the HTTP endpoint connections remain intentionally unavailable until their exact versions, preprocessing rules, checksums, and deployment licenses are selected, so model-backed endpoints continue to return `501 Not Implemented` rather than simulated evidence.
+The repository currently provides deterministic image-quality checks, evidence contracts, capture guidance, challenge issuance and observation evaluation, face-comparison orchestration, presentation-attack and biometric-quality adapter boundaries, evaluation metrics, and model-artifact tooling.
 
-Completing a head-pose challenge supplies limited presence evidence only; it is not strong liveness proof and must be combined with supervised capture, replay and injection defenses, biometric comparison, calibrated policy, and manual fallback.
+Reviewed YuNet, SFace, MediaPipe, and presentation-attack adapters; frame-sequence decoding; capture-client integrity; media retrieval; single-use session persistence; and active model-backed HTTP endpoints are not implemented yet. Placeholder endpoints return `501 Not Implemented` instead of simulated biometric evidence.
 
-## Responsibility boundary
+Completing a head-pose challenge is limited presence evidence, not strong liveness proof; production policy must combine it with presentation-attack analysis, replay and injection defenses, biometric quality, calibrated thresholds, rate limits, and manual fallback.
 
-The AI components produce measurements such as face location, image quality, pose, OCR confidence, face similarity, and liveness evidence, while the deterministic policy engine owns the operational outcome.
+## Internal API
 
-The supported outcomes are:
+```text
+GET  /health
+GET  /ready
+POST /v1/liveness/check
+POST /v1/faces/compare
+```
 
-- `verified` when all configured card, quality, liveness, and similarity requirements pass;
-- `retry` when the capture is unsuitable or a challenge was not completed reliably; and
-- `manual_review` when the evidence is valid but inconclusive.
-
-A failed biometric comparison must not be presented as proof of fraud, and no outcome may be described as official NIA verification.
-
-OCR fields and visible card geometry are enrollment evidence only: they do not prove that NIA issued the card, that printed values are authoritative, or that the card has not been altered.
+Analysis endpoints must remain private, require backend authentication, and accept only server-created verification sessions.
 
 ## Evaluation and model operations
 
-Evaluation commands consume JSON Lines records containing randomized sample IDs and already-derived labels, scores, outcomes, or redacted field maps; raw cards, faces, videos, embeddings, names, and card numbers must remain in approved encrypted storage and must never be placed in evaluation reports.
+Evaluation inputs contain randomized sample identifiers and already-derived labels, scores, or outcomes. Raw facial images, videos, embeddings, account identifiers, and consent records must remain in approved encrypted storage and must never be written to reports or committed to Git.
 
 ```sh
 python -m evaluation.face_verification samples/face-scores.jsonl --threshold 0.6 --output evaluation/reports/face.json
 python -m evaluation.liveness samples/challenge-outcomes.jsonl --output evaluation/reports/liveness.json
-python -m evaluation.ocr samples/redacted-ocr.jsonl --output evaluation/reports/ocr.json
+python -m evaluation.presentation_attack samples/attack-outcomes.jsonl --output evaluation/reports/attacks.json
 python -m scripts.verify_models
 python -m scripts.download_models --accept-licenses
 python -m scripts.benchmark --rounds 20
 ```
 
-`models/manifest.json` is intentionally empty until exact model weights and their deployment licenses are reviewed; downloaded binaries are ignored by Git and are accepted only when their filename, byte size, and SHA-256 checksum match the manifest.
+`models/manifest.json` remains empty until exact model weights and deployment licenses are reviewed. Downloaded artifacts are accepted only when their basename, byte size, and SHA-256 checksum match the manifest.
 
-## Enrollment and data use
+## Security and privacy requirements
 
-The initial participant records form an enrollment database and an evaluation set, not a dataset for training a new facial-recognition model; pretrained models should be evaluated using separately captured genuine, controlled impostor, and presentation-attack attempts.
-
-Never commit real Ghana Cards, selfies, videos, face embeddings, consent records, or production model artifacts to this repository, and keep all authorized biometric data encrypted, access-controlled, purpose-limited, and subject to defined retention and deletion rules.
-
-## Deployment requirements
-
-- Keep the FastAPI service on a private network and authenticate every backend request.
-- Accept only server-created, short-lived verification sessions and live-camera captures.
-- Bind each randomized challenge to one verification session, persist it server-side, and reject reuse after its first evaluation.
-- Record the model, policy, and analyzer versions used for every decision.
-- Do not log raw images, extracted identity fields, card numbers, videos, or face embeddings.
-- Store only the enrollment references and audit evidence required for the declared purpose.
-- Calibrate similarity and review thresholds using representative pilot results rather than copied model defaults.
-- Review the source-code and model-weight licenses for commercial deployment before distributing any model.
+- Bind every randomized challenge to one verification session, expire it quickly, persist it server-side, and reject reuse.
+- Accept live-camera sessions through an integrity-protected client flow; gallery files alone are not liveness evidence.
+- Keep the FastAPI service on a private network and authenticate every request.
+- Encrypt biometric media and embeddings in transit and at rest with tightly scoped access.
+- Do not log raw frames, videos, embeddings, account identifiers, or authorization credentials.
+- Apply explicit retention and deletion rules to raw media, derived templates, backups, and evaluation data.
+- Record analyzer, model, threshold, and policy versions for auditability.
+- Measure genuine-user rejection and attack acceptance by device, capture condition, and appropriately governed cohorts.
+- Route uncertain outcomes to retry or manual review rather than presenting them as fraud.
+- Review source-code and model-weight licenses before distributing any model artifact.

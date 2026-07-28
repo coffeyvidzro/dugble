@@ -1,1 +1,1 @@
-"""Dugble identity analysis service."""
+"""Dugble's country-neutral biometric evidence service."""

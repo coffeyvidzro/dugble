@@ -2,8 +2,8 @@ from datetime import UTC, datetime
 
 import pytest
 
+from app.capture.guidance import assess_capture_guidance
 from app.contracts.liveness import CaptureInstruction, PoseObservation
-from app.face.guidance import assess_capture_guidance
 
 
 def observation(**overrides) -> PoseObservation:

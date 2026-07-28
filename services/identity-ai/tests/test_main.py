@@ -70,13 +70,12 @@ def test_analysis_endpoint_is_unavailable_when_disabled(monkeypatch):
     monkeypatch.setenv("IDENTITY_AI_API_KEY", "test-key")
 
     response = client.post(
-        "/v1/documents/analyze",
+        "/v1/liveness/check",
         headers={"Authorization": "Bearer test-key"},
         json={
             "verification_id": "verification-1",
-            "object_key": "documents/id.png",
-            "document_type": "passport",
-            "country_code": "GH",
+            "session_id": "session-1",
+            "video_object_key": "captures/session.mp4",
         },
     )
 
@@ -89,24 +88,28 @@ def test_enabled_endpoint_authenticates_before_not_implemented(monkeypatch):
     monkeypatch.setenv("IDENTITY_AI_API_KEY", "test-key")
 
     unauthorized = client.post(
-        "/v1/documents/analyze",
+        "/v1/liveness/check",
         json={
             "verification_id": "verification-1",
-            "object_key": "documents/id.png",
-            "document_type": "passport",
-            "country_code": "GH",
+            "session_id": "session-1",
+            "video_object_key": "captures/session.mp4",
         },
     )
     authenticated = client.post(
-        "/v1/documents/analyze",
+        "/v1/liveness/check",
         headers={"Authorization": "Bearer test-key"},
         json={
             "verification_id": "verification-1",
-            "object_key": "documents/id.png",
-            "document_type": "passport",
-            "country_code": "GH",
+            "session_id": "session-1",
+            "video_object_key": "captures/session.mp4",
         },
     )
 
     assert unauthorized.status_code == 401
     assert authenticated.status_code == 501
+
+
+def test_country_specific_document_endpoint_is_not_exposed():
+    response = client.post("/v1/documents/analyze", json={})
+
+    assert response.status_code == 404

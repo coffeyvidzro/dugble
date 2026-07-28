@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw
 from app.imaging.quality import assess_image
 
 
-def synthetic_document(width: int = 1280, height: int = 800) -> Image.Image:
+def synthetic_capture(width: int = 1280, height: int = 800) -> Image.Image:
     image = Image.new("RGB", (width, height), "white")
     draw = ImageDraw.Draw(image)
     for y in range(0, height, 20):
@@ -23,7 +23,7 @@ def synthetic_document(width: int = 1280, height: int = 800) -> Image.Image:
 def benchmark_quality(rounds: int) -> dict[str, object]:
     if rounds <= 0:
         raise ValueError("benchmark rounds must be positive")
-    image = synthetic_document()
+    image = synthetic_capture()
     durations: list[float] = []
     for _ in range(rounds):
         started = perf_counter()

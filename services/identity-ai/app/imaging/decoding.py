@@ -1,4 +1,4 @@
-"""Safe image decoding helpers for identity analysis pipelines."""
+"""Safe image decoding helpers for biometric capture pipelines."""
 
 from __future__ import annotations
 

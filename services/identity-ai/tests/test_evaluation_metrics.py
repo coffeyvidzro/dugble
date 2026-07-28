@@ -2,7 +2,10 @@ import pytest
 
 from evaluation.face_verification import FaceScoreSample, evaluate_face_scores
 from evaluation.liveness import LivenessSample, evaluate_liveness
-from evaluation.ocr import OCRSample, evaluate_ocr
+from evaluation.presentation_attack import (
+    PresentationAttackSample,
+    evaluate_presentation_attacks,
+)
 
 
 def test_face_metrics_report_false_acceptance_and_rejection_rates():
@@ -39,26 +42,19 @@ def test_liveness_metrics_keep_attack_acceptance_separate():
     assert report["attack_acceptance_rate"] == 0.5
 
 
-def test_ocr_metrics_normalize_case_and_whitespace_without_exposing_values():
-    report = evaluate_ocr(
+def test_presentation_attack_metrics_report_by_attack_type():
+    report = evaluate_presentation_attacks(
         (
-            OCRSample(
-                "sample-1",
-                expected={"surname": "Mensah", "given_names": "Ama Serwaa"},
-                observed={"surname": " MENSAH ", "given_names": "Ama   Serwaa"},
-            ),
-            OCRSample(
-                "sample-2",
-                expected={"surname": "Owusu"},
-                observed={},
-            ),
+            PresentationAttackSample("real-1", None, False),
+            PresentationAttackSample("real-2", None, True),
+            PresentationAttackSample("print-1", "print", True),
+            PresentationAttackSample("screen-1", "screen_replay", False),
         )
     )
 
-    assert report["expected_fields"] == 3
-    assert report["exact_matches"] == 2
-    assert report["missing_fields"] == 1
-    assert "Mensah" not in repr(report)
+    assert report["false_rejection_rate"] == 0.5
+    assert report["attack_acceptance_rate"] == 0.5
+    assert report["by_attack_type"]["print"] == {"samples": 1, "accepted": 0}
 
 
 def test_metrics_reject_duplicate_sample_ids():

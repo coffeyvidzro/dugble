@@ -1,1 +1,1 @@
-"""Aggregate, privacy-preserving evaluation metrics for identity pipelines."""
+"""Aggregate, privacy-preserving evaluation metrics for biometric pipelines."""
