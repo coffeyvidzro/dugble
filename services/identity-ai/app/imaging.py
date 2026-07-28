@@ -5,14 +5,15 @@ from __future__ import annotations
 from io import BytesIO
 from os import PathLike
 from pathlib import Path
-from typing import BinaryIO, TypeAlias
+from typing import BinaryIO
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 DEFAULT_MAX_INPUT_BYTES = 15 * 1024 * 1024
 DEFAULT_MAX_PIXELS = 20_000_000
 
-ImageSource: TypeAlias = str | PathLike[str] | bytes | bytearray | memoryview | BinaryIO
+
+type ImageSource = str | PathLike[str] | bytes | bytearray | memoryview | BinaryIO
 
 
 class ImageDecodeError(ValueError):
