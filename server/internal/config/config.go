@@ -1,6 +1,9 @@
 package config
 
 import (
+	"errors"
+	"math"
+	"net/url"
 	"strings"
 	"time"
 
@@ -56,6 +59,24 @@ type BackofficeConfig struct {
 	AdminEmails []string `env:"ADMIN_EMAILS" envSeparator:","`
 }
 
+type IdentityAIConfig struct {
+	Enabled         bool          `env:"ENABLED" envDefault:"false"`
+	BaseURL         string        `env:"BASE_URL"`
+	APIKey          string        `env:"API_KEY"`
+	GuidanceTimeout time.Duration `env:"GUIDANCE_TIMEOUT" envDefault:"3s"`
+	AnalysisTimeout time.Duration `env:"ANALYSIS_TIMEOUT" envDefault:"30s"`
+	MaxResponseSize int64         `env:"MAX_RESPONSE_SIZE" envDefault:"1048576"`
+}
+
+type IdentityConfig struct {
+	VerificationTTL         time.Duration `env:"VERIFICATION_TTL" envDefault:"5m"`
+	CaptureTokenTTL         time.Duration `env:"CAPTURE_TOKEN_TTL" envDefault:"2m"`
+	MaxAttempts             int32         `env:"MAX_ATTEMPTS" envDefault:"3"`
+	PolicyVersion           string        `env:"POLICY_VERSION" envDefault:"identity-default-v1"`
+	AttackThreshold         float64       `env:"ATTACK_THRESHOLD" envDefault:"0.6"`
+	FaceSimilarityThreshold float64       `env:"FACE_SIMILARITY_THRESHOLD" envDefault:"0.6"`
+}
+
 type Config struct {
 	AppEnv          string                `env:"APP_ENV"   envDefault:"development"`
 	HTTPPort        string                `env:"HTTP_PORT" envDefault:"8080"`
@@ -73,6 +94,8 @@ type Config struct {
 	MNotify         ProviderConfig        `envPrefix:"MNOTIFY_"`
 	Hubtel          HubtelConfig          `envPrefix:"HUBTEL_"`
 	Backoffice      BackofficeConfig      `envPrefix:"BACKOFFICE_"`
+	IdentityAI      IdentityAIConfig      `envPrefix:"IDENTITY_AI_"`
+	Identity        IdentityConfig        `envPrefix:"IDENTITY_"`
 }
 
 func Load() (*Config, error) {
@@ -84,6 +107,9 @@ func Load() (*Config, error) {
 	}
 
 	cfg.normalize()
+	if err := cfg.validateIdentity(); err != nil {
+		return nil, err
+	}
 
 	return cfg, nil
 }
@@ -168,6 +194,36 @@ func (c *Config) normalize() {
 	c.Hubtel.APIKey = strings.TrimSpace(c.Hubtel.APIKey)
 	c.Hubtel.MerchantNumber = strings.TrimSpace(c.Hubtel.MerchantNumber)
 	c.Backoffice.HTTPPort = strings.TrimSpace(c.Backoffice.HTTPPort)
+	c.IdentityAI.BaseURL = strings.TrimRight(strings.TrimSpace(c.IdentityAI.BaseURL), "/")
+	c.IdentityAI.APIKey = strings.TrimSpace(c.IdentityAI.APIKey)
+	c.Identity.PolicyVersion = strings.TrimSpace(c.Identity.PolicyVersion)
+	if c.IdentityAI.GuidanceTimeout <= 0 {
+		c.IdentityAI.GuidanceTimeout = 3 * time.Second
+	}
+	if c.IdentityAI.AnalysisTimeout <= 0 {
+		c.IdentityAI.AnalysisTimeout = 30 * time.Second
+	}
+	if c.IdentityAI.MaxResponseSize <= 0 {
+		c.IdentityAI.MaxResponseSize = 1 << 20
+	}
+	if c.Identity.VerificationTTL <= 0 {
+		c.Identity.VerificationTTL = 5 * time.Minute
+	}
+	if c.Identity.CaptureTokenTTL <= 0 {
+		c.Identity.CaptureTokenTTL = 2 * time.Minute
+	}
+	if c.Identity.MaxAttempts <= 0 {
+		c.Identity.MaxAttempts = 3
+	}
+	if c.Identity.PolicyVersion == "" {
+		c.Identity.PolicyVersion = "identity-default-v1"
+	}
+	if c.Identity.AttackThreshold == 0 {
+		c.Identity.AttackThreshold = 0.6
+	}
+	if c.Identity.FaceSimilarityThreshold == 0 {
+		c.Identity.FaceSimilarityThreshold = 0.6
+	}
 
 	origins := make([]string, 0, len(c.CORSOrigins))
 	for _, origin := range c.CORSOrigins {
@@ -190,4 +246,34 @@ func (c *Config) normalize() {
 		adminEmails = append(adminEmails, email)
 	}
 	c.Backoffice.AdminEmails = adminEmails
+}
+
+func (c *Config) validateIdentity() error {
+	if !finiteExclusiveUnit(c.Identity.AttackThreshold) {
+		return errors.New("IDENTITY_ATTACK_THRESHOLD must be within 0..1")
+	}
+	if !finiteExclusiveUnit(c.Identity.FaceSimilarityThreshold) {
+		return errors.New("IDENTITY_FACE_SIMILARITY_THRESHOLD must be within 0..1")
+	}
+	if !c.IdentityAI.Enabled {
+		return nil
+	}
+	if c.IdentityAI.BaseURL == "" {
+		return errors.New("IDENTITY_AI_BASE_URL is required when Identity AI is enabled")
+	}
+	parsed, err := url.Parse(c.IdentityAI.BaseURL)
+	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return errors.New("IDENTITY_AI_BASE_URL must be an absolute HTTP or HTTPS URL")
+	}
+	if parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return errors.New("IDENTITY_AI_BASE_URL must not contain credentials, query, or fragment")
+	}
+	if c.IdentityAI.APIKey == "" {
+		return errors.New("IDENTITY_AI_API_KEY is required when Identity AI is enabled")
+	}
+	return nil
+}
+
+func finiteExclusiveUnit(value float64) bool {
+	return !math.IsNaN(value) && !math.IsInf(value, 0) && value > 0 && value < 1
 }

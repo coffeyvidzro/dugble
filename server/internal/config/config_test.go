@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -34,6 +35,86 @@ func TestWebhookDeliveryConfigParsesEnvironment(t *testing.T) {
 	}
 	if parsed.WebhookDelivery != want {
 		t.Fatalf("WebhookDelivery = %+v, want %+v", parsed.WebhookDelivery, want)
+	}
+}
+
+func TestIdentityConfigurationParsesEnvironment(t *testing.T) {
+	t.Setenv("IDENTITY_AI_ENABLED", "true")
+	t.Setenv("IDENTITY_AI_BASE_URL", "http://identity-ai:8000/")
+	t.Setenv("IDENTITY_AI_API_KEY", "internal-key")
+	t.Setenv("IDENTITY_AI_GUIDANCE_TIMEOUT", "4s")
+	t.Setenv("IDENTITY_AI_ANALYSIS_TIMEOUT", "40s")
+	t.Setenv("IDENTITY_AI_MAX_RESPONSE_SIZE", "2097152")
+	t.Setenv("IDENTITY_VERIFICATION_TTL", "8m")
+	t.Setenv("IDENTITY_CAPTURE_TOKEN_TTL", "90s")
+	t.Setenv("IDENTITY_MAX_ATTEMPTS", "4")
+	t.Setenv("IDENTITY_POLICY_VERSION", "identity-v2")
+	t.Setenv("IDENTITY_ATTACK_THRESHOLD", "0.7")
+	t.Setenv("IDENTITY_FACE_SIMILARITY_THRESHOLD", "0.65")
+
+	var parsed struct {
+		IdentityAI IdentityAIConfig `envPrefix:"IDENTITY_AI_"`
+		Identity   IdentityConfig   `envPrefix:"IDENTITY_"`
+	}
+	if err := env.Parse(&parsed); err != nil {
+		t.Fatalf("parse identity configuration: %v", err)
+	}
+
+	if !parsed.IdentityAI.Enabled || parsed.IdentityAI.AnalysisTimeout != 40*time.Second {
+		t.Fatalf("IdentityAI = %+v", parsed.IdentityAI)
+	}
+	if parsed.Identity.MaxAttempts != 4 || parsed.Identity.PolicyVersion != "identity-v2" {
+		t.Fatalf("Identity = %+v", parsed.Identity)
+	}
+}
+
+func TestNormalizeIdentityDefaults(t *testing.T) {
+	cfg := Config{}
+
+	cfg.normalize()
+
+	if cfg.IdentityAI.GuidanceTimeout != 3*time.Second {
+		t.Errorf("IdentityAI.GuidanceTimeout = %v, want 3s", cfg.IdentityAI.GuidanceTimeout)
+	}
+	if cfg.IdentityAI.AnalysisTimeout != 30*time.Second {
+		t.Errorf("IdentityAI.AnalysisTimeout = %v, want 30s", cfg.IdentityAI.AnalysisTimeout)
+	}
+	if cfg.Identity.VerificationTTL != 5*time.Minute || cfg.Identity.MaxAttempts != 3 {
+		t.Errorf("Identity = %+v", cfg.Identity)
+	}
+	if cfg.Identity.AttackThreshold != 0.6 || cfg.Identity.FaceSimilarityThreshold != 0.6 {
+		t.Errorf("Identity thresholds = %+v", cfg.Identity)
+	}
+}
+
+func TestIdentityAIValidationRequiresPrivateClientSettingsWhenEnabled(t *testing.T) {
+	cfg := Config{IdentityAI: IdentityAIConfig{Enabled: true}}
+	cfg.normalize()
+
+	err := cfg.validateIdentity()
+	if err == nil || !strings.Contains(err.Error(), "IDENTITY_AI_BASE_URL") {
+		t.Fatalf("validateIdentity() error = %v", err)
+	}
+
+	cfg.IdentityAI.BaseURL = "http://identity-ai:8000"
+	err = cfg.validateIdentity()
+	if err == nil || !strings.Contains(err.Error(), "IDENTITY_AI_API_KEY") {
+		t.Fatalf("validateIdentity() error = %v", err)
+	}
+
+	cfg.IdentityAI.APIKey = "secret"
+	if err := cfg.validateIdentity(); err != nil {
+		t.Fatalf("validateIdentity() error = %v", err)
+	}
+}
+
+func TestIdentityValidationRejectsUnsafePolicyThreshold(t *testing.T) {
+	cfg := Config{Identity: IdentityConfig{AttackThreshold: 1.2}}
+	cfg.normalize()
+
+	err := cfg.validateIdentity()
+	if err == nil || !strings.Contains(err.Error(), "IDENTITY_ATTACK_THRESHOLD") {
+		t.Fatalf("validateIdentity() error = %v", err)
 	}
 }
 

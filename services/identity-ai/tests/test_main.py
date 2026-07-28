@@ -1,8 +1,17 @@
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.inference.foundation import RuntimeManager, RuntimeModelBundle
+from app.main import create_app
 
-client = TestClient(app)
+client = TestClient(create_app())
+
+
+def test_application_disables_public_api_documentation():
+    application = create_app()
+
+    assert application.docs_url is None
+    assert application.redoc_url is None
+    assert application.openapi_url is None
 
 
 def test_health_is_liveness_probe(monkeypatch):
@@ -26,6 +35,8 @@ def test_readiness_succeeds_when_service_is_disabled(monkeypatch):
         "status": "ready",
         "enabled": False,
         "authentication_configured": False,
+        "models_ready": False,
+        "model_status": "disabled",
     }
 
 
@@ -40,20 +51,65 @@ def test_readiness_fails_when_enabled_without_api_key(monkeypatch):
         "status": "not_ready",
         "enabled": True,
         "authentication_configured": False,
+        "models_ready": False,
+        "model_status": "not_initialized",
     }
 
 
-def test_readiness_succeeds_when_enabled_and_configured(monkeypatch):
+def test_readiness_fails_when_enabled_and_models_are_not_initialized(monkeypatch):
     monkeypatch.setenv("IDENTITY_AI_ENABLED", "true")
     monkeypatch.setenv("IDENTITY_AI_API_KEY", "test-key")
 
     response = client.get("/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "status": "not_ready",
+        "enabled": True,
+        "authentication_configured": True,
+        "models_ready": False,
+        "model_status": "not_initialized",
+    }
+
+
+def test_readiness_succeeds_when_authentication_and_models_are_ready(monkeypatch):
+    monkeypatch.setenv("IDENTITY_AI_ENABLED", "true")
+    monkeypatch.setenv("IDENTITY_AI_API_KEY", "test-key")
+    manager = RuntimeManager()
+    manager.initialized = True
+    manager.bundle = RuntimeModelBundle({}, {}, {"face-detector": "test-v1"})
+    ready_client = TestClient(create_app(manager))
+
+    response = ready_client.get("/ready")
 
     assert response.status_code == 200
     assert response.json() == {
         "status": "ready",
         "enabled": True,
         "authentication_configured": True,
+        "models_ready": True,
+        "model_status": "ready",
+    }
+
+
+def test_lifespan_reports_runtime_unavailable_for_empty_reviewed_manifest(monkeypatch, tmp_path):
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text('{"schema_version": 1, "models": []}', encoding="utf-8")
+    monkeypatch.setenv("IDENTITY_AI_ENABLED", "true")
+    monkeypatch.setenv("IDENTITY_AI_API_KEY", "test-key")
+    monkeypatch.setenv("IDENTITY_AI_MODEL_MANIFEST", str(manifest))
+    monkeypatch.setenv("IDENTITY_AI_MODEL_DIR", str(tmp_path))
+
+    with TestClient(create_app()) as lifespan_client:
+        response = lifespan_client.get("/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "status": "not_ready",
+        "enabled": True,
+        "authentication_configured": True,
+        "models_ready": False,
+        "model_status": "model_runtime_unavailable",
     }
 
 
@@ -62,13 +118,12 @@ def test_analysis_endpoint_is_unavailable_when_disabled(monkeypatch):
     monkeypatch.setenv("IDENTITY_AI_API_KEY", "test-key")
 
     response = client.post(
-        "/v1/documents/analyze",
+        "/v1/liveness/check",
         headers={"Authorization": "Bearer test-key"},
         json={
             "verification_id": "verification-1",
-            "object_key": "documents/id.png",
-            "document_type": "passport",
-            "country_code": "GH",
+            "session_id": "session-1",
+            "video_object_key": "captures/session.mp4",
         },
     )
 
@@ -81,24 +136,28 @@ def test_enabled_endpoint_authenticates_before_not_implemented(monkeypatch):
     monkeypatch.setenv("IDENTITY_AI_API_KEY", "test-key")
 
     unauthorized = client.post(
-        "/v1/documents/analyze",
+        "/v1/liveness/check",
         json={
             "verification_id": "verification-1",
-            "object_key": "documents/id.png",
-            "document_type": "passport",
-            "country_code": "GH",
+            "session_id": "session-1",
+            "video_object_key": "captures/session.mp4",
         },
     )
     authenticated = client.post(
-        "/v1/documents/analyze",
+        "/v1/liveness/check",
         headers={"Authorization": "Bearer test-key"},
         json={
             "verification_id": "verification-1",
-            "object_key": "documents/id.png",
-            "document_type": "passport",
-            "country_code": "GH",
+            "session_id": "session-1",
+            "video_object_key": "captures/session.mp4",
         },
     )
 
     assert unauthorized.status_code == 401
     assert authenticated.status_code == 501
+
+
+def test_country_specific_document_endpoint_is_not_exposed():
+    response = client.post("/v1/documents/analyze", json={})
+
+    assert response.status_code == 404
