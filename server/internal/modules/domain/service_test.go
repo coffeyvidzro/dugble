@@ -1,39 +1,47 @@
 package domain
 
-import "testing"
+import (
+	"testing"
 
-func TestValidateCreateNormalizesDomain(t *testing.T) {
-	domainName, provider, providerRegion, err := validateCreate(CreateRequest{
-		Domain:         " HTTPS://Mail.Example.COM/path ",
-		ProviderRegion: " us-east-1 ",
-	})
-	if err != nil {
-		t.Fatalf("validateCreate returned error: %v", err)
+	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
+)
+
+func TestVerificationStatusRequiresDNSRecords(t *testing.T) {
+	providerStatus := platformemail.DomainStatus{
+		IdentityVerified: true,
+		DKIMVerified:     true,
+		MailFromVerified: true,
 	}
-	if domainName != "mail.example.com" {
-		t.Fatalf("domainName = %q, want mail.example.com", domainName)
-	}
-	if provider != DefaultProvider {
-		t.Fatalf("provider = %q, want %s", provider, DefaultProvider)
-	}
-	if providerRegion != "us-east-1" {
-		t.Fatalf("providerRegion = %q, want us-east-1", providerRegion)
+
+	if got := verificationStatus(nil, providerStatus); got != StatusPending {
+		t.Fatalf("verificationStatus() = %q, want %q", got, StatusPending)
 	}
 }
 
-func TestValidateCreateRejectsInvalidDomain(t *testing.T) {
-	_, _, _, err := validateCreate(CreateRequest{
-		Domain:         "not a domain",
-		ProviderRegion: "us-east-1",
-	})
-	if err == nil {
-		t.Fatal("validateCreate returned nil error for invalid domain")
+func TestVerificationStatusRequiresAllChecks(t *testing.T) {
+	verifiedProvider := platformemail.DomainStatus{
+		IdentityVerified: true,
+		DKIMVerified:     true,
+		MailFromVerified: true,
 	}
-}
+	records := []VerificationRecord{{Status: platformemail.RecordStatusVerified}}
 
-func TestValidateCreateRequiresProviderRegion(t *testing.T) {
-	_, _, _, err := validateCreate(CreateRequest{Domain: "example.com"})
-	if err == nil {
-		t.Fatal("validateCreate returned nil error without provider region")
+	tests := []struct {
+		name           string
+		records        []VerificationRecord
+		providerStatus platformemail.DomainStatus
+		want           string
+	}{
+		{name: "all checks verified", records: records, providerStatus: verifiedProvider, want: StatusVerified},
+		{name: "DNS pending", records: []VerificationRecord{{Status: platformemail.RecordStatusPending}}, providerStatus: verifiedProvider, want: StatusPending},
+		{name: "provider pending", records: records, providerStatus: platformemail.DomainStatus{}, want: StatusPending},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := verificationStatus(test.records, test.providerStatus); got != test.want {
+				t.Fatalf("verificationStatus() = %q, want %q", got, test.want)
+			}
+		})
 	}
 }

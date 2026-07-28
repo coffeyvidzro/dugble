@@ -32,14 +32,16 @@ import (
 )
 
 type Dependencies struct {
-	DB            *pgxpool.Pool
-	Redis         *redis.Client
-	Arcjet        *arcjet.Client
-	Sender        platformemail.Sender
-	Renderer      *notifications.Renderer
-	SMSSender     smsmodule.Sender
-	SMSDelivery   smsmodule.DeliveryQueue
-	EmailDelivery emailmodule.DeliveryQueue
+	DB             *pgxpool.Pool
+	Redis          *redis.Client
+	Arcjet         *arcjet.Client
+	Sender         platformemail.Sender
+	DomainProvider platformemail.DomainProvider
+	DNSVerifier    platformemail.DNSVerifier
+	Renderer       *notifications.Renderer
+	SMSSender      smsmodule.Sender
+	SMSDelivery    smsmodule.DeliveryQueue
+	EmailDelivery  emailmodule.DeliveryQueue
 }
 
 func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
@@ -91,7 +93,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	team.RegisterRoutes(router, team.NewHandler(teamService), authMiddleware, csrfMiddleware, tenantMiddleware)
 	teamtoken.RegisterRoutes(router, teamtoken.NewHandler(teamtoken.NewService(teamTokenRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	senderid.RegisterRoutes(router, senderid.NewHandler(senderid.NewService(senderIDRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
-	domain.RegisterRoutes(router, domain.NewHandler(domain.NewService(domainRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
+	domain.RegisterRoutes(router, domain.NewHandler(domain.NewService(domainRepository, deps.DomainProvider, deps.DNSVerifier)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	walletService := wallet.NewService(walletRepository, wallet.ServiceConfig{FrontendURL: cfg.FrontendURL, BackendURL: cfg.BackendURL}, hubtelProvider, fxClient)
 	wallet.RegisterRoutes(router, wallet.NewHandler(walletService), authMiddleware, csrfMiddleware, tenantMiddleware)
 	smsService := smsmodule.NewService(smsRepository, deps.SMSSender, walletRepository, deps.SMSDelivery)

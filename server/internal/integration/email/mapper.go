@@ -2,8 +2,11 @@ package email
 
 import (
 	"bytes"
-	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"mime"
@@ -14,70 +17,37 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/ses"
-	"github.com/aws/aws-sdk-go-v2/service/ses/types"
-	"github.com/aws/smithy-go"
-
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 )
 
-const ProviderSES = "ses"
-
-var ErrUnsupportedAttachmentPath = errors.New("attachment paths are not supported by the SES integration")
-
-type sesAPI interface {
-	SendRawEmail(context.Context, *ses.SendRawEmailInput, ...func(*ses.Options)) (*ses.SendRawEmailOutput, error)
-}
-
-type SESSender struct {
-	client      sesAPI
-	defaultFrom string
-}
-
-func NewSESSender(_ context.Context, region, defaultFrom, accessKey, secretKey string) (*SESSender, error) {
-	cfg := aws.Config{Region: strings.TrimSpace(region), Credentials: credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")}
-	return &SESSender{client: ses.NewFromConfig(cfg), defaultFrom: strings.TrimSpace(defaultFrom)}, nil
-}
-
-func (s *SESSender) Send(ctx context.Context, message platformemail.Message) (platformemail.Result, error) {
-	if s == nil || s.client == nil {
-		return platformemail.Result{}, errors.New("SES sender is not configured")
+func mapVerificationRecords(req platformemail.DomainProvisionRequest, selector, publicKey string) []platformemail.VerificationRecord {
+	priority := 10
+	return []platformemail.VerificationRecord{
+		{Record: platformemail.RecordDKIM, Name: selector + "._domainkey", Value: "v=DKIM1; k=rsa; p=" + publicKey, Type: platformemail.RecordTypeTXT, Status: platformemail.RecordStatusPending, TTL: "Auto"},
+		{Record: platformemail.RecordSPF, Name: req.CustomReturnPath, Value: "feedback-smtp." + req.Region + ".amazonses.com", Type: platformemail.RecordTypeMX, Status: platformemail.RecordStatusPending, TTL: "Auto", Priority: &priority},
+		{Record: platformemail.RecordSPF, Name: req.CustomReturnPath, Value: "v=spf1 include:amazonses.com ~all", Type: platformemail.RecordTypeTXT, Status: platformemail.RecordStatusPending, TTL: "Auto"},
 	}
-	if strings.TrimSpace(message.From.Email) == "" {
-		message.From.Email = s.defaultFrom
-	}
-	raw, err := buildMIME(message)
+}
+
+func generateBYODKIMMaterial() (selector, privateKey, publicKey string, err error) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		code := "invalid_message"
-		if errors.Is(err, ErrUnsupportedAttachmentPath) {
-			code = "unsupported_attachment_path"
-		}
-		return platformemail.Result{}, platformemail.NewSendError(code, false, err)
+		return "", "", "", err
 	}
-	output, err := s.client.SendRawEmail(ctx, &ses.SendRawEmailInput{RawMessage: &types.RawMessage{Data: raw}})
+	privateDER, err := x509.MarshalPKCS8PrivateKey(key)
 	if err != nil {
-		return platformemail.Result{}, classifySESFailure(err)
+		return "", "", "", err
 	}
-	if output.MessageId == nil || strings.TrimSpace(*output.MessageId) == "" {
-		return platformemail.Result{}, platformemail.NewSendError("empty_provider_message_id", true, errors.New("SES returned an empty message ID"))
+	publicDER, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
+	if err != nil {
+		return "", "", "", err
 	}
-	return platformemail.Result{Provider: ProviderSES, MessageID: strings.TrimSpace(*output.MessageId)}, nil
-}
-
-func classifySESFailure(err error) error {
-	var apiError smithy.APIError
-	if !errors.As(err, &apiError) {
-		return platformemail.NewSendError("ses_request_failed", platformemail.IsRetryable(err), err)
+	random := make([]byte, 6)
+	if _, err := rand.Read(random); err != nil {
+		return "", "", "", err
 	}
-	code := strings.ToLower(strings.TrimSpace(apiError.ErrorCode()))
-	retryable := false
-	switch code {
-	case "throttling", "throttlingexception", "requesttimeout", "requesttimeoutexception", "serviceunavailable", "internalfailure", "internalservererror":
-		retryable = true
-	}
-	return platformemail.NewSendError(code, retryable, err)
+	selector = "dugble" + hex.EncodeToString(random)
+	return selector, base64.StdEncoding.EncodeToString(privateDER), base64.StdEncoding.EncodeToString(publicDER), nil
 }
 
 func buildMIME(message platformemail.Message) ([]byte, error) {

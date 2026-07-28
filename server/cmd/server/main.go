@@ -16,7 +16,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/database"
 	emaildelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/email"
 	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
-	"github.com/coffeyvidzro/dugble/server/internal/integration/email"
+	emailintegration "github.com/coffeyvidzro/dugble/server/internal/integration/email"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/security"
 	smsintegration "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/arkesel"
@@ -25,6 +25,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/messaging/outbox"
 	"github.com/coffeyvidzro/dugble/server/internal/notifications"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/cache"
+	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 	"github.com/coffeyvidzro/dugble/server/internal/transport"
 )
 
@@ -86,15 +87,14 @@ func run() error {
 		return fmt.Errorf("initialize email renderer: %w", err)
 	}
 
-	notificationSender, err := email.NewSESSender(
-		ctx,
+	emailClient, err := emailintegration.NewClient(
 		cfg.AWS.Region,
 		cfg.AWS.FromEmail,
 		cfg.AWS.AccessKey,
 		cfg.AWS.SecretKey,
 	)
 	if err != nil {
-		return fmt.Errorf("initialize SES email sender: %w", err)
+		return fmt.Errorf("initialize SES email client: %w", err)
 	}
 
 	smsRouter, err := routing.NewService(
@@ -116,14 +116,16 @@ func run() error {
 	router, err := transport.NewRouter(
 		cfg,
 		transport.Dependencies{
-			DB:            db,
-			Redis:         redisClient,
-			Arcjet:        arcjetClient,
-			Sender:        notificationSender,
-			Renderer:      renderer,
-			SMSSender:     smsSender,
-			SMSDelivery:   smsdelivery.NewQueue(outboxRepository),
-			EmailDelivery: emaildelivery.NewQueue(outboxRepository),
+			DB:             db,
+			Redis:          redisClient,
+			Arcjet:         arcjetClient,
+			Sender:         emailClient,
+			DomainProvider: emailClient,
+			DNSVerifier:    platformemail.NewNetDNSVerifier(),
+			Renderer:       renderer,
+			SMSSender:      smsSender,
+			SMSDelivery:    smsdelivery.NewQueue(outboxRepository),
+			EmailDelivery:  emaildelivery.NewQueue(outboxRepository),
 		},
 	)
 	if err != nil {
