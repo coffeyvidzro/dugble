@@ -113,7 +113,7 @@ func (s *Service) Verify(ctx context.Context, domainID string) (SenderDomain, er
 	result, err := s.Check(ctx, domain)
 	if err != nil {
 		reason := err.Error()
-		updated, updateErr := s.repository.UpdateVerification(ctx, id, tc.TeamID, domain.Status, domain.VerificationRecords, &reason)
+		updated, updateErr := s.repository.UpdateVerification(ctx, id, tc.TeamID, StatusFailed, domain.VerificationRecords, &reason)
 		if updateErr != nil {
 			return SenderDomain{}, apperrors.NewInternal("Unable to update sender domain verification", updateErr)
 		}

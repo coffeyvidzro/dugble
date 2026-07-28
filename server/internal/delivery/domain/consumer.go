@@ -108,7 +108,9 @@ func (c *Consumer) reconcile(ctx context.Context, claim domainmodule.Reconciliat
 	if claim.Domain.Status == domainmodule.StatusVerified {
 		return c.completeHealthCheck(ctx, id, result, checkErr)
 	}
-	delay := nextCheckDelay(claim.Attempt, id)
+	// Claims contain the incremented, one-based attempt count, while the
+	// backoff schedule is indexed from zero.
+	delay := nextCheckDelay(max(claim.Attempt-1, 0), id)
 	if checkErr == nil && result.Status == domainmodule.StatusVerified {
 		delay = jitter(c.config.HealthCheckInterval, id)
 	}
