@@ -14,6 +14,7 @@ import (
 
 	"github.com/coffeyvidzro/dugble/server/internal/config"
 	"github.com/coffeyvidzro/dugble/server/internal/database"
+	domainreconciliation "github.com/coffeyvidzro/dugble/server/internal/delivery/domain"
 	emaildelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/email"
 	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
 	webhookdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/webhooks"
@@ -25,9 +26,11 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/messaging/inbox"
 	jetstreammessaging "github.com/coffeyvidzro/dugble/server/internal/messaging/jetstream"
 	"github.com/coffeyvidzro/dugble/server/internal/messaging/outbox"
+	domainmodule "github.com/coffeyvidzro/dugble/server/internal/modules/domain"
 	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/wallet"
 	webhookmodule "github.com/coffeyvidzro/dugble/server/internal/modules/webhooks"
+	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 	platformwebhook "github.com/coffeyvidzro/dugble/server/internal/platform/webhook"
 )
 
@@ -82,6 +85,19 @@ func run() error {
 			RetryPolicy:    emaildelivery.DefaultRetryPolicy(),
 		},
 	)
+	domainRepository := domainmodule.NewRepository(db)
+	domainService := domainmodule.NewService(domainRepository, emailSender, platformemail.NewNetDNSVerifier())
+	domainWorkerID := "sender-domain-reconciliation-" + uuid.NewString()
+	domainConsumer := domainreconciliation.NewConsumer(domainRepository, domainService, domainreconciliation.Config{
+		PollInterval:           cfg.DomainReconciliation.PollInterval,
+		BatchSize:              cfg.DomainReconciliation.BatchSize,
+		Concurrency:            cfg.DomainReconciliation.Concurrency,
+		LockTimeout:            cfg.DomainReconciliation.LockTimeout,
+		CheckTimeout:           cfg.DomainReconciliation.CheckTimeout,
+		HealthCheckInterval:    cfg.DomainReconciliation.HealthCheckInterval,
+		HealthRetryInterval:    cfg.DomainReconciliation.HealthRetryInterval,
+		HealthFailureThreshold: cfg.DomainReconciliation.HealthFailureThreshold,
+	}, domainWorkerID)
 
 	smsRouter, err := routing.NewService(routing.DefaultConfig(), routing.NewPriorityStrategy(), arkesel.NewProvider(arkesel.NewClient(cfg.Arkesel)), mnotify.NewProvider(mnotify.NewClient(cfg.MNotify)))
 	if err != nil {
@@ -122,12 +138,13 @@ func run() error {
 		{name: "email JetStream consumer", run: emailConsumer.Run},
 		{name: "SMS JetStream consumer", run: smsConsumer.Run},
 		{name: "webhook delivery consumer", run: webhookConsumer.Run},
+		{name: "sender domain reconciliation consumer", run: domainConsumer.Run},
 	}
 	results := make(chan componentResult, len(components))
 	for _, component := range components {
 		go func() { results <- componentResult{name: component.name, err: component.run(ctx)} }()
 	}
-	slog.Info("worker started", "jetstream", "ready", "outbox_relay", "running", "email_consumer", emaildelivery.DeliverConsumerName, "sms_consumer", smsdelivery.DeliverConsumerName, "webhook_consumer", webhookWorkerID)
+	slog.Info("worker started", "jetstream", "ready", "outbox_relay", "running", "email_consumer", emaildelivery.DeliverConsumerName, "sms_consumer", smsdelivery.DeliverConsumerName, "webhook_consumer", webhookWorkerID, "domain_reconciliation_consumer", domainWorkerID)
 	completed := 0
 	var runErr error
 	select {

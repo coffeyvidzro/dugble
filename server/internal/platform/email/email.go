@@ -36,6 +36,10 @@ type Attachment struct {
 
 // Message is the canonical message accepted by email integrations.
 type Message struct {
+	// Provider and Region select the immutable delivery route resolved when the
+	// Email API accepted the message. Empty values use the sender's defaults.
+	Provider    string
+	Region      string
 	From        Address
 	ReplyTo     []Address
 	To          []Address

@@ -12,6 +12,9 @@ import (
 type EmailMessage struct {
 	ID                uuid.UUID          `db:"id" json:"id"`
 	TeamID            uuid.UUID          `db:"team_id" json:"team_id"`
+	SenderDomainID    *uuid.UUID         `db:"sender_domain_id" json:"sender_domain_id"`
+	DeliveryProvider  string             `db:"delivery_provider" json:"delivery_provider"`
+	ProviderRegion    string             `db:"provider_region" json:"provider_region"`
 	MessageType       string             `db:"message_type" json:"message_type"`
 	FromEmail         string             `db:"from_email" json:"from_email"`
 	FromName          *string            `db:"from_name" json:"from_name"`
@@ -27,6 +30,11 @@ type EmailMessage struct {
 	ErrorCode         *string            `db:"error_code" json:"error_code"`
 	ErrorMessage      *string            `db:"error_message" json:"error_message"`
 	Metadata          []byte             `db:"metadata" json:"metadata"`
+	Recipients        []byte             `db:"recipients" json:"recipients"`
+	Headers           []byte             `db:"headers" json:"headers"`
+	Attachments       []byte             `db:"attachments" json:"attachments"`
+	Tags              []byte             `db:"tags" json:"tags"`
+	ScheduledAt       pgtype.Timestamptz `db:"scheduled_at" json:"scheduled_at"`
 	QueuedAt          pgtype.Timestamptz `db:"queued_at" json:"queued_at"`
 	ProcessingAt      pgtype.Timestamptz `db:"processing_at" json:"processing_at"`
 	SubmittedAt       pgtype.Timestamptz `db:"submitted_at" json:"submitted_at"`
@@ -34,11 +42,6 @@ type EmailMessage struct {
 	FailedAt          pgtype.Timestamptz `db:"failed_at" json:"failed_at"`
 	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	Recipients        []byte             `db:"recipients" json:"recipients"`
-	Headers           []byte             `db:"headers" json:"headers"`
-	Attachments       []byte             `db:"attachments" json:"attachments"`
-	Tags              []byte             `db:"tags" json:"tags"`
-	ScheduledAt       pgtype.Timestamptz `db:"scheduled_at" json:"scheduled_at"`
 }
 
 type IdempotencyKey struct {
@@ -92,20 +95,28 @@ type ProcessedEvent struct {
 }
 
 type SenderDomain struct {
-	ID                  uuid.UUID          `db:"id" json:"id"`
-	TeamID              uuid.UUID          `db:"team_id" json:"team_id"`
-	Domain              string             `db:"domain" json:"domain"`
-	Provider            string             `db:"provider" json:"provider"`
-	ProviderRegion      string             `db:"provider_region" json:"provider_region"`
-	Status              string             `db:"status" json:"status"`
-	VerificationRecords []byte             `db:"verification_records" json:"verification_records"`
-	FailureReason       *string            `db:"failure_reason" json:"failure_reason"`
-	LastCheckedAt       pgtype.Timestamptz `db:"last_checked_at" json:"last_checked_at"`
-	VerifiedAt          pgtype.Timestamptz `db:"verified_at" json:"verified_at"`
-	DisabledAt          pgtype.Timestamptz `db:"disabled_at" json:"disabled_at"`
-	CreatedBy           *uuid.UUID         `db:"created_by" json:"created_by"`
-	CreatedAt           pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt           pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ID                        uuid.UUID          `db:"id" json:"id"`
+	TeamID                    uuid.UUID          `db:"team_id" json:"team_id"`
+	Domain                    string             `db:"domain" json:"domain"`
+	Provider                  string             `db:"provider" json:"provider"`
+	ProviderRegion            string             `db:"provider_region" json:"provider_region"`
+	Status                    string             `db:"status" json:"status"`
+	VerificationRecords       []byte             `db:"verification_records" json:"verification_records"`
+	FailureReason             *string            `db:"failure_reason" json:"failure_reason"`
+	LastCheckedAt             pgtype.Timestamptz `db:"last_checked_at" json:"last_checked_at"`
+	NextCheckAt               pgtype.Timestamptz `db:"next_check_at" json:"next_check_at"`
+	VerificationAttempts      int32              `db:"verification_attempts" json:"verification_attempts"`
+	ReconcileLockedAt         pgtype.Timestamptz `db:"reconcile_locked_at" json:"reconcile_locked_at"`
+	ReconcileLockedBy         *string            `db:"reconcile_locked_by" json:"reconcile_locked_by"`
+	HealthStatus              string             `db:"health_status" json:"health_status"`
+	ConsecutiveHealthFailures int32              `db:"consecutive_health_failures" json:"consecutive_health_failures"`
+	LastHealthCheckedAt       pgtype.Timestamptz `db:"last_health_checked_at" json:"last_health_checked_at"`
+	LastHealthFailureAt       pgtype.Timestamptz `db:"last_health_failure_at" json:"last_health_failure_at"`
+	VerifiedAt                pgtype.Timestamptz `db:"verified_at" json:"verified_at"`
+	DisabledAt                pgtype.Timestamptz `db:"disabled_at" json:"disabled_at"`
+	CreatedBy                 *uuid.UUID         `db:"created_by" json:"created_by"`
+	CreatedAt                 pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt                 pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
 type SenderID struct {

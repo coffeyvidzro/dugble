@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
@@ -16,9 +18,85 @@ import (
 
 var ErrSenderDomainAlreadyExists = errors.New("sender domain already exists")
 
-type Repository struct{ queries *dbsqlc.Queries }
+type Repository struct {
+	queries *dbsqlc.Queries
+}
 
 func NewRepository(db *pgxpool.Pool) *Repository { return &Repository{queries: dbsqlc.New(db)} }
+
+type ReconciliationClaim struct {
+	Domain  SenderDomain
+	Attempt int32
+}
+
+func (r *Repository) ClaimPendingReconciliations(ctx context.Context, workerID string, limit int32, staleBefore time.Time) ([]ReconciliationClaim, error) {
+	rows, err := r.queries.ClaimSenderDomainsForReconciliation(ctx, dbsqlc.ClaimSenderDomainsForReconciliationParams{
+		WorkerID: &workerID, BatchSize: limit, StaleBefore: pgtype.Timestamptz{Time: staleBefore, Valid: true},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("claim sender domain reconciliations: %w", err)
+	}
+	claims := make([]ReconciliationClaim, 0, len(rows))
+	for _, row := range rows {
+		claims = append(claims, ReconciliationClaim{Domain: senderDomainFromSQLC(row), Attempt: row.VerificationAttempts})
+	}
+	return claims, nil
+}
+
+func (r *Repository) CompleteReconciliation(ctx context.Context, id uuid.UUID, workerID, status string, records []VerificationRecord, nextCheckAt time.Time) (SenderDomain, error) {
+	recordsJSON, err := json.Marshal(records)
+	if err != nil {
+		return SenderDomain{}, fmt.Errorf("marshal sender domain verification records: %w", err)
+	}
+	row, err := r.queries.CompleteSenderDomainReconciliation(ctx, dbsqlc.CompleteSenderDomainReconciliationParams{
+		ID: id, WorkerID: &workerID, Status: status, VerificationRecords: recordsJSON,
+		NextCheckAt: pgtype.Timestamptz{Time: nextCheckAt, Valid: true},
+	})
+	if err != nil {
+		return SenderDomain{}, fmt.Errorf("complete sender domain reconciliation: %w", err)
+	}
+	return senderDomainFromSQLC(row), nil
+}
+
+func (r *Repository) RecordReconciliationFailure(ctx context.Context, id uuid.UUID, workerID string, cause error, nextCheckAt time.Time) (SenderDomain, error) {
+	reason := "sender domain reconciliation failed"
+	if cause != nil {
+		reason = cause.Error()
+	}
+	row, err := r.queries.RecordSenderDomainReconciliationFailure(ctx, dbsqlc.RecordSenderDomainReconciliationFailureParams{
+		ID: id, WorkerID: &workerID, FailureReason: &reason,
+		NextCheckAt: pgtype.Timestamptz{Time: nextCheckAt, Valid: true},
+	})
+	if err != nil {
+		return SenderDomain{}, fmt.Errorf("record sender domain reconciliation failure: %w", err)
+	}
+	return senderDomainFromSQLC(row), nil
+}
+
+func (r *Repository) CompleteHealthCheck(ctx context.Context, id uuid.UUID, workerID string, nextCheckAt time.Time) (SenderDomain, error) {
+	row, err := r.queries.CompleteSenderDomainHealthCheck(ctx, dbsqlc.CompleteSenderDomainHealthCheckParams{
+		ID: id, WorkerID: &workerID, NextCheckAt: pgtype.Timestamptz{Time: nextCheckAt, Valid: true},
+	})
+	if err != nil {
+		return SenderDomain{}, fmt.Errorf("complete sender domain health check: %w", err)
+	}
+	return senderDomainFromSQLC(row), nil
+}
+
+func (r *Repository) RecordHealthFailure(ctx context.Context, id uuid.UUID, workerID string, cause error, failureThreshold int32, nextCheckAt time.Time) (SenderDomain, error) {
+	reason := "sender domain health check failed"
+	if cause != nil {
+		reason = cause.Error()
+	}
+	row, err := r.queries.RecordSenderDomainHealthFailure(ctx, dbsqlc.RecordSenderDomainHealthFailureParams{
+		ID: id, WorkerID: &workerID, FailureReason: &reason, FailureThreshold: failureThreshold,
+		NextCheckAt: pgtype.Timestamptz{Time: nextCheckAt, Valid: true},
+	})
+	if err != nil {
+		return SenderDomain{}, fmt.Errorf("record sender domain health failure: %w", err)
+	}
+	return senderDomainFromSQLC(row), nil
+}
 
 func (r *Repository) Create(
 	ctx context.Context,
@@ -106,9 +184,12 @@ func senderDomainFromSQLC(row dbsqlc.SenderDomain) SenderDomain {
 		ID: row.ID.String(), TeamID: row.TeamID.String(), Domain: row.Domain,
 		Provider: row.Provider, ProviderRegion: row.ProviderRegion, Status: row.Status,
 		VerificationRecords: records, FailureReason: row.FailureReason,
-		LastCheckedAt: pgconv.TimestamptzToTimePtr(row.LastCheckedAt),
-		VerifiedAt:    pgconv.TimestamptzToTimePtr(row.VerifiedAt),
-		DisabledAt:    pgconv.TimestamptzToTimePtr(row.DisabledAt), CreatedBy: createdBy,
+		HealthStatus: row.HealthStatus, ConsecutiveHealthFailures: row.ConsecutiveHealthFailures,
+		LastCheckedAt:       pgconv.TimestamptzToTimePtr(row.LastCheckedAt),
+		LastHealthCheckedAt: pgconv.TimestamptzToTimePtr(row.LastHealthCheckedAt),
+		LastHealthFailureAt: pgconv.TimestamptzToTimePtr(row.LastHealthFailureAt),
+		VerifiedAt:          pgconv.TimestamptzToTimePtr(row.VerifiedAt),
+		DisabledAt:          pgconv.TimestamptzToTimePtr(row.DisabledAt), CreatedBy: createdBy,
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 }

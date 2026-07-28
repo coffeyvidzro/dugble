@@ -20,20 +20,24 @@ const (
 type VerificationRecord = platformemail.VerificationRecord
 
 type SenderDomain struct {
-	ID                  string               `json:"id"`
-	TeamID              string               `json:"team_id"`
-	Domain              string               `json:"name"`
-	Provider            string               `json:"provider,omitempty"`
-	ProviderRegion      string               `json:"region"`
-	Status              string               `json:"status"`
-	VerificationRecords []VerificationRecord `json:"records"`
-	FailureReason       *string              `json:"failure_reason,omitempty"`
-	LastCheckedAt       *time.Time           `json:"last_checked_at,omitempty"`
-	VerifiedAt          *time.Time           `json:"verified_at,omitempty"`
-	DisabledAt          *time.Time           `json:"disabled_at,omitempty"`
-	CreatedBy           *string              `json:"created_by,omitempty"`
-	CreatedAt           time.Time            `json:"created_at"`
-	UpdatedAt           time.Time            `json:"updated_at"`
+	ID                        string               `json:"id"`
+	TeamID                    string               `json:"team_id"`
+	Domain                    string               `json:"name"`
+	Provider                  string               `json:"provider,omitempty"`
+	ProviderRegion            string               `json:"region"`
+	Status                    string               `json:"status"`
+	VerificationRecords       []VerificationRecord `json:"records"`
+	FailureReason             *string              `json:"failure_reason,omitempty"`
+	HealthStatus              string               `json:"health_status"`
+	ConsecutiveHealthFailures int32                `json:"consecutive_health_failures"`
+	LastCheckedAt             *time.Time           `json:"last_checked_at,omitempty"`
+	LastHealthCheckedAt       *time.Time           `json:"last_health_checked_at,omitempty"`
+	LastHealthFailureAt       *time.Time           `json:"last_health_failure_at,omitempty"`
+	VerifiedAt                *time.Time           `json:"verified_at,omitempty"`
+	DisabledAt                *time.Time           `json:"disabled_at,omitempty"`
+	CreatedBy                 *string              `json:"created_by,omitempty"`
+	CreatedAt                 time.Time            `json:"created_at"`
+	UpdatedAt                 time.Time            `json:"updated_at"`
 }
 
 type CreateRequest struct {
