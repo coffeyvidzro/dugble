@@ -107,8 +107,8 @@ func senderDomainFromSQLC(row dbsqlc.SenderDomain) SenderDomain {
 		Provider: row.Provider, ProviderRegion: row.ProviderRegion, Status: row.Status,
 		VerificationRecords: records, FailureReason: row.FailureReason,
 		LastCheckedAt: pgconv.TimestamptzToTimePtr(row.LastCheckedAt),
-		VerifiedAt: pgconv.TimestamptzToTimePtr(row.VerifiedAt),
-		DisabledAt: pgconv.TimestamptzToTimePtr(row.DisabledAt), CreatedBy: createdBy,
+		VerifiedAt:    pgconv.TimestamptzToTimePtr(row.VerifiedAt),
+		DisabledAt:    pgconv.TimestamptzToTimePtr(row.DisabledAt), CreatedBy: createdBy,
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 }

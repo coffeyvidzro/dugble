@@ -7,7 +7,8 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.43.0
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.30
 	github.com/aws/aws-sdk-go-v2/service/ses v1.37.0
-	github.com/aws/aws-sdk-go-v2/service/sesv2 v1.55.0
+	github.com/aws/aws-sdk-go-v2/service/sesv2 v1.66.0
+	github.com/aws/smithy-go v1.27.5
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
@@ -22,7 +23,7 @@ require (
 	connectrpc.com/connect v1.20.0 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.31 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.31 // indirect
-	github.com/aws/smithy-go v1.27.4 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.32 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/gofrs/uuid/v5 v5.4.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
