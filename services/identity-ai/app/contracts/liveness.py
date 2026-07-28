@@ -7,6 +7,8 @@ from datetime import datetime
 from enum import StrEnum
 from math import isclose, isfinite
 
+from app.contracts.presentation_attack import PresentationAttackEvidence
+
 
 class ChallengeAction(StrEnum):
     TURN_LEFT = "turn_left"
@@ -120,3 +122,29 @@ class ActiveChallengeEvidence:
             raise ValueError("challenge completion ratio must agree with step evidence")
         if self.challenge_completed != (observed_steps == len(self.steps)):
             raise ValueError("challenge completion must agree with step evidence")
+
+
+@dataclass(frozen=True)
+class LivenessSessionEvidence:
+    challenge: ActiveChallengeEvidence
+    presentation_attack: PresentationAttackEvidence
+    attack_threshold: float
+    attack_suspected: bool
+    reasons: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if not isfinite(self.attack_threshold) or not 0 < self.attack_threshold < 1:
+            raise ValueError("presentation-attack threshold must be within 0..1")
+        suspected = any(
+            signal.score >= self.attack_threshold for signal in self.presentation_attack.signals
+        )
+        if self.attack_suspected != suspected:
+            raise ValueError("attack assessment must agree with its signals and threshold")
+        expected_reasons = list(self.challenge.reasons)
+        expected_reasons.extend(
+            f"presentation_attack_suspected:{signal.attack_type.value}"
+            for signal in self.presentation_attack.signals
+            if signal.score >= self.attack_threshold
+        )
+        if self.reasons != tuple(expected_reasons):
+            raise ValueError("liveness reasons must agree with component evidence")

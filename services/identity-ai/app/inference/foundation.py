@@ -66,6 +66,23 @@ class RuntimeModelBundle:
             raise RuntimeFoundationError("landmark adapter does not satisfy its contract")
         return CaptureGuidanceService(tracker)
 
+    def liveness_analysis_service(self, *, attack_threshold: float):
+        from app.face.landmarks import FaceLandmarkTracker
+        from app.liveness.analysis import LivenessAnalysisService
+        from app.liveness.presentation_attack import PresentationAttackDetector
+
+        tracker = self.adapter("face-landmarks")
+        attack_detector = self.adapter("presentation-attack")
+        if not isinstance(tracker, FaceLandmarkTracker):
+            raise RuntimeFoundationError("landmark adapter does not satisfy its contract")
+        if not isinstance(attack_detector, PresentationAttackDetector):
+            raise RuntimeFoundationError("attack adapter does not satisfy its contract")
+        return LivenessAnalysisService(
+            tracker,
+            attack_detector,
+            attack_threshold=attack_threshold,
+        )
+
     def close(self) -> None:
         for adapter in self._adapters.values():
             close = getattr(adapter, "close", None)

@@ -124,7 +124,7 @@ services/identity-ai/
 
 ## Current status
 
-The repository currently provides deterministic image-quality checks, evidence contracts, capture guidance, challenge issuance and observation evaluation, face-comparison orchestration, presentation-attack and biometric-quality adapter boundaries, evaluation metrics, model-artifact tooling, the Phase 1 runtime foundation, the Phase 2 face pipeline, and the Phase 3 capture-and-landmarks pipeline.
+The repository currently provides deterministic image-quality checks, evidence contracts, capture guidance, challenge issuance and observation evaluation, face-comparison orchestration, presentation-attack and biometric-quality adapter boundaries, evaluation metrics, model-artifact tooling, the Phase 1 runtime foundation, the Phase 2 face pipeline, the Phase 3 capture-and-landmarks pipeline, and the Phase 4 liveness-and-attacks orchestration.
 
 The runtime foundation installs pinned NumPy, headless OpenCV, and ONNX Runtime dependencies; validates the configured model manifest and every required artifact before inference; creates optimized ONNX sessions with an explicit provider allowlist; initializes the model bundle during FastAPI lifespan startup; releases it during shutdown; and keeps readiness false when authentication or required models are unavailable.
 
@@ -132,7 +132,9 @@ The Phase 2 pipeline pins exact OpenCV Zoo YuNet and SFace artifacts by byte siz
 
 The Phase 3 pipeline pins the MediaPipe Face Landmarker task bundle and processes ordered, timezone-aware capture frames in video mode. It reports face count, normalized face size, and yaw, pitch, and roll from facial transformation matrices, then produces deterministic per-frame guidance. Multiple-face detection is deliberately enabled, timestamps must increase, model output is validated, and the MediaPipe task is released with the runtime bundle.
 
-The default required bundle still includes a presentation-attack model that is not pinned yet, so enabling the complete service intentionally produces `model_runtime_unavailable`. Presentation-attack adapters; encoded frame-sequence decoding; capture-client integrity; media retrieval; single-use session persistence; and active model-backed HTTP endpoints are not implemented yet. Placeholder endpoints return `501 Not Implemented` instead of simulated biometric evidence.
+Phase 4 adds server-owned, verification-bound, expiring challenges with atomic single-use consumption and replay rejection. Its composite analyzer requires one landmark observation per ordered frame, evaluates the active challenge, invokes a versioned presentation-attack detector, and reports attack scores, the applied threshold, suspected attack types, and component failure reasons without making an account authorization decision.
+
+The process-local session store is for development and concurrency tests; a shared transactional store is required before horizontally scaled deployment. The default required bundle still includes a presentation-attack model that is not pinned yet, so enabling the complete service intentionally produces `model_runtime_unavailable` rather than pretending that challenge motion alone proves liveness. A reviewed PAD model and calibrated attack-specific thresholds, encoded frame-sequence decoding, capture-client integrity, media retrieval, durable single-use session persistence, and active model-backed HTTP endpoints are not implemented yet. Placeholder endpoints return `501 Not Implemented` instead of simulated biometric evidence.
 
 Completing a head-pose challenge is limited presence evidence, not strong liveness proof; production policy must combine it with presentation-attack analysis, replay and injection defenses, biometric quality, calibrated thresholds, rate limits, and manual fallback.
 

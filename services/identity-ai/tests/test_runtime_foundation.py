@@ -117,6 +117,28 @@ def test_bundle_closes_loaded_adapters():
     assert adapter.closed is True
 
 
+def test_bundle_composes_liveness_analyzer_from_runtime_adapters():
+    class Tracker:
+        model_version = "landmarks-v1"
+
+        def observe(self, frames):
+            return ()
+
+    class AttackDetector:
+        model_version = "pad-v1"
+
+        def analyze(self, frames):
+            raise AssertionError("not invoked while composing the service")
+
+    bundle = RuntimeModelBundle(
+        {},
+        {"face-landmarks": Tracker(), "presentation-attack": AttackDetector()},
+        {"face-landmarks": "landmarks-v1", "presentation-attack": "pad-v1"},
+    )
+
+    assert bundle.liveness_analysis_service(attack_threshold=0.5) is not None
+
+
 def test_runtime_manager_reports_safe_error_when_required_models_are_absent(tmp_path):
     manifest_path = tmp_path / "manifest.json"
     manifest_path.write_text('{"schema_version": 1, "models": []}', encoding="utf-8")
