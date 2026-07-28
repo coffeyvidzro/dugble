@@ -41,6 +41,8 @@ func (h *Handler) Handle(ctx context.Context, command DeliverCommand) error {
 		return err
 	}
 	result, err := h.sender.Send(ctx, platformemail.Message{
+		Provider:    message.Provider,
+		Region:      message.Region,
 		From:        platformemail.Address{Email: message.FromEmail, Name: message.FromName},
 		ReplyTo:     message.ReplyTo,
 		To:          message.To,

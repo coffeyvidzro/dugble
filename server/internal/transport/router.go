@@ -98,7 +98,11 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	wallet.RegisterRoutes(router, wallet.NewHandler(walletService), authMiddleware, csrfMiddleware, tenantMiddleware)
 	smsService := smsmodule.NewService(smsRepository, deps.SMSSender, walletRepository, deps.SMSDelivery)
 	smsmodule.RegisterRoutes(router, smsmodule.NewHandler(smsService), tenantAccess)
-	emailServiceAPI := emailmodule.NewService(emailmodule.NewRepository(deps.DB), deps.EmailDelivery, emailmodule.ServiceConfig{DefaultFromEmail: cfg.AWS.FromEmail})
+	emailServiceAPI := emailmodule.NewService(emailmodule.NewRepository(deps.DB), deps.EmailDelivery, emailmodule.ServiceConfig{
+		DefaultFromEmail: cfg.AWS.FromEmail,
+		DefaultProvider:  domain.DefaultProvider,
+		DefaultRegion:    cfg.AWS.Region,
+	})
 	emailmodule.RegisterRoutes(router, emailmodule.NewHandler(emailServiceAPI), tenantAccess)
 	webhookService := webhooks.NewService(webhookRepository, webhookEmitter)
 	webhooks.RegisterRoutes(router, webhooks.NewHandler(webhookService), authMiddleware, csrfMiddleware, tenantMiddleware)

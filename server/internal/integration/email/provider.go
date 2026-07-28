@@ -17,7 +17,7 @@ import (
 )
 
 func (c *Client) Send(ctx context.Context, message platformemail.Message) (platformemail.Result, error) {
-	client, err := c.sendingClient(c.defaultRegion)
+	client, err := c.sendingClient(message.Region)
 	if err != nil {
 		return platformemail.Result{}, err
 	}

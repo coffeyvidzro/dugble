@@ -17,6 +17,15 @@ import (
 
 var ErrNotFound = errors.New("email message not found")
 var ErrNotCancelable = errors.New("email message is not a pending scheduled email")
+var ErrSenderDomainNotFound = errors.New("sender domain not found")
+
+type SenderDomainRoute struct {
+	ID       uuid.UUID
+	Provider string
+	Region   string
+	Status   string
+	Disabled bool
+}
 
 type Repository struct {
 	db      *pgxpool.Pool
@@ -49,24 +58,44 @@ func (r *Repository) CreateTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, 
 		return Message{}, fmt.Errorf("encode email tags: %w", err)
 	}
 	row, err := r.queries.WithTx(tx).CreateEmailMessage(ctx, dbsqlc.CreateEmailMessageParams{
-		TeamID:       teamID,
-		MessageType:  req.MessageType,
-		FromEmail:    req.FromEmail,
-		FromName:     req.FromName,
-		ReplyToEmail: req.ReplyToEmail,
-		ToEmail:      req.ToEmail,
-		ToName:       req.ToName,
-		Subject:      req.Subject,
-		HtmlBody:     req.HTMLBody,
-		TextBody:     req.TextBody,
-		Metadata:     req.Metadata,
-		Recipients:   recipients, Headers: headers, Attachments: attachments, Tags: tags,
+		TeamID:           teamID,
+		SenderDomainID:   req.SenderDomainID,
+		DeliveryProvider: req.Provider,
+		ProviderRegion:   req.ProviderRegion,
+		MessageType:      req.MessageType,
+		FromEmail:        req.FromEmail,
+		FromName:         req.FromName,
+		ReplyToEmail:     req.ReplyToEmail,
+		ToEmail:          req.ToEmail,
+		ToName:           req.ToName,
+		Subject:          req.Subject,
+		HtmlBody:         req.HTMLBody,
+		TextBody:         req.TextBody,
+		Metadata:         req.Metadata,
+		Recipients:       recipients, Headers: headers, Attachments: attachments, Tags: tags,
 		ScheduledAt: timestamptz(req.ScheduledAt),
 	})
 	if err != nil {
 		return Message{}, fmt.Errorf("create email message: %w", err)
 	}
 	return messageFromSQLC(row), nil
+}
+
+func (r *Repository) ResolveSenderDomain(ctx context.Context, teamID uuid.UUID, domainName string) (SenderDomainRoute, error) {
+	row, err := r.queries.GetSenderDomainByDomain(ctx, dbsqlc.GetSenderDomainByDomainParams{
+		TeamID: teamID,
+		Domain: domainName,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return SenderDomainRoute{}, ErrSenderDomainNotFound
+	}
+	if err != nil {
+		return SenderDomainRoute{}, fmt.Errorf("resolve sender domain: %w", err)
+	}
+	return SenderDomainRoute{
+		ID: row.ID, Provider: row.Provider, Region: row.ProviderRegion,
+		Status: row.Status, Disabled: row.DisabledAt.Valid,
+	}, nil
 }
 
 func (r *Repository) CancelTx(ctx context.Context, tx pgx.Tx, id, teamID uuid.UUID) error {

@@ -53,6 +53,8 @@ func (s *stubSender) Send(_ context.Context, message platformemail.Message) (pla
 
 func TestHandlerSubmitsAcceptedMessage(t *testing.T) {
 	repository := &recordingDeliveryRepository{message: DeliveryMessage{
+		Provider:  "aws_ses",
+		Region:    "eu-west-1",
 		FromEmail: "sender@example.com",
 		FromName:  "Sender",
 		To:        []platformemail.Address{{Email: "recipient@example.com"}},
@@ -71,6 +73,9 @@ func TestHandlerSubmitsAcceptedMessage(t *testing.T) {
 	}
 	if sender.sent.From.Email != "sender@example.com" || sender.sent.To[0].Email != "recipient@example.com" {
 		t.Fatalf("unexpected sent message: %+v", sender.sent)
+	}
+	if sender.sent.Provider != "aws_ses" || sender.sent.Region != "eu-west-1" {
+		t.Fatalf("unexpected delivery route: %+v", sender.sent)
 	}
 }
 

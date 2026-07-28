@@ -1,6 +1,9 @@
 -- name: CreateEmailMessage :one
 INSERT INTO email_messages (
     team_id,
+    sender_domain_id,
+    delivery_provider,
+    provider_region,
     message_type,
     from_email,
     from_name,
@@ -19,6 +22,9 @@ INSERT INTO email_messages (
     scheduled_at
 ) VALUES (
     sqlc.arg(team_id),
+    sqlc.narg(sender_domain_id),
+    sqlc.arg(delivery_provider),
+    sqlc.arg(provider_region),
     sqlc.arg(message_type),
     sqlc.arg(from_email),
     sqlc.narg(from_name),
