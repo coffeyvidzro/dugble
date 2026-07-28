@@ -48,6 +48,12 @@ Signed QR scan
 
 The card identifies the member record, while the fresh biometric capture verifies continuity with that record; the system must not search every enrolled face to identify an unknown person during routine verification.
 
+## Implementation status
+
+The Stage 2 face pipeline defines validated detection, embedding, and comparison contracts; detector and embedder interfaces; cosine similarity; one-to-one orchestration; and a process-local model registry.
+
+YuNet and SFace model adapters, reviewed model artifacts, ONNX Runtime integration, storage retrieval, and the HTTP endpoint connection remain intentionally unavailable until their exact model versions, preprocessing rules, checksums, and deployment licenses are selected, so the face endpoint continues to return `501 Not Implemented` rather than simulated evidence.
+
 ## Responsibility boundary
 
 The AI components produce measurements such as face location, image quality, pose, OCR confidence, face similarity, and liveness evidence, while the deterministic policy engine owns the operational outcome.

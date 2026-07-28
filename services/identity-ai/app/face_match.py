@@ -1,12 +1,6 @@
-from dataclasses import dataclass
+"""Compatibility exports for the face comparison pipeline."""
 
+from app.contracts.face import FaceComparisonEvidence
+from app.face.service import FaceComparisonService
 
-@dataclass(frozen=True)
-class FaceMatchResult:
-    face_detected: bool
-    similarity: float
-
-
-def compare_faces(_: str, __: str) -> FaceMatchResult:
-    """Placeholder for document-photo to selfie face comparison."""
-    raise NotImplementedError("face comparison is not implemented")
+__all__ = ["FaceComparisonEvidence", "FaceComparisonService"]
