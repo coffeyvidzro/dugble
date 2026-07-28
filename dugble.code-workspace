@@ -13,10 +13,6 @@
             "name": "services",
         },
         {
-            "path": "tofu",
-            "name": "opentofu",
-        },
-        {
             "path": ".",
             "name": "root",
         },

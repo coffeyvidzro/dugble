@@ -5,22 +5,24 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
+
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 )
 
 type deliveryRepository interface {
-	Claim(context.Context, [16]byte, [16]byte) (DeliveryMessage, error)
-	MarkSubmitted(context.Context, [16]byte, [16]byte, platformemail.Result) error
-	MarkRetryable(context.Context, [16]byte, [16]byte, error) error
-	MarkFailed(context.Context, [16]byte, [16]byte, string, error) error
+	Claim(context.Context, uuid.UUID, uuid.UUID) (DeliveryMessage, error)
+	MarkSubmitted(context.Context, uuid.UUID, uuid.UUID, platformemail.Result) error
+	MarkRetryable(context.Context, uuid.UUID, uuid.UUID, error) error
+	MarkFailed(context.Context, uuid.UUID, uuid.UUID, string, error) error
 }
 
 type Handler struct {
-	repository *Repository
+	repository deliveryRepository
 	sender     platformemail.Sender
 }
 
-func NewHandler(repository *Repository, sender platformemail.Sender) *Handler {
+func NewHandler(repository deliveryRepository, sender platformemail.Sender) *Handler {
 	return &Handler{repository: repository, sender: sender}
 }
 
