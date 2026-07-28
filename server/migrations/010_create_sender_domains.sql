@@ -9,6 +9,14 @@ CREATE TABLE IF NOT EXISTS sender_domains (
     failure_reason TEXT,
 
     last_checked_at TIMESTAMPTZ,
+    next_check_at TIMESTAMPTZ NOT NULL DEFAULT (now() + INTERVAL '1 minute'),
+    verification_attempts INTEGER NOT NULL DEFAULT 0,
+    reconcile_locked_at TIMESTAMPTZ,
+    reconcile_locked_by TEXT,
+    health_status TEXT NOT NULL DEFAULT 'unknown',
+    consecutive_health_failures INTEGER NOT NULL DEFAULT 0,
+    last_health_checked_at TIMESTAMPTZ,
+    last_health_failure_at TIMESTAMPTZ,
     verified_at TIMESTAMPTZ,
     disabled_at TIMESTAMPTZ,
 
@@ -45,7 +53,22 @@ CREATE TABLE IF NOT EXISTS sender_domains (
         CHECK (
             failure_reason IS NULL
             OR length(trim(failure_reason)) > 0
-        )
+        ),
+
+    CONSTRAINT chk_sender_domains_verification_attempts
+        CHECK (verification_attempts >= 0),
+
+    CONSTRAINT chk_sender_domains_reconcile_lock_pair
+        CHECK (
+            (reconcile_locked_at IS NULL AND reconcile_locked_by IS NULL)
+            OR (reconcile_locked_at IS NOT NULL AND length(trim(reconcile_locked_by)) > 0)
+        ),
+
+    CONSTRAINT chk_sender_domains_health_status
+        CHECK (health_status IN ('unknown', 'healthy', 'degraded')),
+
+    CONSTRAINT chk_sender_domains_health_failures
+        CHECK (consecutive_health_failures >= 0)
 );
 
 -- A verified domain should belong to only one tenant.
@@ -60,3 +83,7 @@ CREATE INDEX IF NOT EXISTS idx_sender_domains_team_id_status
 
 CREATE INDEX IF NOT EXISTS idx_sender_domains_provider_status
     ON sender_domains (provider, status);
+
+CREATE INDEX IF NOT EXISTS idx_sender_domains_reconciliation
+    ON sender_domains (next_check_at, created_at)
+    WHERE status IN ('pending', 'verified') AND disabled_at IS NULL;

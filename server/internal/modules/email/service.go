@@ -104,18 +104,29 @@ func (s *Service) Cancel(ctx context.Context, value string) (MutationResponse, e
 }
 
 type Service struct {
-	repository *Repository
-	delivery   DeliveryQueue
-	config     ServiceConfig
+	repository    *Repository
+	delivery      DeliveryQueue
+	config        ServiceConfig
+	senderDomains senderDomainResolver
+}
+
+type senderDomainResolver interface {
+	ResolveSenderDomain(context.Context, uuid.UUID, string) (SenderDomainRoute, error)
 }
 
 type ServiceConfig struct {
 	DefaultFromEmail string
 	DefaultFromName  string
+	DefaultProvider  string
+	DefaultRegion    string
 }
 
-func NewService(repository *Repository, delivery DeliveryQueue, config ServiceConfig) *Service {
-	return &Service{repository: repository, delivery: delivery, config: config}
+func NewService(repository *Repository, delivery DeliveryQueue, config ServiceConfig, resolvers ...senderDomainResolver) *Service {
+	var resolver senderDomainResolver = repository
+	if len(resolvers) > 0 {
+		resolver = resolvers[0]
+	}
+	return &Service{repository: repository, delivery: delivery, config: config, senderDomains: resolver}
 }
 
 func requireTenant(ctx context.Context, permission tenant.Permission) (tenant.Context, error) {
@@ -136,6 +147,9 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	}
 	validated, err := validateSend(req, s.config)
 	if err != nil {
+		return Message{}, err
+	}
+	if err := s.authorizeSender(ctx, tc.TeamID, &validated); err != nil {
 		return Message{}, err
 	}
 	if s.delivery == nil {
@@ -218,6 +232,9 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 		if err != nil {
 			return nil, err
 		}
+		if err = s.authorizeSender(ctx, tc.TeamID, &validated[index]); err != nil {
+			return nil, err
+		}
 		totalPayloadBytes += bodySize(validated[index].HTMLBody) + bodySize(validated[index].TextBody) + len(validated[index].Metadata)
 		if totalPayloadBytes > maxBatchPayloadBytes {
 			return nil, apperrors.NewPayloadTooLarge("Email batch payload is too large")
@@ -245,6 +262,44 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 		return nil, apperrors.NewInternal("Unable to commit email batch transaction", err)
 	}
 	return result, nil
+}
+
+func (s *Service) authorizeSender(ctx context.Context, teamID uuid.UUID, message *validatedSend) error {
+	provider := strings.TrimSpace(s.config.DefaultProvider)
+	region := strings.TrimSpace(s.config.DefaultRegion)
+	if provider == "" || region == "" {
+		return apperrors.NewInternal("Email delivery route is not configured", nil)
+	}
+	if strings.EqualFold(message.FromEmail, strings.TrimSpace(s.config.DefaultFromEmail)) {
+		message.Provider = provider
+		message.ProviderRegion = region
+		return nil
+	}
+
+	separator := strings.LastIndexByte(message.FromEmail, '@')
+	if separator < 0 || separator == len(message.FromEmail)-1 {
+		return apperrors.NewBadRequest("Email sender is invalid")
+	}
+	if s.senderDomains == nil {
+		return apperrors.NewInternal("Sender domain repository is not configured", nil)
+	}
+	route, err := s.senderDomains.ResolveSenderDomain(ctx, teamID, strings.ToLower(message.FromEmail[separator+1:]))
+	if errors.Is(err, ErrSenderDomainNotFound) {
+		return apperrors.NewForbidden("Email sender domain is not authorized for this team")
+	}
+	if err != nil {
+		return apperrors.NewInternal("Unable to authorize email sender domain", err)
+	}
+	if route.Status != "verified" || route.Disabled {
+		return apperrors.NewConflict("Email sender domain is not verified and enabled")
+	}
+	if !strings.EqualFold(strings.TrimSpace(route.Provider), provider) || strings.TrimSpace(route.Region) == "" {
+		return apperrors.NewInternal("Sender domain delivery route is invalid", nil)
+	}
+	message.SenderDomainID = &route.ID
+	message.Provider = route.Provider
+	message.ProviderRegion = route.Region
+	return nil
 }
 
 func enqueueDelivery(ctx context.Context, queue DeliveryQueue, tx pgx.Tx, messageID, teamID uuid.UUID, scheduledAt *time.Time) error {

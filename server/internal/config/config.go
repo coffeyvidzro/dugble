@@ -51,28 +51,40 @@ type WebhookDeliveryConfig struct {
 	AutoDisableAfter int32         `env:"AUTO_DISABLE_AFTER" envDefault:"20"`
 }
 
+type DomainReconciliationConfig struct {
+	PollInterval           time.Duration `env:"POLL_INTERVAL" envDefault:"30s"`
+	BatchSize              int32         `env:"BATCH_SIZE" envDefault:"25"`
+	Concurrency            int           `env:"CONCURRENCY" envDefault:"5"`
+	LockTimeout            time.Duration `env:"LOCK_TIMEOUT" envDefault:"2m"`
+	CheckTimeout           time.Duration `env:"CHECK_TIMEOUT" envDefault:"20s"`
+	HealthCheckInterval    time.Duration `env:"HEALTH_CHECK_INTERVAL" envDefault:"24h"`
+	HealthRetryInterval    time.Duration `env:"HEALTH_RETRY_INTERVAL" envDefault:"1h"`
+	HealthFailureThreshold int32         `env:"HEALTH_FAILURE_THRESHOLD" envDefault:"3"`
+}
+
 type BackofficeConfig struct {
 	HTTPPort    string   `env:"HTTP_PORT" envDefault:"8081"`
 	AdminEmails []string `env:"ADMIN_EMAILS" envSeparator:","`
 }
 
 type Config struct {
-	AppEnv          string                `env:"APP_ENV"   envDefault:"development"`
-	HTTPPort        string                `env:"HTTP_PORT" envDefault:"8080"`
-	DatabaseURL     string                `env:"DATABASE_URL,required,notEmpty"`
-	RedisURL        string                `env:"REDIS_URL" envDefault:"redis://localhost:6379/0"`
-	CORSOrigins     []string              `env:"CORS_ORIGINS" envSeparator:"," envDefault:"http://localhost:3000,http://127.0.0.1:3000"`
-	ArcjetKey       string                `env:"ARCJET_KEY,required,notEmpty"`
-	FrontendURL     string                `env:"FRONTEND_URL" envDefault:"http://localhost:3000"`
-	BackendURL      string                `env:"BACKEND_URL"  envDefault:"http://localhost:8080"`
-	CookieDomain    string                `env:"COOKIE_DOMAIN"`
-	AWS             AWSConfig             `envPrefix:"AWS_"`
-	Messaging       MessagingConfig       `envPrefix:"NATS_"`
-	WebhookDelivery WebhookDeliveryConfig `envPrefix:"WEBHOOK_DELIVERY_"`
-	Arkesel         ProviderConfig        `envPrefix:"ARKESEL_"`
-	MNotify         ProviderConfig        `envPrefix:"MNOTIFY_"`
-	Hubtel          HubtelConfig          `envPrefix:"HUBTEL_"`
-	Backoffice      BackofficeConfig      `envPrefix:"BACKOFFICE_"`
+	AppEnv               string                     `env:"APP_ENV"   envDefault:"development"`
+	HTTPPort             string                     `env:"HTTP_PORT" envDefault:"8080"`
+	DatabaseURL          string                     `env:"DATABASE_URL,required,notEmpty"`
+	RedisURL             string                     `env:"REDIS_URL" envDefault:"redis://localhost:6379/0"`
+	CORSOrigins          []string                   `env:"CORS_ORIGINS" envSeparator:"," envDefault:"http://localhost:3000,http://127.0.0.1:3000"`
+	ArcjetKey            string                     `env:"ARCJET_KEY,required,notEmpty"`
+	FrontendURL          string                     `env:"FRONTEND_URL" envDefault:"http://localhost:3000"`
+	BackendURL           string                     `env:"BACKEND_URL"  envDefault:"http://localhost:8080"`
+	CookieDomain         string                     `env:"COOKIE_DOMAIN"`
+	AWS                  AWSConfig                  `envPrefix:"AWS_"`
+	Messaging            MessagingConfig            `envPrefix:"NATS_"`
+	WebhookDelivery      WebhookDeliveryConfig      `envPrefix:"WEBHOOK_DELIVERY_"`
+	DomainReconciliation DomainReconciliationConfig `envPrefix:"DOMAIN_RECONCILIATION_"`
+	Arkesel              ProviderConfig             `envPrefix:"ARKESEL_"`
+	MNotify              ProviderConfig             `envPrefix:"MNOTIFY_"`
+	Hubtel               HubtelConfig               `envPrefix:"HUBTEL_"`
+	Backoffice           BackofficeConfig           `envPrefix:"BACKOFFICE_"`
 }
 
 func Load() (*Config, error) {
@@ -159,6 +171,30 @@ func (c *Config) normalize() {
 	}
 	if c.WebhookDelivery.AutoDisableAfter <= 0 {
 		c.WebhookDelivery.AutoDisableAfter = 20
+	}
+	if c.DomainReconciliation.PollInterval <= 0 {
+		c.DomainReconciliation.PollInterval = 30 * time.Second
+	}
+	if c.DomainReconciliation.BatchSize <= 0 {
+		c.DomainReconciliation.BatchSize = 25
+	}
+	if c.DomainReconciliation.Concurrency <= 0 {
+		c.DomainReconciliation.Concurrency = 5
+	}
+	if c.DomainReconciliation.LockTimeout <= 0 {
+		c.DomainReconciliation.LockTimeout = 2 * time.Minute
+	}
+	if c.DomainReconciliation.CheckTimeout <= 0 {
+		c.DomainReconciliation.CheckTimeout = 20 * time.Second
+	}
+	if c.DomainReconciliation.HealthCheckInterval <= 0 {
+		c.DomainReconciliation.HealthCheckInterval = 24 * time.Hour
+	}
+	if c.DomainReconciliation.HealthRetryInterval <= 0 {
+		c.DomainReconciliation.HealthRetryInterval = time.Hour
+	}
+	if c.DomainReconciliation.HealthFailureThreshold <= 0 {
+		c.DomainReconciliation.HealthFailureThreshold = 3
 	}
 	c.Arkesel.APIKey = strings.TrimSpace(c.Arkesel.APIKey)
 	c.Arkesel.BaseURL = strings.TrimRight(strings.TrimSpace(c.Arkesel.BaseURL), "/")

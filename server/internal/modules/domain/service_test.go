@@ -1,10 +1,30 @@
 package domain
 
 import (
+	"context"
+	"errors"
 	"testing"
 
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 )
+
+type checkProvider struct {
+	status platformemail.DomainStatus
+	err    error
+}
+
+func (p checkProvider) ProvisionDomain(context.Context, platformemail.DomainProvisionRequest) ([]platformemail.VerificationRecord, error) {
+	return nil, nil
+}
+func (p checkProvider) GetDomainStatus(context.Context, string, string) (platformemail.DomainStatus, error) {
+	return p.status, p.err
+}
+
+type checkDNS bool
+
+func (d checkDNS) Verify(context.Context, string, platformemail.VerificationRecord) bool {
+	return bool(d)
+}
 
 func TestVerificationStatusRequiresDNSRecords(t *testing.T) {
 	providerStatus := platformemail.DomainStatus{
@@ -15,6 +35,39 @@ func TestVerificationStatusRequiresDNSRecords(t *testing.T) {
 
 	if got := verificationStatus(nil, providerStatus); got != StatusPending {
 		t.Fatalf("verificationStatus() = %q, want %q", got, StatusPending)
+	}
+}
+
+func TestCheckReturnsTransientProviderFailureWithoutChangingDomain(t *testing.T) {
+	providerErr := errors.New("SES unavailable")
+	service := NewService(nil, checkProvider{err: providerErr}, checkDNS(true))
+	domain := SenderDomain{Status: StatusPending, VerificationRecords: []VerificationRecord{{Status: platformemail.RecordStatusPending}}}
+	_, err := service.Check(context.Background(), domain)
+	if !errors.Is(err, providerErr) {
+		t.Fatalf("Check() error = %v, want %v", err, providerErr)
+	}
+	if domain.Status != StatusPending || domain.VerificationRecords[0].Status != platformemail.RecordStatusPending {
+		t.Fatalf("Check() mutated domain: %+v", domain)
+	}
+}
+
+func TestCheckVerifiesReadyDomain(t *testing.T) {
+	service := NewService(nil, checkProvider{status: platformemail.DomainStatus{
+		IdentityVerified: true, DKIMVerified: true, MailFromVerified: true,
+	}}, checkDNS(true))
+	domain := SenderDomain{Domain: "example.com", ProviderRegion: "eu-west-1", VerificationRecords: []VerificationRecord{{Record: platformemail.RecordDKIM}}}
+	result, err := service.Check(context.Background(), domain)
+	if err != nil {
+		t.Fatalf("Check(): %v", err)
+	}
+	if result.Status != StatusVerified || result.VerificationRecords[0].Status != platformemail.RecordStatusVerified {
+		t.Fatalf("unexpected reconciliation result: %+v", result)
+	}
+}
+
+func TestVerifiedDomainObservationDoesNotChangeAuthorizationStatus(t *testing.T) {
+	if got := authorizationStatusAfterCheck(StatusVerified, StatusPending); got != StatusVerified {
+		t.Fatalf("authorizationStatusAfterCheck() = %q, want %q", got, StatusVerified)
 	}
 }
 

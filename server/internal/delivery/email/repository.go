@@ -19,6 +19,8 @@ var ErrMessageNotDeliverable = errors.New("email message is not deliverable")
 type DeliveryMessage struct {
 	ID          uuid.UUID
 	TeamID      uuid.UUID
+	Provider    string
+	Region      string
 	FromEmail   string
 	FromName    string
 	ReplyTo     []platformemail.Address
@@ -51,9 +53,9 @@ func (r *Repository) Claim(ctx context.Context, messageID, teamID uuid.UUID) (De
 		SET status = 'processing', processing_at = COALESCE(processing_at, now()),
 			error_code = NULL, error_message = NULL, updated_at = now()
 		WHERE id = $1 AND team_id = $2 AND status IN ('queued', 'processing')
-		RETURNING id, team_id, from_email, from_name, subject, html_body, text_body,
+		RETURNING id, team_id, delivery_provider, provider_region, from_email, from_name, subject, html_body, text_body,
 			recipients, headers, attachments
-	`, messageID, teamID).Scan(&message.ID, &message.TeamID, &message.FromEmail, &fromName, &message.Subject, &htmlBody, &textBody, &recipientsJSON, &headersJSON, &attachmentsJSON)
+	`, messageID, teamID).Scan(&message.ID, &message.TeamID, &message.Provider, &message.Region, &message.FromEmail, &fromName, &message.Subject, &htmlBody, &textBody, &recipientsJSON, &headersJSON, &attachmentsJSON)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return DeliveryMessage{}, ErrMessageNotDeliverable
 	}

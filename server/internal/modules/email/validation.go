@@ -11,6 +11,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/google/uuid"
+
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
@@ -26,24 +28,27 @@ const (
 var tagPattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
 type validatedSend struct {
-	MessageType  string
-	FromEmail    string
-	FromName     *string
-	ReplyToEmail *string
-	To           []EmailAddress
-	CC           []EmailAddress
-	BCC          []EmailAddress
-	ReplyTo      []EmailAddress
-	ToEmail      string
-	ToName       *string
-	Subject      string
-	HTMLBody     *string
-	TextBody     *string
-	Metadata     json.RawMessage
-	Headers      map[string]string
-	Attachments  []Attachment
-	Tags         []Tag
-	ScheduledAt  *time.Time
+	SenderDomainID *uuid.UUID
+	Provider       string
+	ProviderRegion string
+	MessageType    string
+	FromEmail      string
+	FromName       *string
+	ReplyToEmail   *string
+	To             []EmailAddress
+	CC             []EmailAddress
+	BCC            []EmailAddress
+	ReplyTo        []EmailAddress
+	ToEmail        string
+	ToName         *string
+	Subject        string
+	HTMLBody       *string
+	TextBody       *string
+	Metadata       json.RawMessage
+	Headers        map[string]string
+	Attachments    []Attachment
+	Tags           []Tag
+	ScheduledAt    *time.Time
 }
 
 func validateSend(req SendRequest, config ServiceConfig) (validatedSend, error) {
@@ -77,9 +82,6 @@ func validateSend(req SendRequest, config ServiceConfig) (validatedSend, error) 
 			requestedFrom, fromErr := normalizeEmail(req.From.Email, "Email sender")
 			if fromErr != nil {
 				return validatedSend{}, apperrors.NewBadRequest(fromErr.Error())
-			}
-			if !strings.EqualFold(requestedFrom, defaultFrom) {
-				return validatedSend{}, apperrors.NewBadRequest("Email sender must use the configured Dugble address")
 			}
 			fromEmail = requestedFrom
 		}
