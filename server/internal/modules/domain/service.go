@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
@@ -24,11 +25,11 @@ var (
 
 type Service struct {
 	repository *Repository
-	provider   DomainProvider
-	dns        DNSVerifier
+	provider   platformemail.DomainProvider
+	dns        platformemail.DNSVerifier
 }
 
-func NewService(repository *Repository, provider DomainProvider, dns DNSVerifier) *Service {
+func NewService(repository *Repository, provider platformemail.DomainProvider, dns platformemail.DNSVerifier) *Service {
 	return &Service{repository: repository, provider: provider, dns: dns}
 }
 
@@ -81,7 +82,9 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (SenderDomain, 
 		return SenderDomain{}, apperrors.NewInternal("Unable to create sender domain", err)
 	}
 
-	records, provisionErr := s.provider.Provision(ctx, ProvisionRequest{Domain: domainName, Region: region, CustomReturnPath: returnPath})
+	records, provisionErr := s.provider.ProvisionDomain(ctx, platformemail.DomainProvisionRequest{
+		Domain: domainName, Region: region, CustomReturnPath: returnPath,
+	})
 	if provisionErr != nil {
 		reason := provisionErr.Error()
 		_, _ = s.repository.UpdateVerification(ctx, uuid.MustParse(domain.ID), tc.TeamID, StatusFailed, []VerificationRecord{}, &reason)
@@ -114,7 +117,7 @@ func (s *Service) Verify(ctx context.Context, domainID string) (SenderDomain, er
 		return SenderDomain{}, apperrors.NewInternal("Sender domain verification is not configured", nil)
 	}
 
-	providerStatus, err := s.provider.Status(ctx, domain.Domain, domain.ProviderRegion)
+	providerStatus, err := s.provider.GetDomainStatus(ctx, domain.Domain, domain.ProviderRegion)
 	if err != nil {
 		reason := err.Error()
 		updated, updateErr := s.repository.UpdateVerification(ctx, id, tc.TeamID, StatusFailed, domain.VerificationRecords, &reason)
@@ -127,12 +130,12 @@ func (s *Service) Verify(ctx context.Context, domainID string) (SenderDomain, er
 	allDNSVerified := true
 	for index := range domain.VerificationRecords {
 		verified := s.dns.Verify(ctx, domain.Domain, domain.VerificationRecords[index])
-		if domain.VerificationRecords[index].Record == RecordDKIM {
+		if domain.VerificationRecords[index].Record == platformemail.RecordDKIM {
 			verified = verified && providerStatus.DKIMVerified
 		}
-		domain.VerificationRecords[index].Status = RecordStatusPending
+		domain.VerificationRecords[index].Status = platformemail.RecordStatusPending
 		if verified {
-			domain.VerificationRecords[index].Status = RecordStatusVerified
+			domain.VerificationRecords[index].Status = platformemail.RecordStatusVerified
 		} else {
 			allDNSVerified = false
 		}
