@@ -1,47 +1,93 @@
 ---
 title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+description: "Send your first transactional email with the Dugble API"
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
+This guide takes you from a team token to a queued transactional email.
 
 ## Prerequisites
 
-Before you begin, you must have:
+Before you begin, you need:
 
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
+- A Dugble account and team
+- A team token with the `email:send` permission
+- A configured sender address
+- `curl` or another HTTP client
 
-## Get started
+<Note>
+  Keep team tokens on your server. Never expose them in browser or mobile
+  application code.
+</Note>
 
-<Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+## 1. Store your team token
 
-    ```bash
-    npm install your-package
-    ```
-  </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+```bash
+export DUGBLE_TOKEN="replace-with-your-team-token"
+```
 
-    ```bash
-    your-cli init
-    ```
-  </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
+## 2. Send an email
 
-    ```bash
-    your-cli start
-    ```
-  </Step>
-</Steps>
+Use a unique idempotency key for every logical send attempt. Reusing the same key safely prevents accidental duplicate requests.
+
+```bash
+curl --request POST \
+  --url https://api.dugble.com/emails \
+  --header "Authorization: Bearer $DUGBLE_TOKEN" \
+  --header "Content-Type: application/json" \
+  --header "Idempotency-Key: quickstart-$(date +%s)" \
+  --data '{
+    "to": "Ada Lovelace <ada@example.com>",
+    "subject": "Hello from Dugble",
+    "html": "<h1>Your Dugble integration works</h1><p>This message was queued through the API.</p>",
+    "text": "Your Dugble integration works. This message was queued through the API."
+  }'
+```
+
+A successful request returns `202 Accepted` with an email ID and a status of `queued`.
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "49a3999c-0ce1-4ea6-ab68-afcd6dc2e794",
+    "to_email": "ada@example.com",
+    "subject": "Hello from Dugble",
+    "status": "queued"
+  }
+}
+```
+
+`queued` means Dugble accepted the message for asynchronous delivery. It does not mean the recipient's mail server has delivered it yet.
+
+## 3. Check delivery status
+
+Use the returned email ID:
+
+```bash
+curl --request GET \
+  --url https://api.dugble.com/emails/49a3999c-0ce1-4ea6-ab68-afcd6dc2e794 \
+  --header "Authorization: Bearer $DUGBLE_TOKEN"
+```
+
+The message lifecycle may include `queued`, `processing`, `submitted`, `delivered`, `delayed`, `bounced`, `complained`, `rejected`, `failed`, or `canceled`.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Email API" icon="envelope" href="/emails/introduction">
+    Learn about recipients, content, scheduling, batches, headers, and message status.
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/webhooks/introduction">
+    Receive signed lifecycle events instead of polling message status.
+  </Card>
+  <Card title="SMS API" icon="message-sms" href="/sms/introduction">
+    Send transactional SMS using the same team-token model.
+  </Card>
+  <Card title="Sender domains" icon="globe" href="/domains/introduction">
+    Configure and authenticate the domains used for outbound email.
+  </Card>
+</CardGroup>
 
 <Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
-
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
+  Need help? Contact [support@dugble.com](mailto:support@dugble.com).
 </Tip>

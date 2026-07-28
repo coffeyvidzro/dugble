@@ -1,1 +1,1 @@
-"""Offline evaluation tools for Identity AI analyzers."""
+"""Aggregate, privacy-preserving evaluation metrics for biometric pipelines."""

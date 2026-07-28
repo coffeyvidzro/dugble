@@ -1,99 +1,74 @@
-# dugble
+# Dugble
 
-dugble is a lightweight Go HTTP server for multi-tenant identity and team management. It provides browser authentication, user profiles, team membership workflows, scoped team tokens, and security middleware.
+Dugble is a multi-tenant communications and identity platform for African startups and teams. It combines browser authentication, team-scoped API tokens, email and SMS delivery, webhooks, operational tooling, and an experimental private identity-analysis service.
 
 ## Architecture
 
 ```text
-Client applications
+Browser and API clients
         |
-        v
-HTTP API :8080 (Echo v5)
-        |
-        v
-Authentication, CSRF/CORS/security middleware,
-tenant resolution, and permission checks
-        |
-        v
-PostgreSQL
+        +--------------------+
+        |                    |
+        v                    v
+Next.js web             Go HTTP API :8080
+                             |
+              +--------------+--------------+
+              |              |              |
+              v              v              v
+         PostgreSQL        Redis      transactional outbox
+                                             |
+                                             v
+                                      NATS JetStream
+                                             |
+                                             v
+                                      delivery worker
+                                      /      |      \
+                                   email    SMS   webhooks
+
+Go API ---- private authenticated HTTP ----> Identity AI
 ```
 
-PostgreSQL stores users, sessions, verification tokens, teams, memberships, team invitations, and team tokens.
+The Go API owns authentication, tenant authorization, persistence, policy decisions, and public API contracts. Background workers deliver queued email, SMS, and webhook events. The Python identity service supplies measurements only; it must not make an authoritative identity decision.
 
 ## Repository layout
 
 ```text
-cmd/
-└── server/                         # HTTP server entrypoint
-
-internal/
-├── config/                         # Environment loading and normalization
-├── database/                       # PostgreSQL setup and SQLC-generated data access
-├── integration/
-│   ├── email/                      # AWS SES email integration
-│   └── security/                   # Arcjet client integration
-├── modules/                        # Identity, users, teams, sessions, and team tokens
-├── notifications/                  # Account and team notification templates
-├── platform/                       # Auth, tenant, and shared helpers
-└── transport/                      # Router and HTTP middleware
-
-pkg/
-├── errors/                         # Application error types
-├── httputil/                       # HTTP response helpers
-├── pgconv/                         # pgtype conversion helpers
-└── ptr/                            # Pointer helpers
+web/                       # Next.js website and dashboard
+server/                    # Go API, workers, backoffice, migrations, and tests
+services/identity-ai/      # Private Python identity-analysis service
+docs/                      # Mintlify documentation and OpenAPI contract
+deploy/                    # Docker Compose, Caddy, and NATS configuration
 ```
 
-## Features
+## Current status
 
-- Echo v5 HTTP API
-- User registration, login, logout, and profile management
-- Email verification and password reset flows
-- Session listing and revocation
-- Team creation and membership management
-- Team invitation accept/decline workflows
-- Scoped team token creation, update, listing, and revocation
-- Tenant context and permission checks
-- CSRF, CORS, secure headers, request IDs, panic recovery, and Arcjet request protection
-- PostgreSQL persistence through `pgx` and SQLC
-- Docker and Caddy local runtime support
-
-## Email pricing
-
-Planned launch pricing for Dugble's transactional email API:
-
-| Plan | Monthly price | Included emails | Overage | Sending domains |
-| --- | ---: | ---: | ---: | ---: |
-| Free | $0 | 1,000 | No overage | 1 |
-| Developer | $29 | 50,000 | $1.00 per additional 1,000 | 5 |
-| Pro | $59 | 100,000 | $0.80 per additional 1,000 | 25 |
-| Scale | $349 | 500,000 | $0.60 per additional 1,000 | 100 |
-
-Need more than 500,000 emails per month? Contact Dugble for custom pricing.
-
-Email usage is counted per recipient. One message sent to ten recipients counts as ten emails. Paid overage is billed in blocks of 1,000 emails. Pricing is provisional and may change before public launch.
+| Area | Status |
+| --- | --- |
+| Authentication, teams, sessions, and team tokens | Implemented |
+| Email and SMS APIs with asynchronous delivery | Implemented |
+| Webhook signing, retries, and operational controls | Implemented |
+| Backoffice administration | Implemented; internal use only |
+| Identity image-quality analysis | Implemented foundation |
+| Document analysis, face matching, and liveness | Experimental stubs; not production-ready |
 
 ## Local development
 
 ### Requirements
 
-- Go
+- Go version declared in `server/go.mod`
+- Bun version declared in `web/package.json`
+- Python 3.14.6 and `uv` for `services/identity-ai`
 - Docker and Docker Compose
-- PostgreSQL when not using Docker
-- Arcjet key for request protection
-- AWS SES sender credentials for transactional email
 
 ### Environment
-
-Copy the example environment file and fill in required values:
 
 ```sh
 cp .env.example .env
 ```
 
-The server requires PostgreSQL, Arcjet, and AWS SES email configuration at startup.
+Replace all placeholder secrets before starting the stack. The Compose environment expects PostgreSQL, Redis, NATS, Arcjet, AWS SES, and the private identity-service key.
 
-### Docker Compose
+### Run the full stack
 
 ```sh
 make up
@@ -101,47 +76,69 @@ make logs
 make down
 ```
 
-### Run locally
+Deployment assets live in `deploy/`. `compose.yaml` defines the runtime stack, while `Caddyfile` and `nats-server.conf` configure the edge proxy and NATS JetStream.
+
+### Run individual services
 
 ```sh
+# API
+cd server
 go run ./cmd/server
+
+# Worker
+cd server
+go run ./cmd/worker
+
+# Web
+cd web
+bun install --frozen-lockfile
+bun run dev
+
+# Identity AI
+cd services/identity-ai
+uv sync --locked --dev
+uv run pytest
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 ### Backoffice
 
-The backoffice is a separate, intentionally simple internal web server for
-read-only operational checks. It reuses the normal Dugble session cookie and
-then restricts access to emails listed in `BACKOFFICE_ADMIN_EMAILS`.
+The backoffice is an internal administrative application. It can inspect operational data and perform privileged mutations including team-status changes, SMS-pricing changes, wallet adjustments, sender-ID decisions, and domain-status decisions.
 
-To run it locally:
+It reuses the normal Dugble session cookie and restricts access to emails listed in `BACKOFFICE_ADMIN_EMAILS`. Treat the allowlist as a temporary administrative control, keep the service private, and audit privileged actions.
 
 ```sh
-BACKOFFICE_ADMIN_EMAILS=you@example.com go run ./server/cmd/backoffice
+cd server
+BACKOFFICE_ADMIN_EMAILS=you@example.com go run ./cmd/backoffice
 ```
 
-Then sign in as that user through the normal Dugble app/API flow and open:
-
-```text
-http://localhost:8081
-```
-
-Useful configuration:
+Then sign in through the normal Dugble app/API flow and open `http://localhost:8081`.
 
 ```env
 BACKOFFICE_HTTP_PORT=8081
 BACKOFFICE_ADMIN_EMAILS=you@example.com
 ```
 
-### Checks
+## Checks
 
 ```sh
-gofmt -w .
-go test ./...
+# Go
+cd server
+test -z "$(gofmt -l .)"
 go vet ./...
+go test -race ./...
+
+# Web
+cd web
+bun run lint
+bun run build
+
+# Identity AI
+cd services/identity-ai
+uv run pytest
 ```
 
-Email transaction integration tests require a migrated, disposable PostgreSQL
-database. They are skipped when `TEST_DATABASE_URL` is unset:
+Email transaction integration tests require a migrated, disposable PostgreSQL database and are skipped when `TEST_DATABASE_URL` is unset:
 
 ```sh
 cd server
@@ -149,17 +146,17 @@ TEST_DATABASE_URL='postgres://postgres:postgres@localhost:5432/dugble_test?sslmo
   go test ./internal/modules/email -run 'Test(Send|Batch|Get)' -v
 ```
 
-The integration tests create and remove their own team, email, and outbox rows,
-but the configured database must already have all migrations applied.
+## Documentation
 
-## Tech stack
+Developer documentation lives in `docs/`, including the OpenAPI contract in `docs/openapi.json`. Public examples use team-scoped bearer tokens and should remain synchronized with the registered Go routes.
 
-- [Go](https://go.dev/)
-- [Echo v5](https://echo.labstack.com/)
-- [SQLC](https://sqlc.dev/)
-- [PostgreSQL](https://www.postgresql.org/)
-- [Caddy](https://caddyserver.com/)
-- [Docker](https://www.docker.com/)
-- [Atlas](https://atlasgo.io/)
-- [Arcjet](https://arcjet.com/)
-- [Amazon SES](https://aws.amazon.com/ses/)
+## Security notes
+
+- Never commit populated environment files, production credentials, real identity documents, selfies, videos, or biometric artifacts.
+- Keep team tokens on trusted servers rather than browser or mobile clients.
+- Keep the identity-analysis service and backoffice on private networks.
+- Use synthetic or fully redacted identity fixtures in this public repository.
+
+## License
+
+MIT

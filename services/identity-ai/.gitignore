@@ -1,4 +1,8 @@
 .pytest_cache/
 .venv/
 __pycache__/
-tests/fixtures/quality/generated/
+evaluation/reports/*
+!evaluation/reports/.gitkeep
+models/*
+!models/README.md
+!models/manifest.json

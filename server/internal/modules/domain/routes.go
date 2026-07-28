@@ -20,5 +20,6 @@ func RegisterRoutes(
 	domains.GET("", handler.List, tenantMiddleware(tenant.PermissionSenderDomainsRead))
 	domains.POST("", handler.Create, tenantMiddleware(tenant.PermissionSenderDomainsCreate))
 	domains.GET("/:domain_id", handler.Get, tenantMiddleware(tenant.PermissionSenderDomainsRead))
+	domains.POST("/:domain_id/verify", handler.Verify, tenantMiddleware(tenant.PermissionSenderDomainsCreate))
 	domains.DELETE("/:domain_id", handler.Delete, tenantMiddleware(tenant.PermissionSenderDomainsDelete))
 }

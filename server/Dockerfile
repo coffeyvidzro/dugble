@@ -29,8 +29,7 @@ RUN set -eux; \
         -trimpath \
         -ldflags="-s -w" \
         -o /out/backoffice \
-        ./cmd/backoffice    
-
+        ./cmd/backoffice
 
 FROM alpine:3.22
 
@@ -48,6 +47,6 @@ COPY --from=build /out/backoffice /dugble/backoffice
 
 USER dugble
 
-EXPOSE 8080 1502
+EXPOSE 8080 8081
 
 CMD ["/dugble/server"]

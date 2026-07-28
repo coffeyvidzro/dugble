@@ -1,4 +1,4 @@
-COMPOSE := docker compose
+COMPOSE := docker compose -f deploy/compose.yaml
 
 .PHONY: help
 help:
