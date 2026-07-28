@@ -7,6 +7,18 @@ import (
 	"strings"
 )
 
+const (
+	RecordDKIM = "DKIM"
+	RecordSPF  = "SPF"
+
+	RecordTypeTXT = "TXT"
+	RecordTypeMX  = "MX"
+
+	RecordStatusPending  = "pending"
+	RecordStatusVerified = "verified"
+	RecordStatusFailed   = "failed"
+)
+
 // Address is a provider-neutral email address.
 type Address struct {
 	Email string `json:"email"`
@@ -45,6 +57,37 @@ type Result struct {
 // Sender is implemented by email integrations such as AWS SES.
 type Sender interface {
 	Send(context.Context, Message) (Result, error)
+}
+
+// VerificationRecord is a provider-neutral DNS record required to authenticate a sender domain.
+type VerificationRecord struct {
+	Record   string `json:"record"`
+	Name     string `json:"name"`
+	Value    string `json:"value"`
+	Type     string `json:"type"`
+	Status   string `json:"status"`
+	TTL      string `json:"ttl"`
+	Priority *int   `json:"priority,omitempty"`
+}
+
+// DomainProvisionRequest describes a sender domain that an email integration should provision.
+type DomainProvisionRequest struct {
+	Domain           string
+	Region           string
+	CustomReturnPath string
+}
+
+// DomainStatus contains provider-side sender-domain verification state.
+type DomainStatus struct {
+	IdentityVerified bool
+	DKIMVerified     bool
+	MailFromVerified bool
+}
+
+// DomainProvider is implemented by integrations that provision and inspect sender identities.
+type DomainProvider interface {
+	ProvisionDomain(context.Context, DomainProvisionRequest) ([]VerificationRecord, error)
+	GetDomainStatus(context.Context, string, string) (DomainStatus, error)
 }
 
 // SendError exposes provider-neutral failure metadata to delivery workers.
