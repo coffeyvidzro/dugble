@@ -20,7 +20,9 @@ export type Session = z.infer<typeof sessionSchema>;
 export type SessionUser = Session["user"];
 
 export class SessionUnavailableError extends Error {
-  constructor(message = "The authentication service is temporarily unavailable.") {
+  constructor(
+    message = "The authentication service is temporarily unavailable.",
+  ) {
     super(message);
     this.name = "SessionUnavailableError";
   }

@@ -20,7 +20,9 @@ const validSession = {
 
 describe("resolveSessionResponse", () => {
   test("returns null only for unauthenticated sessions", async () => {
-    expect(await resolveSessionResponse(new Response(null, { status: 401 }))).toBeNull();
+    expect(
+      await resolveSessionResponse(new Response(null, { status: 401 })),
+    ).toBeNull();
   });
 
   test("returns a validated session", async () => {
