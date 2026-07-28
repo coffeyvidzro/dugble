@@ -113,7 +113,8 @@ func (s *Service) Verify(ctx context.Context, domainID string) (SenderDomain, er
 	result, err := s.Check(ctx, domain)
 	if err != nil {
 		reason := err.Error()
-		updated, updateErr := s.repository.UpdateVerification(ctx, id, tc.TeamID, domain.Status, domain.VerificationRecords, &reason)
+		status := authorizationStatusAfterError(domain.Status)
+		updated, updateErr := s.repository.UpdateVerification(ctx, id, tc.TeamID, status, domain.VerificationRecords, &reason)
 		if updateErr != nil {
 			return SenderDomain{}, apperrors.NewInternal("Unable to update sender domain verification", updateErr)
 		}
@@ -126,6 +127,15 @@ func (s *Service) Verify(ctx context.Context, domainID string) (SenderDomain, er
 		return SenderDomain{}, apperrors.NewInternal("Unable to update sender domain verification", err)
 	}
 	return updated, nil
+}
+
+func authorizationStatusAfterError(currentStatus string) string {
+	if currentStatus == StatusVerified {
+		// Keep authorized domains usable until the health monitor observes
+		// enough consecutive failures to revoke them.
+		return StatusVerified
+	}
+	return StatusFailed
 }
 
 func authorizationStatusAfterCheck(currentStatus, observedStatus string) string {

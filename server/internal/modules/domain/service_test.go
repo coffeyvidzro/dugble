@@ -71,6 +71,18 @@ func TestVerifiedDomainObservationDoesNotChangeAuthorizationStatus(t *testing.T)
 	}
 }
 
+func TestAuthorizationStatusAfterErrorFailsPendingDomain(t *testing.T) {
+	if got := authorizationStatusAfterError(StatusPending); got != StatusFailed {
+		t.Fatalf("authorizationStatusAfterError() = %q, want %q", got, StatusFailed)
+	}
+}
+
+func TestAuthorizationStatusAfterErrorPreservesVerifiedDomain(t *testing.T) {
+	if got := authorizationStatusAfterError(StatusVerified); got != StatusVerified {
+		t.Fatalf("authorizationStatusAfterError() = %q, want %q", got, StatusVerified)
+	}
+}
+
 func TestVerificationStatusRequiresAllChecks(t *testing.T) {
 	verifiedProvider := platformemail.DomainStatus{
 		IdentityVerified: true,
