@@ -104,7 +104,7 @@ def health() -> dict[str, str]:
 def readiness(response: Response) -> dict[str, str | bool]:
     enabled = identity_enabled()
     authenticated = bool(configured_api_key())
-    ready = enabled and authenticated
+    ready = not enabled or authenticated
     if not ready:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
