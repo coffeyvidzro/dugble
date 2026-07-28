@@ -127,7 +127,6 @@ func (s *Service) Verify(ctx context.Context, domainID string) (SenderDomain, er
 		return updated, nil
 	}
 
-	allDNSVerified := true
 	for index := range domain.VerificationRecords {
 		verified := s.dns.Verify(ctx, domain.Domain, domain.VerificationRecords[index])
 		if domain.VerificationRecords[index].Record == platformemail.RecordDKIM {
@@ -136,20 +135,30 @@ func (s *Service) Verify(ctx context.Context, domainID string) (SenderDomain, er
 		domain.VerificationRecords[index].Status = platformemail.RecordStatusPending
 		if verified {
 			domain.VerificationRecords[index].Status = platformemail.RecordStatusVerified
-		} else {
-			allDNSVerified = false
 		}
 	}
 
-	status := StatusPending
-	if allDNSVerified && providerStatus.IdentityVerified && providerStatus.DKIMVerified && providerStatus.MailFromVerified {
-		status = StatusVerified
-	}
+	status := verificationStatus(domain.VerificationRecords, providerStatus)
 	updated, err := s.repository.UpdateVerification(ctx, id, tc.TeamID, status, domain.VerificationRecords, nil)
 	if err != nil {
 		return SenderDomain{}, apperrors.NewInternal("Unable to update sender domain verification", err)
 	}
 	return updated, nil
+}
+
+func verificationStatus(records []VerificationRecord, providerStatus platformemail.DomainStatus) string {
+	if len(records) == 0 {
+		return StatusPending
+	}
+	for _, record := range records {
+		if record.Status != platformemail.RecordStatusVerified {
+			return StatusPending
+		}
+	}
+	if providerStatus.IdentityVerified && providerStatus.DKIMVerified && providerStatus.MailFromVerified {
+		return StatusVerified
+	}
+	return StatusPending
 }
 
 func (s *Service) Delete(ctx context.Context, domainID string) (SenderDomain, error) {
