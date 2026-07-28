@@ -30,6 +30,11 @@ type EmailMessage struct {
 	ErrorCode         *string            `db:"error_code" json:"error_code"`
 	ErrorMessage      *string            `db:"error_message" json:"error_message"`
 	Metadata          []byte             `db:"metadata" json:"metadata"`
+	Recipients        []byte             `db:"recipients" json:"recipients"`
+	Headers           []byte             `db:"headers" json:"headers"`
+	Attachments       []byte             `db:"attachments" json:"attachments"`
+	Tags              []byte             `db:"tags" json:"tags"`
+	ScheduledAt       pgtype.Timestamptz `db:"scheduled_at" json:"scheduled_at"`
 	QueuedAt          pgtype.Timestamptz `db:"queued_at" json:"queued_at"`
 	ProcessingAt      pgtype.Timestamptz `db:"processing_at" json:"processing_at"`
 	SubmittedAt       pgtype.Timestamptz `db:"submitted_at" json:"submitted_at"`
@@ -37,11 +42,6 @@ type EmailMessage struct {
 	FailedAt          pgtype.Timestamptz `db:"failed_at" json:"failed_at"`
 	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	Recipients        []byte             `db:"recipients" json:"recipients"`
-	Headers           []byte             `db:"headers" json:"headers"`
-	Attachments       []byte             `db:"attachments" json:"attachments"`
-	Tags              []byte             `db:"tags" json:"tags"`
-	ScheduledAt       pgtype.Timestamptz `db:"scheduled_at" json:"scheduled_at"`
 }
 
 type IdempotencyKey struct {
