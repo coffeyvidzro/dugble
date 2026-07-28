@@ -2,6 +2,7 @@ package email
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 )
@@ -64,6 +65,19 @@ func TestNormalizeAttachmentsUsesExactDecodedSize(t *testing.T) {
 		if size != expected {
 			t.Fatalf("decoded size of %q = %d, want %d", encoded, size, expected)
 		}
+	}
+}
+
+func TestNormalizeAttachmentsRejectsPaths(t *testing.T) {
+	_, err := normalizeAttachments([]Attachment{{
+		Filename: "invoice.pdf",
+		Path:     "https://example.com/invoice.pdf",
+	}})
+	if err == nil {
+		t.Fatal("expected attachment path to be rejected")
+	}
+	if !strings.Contains(err.Error(), "Attachment paths are not supported") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
