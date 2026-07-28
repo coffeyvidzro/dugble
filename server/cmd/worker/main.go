@@ -36,8 +36,6 @@ import (
 	workerruntime "github.com/coffeyvidzro/dugble/server/internal/worker"
 )
 
-const workerHealthAddress = ":8082"
-
 func main() {
 	if err := run(); err != nil {
 		slog.Error("worker stopped", "error", err)
@@ -59,7 +57,7 @@ func run() error {
 		return fmt.Errorf("initialize PostgreSQL: %w", err)
 	}
 	defer db.Close()
-	messagingClient, err := jetstreammessaging.New(startupCtx, cfg.Messaging.URL, "dugble-worker")
+	messagingClient, err := jetstreammessaging.New(startupCtx, cfg.NATSURL, "dugble-worker")
 	if err != nil {
 		return fmt.Errorf("initialize JetStream: %w", err)
 	}
@@ -82,10 +80,10 @@ func run() error {
 		processedEvents,
 		emaildelivery.NewHandler(emaildelivery.NewRepository(db), emailSender),
 		emaildelivery.ConsumerConfig{
-			Concurrency:    cfg.Messaging.EmailConsumerConcurrency,
-			AckWait:        cfg.Messaging.EmailConsumerAckWait,
-			HandlerTimeout: cfg.Messaging.EmailHandlerTimeout,
-			MaxDeliver:     cfg.Messaging.EmailConsumerMaxDeliver,
+			Concurrency:    5,
+			AckWait:        2 * time.Minute,
+			HandlerTimeout: 45 * time.Second,
+			MaxDeliver:     6,
 			RetryPolicy:    emaildelivery.DefaultRetryPolicy(),
 		},
 	)
@@ -93,14 +91,14 @@ func run() error {
 	domainService := domainmodule.NewService(domainRepository, emailSender, platformemail.NewNetDNSVerifier())
 	domainWorkerID := "sender-domain-reconciliation-" + uuid.NewString()
 	domainConsumer := domainreconciliation.NewConsumer(domainRepository, domainService, domainreconciliation.Config{
-		PollInterval:           cfg.DomainReconciliation.PollInterval,
-		BatchSize:              cfg.DomainReconciliation.BatchSize,
-		Concurrency:            cfg.DomainReconciliation.Concurrency,
-		LockTimeout:            cfg.DomainReconciliation.LockTimeout,
-		CheckTimeout:           cfg.DomainReconciliation.CheckTimeout,
-		HealthCheckInterval:    cfg.DomainReconciliation.HealthCheckInterval,
-		HealthRetryInterval:    cfg.DomainReconciliation.HealthRetryInterval,
-		HealthFailureThreshold: cfg.DomainReconciliation.HealthFailureThreshold,
+		PollInterval:           30 * time.Second,
+		BatchSize:              25,
+		Concurrency:            5,
+		LockTimeout:            2 * time.Minute,
+		CheckTimeout:           20 * time.Second,
+		HealthCheckInterval:    24 * time.Hour,
+		HealthRetryInterval:    time.Hour,
+		HealthFailureThreshold: 3,
 	}, domainWorkerID)
 
 	smsRouter, err := routing.NewService(routing.DefaultConfig(), routing.NewPriorityStrategy(), arkesel.NewProvider(arkesel.NewClient(cfg.Arkesel)), mnotify.NewProvider(mnotify.NewClient(cfg.MNotify)))
@@ -115,24 +113,30 @@ func run() error {
 	webhookEmitter := platformwebhook.NewEmitter(webhookModuleRepository)
 	smsHandler := smsdelivery.NewHandler(smsmodule.NewRepositoryWithWebhookEmitter(db, webhookEmitter), smsSender, wallet.NewRepository(db))
 	smsConsumer := smsdelivery.NewConsumer(messagingClient, processedEvents, smsHandler, smsdelivery.ConsumerConfig{
-		Concurrency: cfg.Messaging.SMSConsumerConcurrency, AckWait: cfg.Messaging.SMSConsumerAckWait,
-		HandlerTimeout: cfg.Messaging.SMSHandlerTimeout, MaxDeliver: cfg.Messaging.SMSConsumerMaxDeliver,
+		Concurrency:    10,
+		AckWait:        2 * time.Minute,
+		HandlerTimeout: 45 * time.Second,
+		MaxDeliver:     6,
 	})
 	outboxRelay := outbox.NewRelay(outbox.NewRepository(db), messagingClient, outbox.Config{
-		PollInterval: cfg.Messaging.OutboxPollInterval, BatchSize: cfg.Messaging.OutboxBatchSize, LockTimeout: cfg.Messaging.OutboxLockTimeout,
+		PollInterval: 500 * time.Millisecond,
+		BatchSize:    100,
+		LockTimeout:  30 * time.Second,
 	})
 	webhookWorkerID := "webhook-delivery-" + uuid.NewString()
-	webhookRepository := webhookdelivery.NewRepository(db, webhookdelivery.RepositoryConfig{AutoDisableAfter: cfg.WebhookDelivery.AutoDisableAfter})
-	webhookHandler := webhookdelivery.NewHandler(webhookRepository, webhookdelivery.NewClient(cfg.WebhookDelivery.HTTPTimeout), webhookdelivery.DefaultRetryPolicy(), webhookWorkerID)
+	webhookRepository := webhookdelivery.NewRepository(db, webhookdelivery.RepositoryConfig{AutoDisableAfter: 20})
+	webhookHandler := webhookdelivery.NewHandler(webhookRepository, webhookdelivery.NewClient(10*time.Second), webhookdelivery.DefaultRetryPolicy(), webhookWorkerID)
 	webhookConsumer := webhookdelivery.NewConsumer(webhookRepository, webhookHandler, webhookdelivery.ConsumerConfig{
-		PollInterval: cfg.WebhookDelivery.PollInterval, BatchSize: cfg.WebhookDelivery.BatchSize,
-		Concurrency: cfg.WebhookDelivery.Concurrency, LockTimeout: cfg.WebhookDelivery.LockTimeout,
-		HandleTimeout: cfg.WebhookDelivery.HandleTimeout,
+		PollInterval:  500 * time.Millisecond,
+		BatchSize:     50,
+		Concurrency:   10,
+		LockTimeout:   30 * time.Second,
+		HandleTimeout: 15 * time.Second,
 	}, webhookWorkerID)
 
 	var supervisor *workerruntime.Supervisor
 	healthServer := &http.Server{
-		Addr:              workerHealthAddress,
+		Addr:              ":8082",
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       5 * time.Second,
 		WriteTimeout:      5 * time.Second,
