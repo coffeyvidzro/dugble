@@ -92,9 +92,13 @@ def test_readiness_succeeds_when_authentication_and_models_are_ready(monkeypatch
     }
 
 
-def test_lifespan_reports_runtime_unavailable_for_empty_reviewed_manifest(monkeypatch):
+def test_lifespan_reports_runtime_unavailable_for_empty_reviewed_manifest(monkeypatch, tmp_path):
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text('{"schema_version": 1, "models": []}', encoding="utf-8")
     monkeypatch.setenv("IDENTITY_AI_ENABLED", "true")
     monkeypatch.setenv("IDENTITY_AI_API_KEY", "test-key")
+    monkeypatch.setenv("IDENTITY_AI_MODEL_MANIFEST", str(manifest))
+    monkeypatch.setenv("IDENTITY_AI_MODEL_DIR", str(tmp_path))
 
     with TestClient(create_app()) as lifespan_client:
         response = lifespan_client.get("/ready")

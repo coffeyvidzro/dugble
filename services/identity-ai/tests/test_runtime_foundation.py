@@ -139,6 +139,41 @@ def test_bundle_composes_liveness_analyzer_from_runtime_adapters():
     assert bundle.liveness_analysis_service(attack_threshold=0.5) is not None
 
 
+def test_bundle_composes_minifas_from_onnx_session_and_face_detector():
+    class Tracker:
+        model_version = "landmarks-v1"
+
+        def observe(self, frames):
+            return ()
+
+    class Detector:
+        model_version = "detector-v1"
+
+        def detect(self, image):
+            return ()
+
+    class PadSession:
+        logical_name = "presentation-attack"
+        model_version = "pad-v1"
+        input_names = ("input",)
+        output_names = ("output",)
+
+        def run(self, inputs):
+            return ()
+
+    bundle = RuntimeModelBundle(
+        {"presentation-attack": PadSession()},
+        {"face-landmarks": Tracker(), "face-detector": Detector()},
+        {
+            "face-landmarks": "landmarks-v1",
+            "face-detector": "detector-v1",
+            "presentation-attack": "pad-v1",
+        },
+    )
+
+    assert bundle.liveness_analysis_service(attack_threshold=0.5) is not None
+
+
 def test_runtime_manager_reports_safe_error_when_required_models_are_absent(tmp_path):
     manifest_path = tmp_path / "manifest.json"
     manifest_path.write_text('{"schema_version": 1, "models": []}', encoding="utf-8")

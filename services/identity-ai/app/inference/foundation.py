@@ -69,10 +69,24 @@ class RuntimeModelBundle:
     def liveness_analysis_service(self, *, attack_threshold: float):
         from app.face.landmarks import FaceLandmarkTracker
         from app.liveness.analysis import LivenessAnalysisService
+        from app.liveness.minifas import MiniFASPresentationAttackDetector
         from app.liveness.presentation_attack import PresentationAttackDetector
 
         tracker = self.adapter("face-landmarks")
-        attack_detector = self.adapter("presentation-attack")
+        try:
+            attack_detector = self.adapter("presentation-attack")
+        except KeyError:
+            from app.face.detector import FaceDetector
+
+            detector = self.adapter("face-detector")
+            if not isinstance(detector, FaceDetector):
+                raise RuntimeFoundationError(
+                    "face detector does not satisfy its contract"
+                ) from None
+            attack_detector = MiniFASPresentationAttackDetector(
+                self.onnx_session("presentation-attack"),
+                detector,
+            )
         if not isinstance(tracker, FaceLandmarkTracker):
             raise RuntimeFoundationError("landmark adapter does not satisfy its contract")
         if not isinstance(attack_detector, PresentationAttackDetector):

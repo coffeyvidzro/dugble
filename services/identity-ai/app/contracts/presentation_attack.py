@@ -6,6 +6,7 @@ from math import isfinite
 
 
 class PresentationAttackType(StrEnum):
+    TWO_DIMENSIONAL = "two_dimensional"
     PRINT = "print"
     SCREEN_REPLAY = "screen_replay"
     VIDEO_REPLAY = "video_replay"

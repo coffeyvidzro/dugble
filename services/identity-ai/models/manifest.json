@@ -33,6 +33,17 @@
       "license_name": "Apache-2.0",
       "license_url": "https://github.com/google-ai-edge/mediapipe/blob/master/LICENSE",
       "runtime": "mediapipe"
+    },
+    {
+      "logical_name": "presentation-attack",
+      "version": "facenox-minifas-98.20-2d-v1",
+      "filename": "minifas_98_20.onnx",
+      "sha256": "af2381b88f38769222ed93379e12444e2a50814575de1c46170de570c55a42b6",
+      "size_bytes": 1912594,
+      "source_url": "https://raw.githubusercontent.com/facenox/face-antispoof-onnx/2d4b33a3c0ba6e27772ac3a9b48ec495bf5c1dad/models/best/98.20/best_model.onnx",
+      "license_name": "Apache-2.0",
+      "license_url": "https://github.com/facenox/face-antispoof-onnx/blob/2d4b33a3c0ba6e27772ac3a9b48ec495bf5c1dad/LICENSE",
+      "runtime": "onnx"
     }
   ]
 }
