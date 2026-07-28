@@ -38,6 +38,7 @@ def write_manifest(path: Path, model: ModelArtifact) -> None:
                         "source_url": model.source_url,
                         "license_name": model.license_name,
                         "license_url": model.license_url,
+                        "runtime": model.runtime,
                     }
                 ],
             }

@@ -50,6 +50,7 @@ def download_artifact(artifact: ModelArtifact, model_dir: Path, *, timeout_secon
                 source_url=artifact.source_url,
                 license_name=artifact.license_name,
                 license_url=artifact.license_url,
+                runtime=artifact.runtime,
             ),
             temporary.parent,
         )

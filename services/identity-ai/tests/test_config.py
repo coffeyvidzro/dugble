@@ -17,3 +17,19 @@ def test_settings_default_to_disabled_and_unconfigured():
     assert settings.identity_enabled is False
     assert settings.api_key == ""
     assert settings.authentication_configured is False
+
+
+def test_settings_parse_model_runtime_configuration():
+    settings = Settings.from_environment(
+        {
+            "IDENTITY_AI_MODEL_MANIFEST": "/runtime/manifest.json",
+            "IDENTITY_AI_MODEL_DIR": "/runtime/models",
+            "IDENTITY_AI_REQUIRED_MODELS": "detector, embedder,detector",
+            "IDENTITY_AI_ONNX_PROVIDERS": "CUDAExecutionProvider,CPUExecutionProvider",
+        }
+    )
+
+    assert str(settings.model_manifest) == "/runtime/manifest.json"
+    assert str(settings.model_dir) == "/runtime/models"
+    assert settings.required_models == ("detector", "embedder")
+    assert settings.onnx_providers == ("CUDAExecutionProvider", "CPUExecutionProvider")

@@ -4,8 +4,14 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path, PurePath
 from urllib.parse import urlparse
+
+
+class ModelRuntime(StrEnum):
+    ONNX = "onnx"
+    EXTERNAL = "external"
 
 
 @dataclass(frozen=True)
@@ -18,6 +24,7 @@ class ModelArtifact:
     source_url: str
     license_name: str
     license_url: str
+    runtime: ModelRuntime = ModelRuntime.ONNX
 
     def __post_init__(self) -> None:
         text_values = (
@@ -56,6 +63,8 @@ class ModelArtifact:
             raise ValueError("model source URL must use HTTPS")
         if license_source.scheme != "https" or not license_source.netloc:
             raise ValueError("model license URL must use HTTPS")
+        if not isinstance(self.runtime, ModelRuntime):
+            raise ValueError("model runtime must be a supported value")
 
 
 @dataclass(frozen=True)
@@ -84,7 +93,17 @@ def load_model_manifest(path: str | Path) -> ModelManifest:
     if not isinstance(raw["models"], list):
         raise ValueError("model manifest models must be a list")
     try:
-        artifacts = tuple(ModelArtifact(**entry) for entry in raw["models"])
-    except TypeError as error:
+        artifacts = tuple(
+            ModelArtifact(
+                **(
+                    entry
+                    | {
+                        "runtime": ModelRuntime(entry.get("runtime", ModelRuntime.ONNX)),
+                    }
+                )
+            )
+            for entry in raw["models"]
+        )
+    except (TypeError, ValueError) as error:
         raise ValueError("model manifest entry has invalid fields") from error
     return ModelManifest(schema_version=raw["schema_version"], models=artifacts)

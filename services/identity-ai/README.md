@@ -124,9 +124,11 @@ services/identity-ai/
 
 ## Current status
 
-The repository currently provides deterministic image-quality checks, evidence contracts, capture guidance, challenge issuance and observation evaluation, face-comparison orchestration, presentation-attack and biometric-quality adapter boundaries, evaluation metrics, and model-artifact tooling.
+The repository currently provides deterministic image-quality checks, evidence contracts, capture guidance, challenge issuance and observation evaluation, face-comparison orchestration, presentation-attack and biometric-quality adapter boundaries, evaluation metrics, model-artifact tooling, and the Phase 1 runtime foundation.
 
-Reviewed YuNet, SFace, MediaPipe, and presentation-attack adapters; frame-sequence decoding; capture-client integrity; media retrieval; single-use session persistence; and active model-backed HTTP endpoints are not implemented yet. Placeholder endpoints return `501 Not Implemented` instead of simulated biometric evidence.
+The runtime foundation installs pinned NumPy, headless OpenCV, and ONNX Runtime dependencies; validates the configured model manifest and every required artifact before inference; creates optimized ONNX sessions with an explicit provider allowlist; initializes the model bundle during FastAPI lifespan startup; releases it during shutdown; and keeps readiness false when authentication or required models are unavailable.
+
+The reviewed manifest remains empty, so enabling the service intentionally produces `model_runtime_unavailable` and a non-ready health response until exact model weights, checksums, runtimes, sources, and deployment licenses are approved. YuNet, SFace, MediaPipe, and presentation-attack adapters; frame-sequence decoding; capture-client integrity; media retrieval; single-use session persistence; and active model-backed HTTP endpoints are not implemented yet. Placeholder endpoints return `501 Not Implemented` instead of simulated biometric evidence.
 
 Completing a head-pose challenge is limited presence evidence, not strong liveness proof; production policy must combine it with presentation-attack analysis, replay and injection defenses, biometric quality, calibrated thresholds, rate limits, and manual fallback.
 
@@ -140,6 +142,21 @@ POST /v1/faces/compare
 ```
 
 Analysis endpoints must remain private, require backend authentication, and accept only server-created verification sessions.
+
+## Runtime configuration
+
+Python 3.14.4 or newer is required. Runtime configuration is environment-backed:
+
+```text
+IDENTITY_AI_ENABLED=false
+IDENTITY_AI_API_KEY=<private service credential>
+IDENTITY_AI_MODEL_MANIFEST=models/manifest.json
+IDENTITY_AI_MODEL_DIR=models
+IDENTITY_AI_REQUIRED_MODELS=face-detector,face-embedder,face-landmarks,presentation-attack
+IDENTITY_AI_ONNX_PROVIDERS=CPUExecutionProvider
+```
+
+`/health` reports process liveness. `/ready` reports ready only when the service is disabled or, when enabled, internal authentication is configured and the complete reviewed model bundle has initialized successfully. It returns only a stable model status code rather than filesystem paths or runtime exception details.
 
 ## Evaluation and model operations
 

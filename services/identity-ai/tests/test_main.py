@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from app.inference.foundation import RuntimeManager, RuntimeModelBundle
 from app.main import create_app
 
 client = TestClient(create_app())
@@ -34,6 +35,8 @@ def test_readiness_succeeds_when_service_is_disabled(monkeypatch):
         "status": "ready",
         "enabled": False,
         "authentication_configured": False,
+        "models_ready": False,
+        "model_status": "disabled",
     }
 
 
@@ -48,20 +51,61 @@ def test_readiness_fails_when_enabled_without_api_key(monkeypatch):
         "status": "not_ready",
         "enabled": True,
         "authentication_configured": False,
+        "models_ready": False,
+        "model_status": "not_initialized",
     }
 
 
-def test_readiness_succeeds_when_enabled_and_configured(monkeypatch):
+def test_readiness_fails_when_enabled_and_models_are_not_initialized(monkeypatch):
     monkeypatch.setenv("IDENTITY_AI_ENABLED", "true")
     monkeypatch.setenv("IDENTITY_AI_API_KEY", "test-key")
 
     response = client.get("/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "status": "not_ready",
+        "enabled": True,
+        "authentication_configured": True,
+        "models_ready": False,
+        "model_status": "not_initialized",
+    }
+
+
+def test_readiness_succeeds_when_authentication_and_models_are_ready(monkeypatch):
+    monkeypatch.setenv("IDENTITY_AI_ENABLED", "true")
+    monkeypatch.setenv("IDENTITY_AI_API_KEY", "test-key")
+    manager = RuntimeManager()
+    manager.initialized = True
+    manager.bundle = RuntimeModelBundle({}, {"face-detector": "test-v1"})
+    ready_client = TestClient(create_app(manager))
+
+    response = ready_client.get("/ready")
 
     assert response.status_code == 200
     assert response.json() == {
         "status": "ready",
         "enabled": True,
         "authentication_configured": True,
+        "models_ready": True,
+        "model_status": "ready",
+    }
+
+
+def test_lifespan_reports_runtime_unavailable_for_empty_reviewed_manifest(monkeypatch):
+    monkeypatch.setenv("IDENTITY_AI_ENABLED", "true")
+    monkeypatch.setenv("IDENTITY_AI_API_KEY", "test-key")
+
+    with TestClient(create_app()) as lifespan_client:
+        response = lifespan_client.get("/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "status": "not_ready",
+        "enabled": True,
+        "authentication_configured": True,
+        "models_ready": False,
+        "model_status": "model_runtime_unavailable",
     }
 
 
