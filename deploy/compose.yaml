@@ -162,6 +162,7 @@ services:
     container_name: dugble-identity-ai
     restart: unless-stopped
     environment:
+      IDENTITY_AI_ENABLED: ${IDENTITY_AI_ENABLED:-false}
       IDENTITY_AI_API_KEY: ${IDENTITY_AI_API_KEY:?set IDENTITY_AI_API_KEY}
     expose:
       - "8000"
@@ -182,6 +183,7 @@ services:
     environment:
       <<: *app-env
       HTTP_PORT: "8080"
+      IDENTITY_AI_ENABLED: ${IDENTITY_AI_ENABLED:-false}
       IDENTITY_AI_BASE_URL: http://identity-ai:8000
       IDENTITY_AI_API_KEY: ${IDENTITY_AI_API_KEY:?set IDENTITY_AI_API_KEY}
     expose:

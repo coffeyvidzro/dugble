@@ -130,12 +130,8 @@ def _assess_normalized_image(
     glare_pixels = sum(histogram[thresholds.glare_luminance :])
     glare_ratio = glare_pixels / (width * height)
 
-    resolution_passed = (
-        width >= thresholds.minimum_width and height >= thresholds.minimum_height
-    )
-    brightness_passed = (
-        thresholds.minimum_brightness <= brightness <= thresholds.maximum_brightness
-    )
+    resolution_passed = width >= thresholds.minimum_width and height >= thresholds.minimum_height
+    brightness_passed = thresholds.minimum_brightness <= brightness <= thresholds.maximum_brightness
     contrast_passed = contrast >= thresholds.minimum_contrast
     sharpness_passed = sharpness >= thresholds.minimum_sharpness
     glare_passed = glare_ratio <= thresholds.maximum_glare_ratio
@@ -186,15 +182,11 @@ def _assess_normalized_image(
         "sharpness": "image_too_blurry",
         "glare": "excessive_glare",
     }
-    reasons = [
-        reason_by_check[name] for name in reason_by_check if not checks[name].passed
-    ]
+    reasons = [reason_by_check[name] for name in reason_by_check if not checks[name].passed]
     if not brightness_passed:
         reasons.insert(
             1 if not resolution_passed else 0,
-            "image_too_dark"
-            if brightness < thresholds.minimum_brightness
-            else "image_too_bright",
+            "image_too_dark" if brightness < thresholds.minimum_brightness else "image_too_bright",
         )
 
     measurements = QualityMeasurements(
