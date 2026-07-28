@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -31,6 +32,7 @@ type sesIdentityAPI interface {
 type SESProvider struct {
 	accessKey string
 	secretKey string
+	mu        sync.Mutex
 	clients   map[string]sesIdentityAPI
 }
 
@@ -42,6 +44,8 @@ func (p *SESProvider) client(region string) (sesIdentityAPI, error) {
 	if p == nil || p.accessKey == "" || p.secretKey == "" {
 		return nil, errors.New("SES identity provider credentials are not configured")
 	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	if client, ok := p.clients[region]; ok {
 		return client, nil
 	}
@@ -75,8 +79,8 @@ func (p *SESProvider) Provision(ctx context.Context, req ProvisionRequest) ([]Ve
 	}
 	mailFromDomain := req.CustomReturnPath + "." + req.Domain
 	_, err = client.PutEmailIdentityMailFromAttributes(ctx, &sesv2.PutEmailIdentityMailFromAttributesInput{
-		EmailIdentity:      aws.String(req.Domain),
-		MailFromDomain:     aws.String(mailFromDomain),
+		EmailIdentity:       aws.String(req.Domain),
+		MailFromDomain:      aws.String(mailFromDomain),
 		BehaviorOnMxFailure: types.BehaviorOnMxFailureRejectMessage,
 	})
 	if err != nil {
