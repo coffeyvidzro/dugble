@@ -26,14 +26,19 @@ func (r *Repository) Create(
 	domain string,
 	provider string,
 	providerRegion string,
+	records []VerificationRecord,
 	createdBy uuid.UUID,
 ) (SenderDomain, error) {
+	recordsJSON, err := json.Marshal(records)
+	if err != nil {
+		return SenderDomain{}, fmt.Errorf("marshal sender domain verification records: %w", err)
+	}
 	row, err := r.queries.CreateSenderDomain(ctx, dbsqlc.CreateSenderDomainParams{
 		TeamID:              teamID,
 		Domain:              domain,
 		Provider:            provider,
 		ProviderRegion:      providerRegion,
-		VerificationRecords: []byte("[]"),
+		VerificationRecords: recordsJSON,
 		CreatedBy:           &createdBy,
 	})
 	if err != nil {
@@ -65,6 +70,20 @@ func (r *Repository) Get(ctx context.Context, id uuid.UUID, teamID uuid.UUID) (S
 	return senderDomainFromSQLC(row), nil
 }
 
+func (r *Repository) UpdateVerification(ctx context.Context, id, teamID uuid.UUID, status string, records []VerificationRecord, failureReason *string) (SenderDomain, error) {
+	recordsJSON, err := json.Marshal(records)
+	if err != nil {
+		return SenderDomain{}, fmt.Errorf("marshal sender domain verification records: %w", err)
+	}
+	row, err := r.queries.UpdateSenderDomainVerification(ctx, dbsqlc.UpdateSenderDomainVerificationParams{
+		Status: status, VerificationRecords: recordsJSON, FailureReason: failureReason, ID: id, TeamID: teamID,
+	})
+	if err != nil {
+		return SenderDomain{}, fmt.Errorf("update sender domain verification: %w", err)
+	}
+	return senderDomainFromSQLC(row), nil
+}
+
 func (r *Repository) Delete(ctx context.Context, id uuid.UUID, teamID uuid.UUID) (SenderDomain, error) {
 	row, err := r.queries.DeleteSenderDomain(ctx, dbsqlc.DeleteSenderDomainParams{ID: id, TeamID: teamID})
 	if err != nil {
@@ -79,21 +98,18 @@ func senderDomainFromSQLC(row dbsqlc.SenderDomain) SenderDomain {
 		value := row.CreatedBy.String()
 		createdBy = &value
 	}
+	var records []VerificationRecord
+	if err := json.Unmarshal(row.VerificationRecords, &records); err != nil {
+		records = []VerificationRecord{}
+	}
 	return SenderDomain{
-		ID:                  row.ID.String(),
-		TeamID:              row.TeamID.String(),
-		Domain:              row.Domain,
-		Provider:            row.Provider,
-		ProviderRegion:      row.ProviderRegion,
-		Status:              row.Status,
-		VerificationRecords: json.RawMessage(row.VerificationRecords),
-		FailureReason:       row.FailureReason,
-		LastCheckedAt:       pgconv.TimestamptzToTimePtr(row.LastCheckedAt),
-		VerifiedAt:          pgconv.TimestamptzToTimePtr(row.VerifiedAt),
-		DisabledAt:          pgconv.TimestamptzToTimePtr(row.DisabledAt),
-		CreatedBy:           createdBy,
-		CreatedAt:           row.CreatedAt.Time,
-		UpdatedAt:           row.UpdatedAt.Time,
+		ID: row.ID.String(), TeamID: row.TeamID.String(), Domain: row.Domain,
+		Provider: row.Provider, ProviderRegion: row.ProviderRegion, Status: row.Status,
+		VerificationRecords: records, FailureReason: row.FailureReason,
+		LastCheckedAt: pgconv.TimestamptzToTimePtr(row.LastCheckedAt),
+		VerifiedAt: pgconv.TimestamptzToTimePtr(row.VerifiedAt),
+		DisabledAt: pgconv.TimestamptzToTimePtr(row.DisabledAt), CreatedBy: createdBy,
+		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 }
 
