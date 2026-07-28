@@ -1,13 +1,6 @@
 package notifications
 
-import "context"
-
-type EmailMessage struct {
-	MessageID string
-	To        string
-	Subject   string
-	Body      string
-}
+import platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 
 type Recipient struct {
 	Name  string
@@ -40,6 +33,4 @@ type SendTeamInvitationInput struct {
 	Token       string
 }
 
-type EmailSender interface {
-	Send(ctx context.Context, msg EmailMessage) error
-}
+type EmailSender = platformemail.Sender
