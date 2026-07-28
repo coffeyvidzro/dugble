@@ -1,176 +1,77 @@
 # Dugble Identity AI
 
-`identity-ai` is Dugble's private, self-hosted AI service for AI-assisted Ghana Card and biometric verification.
+`identity-ai` is Dugble's private, self-hosted service for AI-assisted Ghana Card enrollment and biometric cardholder verification; it does not authenticate cards against the National Identification Authority (NIA) or make an official identity determination.
 
-The service is responsible for producing document, image-quality, face-comparison, and liveness measurements. It must not make the final customer approval decision. Dugble's Go identity module owns verification state, tenant authorization, persistence, policy thresholds, manual review, and the final outcome.
+## Initial recommendation
 
-## Current status
+The service uses a modular pipeline so that detection, recognition, capture guidance, text extraction, liveness evidence, and business decisions remain independently testable and replaceable.
 
-The deterministic image-quality core is implemented with bounded decoding,
-EXIF normalization, configurable thresholds, and per-check results. The model
-pipelines and internal HTTP entrypoint are not implemented yet.
+| Capability | Stack |
+| --- | --- |
+| Face detection | **OpenCV YuNet** |
+| Face recognition/embedding | **OpenCV SFace** |
+| Face landmarks and capture guidance | **MediaPipe Face Landmarker** |
+| Model execution | **ONNX Runtime** |
+| Image processing | **OpenCV** |
+| QR scanning | **ZXing-compatible implementation** |
+| Ghana Card text extraction | **PaddleOCR** |
+| Liveness | **Supervised capture plus server-generated session challenges** |
+| Decision-making | **Dugble deterministic policy engine** |
+| Backend | **Private FastAPI application service exposing an internal interface** |
 
-The document, face-match, and liveness functions intentionally raise `NotImplementedError`. Do not expose this service publicly or describe its output as official NIA verification.
+## Stack usage
 
-## Scope
+- **OpenCV YuNet:** Detects the face and its location in each enrollment or verification frame before any quality assessment or comparison occurs.
+- **OpenCV SFace:** Converts an aligned face into an embedding and calculates one-to-one similarity between a live capture and the selected member's enrollment reference.
+- **MediaPipe Face Landmarker:** Tracks detailed facial landmarks and head pose to guide capture and measure whether the user completed the requested session movement.
+- **ONNX Runtime:** Executes the YuNet and SFace model files consistently within the self-hosted inference service.
+- **OpenCV:** Decodes, normalizes, aligns, and evaluates images before they are passed to the AI models.
+- **ZXing-compatible implementation:** Reads Dugble's signed QR credential so the backend can locate the single member record to verify.
+- **PaddleOCR:** Extracts required printed text from a Ghana Card during enrollment without claiming that the card is genuine or NIA-validated.
+- **Supervised capture plus server-generated session challenges:** Combines operator observation with unpredictable live-camera actions to provide initial liveness evidence and discourage simple print or replay attacks.
+- **Dugble deterministic policy engine:** Combines card status, capture quality, liveness evidence, and face similarity using versioned rules to return verified, retry, or manual-review outcomes.
+- **Private FastAPI application service:** Exposes authenticated internal endpoints to Dugble's backend while keeping model inference inaccessible from the public internet.
 
-The first supported flow is limited to:
-
-- Ghana Card front and back capture
-- image-quality assessment
-- visible document-layout checks
-- OCR and field extraction
-- Ghana Card portrait extraction
-- selfie-to-card face comparison
-- randomized active-liveness challenges
-- measurements for pass, reject, or manual-review policy
-
-NIA verification can be added later as a separate authoritative confirmation layer.
-
-## Structure
-
-```text
-services/identity-ai/
-├── app/
-│   ├── document.py       # Ghana Card quality, OCR, parsing, and document checks
-│   ├── face_match.py     # Ghana Card portrait-to-selfie comparison
-│   ├── imaging.py        # Bounded decoding and EXIF orientation normalization
-│   ├── liveness.py       # Active-liveness challenge analysis
-│   └── quality.py        # Blur, glare, brightness, framing, and resolution checks
-├── models/               # Locally managed model files; large weights are not committed
-├── tests/                # Unit, integration, and evaluation tests
-├── requirements.txt
-├── Dockerfile
-└── README.md
-```
-
-A future `app/main.py` entrypoint will expose the internal API after the pipelines are ready.
-
-## Planned internal API
+## Verification pipeline
 
 ```text
-GET  /health
-POST /v1/quality/check
-POST /v1/documents/analyze
-POST /v1/faces/compare
-POST /v1/liveness/check
+Signed QR scan
+    -> member-record lookup
+    -> supervised live capture
+    -> face detection and capture guidance
+    -> image normalization and face alignment
+    -> embedding generation
+    -> one-to-one face comparison
+    -> liveness and quality evidence
+    -> deterministic policy decision
 ```
 
-These endpoints should be accessible only to Dugble's backend over a private network.
+The card identifies the member record, while the fresh biometric capture verifies continuity with that record; the system must not search every enrolled face to identify an unknown person during routine verification.
 
 ## Responsibility boundary
 
-The AI service should return measurements such as:
+The AI components produce measurements such as face location, image quality, pose, OCR confidence, face similarity, and liveness evidence, while the deterministic policy engine owns the operational outcome.
 
-```json
-{
-  "quality_score": 0.91,
-  "layout_score": 0.86,
-  "ocr_confidence": 0.82,
-  "face_similarity": 0.79,
-  "liveness_score": 0.93,
-  "reasons": []
-}
-```
+The supported outcomes are:
 
-It should not return an authoritative identity decision. The Go service should combine the measurements with configured thresholds and choose one of:
+- `verified` when all configured card, quality, liveness, and similarity requirements pass;
+- `retry` when the capture is unsuitable or a challenge was not completed reliably; and
+- `manual_review` when the evidence is valid but inconclusive.
 
-```text
-checks_passed
-manual_review
-rejected
-```
+A failed biometric comparison must not be presented as proof of fraud, and no outcome may be described as official NIA verification.
 
-Reserve an outcome such as `officially_verified` for a future successful NIA verification.
+## Enrollment and data use
 
-## Local setup
+The initial participant records form an enrollment database and an evaluation set, not a dataset for training a new facial-recognition model; pretrained models should be evaluated using separately captured genuine, controlled impostor, and presentation-attack attempts.
 
-Python 3.14.6 is required for local development and used by the Docker image.
+Never commit real Ghana Cards, selfies, videos, face embeddings, consent records, or production model artifacts to this repository, and keep all authorized biometric data encrypted, access-controlled, purpose-limited, and subject to defined retention and deletion rules.
 
-```sh
-cd services/identity-ai
-python -m venv .venv
-. .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-```
+## Deployment requirements
 
-Install `requirements-dev.txt` instead to include the test tooling, then run
-`python -m pytest` from this directory.
-
-The current dependency file contains the HTTP-service foundation and Pillow for deterministic image analysis. OCR, computer-vision, model-runtime, and media-processing dependencies should be added when each pipeline is implemented and evaluated.
-
-### Quality core
-
-`app.quality.assess_image` analyzes an already decoded Pillow image.
-`app.quality.assess_image_quality` is the convenience boundary for bounded
-encoded bytes, binary streams, and local paths. Results contain an analyzer
-version, the overall suitability measurement, and individual resolution,
-brightness, contrast, sharpness, and glare checks. `passed` remains a
-compatibility alias for `meets_quality_thresholds`; neither value is a final
-identity approval decision.
-
-### Quality evaluation
-
-The public evaluation set procedurally renders fictional documents and
-degradations in memory; the repository contains no fixture image binaries and
-no real identity or biometric data.
-Run it from this directory with `python -m evaluation.quality`. The command
-prints a JSON report with per-fixture outcomes and accept/reject counts, and
-exits nonzero if analyzer output drifts from `tests/fixtures/quality/manifest.json`.
-Use `--output <path>` to save the report. See the fixture README for regeneration
-instructions and important calibration limitations.
-
-## Docker
-
-Build the current scaffold with:
-
-```sh
-docker build -t dugble-identity-ai .
-```
-
-The image does not currently start an HTTP server because `app/main.py` has not been implemented. Add the runtime command only after the entrypoint exists.
-
-## Dataset policy
-
-Never commit real Ghana Cards, selfies, videos, face embeddings, consent records, or production model artifacts to this public repository.
-
-GitHub may contain only:
-
-- dataset schemas
-- synthetic or fully redacted examples
-- collection and annotation instructions
-- evaluation code
-- model download instructions and checksums
-
-Store real evaluation data in encrypted private storage using random participant and sample identifiers. Names, dates of birth, Ghana Card numbers, and other sensitive values must not appear in filenames or ordinary application logs.
-
-Start with a small consented evaluation pilot before training custom models. Use pretrained models first, measure their failures, and fine-tune only the components that need improvement.
-
-## Suggested implementation order
-
-1. Implement deterministic image-quality checks in `quality.py`.
-2. Add synthetic and redacted Ghana Card test fixtures.
-3. Implement card detection, perspective correction, OCR, and field parsing in `document.py`.
-4. Implement portrait and selfie face detection and similarity scoring in `face_match.py`.
-5. Implement server-generated active-liveness challenges in `liveness.py`.
-6. Add `app/main.py` and the private FastAPI routes.
-7. Add unit and integration tests.
-8. Connect the Go `server/internal/modules/identity` workflow.
-9. Run a small consented Ghana evaluation pilot and calibrate thresholds.
-
-## Security requirements
-
-- Keep the service private and authenticate backend-to-service requests.
-- Retrieve media from private object storage using short-lived access.
-- Encrypt sensitive data in transit and at rest.
-- Do not log raw images, videos, identity numbers, OCR values, or embeddings.
-- Apply strict retention and deletion rules.
-- Record model versions and analysis timestamps for auditability.
-- Route uncertain results to manual review.
-
-## Limitations
-
-Phone-camera analysis can evaluate visible layout, text, image quality, face similarity, and basic presentation attacks. It cannot independently confirm that NIA issued the card, validate the card chip, or reliably inspect every physical security feature.
-
-Until NIA confirmation is integrated, describe the product as **AI-assisted Ghana Card and biometric verification**, not official Ghana Card verification.
+- Keep the FastAPI service on a private network and authenticate every backend request.
+- Accept only server-created, short-lived verification sessions and live-camera captures.
+- Record the model, policy, and analyzer versions used for every decision.
+- Do not log raw images, extracted identity fields, card numbers, videos, or face embeddings.
+- Store only the enrollment references and audit evidence required for the declared purpose.
+- Calibrate similarity and review thresholds using representative pilot results rather than copied model defaults.
+- Review the source-code and model-weight licenses for commercial deployment before distributing any model.
