@@ -1,6 +1,10 @@
 package domain
 
-import "time"
+import (
+	"time"
+
+	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
+)
 
 const (
 	DefaultProvider         = "aws_ses"
@@ -11,27 +15,9 @@ const (
 	StatusVerified = "verified"
 	StatusFailed   = "failed"
 	StatusDisabled = "disabled"
-
-	RecordDKIM = "DKIM"
-	RecordSPF  = "SPF"
-
-	RecordTypeTXT = "TXT"
-	RecordTypeMX  = "MX"
-
-	RecordStatusPending  = "pending"
-	RecordStatusVerified = "verified"
-	RecordStatusFailed   = "failed"
 )
 
-type VerificationRecord struct {
-	Record   string `json:"record"`
-	Name     string `json:"name"`
-	Value    string `json:"value"`
-	Type     string `json:"type"`
-	Status   string `json:"status"`
-	TTL      string `json:"ttl"`
-	Priority *int   `json:"priority,omitempty"`
-}
+type VerificationRecord = platformemail.VerificationRecord
 
 type SenderDomain struct {
 	ID                  string               `json:"id"`
@@ -54,16 +40,4 @@ type CreateRequest struct {
 	Domain           string `json:"domain"`
 	Region           string `json:"region"`
 	CustomReturnPath string `json:"custom_return_path"`
-}
-
-type ProvisionRequest struct {
-	Domain           string
-	Region           string
-	CustomReturnPath string
-}
-
-type ProviderStatus struct {
-	IdentityVerified bool
-	DKIMVerified     bool
-	MailFromVerified bool
 }
