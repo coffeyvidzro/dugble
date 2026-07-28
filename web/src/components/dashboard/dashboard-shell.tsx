@@ -5,19 +5,21 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import type { SessionUser } from "@/lib/session";
 
 export function DashboardShell({
-  children,
-  user,
+    children,
+    user,
 }: {
-  children: ReactNode;
-  user: SessionUser;
+    children: ReactNode;
+    user: SessionUser;
 }) {
-  return (
-    <SidebarProvider>
-      <AppSidebar user={user} />
-      <SidebarInset>
-        <DashboardHeader user={user} />
-        <div className="flex flex-1 flex-col gap-6 p-4 lg:p-8">{children}</div>
-      </SidebarInset>
-    </SidebarProvider>
-  );
+    return (
+        <SidebarProvider>
+            <AppSidebar user={user} />
+            <SidebarInset>
+                <DashboardHeader />
+                <div className="flex flex-1 flex-col gap-6 p-4 animate-fade-up lg:p-8">
+                    {children}
+                </div>
+            </SidebarInset>
+        </SidebarProvider>
+    );
 }
