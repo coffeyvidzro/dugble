@@ -1,6 +1,5 @@
 version: 2
 updates:
-  # 1. GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -8,9 +7,8 @@ updates:
     commit-message:
       prefix: "deps"
 
-  # 2. Server (Go)
   - package-ecosystem: "gomod"
-    directory: "/"
+    directory: "/server"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -19,7 +17,6 @@ updates:
     commit-message:
       prefix: "deps(server)"
 
-  # 3. Web (Next.js)
   - package-ecosystem: "npm"
     directory: "/web"
     schedule:
@@ -29,3 +26,13 @@ updates:
     open-pull-requests-limit: 10
     commit-message:
       prefix: "deps(web)"
+
+  - package-ecosystem: "uv"
+    directory: "/services/identity-ai"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "deps(identity-ai)"

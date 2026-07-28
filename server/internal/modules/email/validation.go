@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/mail"
-	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -207,18 +206,14 @@ func normalizeAttachments(items []Attachment) ([]Attachment, error) {
 		if (items[i].Content == "") == (items[i].Path == "") {
 			return nil, apperrors.NewBadRequest("Attachment must provide exactly one of content or path")
 		}
-		if items[i].Content != "" {
-			decodedSize, err := attachmentContentSize(items[i].Content)
-			if err != nil {
-				return nil, apperrors.NewBadRequest("Attachment content must be valid Base64")
-			}
-			total += decodedSize
-		} else {
-			parsed, err := url.ParseRequestURI(items[i].Path)
-			if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
-				return nil, apperrors.NewBadRequest("Attachment path must be an HTTP or HTTPS URL")
-			}
+		if items[i].Path != "" {
+			return nil, apperrors.NewBadRequest("Attachment paths are not supported; provide Base64 content")
 		}
+		decodedSize, err := attachmentContentSize(items[i].Content)
+		if err != nil {
+			return nil, apperrors.NewBadRequest("Attachment content must be valid Base64")
+		}
+		total += decodedSize
 	}
 	if total > maxAttachmentsBytes {
 		return nil, apperrors.NewPayloadTooLarge("Email attachments exceed 40MB")

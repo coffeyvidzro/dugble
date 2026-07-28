@@ -69,6 +69,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Pull CI images with retry
+        run: |
+          set -euo pipefail
+
+          for attempt in 1 2 3; do
+            if docker pull golangci/golangci-lint:v2.12.2 \
+              && docker compose --env-file .env.example -f deploy/compose.yaml pull \
+                postgres redis nats migrate caddy; then
+              exit 0
+            fi
+
+            if [ "$attempt" -eq 3 ]; then
+              echo "Unable to pull CI images after ${attempt} attempts." >&2
+              exit 1
+            fi
+
+            delay=$((attempt * 20))
+            echo "Container image pull failed; retrying in ${delay}s..." >&2
+            sleep "$delay"
+          done
+
       - name: Verify golangci-lint config
         run: |
           docker run --rm \
