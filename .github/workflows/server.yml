@@ -13,7 +13,6 @@ on:
       - "server/**"
       - "deploy/compose.yaml"
       - "deploy/Caddyfile"
-      - "deploy/nats-server.conf"
   pull_request:
     paths:
       - ".env.example"
@@ -24,14 +23,13 @@ on:
       - "server/**"
       - "deploy/compose.yaml"
       - "deploy/Caddyfile"
-      - "deploy/nats-server.conf"
 
 permissions:
   contents: read
 
 jobs:
-  go:
-    name: Go quality gates
+  server:
+    name: Server quality gates
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -55,26 +53,14 @@ jobs:
           go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
           git diff --exit-code -- internal/database/sqlc
 
-      - name: Run golangci-lint
-        run: |
-          set +e
-          docker run --rm \
-            -v "$GITHUB_WORKSPACE:/workspace" \
-            -w /workspace/server \
-            golangci/golangci-lint:v2.12.2 \
-            golangci-lint run --config ../.golangci.yml ./... \
-            > ../golangci-lint.log 2>&1
-          status=$?
-          cat ../golangci-lint.log
-          exit $status
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
 
-      - name: Upload golangci-lint report
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: golangci-lint-report
-          path: golangci-lint.log
-          retention-days: 1
+      - name: Verify golangci-lint config
+        run: golangci-lint config verify --config ../.golangci.yml
+
+      - name: Run golangci-lint
+        run: golangci-lint run --config ../.golangci.yml ./...
 
       - name: Vet
         run: go vet ./...
@@ -83,45 +69,16 @@ jobs:
         run: go test -race ./...
 
   docker:
-    name: Docker and Compose gates
+    name: Docker Compose smoke test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Pull CI images with retry
-        run: |
-          set -euo pipefail
-
-          for attempt in 1 2 3; do
-            if docker pull golangci/golangci-lint:v2.12.2 \
-              && docker compose --env-file .env.example -f deploy/compose.yaml pull \
-                postgres redis nats migrate caddy; then
-              exit 0
-            fi
-
-            if [ "$attempt" -eq 3 ]; then
-              echo "Unable to pull CI images after ${attempt} attempts." >&2
-              exit 1
-            fi
-
-            delay=$((attempt * 20))
-            echo "Container image pull failed; retrying in ${delay}s..." >&2
-            sleep "$delay"
-          done
-
-      - name: Verify golangci-lint config
-        run: |
-          docker run --rm \
-            -v "$PWD:/workspace" \
-            -w /workspace/server \
-            golangci/golangci-lint:v2.12.2 \
-            golangci-lint config verify --config ../.golangci.yml
-
-      - name: Validate Compose config
+      - name: Validate Compose configuration
         run: docker compose --env-file .env.example -f deploy/compose.yaml config --quiet
 
-      - name: Apply migrations to fresh PostgreSQL
+      - name: Apply migrations
         run: |
           set +e
           docker compose --env-file .env.example -f deploy/compose.yaml up \
@@ -140,7 +97,7 @@ jobs:
           path: migration.log
           retention-days: 1
 
-      - name: Verify Caddy health and upstream routing
+      - name: Start application stack
         run: |
           export API_DOMAIN=http://api.localhost
           export BACKOFFICE_DOMAIN=http://bo.localhost
@@ -154,6 +111,8 @@ jobs:
 
           docker compose --env-file .env.example -f deploy/compose.yaml ps
 
+      - name: Verify server readiness
+        run: |
           curl --fail --silent --show-error \
             --header "Host: api.localhost" \
             http://127.0.0.1/ready \
@@ -166,105 +125,14 @@ jobs:
             | tee backoffice-ready.json
           grep -q '"status":"ready"' backoffice-ready.json
 
-      - name: Clean up Compose services
-        if: always()
-        run: docker compose --env-file .env.example -f deploy/compose.yaml down -v --remove-orphans
-
-  jetstream:
-    name: JetStream event flow
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Validate Compose configuration
-        run: docker compose --env-file .env.example -f deploy/compose.yaml config --quiet
-
-      - name: Start worker and JetStream dependencies
-        run: |
-          docker compose --env-file .env.example -f deploy/compose.yaml up \
-            --detach \
-            --build \
-            --wait \
-            --wait-timeout 180 \
-            worker
-
-          docker compose --env-file .env.example -f deploy/compose.yaml ps
-
-      - name: Verify JetStream health and topology
-        run: |
-          docker compose --env-file .env.example -f deploy/compose.yaml exec -T nats \
-            wget -q -O /tmp/health.json \
-            'http://127.0.0.1:8222/healthz?js-enabled-only=true'
-          docker compose --env-file .env.example -f deploy/compose.yaml exec -T nats \
-            cat /tmp/health.json
-
-          docker compose --env-file .env.example -f deploy/compose.yaml exec -T nats \
-            wget -q -O /tmp/jsz.json \
-            'http://127.0.0.1:8222/jsz?streams=true&consumers=true&config=true'
-          docker compose --env-file .env.example -f deploy/compose.yaml exec -T nats \
-            cat /tmp/jsz.json > jetstream-topology.json
-
-          grep -q 'DUGBLE_JOBS' jetstream-topology.json
-          grep -q 'DUGBLE_EVENTS' jetstream-topology.json
-          grep -q 'DUGBLE_DLQ' jetstream-topology.json
-          grep -q 'sms-delivery-v1' jetstream-topology.json
-          grep -q 'dugble-email-delivery-v1' jetstream-topology.json
-
-      - name: Verify event publish, consume, and acknowledgement
-        env:
-          NATS_USER: dugble
-          NATS_PASSWORD: replace-with-a-separate-long-random-password
-        run: |
-          set -euo pipefail
-
-          subject="dugble.event.ci.probe.v1"
-          consumer="ci-event-flow-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          server="nats://${NATS_USER}:${NATS_PASSWORD}@nats:4222"
-          nats_cli="docker run --rm --network dugble-network natsio/nats-box:0.19.2 nats --server ${server}"
-
-          $nats_cli consumer add DUGBLE_EVENTS "$consumer" \
-            --filter "$subject" \
-            --ack explicit \
-            --pull \
-            --deliver all \
-            --max-deliver 1 \
-            --defaults
-
-          $nats_cli pub "$subject" \
-            "{\"event_id\":\"${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}\",\"type\":\"ci.probe\"}"
-
-          $nats_cli consumer next DUGBLE_EVENTS "$consumer" \
-            --count 1 \
-            --ack \
-            --timeout 10s | tee jetstream-event-flow.log
-
-          $nats_cli consumer info DUGBLE_EVENTS "$consumer" --json \
-            | tee jetstream-consumer.json
-          grep -Eq '"num_ack_pending"[[:space:]]*:[[:space:]]*0' jetstream-consumer.json
-
-          $nats_cli consumer rm DUGBLE_EVENTS "$consumer" --force
-
-      - name: Upload JetStream diagnostics
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: jetstream-diagnostics
-          path: |
-            jetstream-topology.json
-            jetstream-event-flow.log
-            jetstream-consumer.json
-          if-no-files-found: ignore
-          retention-days: 1
-
       - name: Show service logs
         if: failure()
         run: |
           docker compose --env-file .env.example -f deploy/compose.yaml logs \
             --no-color \
             --tail=300 \
-            postgres migrate nats worker
+            postgres migrate redis identity-ai server backoffice caddy
 
-      - name: Clean up
+      - name: Clean up Compose services
         if: always()
         run: docker compose --env-file .env.example -f deploy/compose.yaml down -v --remove-orphans
