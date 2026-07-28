@@ -16,8 +16,22 @@ def test_health_is_liveness_probe(monkeypatch):
     assert response.json() == {"status": "ok"}
 
 
-def test_readiness_requires_enabled_service_and_api_key(monkeypatch):
+def test_readiness_succeeds_when_service_is_disabled(monkeypatch):
     monkeypatch.delenv("IDENTITY_AI_ENABLED", raising=False)
+    monkeypatch.delenv("IDENTITY_AI_API_KEY", raising=False)
+
+    response = client.get("/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ready",
+        "enabled": False,
+        "authentication_configured": False,
+    }
+
+
+def test_readiness_fails_when_enabled_without_api_key(monkeypatch):
+    monkeypatch.setenv("IDENTITY_AI_ENABLED", "true")
     monkeypatch.delenv("IDENTITY_AI_API_KEY", raising=False)
 
     response = client.get("/ready")
@@ -25,7 +39,7 @@ def test_readiness_requires_enabled_service_and_api_key(monkeypatch):
     assert response.status_code == 503
     assert response.json() == {
         "status": "not_ready",
-        "enabled": False,
+        "enabled": True,
         "authentication_configured": False,
     }
 
