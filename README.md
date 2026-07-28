@@ -85,7 +85,7 @@ Deployment assets live in `deploy/`. `compose.yaml` defines the runtime stack, w
 cd server
 go run ./cmd/server
 
-# Worker
+# Delivery worker (health and readiness on :8082)
 cd server
 go run ./cmd/worker
 
@@ -149,6 +149,8 @@ TEST_DATABASE_URL='postgres://postgres:postgres@localhost:5432/dugble_test?sslmo
 ## Documentation
 
 Developer documentation lives in `docs/`, including the OpenAPI contract in `docs/openapi.json`. Public examples use team-scoped bearer tokens and should remain synchronized with the registered Go routes.
+
+The delivery worker uses an explicit fail-fast component policy: an unexpected exit from the outbox relay, a delivery consumer, domain reconciliation, or the worker health server cancels the other components and terminates the process for orchestration-level restart. Its `/health` endpoint reports process liveness, while `/ready` requires PostgreSQL, JetStream, and every supervised component to be available.
 
 ## Security notes
 

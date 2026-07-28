@@ -67,6 +67,10 @@ type BackofficeConfig struct {
 	AdminEmails []string `env:"ADMIN_EMAILS" envSeparator:","`
 }
 
+type WorkerConfig struct {
+	HTTPPort string `env:"HTTP_PORT" envDefault:"8082"`
+}
+
 type Config struct {
 	AppEnv               string                     `env:"APP_ENV"   envDefault:"development"`
 	HTTPPort             string                     `env:"HTTP_PORT" envDefault:"8080"`
@@ -85,6 +89,7 @@ type Config struct {
 	MNotify              ProviderConfig             `envPrefix:"MNOTIFY_"`
 	Hubtel               HubtelConfig               `envPrefix:"HUBTEL_"`
 	Backoffice           BackofficeConfig           `envPrefix:"BACKOFFICE_"`
+	Worker               WorkerConfig               `envPrefix:"WORKER_"`
 }
 
 func Load() (*Config, error) {
@@ -204,6 +209,7 @@ func (c *Config) normalize() {
 	c.Hubtel.APIKey = strings.TrimSpace(c.Hubtel.APIKey)
 	c.Hubtel.MerchantNumber = strings.TrimSpace(c.Hubtel.MerchantNumber)
 	c.Backoffice.HTTPPort = strings.TrimSpace(c.Backoffice.HTTPPort)
+	c.Worker.HTTPPort = strings.TrimSpace(c.Worker.HTTPPort)
 
 	origins := make([]string, 0, len(c.CORSOrigins))
 	for _, origin := range c.CORSOrigins {

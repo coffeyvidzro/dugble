@@ -130,6 +130,16 @@ func (c *Client) Publish(
 	return nil
 }
 
+func (c *Client) Ping(ctx context.Context) error {
+	if c == nil || c.connection == nil || c.jetStream == nil || !c.connection.IsConnected() {
+		return fmt.Errorf("JetStream client is not connected")
+	}
+	if _, err := c.jetStream.AccountInfo(ctx); err != nil {
+		return fmt.Errorf("read JetStream account info: %w", err)
+	}
+	return nil
+}
+
 func (c *Client) Close() error {
 	if c == nil || c.connection == nil || c.connection.IsClosed() {
 		return nil

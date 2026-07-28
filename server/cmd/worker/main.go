@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -32,6 +32,8 @@ import (
 	webhookmodule "github.com/coffeyvidzro/dugble/server/internal/modules/webhooks"
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 	platformwebhook "github.com/coffeyvidzro/dugble/server/internal/platform/webhook"
+	"github.com/coffeyvidzro/dugble/server/internal/transport/workerhealth"
+	workerruntime "github.com/coffeyvidzro/dugble/server/internal/worker"
 )
 
 func main() {
@@ -126,51 +128,50 @@ func run() error {
 		HandleTimeout: cfg.WebhookDelivery.HandleTimeout,
 	}, webhookWorkerID)
 
-	type componentResult struct {
-		name string
-		err  error
+	var supervisor *workerruntime.Supervisor
+	healthServer := &http.Server{
+		Addr:              ":" + cfg.Worker.HTTPPort,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       5 * time.Second,
+		WriteTimeout:      5 * time.Second,
+		IdleTimeout:       30 * time.Second,
 	}
-	components := []struct {
-		name string
-		run  func(context.Context) error
-	}{
-		{name: "outbox relay", run: outboxRelay.Run},
-		{name: "email JetStream consumer", run: emailConsumer.Run},
-		{name: "SMS JetStream consumer", run: smsConsumer.Run},
-		{name: "webhook delivery consumer", run: webhookConsumer.Run},
-		{name: "sender domain reconciliation consumer", run: domainConsumer.Run},
-	}
-	results := make(chan componentResult, len(components))
-	for _, component := range components {
-		go func() { results <- componentResult{name: component.name, err: component.run(ctx)} }()
-	}
-	slog.Info("worker started", "jetstream", "ready", "outbox_relay", "running", "email_consumer", emaildelivery.DeliverConsumerName, "sms_consumer", smsdelivery.DeliverConsumerName, "webhook_consumer", webhookWorkerID, "domain_reconciliation_consumer", domainWorkerID)
-	completed := 0
-	var runErr error
-	select {
-	case <-ctx.Done():
-		stop()
-	case result := <-results:
-		completed++
-		if result.err != nil && !errors.Is(result.err, context.Canceled) {
-			runErr = errors.Join(runErr, fmt.Errorf("run %s: %w", result.name, result.err))
-		}
-		stop()
-	}
-	shutdownTimer := time.NewTimer(30 * time.Second)
-	defer shutdownTimer.Stop()
-	for completed < len(components) {
-		select {
-		case result := <-results:
-			completed++
-			if result.err != nil && !errors.Is(result.err, context.Canceled) {
-				runErr = errors.Join(runErr, fmt.Errorf("run %s: %w", result.name, result.err))
+	healthComponent := workerruntime.Component{
+		Name: "health server",
+		Run: func(componentCtx context.Context) error {
+			go func() {
+				<-componentCtx.Done()
+				shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				if shutdownErr := healthServer.Shutdown(shutdownCtx); shutdownErr != nil {
+					slog.Warn("worker health server shutdown failed", "error", shutdownErr)
+				}
+			}()
+			err := healthServer.ListenAndServe()
+			if err == http.ErrServerClosed {
+				return nil
 			}
-		case <-shutdownTimer.C:
-			runErr = errors.Join(runErr, errors.New("worker components did not stop within 30 seconds"))
-			completed = len(components)
-		}
+			return err
+		},
+	}
+	components := []workerruntime.Component{
+		healthComponent,
+		{Name: "outbox relay", Run: outboxRelay.Run},
+		{Name: "email JetStream consumer", Run: emailConsumer.Run},
+		{Name: "SMS JetStream consumer", Run: smsConsumer.Run},
+		{Name: "webhook delivery consumer", Run: webhookConsumer.Run},
+		{Name: "sender domain reconciliation consumer", Run: domainConsumer.Run},
+	}
+	supervisor, err = workerruntime.NewSupervisor(workerruntime.FailFast, components...)
+	if err != nil {
+		return fmt.Errorf("create worker supervisor: %w", err)
+	}
+	healthServer.Handler = workerhealth.NewHandler(db, messagingClient, supervisor).Routes()
+
+	slog.Info("worker starting", "failure_policy", supervisor.Policy(), "health_address", healthServer.Addr)
+	if err := supervisor.Run(ctx, 30*time.Second); err != nil {
+		return err
 	}
 	slog.Info("worker stopped")
-	return runErr
+	return nil
 }
