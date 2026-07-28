@@ -41,6 +41,14 @@ func (h *Handler) Create(c *echo.Context) error {
 	return httputil.Created(c, domain)
 }
 
+func (h *Handler) Verify(c *echo.Context) error {
+	domain, err := h.service.Verify(c.Request().Context(), c.Param("domain_id"))
+	if err != nil {
+		return httputil.Error(c, err)
+	}
+	return httputil.OK(c, domain)
+}
+
 func (h *Handler) Delete(c *echo.Context) error {
 	domain, err := h.service.Delete(c.Request().Context(), c.Param("domain_id"))
 	if err != nil {
