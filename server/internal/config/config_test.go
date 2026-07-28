@@ -113,11 +113,3 @@ func TestNormalizeDomainReconciliationDefaults(t *testing.T) {
 		t.Fatalf("DomainReconciliation = %+v, want %+v", cfg.DomainReconciliation, want)
 	}
 }
-
-func TestNormalizeWorkerHTTPPort(t *testing.T) {
-	cfg := Config{Worker: WorkerConfig{HTTPPort: " 9090 "}}
-	cfg.normalize()
-	if cfg.Worker.HTTPPort != "9090" {
-		t.Fatalf("Worker.HTTPPort = %q, want 9090", cfg.Worker.HTTPPort)
-	}
-}

@@ -36,6 +36,8 @@ import (
 	workerruntime "github.com/coffeyvidzro/dugble/server/internal/worker"
 )
 
+const workerHealthAddress = ":8082"
+
 func main() {
 	if err := run(); err != nil {
 		slog.Error("worker stopped", "error", err)
@@ -130,7 +132,7 @@ func run() error {
 
 	var supervisor *workerruntime.Supervisor
 	healthServer := &http.Server{
-		Addr:              ":" + cfg.Worker.HTTPPort,
+		Addr:              workerHealthAddress,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       5 * time.Second,
 		WriteTimeout:      5 * time.Second,
