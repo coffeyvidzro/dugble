@@ -20,11 +20,12 @@ var ErrNotCancelable = errors.New("email message is not a pending scheduled emai
 var ErrSenderDomainNotFound = errors.New("sender domain not found")
 
 type SenderDomainRoute struct {
-	ID       uuid.UUID
-	Provider string
-	Region   string
-	Status   string
-	Disabled bool
+	ID           uuid.UUID
+	Provider     string
+	Region       string
+	Status       string
+	HealthStatus string
+	Disabled     bool
 }
 
 type Repository struct {
@@ -94,7 +95,7 @@ func (r *Repository) ResolveSenderDomain(ctx context.Context, teamID uuid.UUID, 
 	}
 	return SenderDomainRoute{
 		ID: row.ID, Provider: row.Provider, Region: row.ProviderRegion,
-		Status: row.Status, Disabled: row.DisabledAt.Valid,
+		Status: row.Status, HealthStatus: row.HealthStatus, Disabled: row.DisabledAt.Valid,
 	}, nil
 }
 
