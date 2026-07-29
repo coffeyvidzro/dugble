@@ -65,9 +65,44 @@ func TestCheckVerifiesReadyDomain(t *testing.T) {
 	}
 }
 
-func TestVerifiedDomainObservationDoesNotChangeAuthorizationStatus(t *testing.T) {
-	if got := authorizationStatusAfterCheck(StatusVerified, StatusPending); got != StatusVerified {
-		t.Fatalf("authorizationStatusAfterCheck() = %q, want %q", got, StatusVerified)
+func TestManualHealthObservationRecordsNegativeCheck(t *testing.T) {
+	domain := SenderDomain{VerificationRecords: []VerificationRecord{{Status: platformemail.RecordStatusVerified}}}
+	result := ReconciliationResult{
+		Status:              StatusPending,
+		VerificationRecords: []VerificationRecord{{Status: platformemail.RecordStatusPending}},
+	}
+	records, reason := manualHealthObservation(domain, result, nil)
+	if reason == nil || *reason != manualHealthFailureReason {
+		t.Fatalf("reason = %v, want %q", reason, manualHealthFailureReason)
+	}
+	if records[0].Status != platformemail.RecordStatusPending {
+		t.Fatalf("records = %+v, want pending observation", records)
+	}
+}
+
+func TestManualHealthObservationPreservesRecordsOnProviderError(t *testing.T) {
+	providerErr := errors.New("SES unavailable")
+	domain := SenderDomain{VerificationRecords: []VerificationRecord{{Status: platformemail.RecordStatusVerified}}}
+	records, reason := manualHealthObservation(domain, ReconciliationResult{}, providerErr)
+	if reason == nil || *reason != providerErr.Error() {
+		t.Fatalf("reason = %v, want %q", reason, providerErr)
+	}
+	if records[0].Status != platformemail.RecordStatusVerified {
+		t.Fatalf("records = %+v, want existing records preserved", records)
+	}
+}
+
+func TestManualHealthObservationClearsFailureOnSuccess(t *testing.T) {
+	result := ReconciliationResult{
+		Status:              StatusVerified,
+		VerificationRecords: []VerificationRecord{{Status: platformemail.RecordStatusVerified}},
+	}
+	records, reason := manualHealthObservation(SenderDomain{}, result, nil)
+	if reason != nil {
+		t.Fatalf("reason = %v, want nil", reason)
+	}
+	if records[0].Status != platformemail.RecordStatusVerified {
+		t.Fatalf("records = %+v, want verified", records)
 	}
 }
 
