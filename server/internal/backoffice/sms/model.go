@@ -30,7 +30,6 @@ type Detail struct {
 	ProviderID        string
 	ProviderMessageID string
 	Segments          int32
-	CostMicros        int64
 	ErrorMessage      string
 	Metadata          string
 	SubmittedAt       string

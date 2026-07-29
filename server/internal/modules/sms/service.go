@@ -2,7 +2,6 @@ package sms
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -11,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	smsapi "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
-	"github.com/coffeyvidzro/dugble/server/internal/modules/wallet"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
@@ -19,13 +17,6 @@ import (
 type Sender interface {
 	Send(ctx context.Context, req smsapi.SendRequest) (*smsapi.SendResponse, error)
 	CheckStatus(ctx context.Context, providerID string, providerMessageID string) (*smsapi.StatusResponse, error)
-}
-
-type WalletLedger interface {
-	DebitSMSCharge(ctx context.Context, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
-	DebitSMSChargeTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
-	RefundSMSCharge(ctx context.Context, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
-	RefundSMSChargeTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
 }
 
 type scheduledDeliveryQueue interface {
@@ -45,12 +36,11 @@ type DeliveryQueue interface {
 type Service struct {
 	repository *Repository
 	sender     Sender
-	wallet     WalletLedger
 	delivery   DeliveryQueue
 }
 
-func NewService(repository *Repository, sender Sender, wallet WalletLedger, delivery DeliveryQueue) *Service {
-	return &Service{repository: repository, sender: sender, wallet: wallet, delivery: delivery}
+func NewService(repository *Repository, sender Sender, delivery DeliveryQueue) *Service {
+	return &Service{repository: repository, sender: sender, delivery: delivery}
 }
 
 func (s *Service) List(ctx context.Context, req ListRequest) ([]Message, error) {
@@ -96,9 +86,6 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	if err != nil {
 		return Message{}, err
 	}
-	if s.wallet == nil {
-		return Message{}, apperrors.NewInternal("SMS wallet ledger is not configured", nil)
-	}
 	if s.delivery == nil {
 		return Message{}, apperrors.NewInternal("SMS delivery queue is not configured", nil)
 	}
@@ -123,24 +110,14 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	txRepository := s.repository.WithTx(tx)
-	quote, err := txRepository.QuoteSMS(ctx, tenantContext.TeamID, normalized.DestinationCountry, segments)
-	if err != nil {
-		switch {
-		case errors.Is(err, ErrSMSPricingNotConfigured):
-			return Message{}, apperrors.NewBadRequest("SMS pricing is not configured for the destination country")
-		default:
-			return Message{}, apperrors.NewInternal("Unable to calculate SMS price", err)
-		}
-	}
 
 	created, err := txRepository.Create(ctx, createMessageParams{
 		TeamID: tenantContext.TeamID, SenderID: senderID, To: normalized.To, From: normalized.From,
 		Body: normalized.Body, Status: StatusQueued, Segments: segments,
-		CostMicros: quote.TotalCostMicros, Metadata: normalized.Metadata,
+		Metadata:           normalized.Metadata,
 		Tags:               normalized.Tags,
 		ScheduledAt:        normalizedScheduledAt(normalized.ScheduledAt),
-		DestinationCountry: quote.DestinationCountry, PricingRuleID: quote.PricingRuleID,
-		UnitCostMicros: quote.UnitCostMicros,
+		DestinationCountry: normalized.DestinationCountry,
 	})
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to create SMS message", err)
@@ -153,20 +130,6 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	}
 
 	messageID := uuid.MustParse(created.ID)
-	if _, err := s.wallet.DebitSMSChargeTx(ctx, tx, tenantContext.TeamID, created.CostMicros, messageID, normalized.Metadata); err != nil {
-		if errors.Is(err, wallet.ErrInsufficientBalance) {
-			failed, updateErr := txRepository.MarkFailed(ctx, messageID, tenantContext.TeamID, "insufficient wallet balance")
-			if updateErr != nil {
-				return Message{}, apperrors.NewInternal("Unable to record SMS wallet failure", updateErr)
-			}
-			if err := tx.Commit(ctx); err != nil {
-				return Message{}, apperrors.NewInternal("Unable to commit SMS wallet failure", err)
-			}
-			return failed, apperrors.NewBadRequest("Insufficient wallet balance")
-		}
-		return Message{}, apperrors.NewInternal("Unable to debit wallet for SMS", err)
-	}
-
 	if err := enqueueSMSDelivery(ctx, s.delivery, tx, messageID, tenantContext.TeamID, created.ScheduledAt); err != nil {
 		return Message{}, apperrors.NewInternal("Unable to enqueue SMS delivery", err)
 	}
@@ -184,9 +147,6 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 	tenantContext, err := requireTenant(ctx, tenant.PermissionSMSSend)
 	if err != nil {
 		return nil, err
-	}
-	if s.wallet == nil {
-		return nil, apperrors.NewInternal("SMS wallet ledger is not configured", nil)
 	}
 	if s.delivery == nil {
 		return nil, apperrors.NewInternal("SMS delivery queue is not configured", nil)
@@ -227,30 +187,18 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 	txRepository := s.repository.WithTx(tx)
 	result := make([]Message, 0, len(prepared))
 	for _, item := range prepared {
-		quote, err := txRepository.QuoteSMS(ctx, tenantContext.TeamID, item.request.DestinationCountry, item.segments)
-		if err != nil {
-			if errors.Is(err, ErrSMSPricingNotConfigured) {
-				return nil, apperrors.NewBadRequest("SMS pricing is not configured for the destination country")
-			}
-			return nil, apperrors.NewInternal("Unable to calculate SMS batch price", err)
-		}
+
 		created, err := txRepository.Create(ctx, createMessageParams{
 			TeamID: tenantContext.TeamID, SenderID: item.senderID, To: item.request.To, From: item.request.From,
 			Body: item.request.Body, Status: StatusQueued, Segments: item.segments,
-			CostMicros: quote.TotalCostMicros, Metadata: item.request.Metadata, Tags: item.request.Tags,
+			Metadata: item.request.Metadata, Tags: item.request.Tags,
 			ScheduledAt:        normalizedScheduledAt(item.request.ScheduledAt),
-			DestinationCountry: quote.DestinationCountry, PricingRuleID: quote.PricingRuleID, UnitCostMicros: quote.UnitCostMicros,
+			DestinationCountry: item.request.DestinationCountry,
 		})
 		if err != nil {
 			return nil, apperrors.NewInternal("Unable to create SMS batch message", err)
 		}
 		messageID := uuid.MustParse(created.ID)
-		if _, err := s.wallet.DebitSMSChargeTx(ctx, tx, tenantContext.TeamID, created.CostMicros, messageID, item.request.Metadata); err != nil {
-			if errors.Is(err, wallet.ErrInsufficientBalance) {
-				return nil, apperrors.NewBadRequest("Insufficient wallet balance for SMS batch")
-			}
-			return nil, apperrors.NewInternal("Unable to debit wallet for SMS batch", err)
-		}
 		if err := enqueueSMSDelivery(ctx, s.delivery, tx, messageID, tenantContext.TeamID, created.ScheduledAt); err != nil {
 			return nil, apperrors.NewInternal("Unable to enqueue SMS batch delivery", err)
 		}
@@ -278,9 +226,6 @@ func (s *Service) Cancel(ctx context.Context, value string) (SendResponse, error
 	}
 	if err := queue.CancelSMSDeliveryTx(ctx, tx, id, tenantContext.TeamID); err != nil {
 		return SendResponse{}, apperrors.NewInternal("Unable to cancel SMS delivery", err)
-	}
-	if _, err := s.wallet.RefundSMSChargeTx(ctx, tx, tenantContext.TeamID, message.CostMicros, id, message.Metadata); err != nil {
-		return SendResponse{}, apperrors.NewInternal("Unable to refund canceled SMS", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return SendResponse{}, apperrors.NewInternal("Unable to commit SMS cancellation", err)
@@ -330,9 +275,6 @@ func (s *Service) scheduledMutationContext(ctx context.Context, value string) (t
 	queue, ok := s.delivery.(scheduledDeliveryQueue)
 	if !ok {
 		return tenant.Context{}, uuid.Nil, nil, apperrors.NewInternal("SMS delivery queue does not support scheduling", nil)
-	}
-	if s.wallet == nil {
-		return tenant.Context{}, uuid.Nil, nil, apperrors.NewInternal("SMS wallet ledger is not configured", nil)
 	}
 	return tenantContext, id, queue, nil
 }
@@ -420,7 +362,7 @@ func resolveProviderStatus(current string, providerStatus string) string {
 
 func isTerminalStatus(status string) bool {
 	switch status {
-	case StatusRefundPending, StatusDelivered, StatusUndelivered, StatusRejected, StatusFailed, StatusExpired, StatusCanceled:
+	case StatusDelivered, StatusUndelivered, StatusRejected, StatusFailed, StatusExpired, StatusCanceled:
 		return true
 	default:
 		return false
@@ -445,7 +387,7 @@ func statusProgressRank(status string) (int, bool) {
 func MapProviderStatus(status string) string {
 	status = strings.ToLower(strings.TrimSpace(status))
 	switch status {
-	case StatusQueued, StatusProcessing, StatusRefundPending, StatusSubmitted, StatusSent, StatusDelivered, StatusUndelivered, StatusRejected, StatusFailed, StatusExpired, StatusUnknown, StatusCanceled:
+	case StatusQueued, StatusProcessing, StatusSubmitted, StatusSent, StatusDelivered, StatusUndelivered, StatusRejected, StatusFailed, StatusExpired, StatusUnknown, StatusCanceled:
 		return status
 	default:
 		return StatusUnknown

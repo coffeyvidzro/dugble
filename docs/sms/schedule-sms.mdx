@@ -3,7 +3,7 @@ title: "Schedule SMS"
 description: "Send an SMS later, change its delivery time, or cancel it"
 ---
 
-Set `scheduled_at` to charge and queue an SMS now while delaying its delivery job until a future time.
+Set `scheduled_at` to queue an SMS now while delaying its delivery job until a future time.
 
 ## Schedule a message
 
@@ -49,7 +49,7 @@ curl --request POST \
   --header "Idempotency-Key: <unique-request-key>"
 ```
 
-Dugble changes the SMS state to `canceled`, removes its pending delivery event, and refunds the original SMS charge in the same database transaction.
+Dugble changes the SMS state to `canceled` and removes its pending delivery event in the same database transaction.
 
 ## Scheduling rules
 

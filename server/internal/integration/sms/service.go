@@ -8,9 +8,7 @@ import (
 )
 
 // Service validates provider-neutral SMS requests and coordinates routing and
-// safe provider fallback. Wallet reservation and message persistence should
-// wrap this service at the application layer, or be introduced as explicit
-// dependencies when those modules are ready.
+// safe provider fallback. Message persistence is handled by the application layer.
 type Service struct {
 	router Router
 }

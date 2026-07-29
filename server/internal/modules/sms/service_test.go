@@ -104,19 +104,6 @@ func TestCountSegments(t *testing.T) {
 	}
 }
 
-func TestBillingFromAmounts(t *testing.T) {
-	billing := billingFromAmounts(9_000, 18_000)
-	if billing.UnitCost != 0.009 {
-		t.Fatalf("UnitCost = %v, want 0.009", billing.UnitCost)
-	}
-	if billing.TotalCost != 0.018 {
-		t.Fatalf("TotalCost = %v, want 0.018", billing.TotalCost)
-	}
-	if billing.Currency != "USD" {
-		t.Fatalf("Currency = %q, want USD", billing.Currency)
-	}
-}
-
 func TestSMSResponseJSONUsesPublicRepresentation(t *testing.T) {
 	now := time.Date(2026, time.July, 24, 12, 0, 0, 0, time.UTC)
 	providerID := "arkesel"
@@ -132,11 +119,7 @@ func TestSMSResponseJSONUsesPublicRepresentation(t *testing.T) {
 		ProviderID:         &providerID,
 		ProviderMessageID:  &providerMessageID,
 		DestinationCountry: "GH",
-		PricingRuleID:      "pricing-rule-secret",
 		Segments:           1,
-		UnitCostMicros:     9_000,
-		CostMicros:         9_000,
-		Billing:            billingFromAmounts(9_000, 9_000),
 		ErrorMessage:       &internalError,
 		Metadata:           json.RawMessage(`{"campaign":"welcome"}`),
 		Tags:               []Tag{{Name: "category", Value: "welcome_sms"}},
@@ -150,10 +133,6 @@ func TestSMSResponseJSONUsesPublicRepresentation(t *testing.T) {
 	}
 	body := string(payload)
 	for _, hidden := range []string{
-		"cost_micros",
-		"unit_cost_micros",
-		"pricing_rule_id",
-		"pricing-rule-secret",
 		"team_id",
 		"sender_id",
 		"provider_id",
@@ -173,8 +152,6 @@ func TestSMSResponseJSONUsesPublicRepresentation(t *testing.T) {
 		`"metadata":{"campaign":"welcome"}`,
 		`"destination":{"country":"GH"}`,
 		`"segments":1`,
-		`"unit_cost":0.009`,
-		`"total_cost":0.009`,
 		`"submitted_at":"2026-07-24T12:00:00Z"`,
 		`"updated_at":"2026-07-24T12:00:00Z"`,
 		`"failure":{"code":"SMS_FAILED","message":"SMS delivery failed"}`,

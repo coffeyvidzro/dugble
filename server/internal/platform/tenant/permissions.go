@@ -22,8 +22,6 @@ const (
 	PermissionSenderDomainsRead   Permission = "sender_domains:read"
 	PermissionSenderDomainsCreate Permission = "sender_domains:create"
 	PermissionSenderDomainsDelete Permission = "sender_domains:delete"
-	PermissionWalletRead          Permission = "wallet:read"
-	PermissionWalletTopUp         Permission = "wallet:topup"
 	PermissionSMSRead             Permission = "sms:read"
 	PermissionSMSSend             Permission = "sms:send"
 	PermissionEmailRead           Permission = "email:read"
@@ -52,8 +50,6 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 		PermissionSenderDomainsRead:   {},
 		PermissionSenderDomainsCreate: {},
 		PermissionSenderDomainsDelete: {},
-		PermissionWalletRead:          {},
-		PermissionWalletTopUp:         {},
 		PermissionSMSRead:             {},
 		PermissionSMSSend:             {},
 		PermissionEmailRead:           {},
@@ -79,8 +75,6 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 		PermissionSenderDomainsRead:   {},
 		PermissionSenderDomainsCreate: {},
 		PermissionSenderDomainsDelete: {},
-		PermissionWalletRead:          {},
-		PermissionWalletTopUp:         {},
 		PermissionSMSRead:             {},
 		PermissionSMSSend:             {},
 		PermissionEmailRead:           {},
@@ -95,7 +89,6 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 		PermissionTeamMemberLeave:   {},
 		PermissionSenderIDsRead:     {},
 		PermissionSenderDomainsRead: {},
-		PermissionWalletRead:        {},
 		PermissionSMSRead:           {},
 		PermissionEmailRead:         {},
 		PermissionWebhooksRead:      {},

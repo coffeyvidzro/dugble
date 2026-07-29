@@ -7,13 +7,10 @@ INSERT INTO sms_messages (
     body,
     status,
     segments,
-    cost_micros,
     metadata,
     tags,
     scheduled_at,
-    destination_country,
-    pricing_rule_id,
-    unit_cost_micros
+    destination_country
 ) VALUES (
     sqlc.arg(team_id),
     sqlc.narg(sender_id),
@@ -22,13 +19,10 @@ INSERT INTO sms_messages (
     sqlc.arg(body),
     sqlc.arg(status),
     sqlc.arg(segments),
-    sqlc.arg(cost_micros),
     sqlc.arg(metadata),
     sqlc.arg(tags),
     sqlc.narg(scheduled_at),
-    sqlc.arg(destination_country),
-    sqlc.arg(pricing_rule_id),
-    sqlc.arg(unit_cost_micros)
+    sqlc.arg(destination_country)
 )
 RETURNING *;
 
@@ -79,7 +73,7 @@ SET status = sqlc.arg(status),
 WHERE id = sqlc.arg(id)
   AND team_id = sqlc.arg(team_id)
   AND status <> sqlc.arg(status)
-  AND status NOT IN ('refund_pending', 'delivered', 'undelivered', 'rejected', 'failed', 'expired', 'unknown', 'canceled')
+  AND status NOT IN ('delivered', 'undelivered', 'rejected', 'failed', 'expired', 'unknown', 'canceled')
   AND (
       sqlc.arg(status) IN ('delivered', 'undelivered', 'rejected', 'failed', 'expired')
       OR CASE status
@@ -115,16 +109,6 @@ SET status = 'processing',
 WHERE id = sqlc.arg(id)
   AND team_id = sqlc.arg(team_id)
   AND status = 'queued'
-  AND provider_message_id IS NULL
-RETURNING *;
-
--- name: MarkSMSMessageRefundPending :one
-UPDATE sms_messages
-SET status = 'refund_pending',
-    error_message = sqlc.arg(error_message),
-    updated_at = now()
-WHERE id = sqlc.arg(id)
-  AND team_id = sqlc.arg(team_id)
   AND provider_message_id IS NULL
 RETURNING *;
 

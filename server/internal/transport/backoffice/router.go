@@ -12,10 +12,8 @@ import (
 	backofficedomains "github.com/coffeyvidzro/dugble/server/internal/backoffice/domains"
 	backofficesenderids "github.com/coffeyvidzro/dugble/server/internal/backoffice/senderids"
 	backofficesms "github.com/coffeyvidzro/dugble/server/internal/backoffice/sms"
-	backofficesmspricing "github.com/coffeyvidzro/dugble/server/internal/backoffice/smspricing"
 	backofficeteams "github.com/coffeyvidzro/dugble/server/internal/backoffice/teams"
 	backofficeusers "github.com/coffeyvidzro/dugble/server/internal/backoffice/users"
-	backofficewallets "github.com/coffeyvidzro/dugble/server/internal/backoffice/wallets"
 	"github.com/coffeyvidzro/dugble/server/internal/config"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/auth"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
@@ -66,17 +64,14 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	})
 
 	teamService := backofficeteams.NewService(backofficeteams.NewRepository(deps.DB))
-	pricingService := backofficesmspricing.NewService(backofficesmspricing.NewRepository(deps.DB))
 	handler := NewHandler(
 		backofficedashboard.NewService(backofficedashboard.NewRepository(deps.DB)),
 		backofficeusers.NewService(backofficeusers.NewRepository(deps.DB)),
 		backofficesms.NewService(backofficesms.NewRepository(deps.DB)),
 		teamService,
-		backofficewallets.NewService(backofficewallets.NewRepository(deps.DB)),
 		backofficesenderids.NewService(backofficesenderids.NewRepository(deps.DB)),
 		backofficedomains.NewService(backofficedomains.NewRepository(deps.DB)),
 	)
-	pricingHandler := NewPricingHandler(pricingService, teamService)
 
 	protected := router.Group("")
 	protected.Use(authMiddleware)
@@ -89,26 +84,8 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	protected.GET("/teams", handler.Teams)
 	protected.GET("/teams/:id", handler.TeamDetail)
 	protected.POST("/teams/:id/status", handler.UpdateTeamStatus)
-	protected.GET("/teams/:id/sms-pricing", pricingHandler.TeamConfiguration)
-	protected.POST("/teams/:id/sms-pricing", pricingHandler.UpdateTeam)
-	protected.POST("/teams/:id/sms-pricing/reset", pricingHandler.ResetTeam)
 	protected.GET("/sms", handler.SMSMessages)
 	protected.GET("/sms/:id", handler.SMSDetail)
-	protected.GET("/sms-pricing", pricingHandler.Plans)
-	protected.POST("/sms-pricing", pricingHandler.CreatePlan)
-	protected.GET("/sms-pricing/:id", pricingHandler.PlanDetail)
-	protected.POST("/sms-pricing/:id/name", pricingHandler.RenamePlan)
-	protected.POST("/sms-pricing/:id/status", pricingHandler.UpdatePlanStatus)
-	protected.POST("/sms-pricing/:id/delete", pricingHandler.DeletePlan)
-	protected.POST("/sms-pricing/:id/default", pricingHandler.SetDefault)
-	protected.POST("/sms-pricing/:id/rates/preview", pricingHandler.PreviewRate)
-	protected.POST("/sms-pricing/:id/rates", pricingHandler.AddRate)
-	protected.POST("/sms-pricing/:id/rates/:rateID", pricingHandler.UpdateRate)
-	protected.POST("/sms-pricing/:id/rates/:rateID/cancel", pricingHandler.CancelRate)
-	protected.GET("/wallets", handler.Wallets)
-	protected.GET("/wallets/:id", handler.WalletDetail)
-	protected.GET("/wallets/:id/transactions", handler.WalletTransactions)
-	protected.POST("/wallets/:id/adjust", handler.AdjustWallet)
 	protected.GET("/sender-ids", handler.SenderIDs)
 	protected.GET("/sender-ids/:id", handler.SenderIDDetail)
 	protected.POST("/sender-ids/:id/status", handler.UpdateSenderIDStatus)

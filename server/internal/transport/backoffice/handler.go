@@ -16,7 +16,6 @@ import (
 	backofficesms "github.com/coffeyvidzro/dugble/server/internal/backoffice/sms"
 	backofficeteams "github.com/coffeyvidzro/dugble/server/internal/backoffice/teams"
 	backofficeusers "github.com/coffeyvidzro/dugble/server/internal/backoffice/users"
-	backofficewallets "github.com/coffeyvidzro/dugble/server/internal/backoffice/wallets"
 	"github.com/coffeyvidzro/dugble/server/internal/transport/middlewares"
 )
 
@@ -25,7 +24,6 @@ type Handler struct {
 	users     *backofficeusers.Service
 	sms       *backofficesms.Service
 	teams     *backofficeteams.Service
-	wallets   *backofficewallets.Service
 	senderIDs *backofficesenderids.Service
 	domains   *backofficedomains.Service
 }
@@ -35,11 +33,10 @@ func NewHandler(
 	users *backofficeusers.Service,
 	sms *backofficesms.Service,
 	teams *backofficeteams.Service,
-	wallets *backofficewallets.Service,
 	senderIDs *backofficesenderids.Service,
 	domains *backofficedomains.Service,
 ) *Handler {
-	return &Handler{dashboard: dashboard, users: users, sms: sms, teams: teams, wallets: wallets, senderIDs: senderIDs, domains: domains}
+	return &Handler{dashboard: dashboard, users: users, sms: sms, teams: teams, senderIDs: senderIDs, domains: domains}
 }
 
 func (h *Handler) Dashboard(c *echo.Context) error {
@@ -140,64 +137,6 @@ func (h *Handler) SMSDetail(c *echo.Context) error {
 	}
 
 	return h.render(c, "sms_detail.html", "SMS "+detail.ID, detail, nil)
-}
-
-func (h *Handler) Wallets(c *echo.Context) error {
-	filter := backofficewallets.Filter{
-		Query:  cleanQuery(c.QueryParam("q")),
-		Status: cleanQuery(c.QueryParam("status")),
-	}
-	wallets, err := h.wallets.List(c.Request().Context(), filter)
-	if err != nil {
-		return err
-	}
-
-	return h.render(c, "wallets.html", "Wallets", wallets, filter)
-}
-
-func (h *Handler) WalletDetail(c *echo.Context) error {
-	id, ok := validID(c)
-	if !ok {
-		return c.String(http.StatusBadRequest, "invalid wallet id")
-	}
-
-	detail, err := h.wallets.Detail(c.Request().Context(), id)
-	if err != nil {
-		return handleDetailError(c, err)
-	}
-
-	return h.render(c, "wallet_detail.html", "Wallet "+detail.Wallet.ID, detail, nil)
-}
-
-func (h *Handler) WalletTransactions(c *echo.Context) error {
-	id, ok := validID(c)
-	if !ok {
-		return c.String(http.StatusBadRequest, "invalid wallet id")
-	}
-
-	detail, err := h.wallets.Detail(c.Request().Context(), id)
-	if err != nil {
-		return handleDetailError(c, err)
-	}
-
-	return h.render(c, "wallet_transactions.html", "Wallet transactions", detail, nil)
-}
-
-func (h *Handler) AdjustWallet(c *echo.Context) error {
-	id, ok := validID(c)
-	if !ok {
-		return c.String(http.StatusBadRequest, "invalid wallet id")
-	}
-
-	if err := h.wallets.Adjust(c.Request().Context(), id, backofficewallets.AdjustmentRequest{
-		Direction: c.Request().FormValue("direction"),
-		AmountUSD: c.Request().FormValue("amount_usd"),
-		Reason:    c.Request().FormValue("reason"),
-	}); err != nil {
-		return handleWalletCommandError(c, err)
-	}
-
-	return c.Redirect(http.StatusSeeOther, "/wallets/"+id)
 }
 
 func (h *Handler) SenderIDs(c *echo.Context) error {
@@ -318,14 +257,6 @@ func handleDomainCommandError(c *echo.Context, err error) error {
 func handleTeamCommandError(c *echo.Context, err error) error {
 	if errors.Is(err, backofficeteams.ErrInvalidRequest) {
 		return c.String(http.StatusBadRequest, strings.TrimPrefix(err.Error(), backofficeteams.ErrInvalidRequest.Error()+": "))
-	}
-
-	return handleDetailError(c, err)
-}
-
-func handleWalletCommandError(c *echo.Context, err error) error {
-	if errors.Is(err, backofficewallets.ErrInvalidRequest) || errors.Is(err, backofficewallets.ErrInsufficientBalance) {
-		return c.String(http.StatusBadRequest, strings.TrimPrefix(err.Error(), backofficewallets.ErrInvalidRequest.Error()+": "))
 	}
 
 	return handleDetailError(c, err)

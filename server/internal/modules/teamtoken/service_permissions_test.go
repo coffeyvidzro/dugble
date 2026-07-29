@@ -45,7 +45,7 @@ func TestValidatePermissionsAllowsSMSScopes(t *testing.T) {
 }
 
 func TestValidatePermissionsRejectsPrivilegedScope(t *testing.T) {
-	_, err := validatePermissions([]string{string(tenant.PermissionWalletTopUp)})
+	_, err := validatePermissions([]string{"root:all"})
 	if err == nil {
 		t.Fatal("validatePermissions() error = nil, want unsupported permission error")
 	}

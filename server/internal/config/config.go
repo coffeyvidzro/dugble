@@ -12,12 +12,6 @@ type ProviderConfig struct {
 	APIKey  string `env:"API_KEY"`
 }
 
-type HubtelConfig struct {
-	APIID          string `env:"API_ID"`
-	APIKey         string `env:"API_KEY"`
-	MerchantNumber string `env:"MERCHANT_NUMBER"`
-}
-
 type AWSConfig struct {
 	FromEmail string `env:"FROM_EMAIL,required,notEmpty"`
 	Region    string `env:"REGION,required,notEmpty"`
@@ -44,7 +38,6 @@ type Config struct {
 	NATSURL      string           `env:"NATS_URL" envDefault:"nats://localhost:4222"`
 	Arkesel      ProviderConfig   `envPrefix:"ARKESEL_"`
 	MNotify      ProviderConfig   `envPrefix:"MNOTIFY_"`
-	Hubtel       HubtelConfig     `envPrefix:"HUBTEL_"`
 	Backoffice   BackofficeConfig `envPrefix:"BACKOFFICE_"`
 }
 
@@ -83,9 +76,6 @@ func (c *Config) normalize() {
 	c.Arkesel.BaseURL = strings.TrimRight(strings.TrimSpace(c.Arkesel.BaseURL), "/")
 	c.MNotify.APIKey = strings.TrimSpace(c.MNotify.APIKey)
 	c.MNotify.BaseURL = strings.TrimRight(strings.TrimSpace(c.MNotify.BaseURL), "/")
-	c.Hubtel.APIID = strings.TrimSpace(c.Hubtel.APIID)
-	c.Hubtel.APIKey = strings.TrimSpace(c.Hubtel.APIKey)
-	c.Hubtel.MerchantNumber = strings.TrimSpace(c.Hubtel.MerchantNumber)
 	c.Backoffice.HTTPPort = strings.TrimSpace(c.Backoffice.HTTPPort)
 
 	origins := make([]string, 0, len(c.CORSOrigins))

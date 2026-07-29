@@ -6,8 +6,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-
-	backofficewallets "github.com/coffeyvidzro/dugble/server/internal/backoffice/wallets"
 )
 
 type Repository struct {
@@ -56,9 +54,6 @@ func (r *Repository) Detail(ctx context.Context, id string) (Detail, error) {
 	if err := r.loadMembers(ctx, id, &detail); err != nil {
 		return Detail{}, err
 	}
-	if err := r.loadWallets(ctx, id, &detail); err != nil {
-		return Detail{}, err
-	}
 	if err := r.loadSMS(ctx, id, &detail); err != nil {
 		return Detail{}, err
 	}
@@ -105,30 +100,6 @@ func (r *Repository) loadMembers(ctx context.Context, id string, detail *Detail)
 	}
 
 	return members.Err()
-}
-
-func (r *Repository) loadWallets(ctx context.Context, id string, detail *Detail) error {
-	walletRows, err := r.db.Query(ctx, `
-		SELECT w.id::text, w.team_id::text, t.name, w.currency, w.balance, w.status, w.updated_at
-		FROM wallets w
-		JOIN teams t ON t.id = w.team_id
-		WHERE w.team_id = $1::uuid
-		ORDER BY w.updated_at DESC
-	`, id)
-	if err != nil {
-		return fmt.Errorf("list team wallets: %w", err)
-	}
-	defer walletRows.Close()
-
-	for walletRows.Next() {
-		var row backofficewallets.Row
-		if err := walletRows.Scan(&row.ID, &row.TeamID, &row.TeamName, &row.Currency, &row.Balance, &row.Status, &row.UpdatedAt); err != nil {
-			return fmt.Errorf("scan team wallet: %w", err)
-		}
-		detail.Wallets = append(detail.Wallets, row)
-	}
-
-	return walletRows.Err()
 }
 
 func (r *Repository) loadSMS(ctx context.Context, id string, detail *Detail) error {

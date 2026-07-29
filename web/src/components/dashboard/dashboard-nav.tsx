@@ -111,7 +111,7 @@ export const dashboardNavigation: DashboardNavSection[] = [
                 title: "Usage",
                 href: "/dashboard/usage",
                 icon: Gauge,
-                description: "Volume and billing usage.",
+                description: "Message volume and delivery trends.",
             },
             {
                 title: "Settings",

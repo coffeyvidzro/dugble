@@ -588,7 +588,7 @@
       "post": {
         "operationId": "cancelSmsMessage",
         "summary": "Cancel a scheduled SMS",
-        "description": "Cancels an SMS that is still queued for scheduled delivery and starts the applicable refund flow.",
+        "description": "Cancels an SMS that is still queued for scheduled delivery.",
         "tags": [
           "SMS"
         ],
@@ -687,7 +687,7 @@
         "name": "limit",
         "in": "query",
         "required": false,
-        "description": "Maximum number of messages to return. Values outside 1–100 use the default of 50.",
+        "description": "Maximum number of messages to return. Values outside 1\u2013100 use the default of 50.",
         "schema": {
           "type": "integer",
           "format": "int32",
@@ -1303,31 +1303,6 @@
         },
         "additionalProperties": false
       },
-      "Billing": {
-        "type": "object",
-        "required": [
-          "unit_cost",
-          "total_cost",
-          "currency"
-        ],
-        "properties": {
-          "unit_cost": {
-            "type": "number",
-            "format": "double",
-            "minimum": 0
-          },
-          "total_cost": {
-            "type": "number",
-            "format": "double",
-            "minimum": 0
-          },
-          "currency": {
-            "type": "string",
-            "example": "USD"
-          }
-        },
-        "additionalProperties": false
-      },
       "SmsFailure": {
         "type": "object",
         "required": [
@@ -1360,7 +1335,6 @@
           "metadata",
           "tags",
           "scheduled_at",
-          "billing",
           "created_at",
           "updated_at"
         ],
@@ -1419,9 +1393,6 @@
             ],
             "format": "date-time"
           },
-          "billing": {
-            "$ref": "#/components/schemas/Billing"
-          },
           "failure": {
             "oneOf": [
               {
@@ -1461,7 +1432,6 @@
         "enum": [
           "queued",
           "processing",
-          "refund_pending",
           "submitted",
           "sent",
           "delivered",

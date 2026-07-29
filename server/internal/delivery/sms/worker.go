@@ -2,7 +2,6 @@ package smsdelivery
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -11,7 +10,6 @@ import (
 
 	smsapi "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
 	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
-	"github.com/coffeyvidzro/dugble/server/internal/modules/wallet"
 )
 
 const defaultStaleProcessingAfter = 15 * time.Minute
@@ -19,7 +17,6 @@ const defaultStaleProcessingAfter = 15 * time.Minute
 type messageRepository interface {
 	MarkProcessing(ctx context.Context, id uuid.UUID, teamID uuid.UUID) (smsmodule.Message, error)
 	Get(ctx context.Context, id uuid.UUID, teamID uuid.UUID) (smsmodule.Message, error)
-	MarkRefundPending(ctx context.Context, id uuid.UUID, teamID uuid.UUID, message string) (smsmodule.Message, error)
 	MarkDeliveryUnknown(ctx context.Context, id uuid.UUID, teamID uuid.UUID, message string) (smsmodule.Message, error)
 	MarkFailed(ctx context.Context, id uuid.UUID, teamID uuid.UUID, message string) (smsmodule.Message, error)
 	MarkSubmitted(ctx context.Context, id uuid.UUID, teamID uuid.UUID, providerID string, providerMessageID string, status string) (smsmodule.Message, error)
@@ -65,19 +62,14 @@ func (h *Handler) HandleExhausted(ctx context.Context, command DeliverCommand, c
 	return err
 }
 
-type refundLedger interface {
-	RefundSMSCharge(ctx context.Context, teamID uuid.UUID, amountMicros int64, referenceID uuid.UUID, metadata json.RawMessage) (wallet.Transaction, error)
-}
-
 type Handler struct {
 	repository           messageRepository
 	sender               smsmodule.Sender
-	wallet               refundLedger
 	staleProcessingAfter time.Duration
 }
 
-func NewHandler(repository *smsmodule.Repository, sender smsmodule.Sender, wallet smsmodule.WalletLedger) *Handler {
-	return &Handler{repository: repository, sender: sender, wallet: wallet, staleProcessingAfter: defaultStaleProcessingAfter}
+func NewHandler(repository *smsmodule.Repository, sender smsmodule.Sender) *Handler {
+	return &Handler{repository: repository, sender: sender, staleProcessingAfter: defaultStaleProcessingAfter}
 }
 
 func (h *Handler) Handle(ctx context.Context, command DeliverCommand) error {
@@ -100,17 +92,14 @@ func (h *Handler) Handle(ctx context.Context, command DeliverCommand) error {
 		DestinationCountry: message.DestinationCountry,
 	})
 	if err != nil {
-		if !shouldRefundAfterSendError(err) {
+		if !shouldFinalizeAfterSendError(err) {
 			// Ambiguous failures may have happened after the provider accepted the
 			// SMS. Keep the message in processing so retries do not re-submit it;
 			// stale-processing recovery will eventually close it out operationally.
 			return err
 		}
-		pending, updateErr := h.repository.MarkRefundPending(ctx, command.MessageID, command.TeamID, err.Error())
-		if updateErr != nil {
-			return updateErr
-		}
-		return h.refundAndFail(ctx, command, pending, err)
+		_, updateErr := h.repository.MarkFailed(ctx, command.MessageID, command.TeamID, err.Error())
+		return updateErr
 	}
 
 	_, err = h.repository.MarkSubmitted(ctx, command.MessageID, command.TeamID, response.ProviderID, response.ProviderMsgID, smsmodule.MapProviderStatus(response.Status))
@@ -125,29 +114,15 @@ func (h *Handler) handleAlreadyClaimed(ctx context.Context, command DeliverComma
 		}
 		return err
 	}
-	switch message.Status {
-	case smsmodule.StatusRefundPending:
-		reason := "SMS delivery failed before refund completed"
-		if message.ErrorMessage != nil && *message.ErrorMessage != "" {
-			reason = *message.ErrorMessage
-		}
-		return h.refundAndFail(ctx, command, message, errors.New(reason))
-	case smsmodule.StatusProcessing:
-		if !h.processingIsStale(message) {
-			return fmt.Errorf("sms message %s is already processing", message.ID)
-		}
-		const reason = "SMS delivery outcome unknown after processing timeout"
-		pending, updateErr := h.repository.MarkRefundPending(ctx, command.MessageID, command.TeamID, reason)
-		if updateErr != nil {
-			return updateErr
-		}
-		return h.refundAndFail(ctx, command, pending, errors.New(reason))
-	default:
-		// Provider requests are not guaranteed idempotent across upstreams. A
-		// non-queued message was already claimed or completed, so do not submit it
-		// again from a duplicate or redelivered JetStream command.
+	if message.Status != smsmodule.StatusProcessing {
 		return nil
 	}
+	if !h.processingIsStale(message) {
+		return fmt.Errorf("sms message %s is already processing", message.ID)
+	}
+	const reason = "SMS delivery outcome unknown after processing timeout"
+	_, updateErr := h.repository.MarkFailed(ctx, command.MessageID, command.TeamID, reason)
+	return updateErr
 }
 
 func (h *Handler) processingIsStale(message smsmodule.Message) bool {
@@ -158,20 +133,12 @@ func (h *Handler) processingIsStale(message smsmodule.Message) bool {
 	return time.Since(message.UpdatedAt) >= threshold
 }
 
-func (h *Handler) refundAndFail(ctx context.Context, command DeliverCommand, message smsmodule.Message, cause error) error {
-	if _, refundErr := h.wallet.RefundSMSCharge(ctx, command.TeamID, message.CostMicros, command.MessageID, message.Metadata); refundErr != nil {
-		return errors.Join(cause, refundErr)
-	}
-	_, updateErr := h.repository.MarkFailed(ctx, command.MessageID, command.TeamID, cause.Error())
-	return updateErr
-}
-
 type safeFallbackError interface {
 	error
 	SafeToFallback() bool
 }
 
-func shouldRefundAfterSendError(err error) bool {
+func shouldFinalizeAfterSendError(err error) bool {
 	if err == nil {
 		return false
 	}

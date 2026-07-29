@@ -4,18 +4,17 @@ import { Cta } from "@/components/marketing/cta";
 import { AnimatedGrid } from "@/components/marketing/hero/animated-grid";
 import { FloatingOrbs } from "@/components/marketing/hero/floating-orbs";
 import { EmailPricing } from "@/components/marketing/pricing/email-pricing";
-import { OtherChannels } from "@/components/marketing/pricing/other-channels";
 import { Reveal } from "@/components/marketing/reveal";
 import { Separator } from "@/components/ui/separator";
 
 export const metadata: Metadata = {
   title: "Pricing & Plans",
   description:
-    "Explore Dugble's transparent, usage-based pricing for transactional email and A2P SMS messaging. No setup fees or feature paywalls.",
+    "Explore Dugble's transparent, usage-based pricing for transactional email. No setup fees or feature paywalls.",
   openGraph: {
     title: "Pricing & Plans",
     description:
-      "Explore Dugble's transparent, usage-based pricing for transactional email and A2P SMS messaging. No setup fees or feature paywalls.",
+      "Explore Dugble's transparent, usage-based pricing for transactional email. No setup fees or feature paywalls.",
     url: "/pricing",
     type: "website",
   },
@@ -55,10 +54,6 @@ const faqs = [
     a: "No. Sandbox messages are free and unlimited. You're only billed once you send from a production sender.",
   },
   {
-    q: "Can I mix email and SMS on one workspace?",
-    a: "Yes. Usage for each channel is metered and shown separately, so one doesn't obscure the other.",
-  },
-  {
     q: "Is there a contract or minimum commitment?",
     a: "No minimums at standard volume. High-volume workspaces can talk to us about a custom arrangement.",
   },
@@ -76,12 +71,12 @@ export default function Page() {
               Pricing
             </p>
             <h1 className="max-w-3xl text-balance font-heading text-4xl font-semibold leading-[1.08] tracking-tight md:text-5xl">
-              Usage-based pricing by channel.
+              Straightforward email pricing.
             </h1>
             <p className="max-w-2xl text-pretty text-lg leading-8 text-muted-foreground">
-              Dugble pricing stays easy to reason about: email and SMS are
-              separate, test traffic is visible, and production volume maps to
-              the messages your product actually sends.
+              Dugble email pricing stays easy to reason about: test traffic is
+              visible, and production volume maps to the messages your product
+              actually sends.
             </p>
           </Reveal>
         </section>
@@ -89,8 +84,6 @@ export default function Page() {
         <Separator />
 
         <EmailPricing />
-
-        <OtherChannels />
 
         <section className="grid gap-8 rounded-2xl border bg-card/60 p-6 md:p-8 lg:grid-cols-[0.7fr_1fr] lg:gap-10">
           <Reveal className="space-y-3">

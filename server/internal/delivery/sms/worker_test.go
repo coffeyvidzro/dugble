@@ -2,7 +2,6 @@ package smsdelivery
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -11,27 +10,20 @@ import (
 
 	smsapi "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
 	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
-	"github.com/coffeyvidzro/dugble/server/internal/modules/wallet"
 )
 
-func TestHandlerSafeProviderRejectionRefundsAndMarksFailed(t *testing.T) {
+func TestHandlerSafeProviderRejectionMarksFailed(t *testing.T) {
 	messageID := uuid.New()
 	teamID := uuid.New()
 	repo := newFakeRepository(messageID, teamID, smsmodule.StatusQueued)
 	senderErr := &smsapi.SendError{Attempts: []smsapi.ProviderAttempt{{ProviderID: "test", Err: safeSendError{}}}}
-	handler := newTestHandler(repo, &fakeSender{sendErr: senderErr}, &fakeWallet{})
+	handler := newTestHandler(repo, &fakeSender{sendErr: senderErr})
 
 	if err := handler.Handle(context.Background(), testCommand(messageID, teamID)); err != nil {
 		t.Fatalf("Handle returned error: %v", err)
 	}
 	if repo.message.Status != smsmodule.StatusFailed {
 		t.Fatalf("status = %q, want %q", repo.message.Status, smsmodule.StatusFailed)
-	}
-	if repo.refundPendingCalls != 1 {
-		t.Fatalf("refundPendingCalls = %d, want 1", repo.refundPendingCalls)
-	}
-	if handler.wallet.(*fakeWallet).refundCalls != 1 {
-		t.Fatalf("refundCalls = %d, want 1", handler.wallet.(*fakeWallet).refundCalls)
 	}
 }
 
@@ -39,39 +31,13 @@ func TestHandlerAmbiguousProviderErrorStaysProcessingAndRetries(t *testing.T) {
 	messageID := uuid.New()
 	teamID := uuid.New()
 	repo := newFakeRepository(messageID, teamID, smsmodule.StatusQueued)
-	handler := newTestHandler(repo, &fakeSender{sendErr: errors.New("connection reset")}, &fakeWallet{})
+	handler := newTestHandler(repo, &fakeSender{sendErr: errors.New("connection reset")})
 
 	if err := handler.Handle(context.Background(), testCommand(messageID, teamID)); err == nil {
 		t.Fatal("Handle returned nil error for ambiguous provider failure")
 	}
 	if repo.message.Status != smsmodule.StatusProcessing {
 		t.Fatalf("status = %q, want %q", repo.message.Status, smsmodule.StatusProcessing)
-	}
-	if repo.refundPendingCalls != 0 {
-		t.Fatalf("refundPendingCalls = %d, want 0", repo.refundPendingCalls)
-	}
-	if handler.wallet.(*fakeWallet).refundCalls != 0 {
-		t.Fatalf("refundCalls = %d, want 0", handler.wallet.(*fakeWallet).refundCalls)
-	}
-}
-
-func TestHandlerRefundPendingRetryDoesNotResend(t *testing.T) {
-	messageID := uuid.New()
-	teamID := uuid.New()
-	repo := newFakeRepository(messageID, teamID, smsmodule.StatusRefundPending)
-	reason := "provider rejected recipient"
-	repo.message.ErrorMessage = &reason
-	sender := &fakeSender{}
-	handler := newTestHandler(repo, sender, &fakeWallet{})
-
-	if err := handler.Handle(context.Background(), testCommand(messageID, teamID)); err != nil {
-		t.Fatalf("Handle returned error: %v", err)
-	}
-	if sender.sendCalls != 0 {
-		t.Fatalf("sendCalls = %d, want 0", sender.sendCalls)
-	}
-	if repo.message.Status != smsmodule.StatusFailed {
-		t.Fatalf("status = %q, want %q", repo.message.Status, smsmodule.StatusFailed)
 	}
 }
 
@@ -81,7 +47,7 @@ func TestHandlerProcessingRetryDoesNotResendBeforeStale(t *testing.T) {
 	repo := newFakeRepository(messageID, teamID, smsmodule.StatusProcessing)
 	repo.message.UpdatedAt = time.Now()
 	sender := &fakeSender{}
-	handler := newTestHandler(repo, sender, &fakeWallet{})
+	handler := newTestHandler(repo, sender)
 	handler.staleProcessingAfter = time.Hour
 
 	if err := handler.Handle(context.Background(), testCommand(messageID, teamID)); err == nil {
@@ -95,13 +61,13 @@ func TestHandlerProcessingRetryDoesNotResendBeforeStale(t *testing.T) {
 	}
 }
 
-func TestHandlerStaleProcessingRefundsWithoutResend(t *testing.T) {
+func TestHandlerStaleProcessingFailsWithoutResend(t *testing.T) {
 	messageID := uuid.New()
 	teamID := uuid.New()
 	repo := newFakeRepository(messageID, teamID, smsmodule.StatusProcessing)
 	repo.message.UpdatedAt = time.Now().Add(-2 * time.Hour)
 	sender := &fakeSender{}
-	handler := newTestHandler(repo, sender, &fakeWallet{})
+	handler := newTestHandler(repo, sender)
 	handler.staleProcessingAfter = time.Hour
 
 	if err := handler.Handle(context.Background(), testCommand(messageID, teamID)); err != nil {
@@ -115,12 +81,11 @@ func TestHandlerStaleProcessingRefundsWithoutResend(t *testing.T) {
 	}
 }
 
-func TestHandlerExhaustedProcessingBecomesUnknownWithoutRefund(t *testing.T) {
+func TestHandlerExhaustedProcessingBecomesUnknown(t *testing.T) {
 	messageID := uuid.New()
 	teamID := uuid.New()
 	repo := newFakeRepository(messageID, teamID, smsmodule.StatusProcessing)
-	wallet := &fakeWallet{}
-	handler := newTestHandler(repo, &fakeSender{}, wallet)
+	handler := newTestHandler(repo, &fakeSender{})
 
 	if err := handler.HandleExhausted(context.Background(), testCommand(messageID, teamID), errors.New("connection reset")); err != nil {
 		t.Fatalf("HandleExhausted returned error: %v", err)
@@ -128,16 +93,13 @@ func TestHandlerExhaustedProcessingBecomesUnknownWithoutRefund(t *testing.T) {
 	if repo.message.Status != smsmodule.StatusUnknown {
 		t.Fatalf("status = %q, want %q", repo.message.Status, smsmodule.StatusUnknown)
 	}
-	if wallet.refundCalls != 0 {
-		t.Fatalf("refundCalls = %d, want 0", wallet.refundCalls)
-	}
 }
 
 func TestHandlerExhaustedCompletedMessageIsUnchanged(t *testing.T) {
 	messageID := uuid.New()
 	teamID := uuid.New()
 	repo := newFakeRepository(messageID, teamID, smsmodule.StatusSubmitted)
-	handler := newTestHandler(repo, &fakeSender{}, &fakeWallet{})
+	handler := newTestHandler(repo, &fakeSender{})
 
 	if err := handler.HandleExhausted(context.Background(), testCommand(messageID, teamID), errors.New("late handler error")); err != nil {
 		t.Fatalf("HandleExhausted returned error: %v", err)
@@ -151,7 +113,7 @@ func TestHandlerExhaustedQueuedMessageRequestsAnotherRetry(t *testing.T) {
 	messageID := uuid.New()
 	teamID := uuid.New()
 	repo := newFakeRepository(messageID, teamID, smsmodule.StatusQueued)
-	handler := newTestHandler(repo, &fakeSender{}, &fakeWallet{})
+	handler := newTestHandler(repo, &fakeSender{})
 
 	if err := handler.HandleExhausted(context.Background(), testCommand(messageID, teamID), errors.New("database unavailable")); err == nil {
 		t.Fatal("HandleExhausted returned nil error for an unclaimed queued message")
@@ -161,8 +123,8 @@ func TestHandlerExhaustedQueuedMessageRequestsAnotherRetry(t *testing.T) {
 	}
 }
 
-func newTestHandler(repo *fakeRepository, sender *fakeSender, wallet *fakeWallet) *Handler {
-	return &Handler{repository: repo, sender: sender, wallet: wallet, staleProcessingAfter: defaultStaleProcessingAfter}
+func newTestHandler(repo *fakeRepository, sender *fakeSender) *Handler {
+	return &Handler{repository: repo, sender: sender, staleProcessingAfter: defaultStaleProcessingAfter}
 }
 
 func testCommand(messageID uuid.UUID, teamID uuid.UUID) DeliverCommand {
@@ -170,21 +132,18 @@ func testCommand(messageID uuid.UUID, teamID uuid.UUID) DeliverCommand {
 }
 
 type fakeRepository struct {
-	message            smsmodule.Message
-	refundPendingCalls int
+	message smsmodule.Message
 }
 
 func newFakeRepository(messageID uuid.UUID, teamID uuid.UUID, status string) *fakeRepository {
 	return &fakeRepository{message: smsmodule.Message{
-		ID:         messageID.String(),
-		TeamID:     teamID.String(),
-		To:         "+233241234567",
-		From:       "DUGBLE",
-		Body:       "hello",
-		Status:     status,
-		CostMicros: 9_000,
-		Metadata:   json.RawMessage(`{}`),
-		UpdatedAt:  time.Now(),
+		ID:        messageID.String(),
+		TeamID:    teamID.String(),
+		To:        "+233241234567",
+		From:      "DUGBLE",
+		Body:      "hello",
+		Status:    status,
+		UpdatedAt: time.Now(),
 	}}
 }
 
@@ -201,17 +160,6 @@ func (r *fakeRepository) Get(_ context.Context, id uuid.UUID, teamID uuid.UUID) 
 	if r.message.ID != id.String() || r.message.TeamID != teamID.String() {
 		return smsmodule.Message{}, smsmodule.ErrMessageNotFound
 	}
-	return r.message, nil
-}
-
-func (r *fakeRepository) MarkRefundPending(_ context.Context, id uuid.UUID, teamID uuid.UUID, message string) (smsmodule.Message, error) {
-	if r.message.ID != id.String() || r.message.TeamID != teamID.String() {
-		return smsmodule.Message{}, smsmodule.ErrMessageNotFound
-	}
-	r.refundPendingCalls++
-	r.message.Status = smsmodule.StatusRefundPending
-	r.message.ErrorMessage = &message
-	r.message.UpdatedAt = time.Now()
 	return r.message, nil
 }
 
@@ -261,13 +209,6 @@ func (s *fakeSender) Send(context.Context, smsapi.SendRequest) (*smsapi.SendResp
 
 func (s *fakeSender) CheckStatus(context.Context, string, string) (*smsapi.StatusResponse, error) {
 	return nil, errors.New("not implemented")
-}
-
-type fakeWallet struct{ refundCalls int }
-
-func (w *fakeWallet) RefundSMSCharge(context.Context, uuid.UUID, int64, uuid.UUID, json.RawMessage) (wallet.Transaction, error) {
-	w.refundCalls++
-	return wallet.Transaction{}, nil
 }
 
 type safeSendError struct{}

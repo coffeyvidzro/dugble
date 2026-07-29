@@ -7,18 +7,17 @@ import (
 )
 
 const (
-	StatusQueued        = "queued"
-	StatusProcessing    = "processing"
-	StatusRefundPending = "refund_pending"
-	StatusSubmitted     = "submitted"
-	StatusSent          = "sent"
-	StatusDelivered     = "delivered"
-	StatusUndelivered   = "undelivered"
-	StatusRejected      = "rejected"
-	StatusFailed        = "failed"
-	StatusExpired       = "expired"
-	StatusUnknown       = "unknown"
-	StatusCanceled      = "canceled"
+	StatusQueued      = "queued"
+	StatusProcessing  = "processing"
+	StatusSubmitted   = "submitted"
+	StatusSent        = "sent"
+	StatusDelivered   = "delivered"
+	StatusUndelivered = "undelivered"
+	StatusRejected    = "rejected"
+	StatusFailed      = "failed"
+	StatusExpired     = "expired"
+	StatusUnknown     = "unknown"
+	StatusCanceled    = "canceled"
 )
 
 type Message struct {
@@ -32,8 +31,6 @@ type Message struct {
 	ProviderID         *string         `json:"provider_id,omitempty"`
 	ProviderMessageID  *string         `json:"provider_message_id,omitempty"`
 	Segments           int32           `json:"segments"`
-	CostMicros         int64           `json:"cost_micros"`
-	Billing            Billing         `json:"billing"`
 	ErrorMessage       *string         `json:"error_message,omitempty"`
 	Metadata           json.RawMessage `json:"metadata"`
 	Tags               []Tag           `json:"tags"`
@@ -43,8 +40,6 @@ type Message struct {
 	CreatedAt          time.Time       `json:"created_at"`
 	UpdatedAt          time.Time       `json:"updated_at"`
 	DestinationCountry string          `json:"destination_country"`
-	PricingRuleID      string          `json:"pricing_rule_id"`
-	UnitCostMicros     int64           `json:"unit_cost_micros"`
 }
 
 type Destination struct {
@@ -64,7 +59,6 @@ type SMSResponse struct {
 	Metadata    json.RawMessage `json:"metadata"`
 	Tags        []Tag           `json:"tags"`
 	ScheduledAt *time.Time      `json:"scheduled_at"`
-	Billing     Billing         `json:"billing"`
 	Failure     *SMSFailure     `json:"failure,omitempty"`
 	SubmittedAt *time.Time      `json:"submitted_at,omitempty"`
 	DeliveredAt *time.Time      `json:"delivered_at,omitempty"`
@@ -91,7 +85,6 @@ func (m Message) Response() SMSResponse {
 		Metadata:    m.Metadata,
 		Tags:        nonNilSMSTags(m.Tags),
 		ScheduledAt: m.ScheduledAt,
-		Billing:     m.Billing,
 		Failure:     publicFailure(m.Status),
 		SubmittedAt: m.SubmittedAt,
 		DeliveredAt: m.DeliveredAt,
@@ -110,8 +103,6 @@ func Responses(messages []Message) []SMSResponse {
 
 func publicFailure(status string) *SMSFailure {
 	switch status {
-	case StatusRefundPending:
-		return &SMSFailure{Code: "SMS_REFUND_PENDING", Message: "SMS delivery failed and the refund is being processed"}
 	case StatusUndelivered:
 		return &SMSFailure{Code: "SMS_UNDELIVERED", Message: "SMS could not be delivered"}
 	case StatusRejected:
@@ -123,12 +114,6 @@ func publicFailure(status string) *SMSFailure {
 	default:
 		return nil
 	}
-}
-
-type Billing struct {
-	UnitCost  float64 `json:"unit_cost"`
-	TotalCost float64 `json:"total_cost"`
-	Currency  string  `json:"currency"`
 }
 
 type SendRequest struct {
