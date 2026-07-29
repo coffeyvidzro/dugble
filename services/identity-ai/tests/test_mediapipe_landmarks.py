@@ -27,6 +27,13 @@ class FakeLandmarker:
         self.closed = True
 
 
+class StrictTimestampLandmarker(FakeLandmarker):
+    def detect_for_video(self, image, timestamp_ms):
+        if self.timestamps and timestamp_ms <= self.timestamps[-1]:
+            raise ValueError("backend timestamps must increase across calls")
+        return super().detect_for_video(image, timestamp_ms)
+
+
 def result(*, face_count: int = 1, matrix=None):
     face = [
         SimpleNamespace(x=0.25, y=0.4, z=0.0),
@@ -79,6 +86,21 @@ def test_tracker_rejects_frames_without_strictly_increasing_milliseconds():
 
     with pytest.raises(ValueError, match="strictly increasing"):
         tracker.observe([frame(captured_at), frame(captured_at)])
+
+
+def test_tracker_keeps_backend_timestamps_increasing_across_capture_sessions():
+    backend = StrictTimestampLandmarker([result(), result(), result(), result()])
+    tracker = MediaPipeFaceLandmarkTracker(
+        Path("face_landmarker.task"),
+        "landmarks-v1",
+        landmarker_factory=lambda _: backend,
+    )
+    started_at = datetime(2026, 1, 1, tzinfo=UTC)
+
+    tracker.observe([frame(started_at), frame(started_at + timedelta(milliseconds=125))])
+    tracker.observe([frame(started_at), frame(started_at + timedelta(milliseconds=50))])
+
+    assert backend.timestamps == [0, 125, 126, 176]
 
 
 def test_tracker_releases_mediapipe_backend():

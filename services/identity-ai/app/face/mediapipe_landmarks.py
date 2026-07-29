@@ -85,6 +85,7 @@ class MediaPipeFaceLandmarkTracker:
         self._model_version = model_version
         self._landmarker = landmarker_factory(options)
         self._lock = Lock()
+        self._last_timestamp_ms = -1
 
     @property
     def model_version(self) -> str:
@@ -95,14 +96,28 @@ class MediaPipeFaceLandmarkTracker:
         if not captured_frames:
             return ()
         started_at = captured_frames[0].captured_at
-        previous_timestamp = -1
+        relative_timestamps = tuple(
+            round((frame.captured_at - started_at).total_seconds() * 1000)
+            for frame in captured_frames
+        )
+        if any(
+            current <= previous
+            for previous, current in zip(
+                relative_timestamps, relative_timestamps[1:], strict=False
+            )
+        ):
+            raise ValueError("capture frame timestamps must be strictly increasing")
         observations: list[PoseObservation] = []
         with self._lock:
-            for frame in captured_frames:
-                timestamp_ms = round((frame.captured_at - started_at).total_seconds() * 1000)
-                if timestamp_ms <= previous_timestamp:
-                    raise ValueError("capture frame timestamps must be strictly increasing")
-                previous_timestamp = timestamp_ms
+            session_start_ms = self._last_timestamp_ms + 1
+            timestamps = tuple(
+                session_start_ms + relative_timestamp
+                for relative_timestamp in relative_timestamps
+            )
+            # Reserve the complete range before inference so a failed call cannot make a
+            # later request reuse a timestamp already observed by the video-mode backend.
+            self._last_timestamp_ms = timestamps[-1]
+            for frame, timestamp_ms in zip(captured_frames, timestamps, strict=True):
                 pixels = np.ascontiguousarray(frame.image.convert("RGB"), dtype=np.uint8)
                 result = self._landmarker.detect_for_video(
                     MediaPipeImage(ImageFormat.SRGB, pixels), timestamp_ms
