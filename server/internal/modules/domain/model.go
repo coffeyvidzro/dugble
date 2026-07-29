@@ -15,6 +15,12 @@ const (
 	StatusVerified = "verified"
 	StatusFailed   = "failed"
 	StatusDisabled = "disabled"
+
+	HealthStatusUnknown  = "unknown"
+	HealthStatusHealthy  = "healthy"
+	HealthStatusDegraded = "degraded"
+
+	DefaultHealthFailureThreshold int32 = 3
 )
 
 type VerificationRecord = platformemail.VerificationRecord
