@@ -26,13 +26,3 @@ updates:
     open-pull-requests-limit: 10
     commit-message:
       prefix: "deps(web)"
-
-  - package-ecosystem: "uv"
-    directory: "/services/identity-ai"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-    open-pull-requests-limit: 10
-    commit-message:
-      prefix: "deps(identity-ai)"

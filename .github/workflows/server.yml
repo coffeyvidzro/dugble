@@ -131,7 +131,7 @@ jobs:
           docker compose --env-file .env.example -f deploy/compose.yaml logs \
             --no-color \
             --tail=300 \
-            postgres migrate redis identity-ai server backoffice caddy
+            postgres migrate redis server backoffice caddy
 
       - name: Clean up Compose services
         if: always()
