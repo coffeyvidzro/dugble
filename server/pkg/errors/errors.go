@@ -81,6 +81,15 @@ func TooManyRequests(message string) *AppError {
 	}
 }
 
+func NewServiceUnavailable(message string, err error) *AppError {
+	return &AppError{
+		Code:    "SERVICE_UNAVAILABLE",
+		Message: message,
+		Status:  http.StatusServiceUnavailable,
+		Err:     err,
+	}
+}
+
 func NewInternal(message string, err error) *AppError {
 	return &AppError{
 		Code:    "INTERNAL_ERROR",

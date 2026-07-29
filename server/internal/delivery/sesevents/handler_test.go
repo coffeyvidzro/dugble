@@ -13,6 +13,7 @@ import (
 
 	snsintegration "github.com/coffeyvidzro/dugble/server/internal/integration/sns"
 	jetstreammessaging "github.com/coffeyvidzro/dugble/server/internal/messaging/jetstream"
+	"github.com/coffeyvidzro/dugble/server/pkg/httputil"
 )
 
 type verifierStub struct {
@@ -69,6 +70,13 @@ func TestReceiveReturnsUnavailableWhenPublishFails(t *testing.T) {
 	response := invoke(t, NewHandler(verifierStub{message: message}, &publisherStub{err: errors.New("NATS unavailable")}, nil), `{}`)
 	if response.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d", response.Code)
+	}
+	var body httputil.Response
+	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode error response: %v", err)
+	}
+	if body.Success || body.Error == nil || body.Error.Code != "SERVICE_UNAVAILABLE" {
+		t.Fatalf("response body = %#v", body)
 	}
 }
 
