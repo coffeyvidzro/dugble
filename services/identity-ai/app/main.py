@@ -5,12 +5,16 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api.analysis import IdentityAnalysisOperations
 from app.api.router import api_router
 from app.core.config import get_settings
 from app.inference.foundation import RuntimeManager
 
 
-def create_app(runtime_manager: RuntimeManager | None = None) -> FastAPI:
+def create_app(
+    runtime_manager: RuntimeManager | None = None,
+    analysis_operations: IdentityAnalysisOperations | None = None,
+) -> FastAPI:
     manager = runtime_manager or RuntimeManager()
 
     @asynccontextmanager
@@ -37,6 +41,7 @@ def create_app(runtime_manager: RuntimeManager | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     application.state.runtime_manager = manager
+    application.state.analysis_operations = analysis_operations
     application.include_router(api_router)
     return application
 

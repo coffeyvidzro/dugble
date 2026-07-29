@@ -1,9 +1,50 @@
 from fastapi.testclient import TestClient
 
+from app.contracts.face import FaceComparisonEvidence
+from app.contracts.liveness import (
+    ActiveChallengeEvidence,
+    ChallengeAction,
+    ChallengeStepEvidence,
+    LivenessSessionEvidence,
+)
+from app.contracts.presentation_attack import (
+    PresentationAttackEvidence,
+    PresentationAttackSignal,
+    PresentationAttackType,
+)
 from app.inference.foundation import RuntimeManager, RuntimeModelBundle
 from app.main import create_app
 
 client = TestClient(create_app())
+
+
+class StubAnalysisOperations:
+    def __init__(self) -> None:
+        self.face_request = None
+        self.liveness_request = None
+
+    def compare_faces(self, request):
+        self.face_request = request
+        return FaceComparisonEvidence(0.75, "detector-v1", "embedder-v1")
+
+    def check_liveness(self, request):
+        self.liveness_request = request
+        challenge = ActiveChallengeEvidence(
+            challenge_id=request.session_id,
+            verification_id=request.verification_id,
+            challenge_completed=True,
+            completion_ratio=1.0,
+            steps=(ChallengeStepEvidence(ChallengeAction.TURN_LEFT, True, 2),),
+            reasons=(),
+            landmark_model_version="landmarks-v1",
+        )
+        attack = PresentationAttackEvidence(
+            signals=(
+                PresentationAttackSignal(PresentationAttackType.TWO_DIMENSIONAL, 0.1),
+            ),
+            model_version="attack-v1",
+        )
+        return LivenessSessionEvidence(challenge, attack, 0.5, False, ())
 
 
 def test_application_disables_public_api_documentation():
@@ -131,7 +172,7 @@ def test_analysis_endpoint_is_unavailable_when_disabled(monkeypatch):
     assert response.json() == {"detail": "identity analysis is disabled"}
 
 
-def test_enabled_endpoint_authenticates_before_not_implemented(monkeypatch):
+def test_enabled_endpoint_authenticates_before_resolving_operations(monkeypatch):
     monkeypatch.setenv("IDENTITY_AI_ENABLED", "true")
     monkeypatch.setenv("IDENTITY_AI_API_KEY", "test-key")
 
@@ -154,7 +195,65 @@ def test_enabled_endpoint_authenticates_before_not_implemented(monkeypatch):
     )
 
     assert unauthorized.status_code == 401
-    assert authenticated.status_code == 501
+    assert authenticated.status_code == 503
+    assert authenticated.json() == {"detail": "identity analysis operations are unavailable"}
+
+
+def test_analysis_endpoints_return_versioned_evidence(monkeypatch):
+    monkeypatch.setenv("IDENTITY_AI_ENABLED", "true")
+    monkeypatch.setenv("IDENTITY_AI_API_KEY", "test-key")
+    operations = StubAnalysisOperations()
+    analysis_client = TestClient(create_app(analysis_operations=operations))
+    headers = {"Authorization": "Bearer test-key"}
+
+    face_response = analysis_client.post(
+        "/v1/faces/compare",
+        headers=headers,
+        json={
+            "verification_id": "verification-1",
+            "reference_face_key": "faces/reference.jpg",
+            "probe_face_key": "faces/probe.jpg",
+        },
+    )
+    liveness_response = analysis_client.post(
+        "/v1/liveness/check",
+        headers=headers,
+        json={
+            "verification_id": "verification-1",
+            "session_id": "session-1",
+            "video_object_key": "captures/session.mp4",
+        },
+    )
+
+    assert face_response.status_code == 200
+    assert face_response.json() == {
+        "similarity": 0.75,
+        "detector_version": "detector-v1",
+        "embedding_model_version": "embedder-v1",
+    }
+    assert operations.face_request.reference_face_key == "faces/reference.jpg"
+    assert liveness_response.status_code == 200
+    assert liveness_response.json() == {
+        "challenge": {
+            "challenge_id": "session-1",
+            "verification_id": "verification-1",
+            "challenge_completed": True,
+            "completion_ratio": 1.0,
+            "steps": [
+                {"action": "turn_left", "observed": True, "matching_observations": 2}
+            ],
+            "reasons": [],
+            "landmark_model_version": "landmarks-v1",
+        },
+        "presentation_attack": {
+            "signals": [{"attack_type": "two_dimensional", "score": 0.1}],
+            "model_version": "attack-v1",
+        },
+        "attack_threshold": 0.5,
+        "attack_suspected": False,
+        "reasons": [],
+    }
+    assert operations.liveness_request.video_object_key == "captures/session.mp4"
 
 
 def test_country_specific_document_endpoint_is_not_exposed():

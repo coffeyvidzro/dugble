@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import Header, HTTPException, status
+from fastapi import Header, HTTPException, Request, status
 
+from app.api.analysis import IdentityAnalysisOperations
 from app.core.config import get_settings
 from app.core.security import valid_bearer_credential
 
@@ -33,3 +34,13 @@ def require_internal_auth(
             detail="invalid internal credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+def get_analysis_operations(request: Request) -> IdentityAnalysisOperations:
+    operations = getattr(request.app.state, "analysis_operations", None)
+    if operations is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="identity analysis operations are unavailable",
+        )
+    return operations
