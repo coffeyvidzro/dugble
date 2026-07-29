@@ -102,6 +102,53 @@ def test_bundle_initializes_registered_non_onnx_adapter(tmp_path):
     assert loaded == [("face-detector", "test-v1", tmp_path / "face-detector.onnx")]
 
 
+def test_bundle_closes_initialized_adapters_when_a_later_runtime_is_unavailable(tmp_path):
+    artifacts = []
+    for logical_name, runtime in (
+        ("face-detector", "opencv"),
+        ("presentation-attack", "external"),
+    ):
+        content = f"{logical_name}-model".encode()
+        model_path = tmp_path / f"{logical_name}.bin"
+        model_path.write_bytes(content)
+        artifacts.append(
+            {
+                "logical_name": logical_name,
+                "version": "test-v1",
+                "filename": model_path.name,
+                "sha256": hashlib.sha256(content).hexdigest(),
+                "size_bytes": len(content),
+                "source_url": f"https://models.example.test/{model_path.name}",
+                "license_name": "Reviewed License",
+                "license_url": "https://models.example.test/license",
+                "runtime": runtime,
+            }
+        )
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(
+        json.dumps({"schema_version": 1, "models": artifacts}), encoding="utf-8"
+    )
+
+    class Adapter:
+        closed = False
+
+        def close(self):
+            self.closed = True
+
+    adapter = Adapter()
+
+    with pytest.raises(RuntimeFoundationError, match="runtime loader is unavailable"):
+        RuntimeModelBundle.load(
+            manifest_path,
+            tmp_path,
+            required_models=("face-detector", "presentation-attack"),
+            providers=("CPUExecutionProvider",),
+            runtime_loaders={ModelRuntime.OPENCV: lambda *_: adapter},
+        )
+
+    assert adapter.closed is True
+
+
 def test_bundle_closes_loaded_adapters():
     class Adapter:
         closed = False

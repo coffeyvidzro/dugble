@@ -1,6 +1,7 @@
 """Verified process-level model bundle initialization."""
 
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import ExitStack
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any
@@ -138,6 +139,8 @@ class RuntimeModelBundle:
         sessions: dict[str, ONNXModelSession] = {}
         adapters: dict[str, object] = {}
         versions: dict[str, str] = {}
+
+        # Verify the complete artifact set before initializing any native runtime resource.
         for name in required_names:
             artifact = artifacts[name]
             verification = verify_artifact(artifact, model_dir)
@@ -146,27 +149,37 @@ class RuntimeModelBundle:
                     f"model artifact failed verification: {name} ({verification['status']})"
                 )
             versions[name] = artifact.version
-            if artifact.runtime is ModelRuntime.ONNX:
-                if create_session is None:
-                    create_session = ONNXRuntimeFactory(providers).create
-                sessions[name] = create_session(
-                    name,
-                    artifact.version,
-                    model_dir / artifact.filename,
-                )
-            else:
-                loader = loaders.get(artifact.runtime)
-                if loader is None:
-                    raise RuntimeFoundationError(
-                        f"runtime loader is unavailable for required model: {name}"
+
+        with ExitStack() as partial_adapters:
+            for name in required_names:
+                artifact = artifacts[name]
+                if artifact.runtime is ModelRuntime.ONNX:
+                    if create_session is None:
+                        create_session = ONNXRuntimeFactory(providers).create
+                    sessions[name] = create_session(
+                        name,
+                        artifact.version,
+                        model_dir / artifact.filename,
                     )
-                try:
-                    adapters[name] = loader(name, artifact.version, model_dir / artifact.filename)
-                except (OSError, ValueError, RuntimeError) as error:
-                    raise RuntimeFoundationError(
-                        f"failed to initialize model adapter: {name}"
-                    ) from error
-        return cls(sessions, adapters, versions)
+                else:
+                    loader = loaders.get(artifact.runtime)
+                    if loader is None:
+                        raise RuntimeFoundationError(
+                            f"runtime loader is unavailable for required model: {name}"
+                        )
+                    try:
+                        adapter = loader(name, artifact.version, model_dir / artifact.filename)
+                    except (OSError, ValueError, RuntimeError) as error:
+                        raise RuntimeFoundationError(
+                            f"failed to initialize model adapter: {name}"
+                        ) from error
+                    adapters[name] = adapter
+                    close = getattr(adapter, "close", None)
+                    if callable(close):
+                        partial_adapters.callback(close)
+            bundle = cls(sessions, adapters, versions)
+            partial_adapters.pop_all()
+            return bundle
 
 
 class RuntimeManager:
