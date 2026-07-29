@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 )
 
-func NewClient(region, defaultFrom, accessKey, secretKey string) (*Client, error) {
+func NewClient(region, defaultFrom, accessKey, secretKey string, configurationSet ...string) (*Client, error) {
 	region = strings.TrimSpace(region)
 	accessKey = strings.TrimSpace(accessKey)
 	secretKey = strings.TrimSpace(secretKey)
@@ -22,18 +22,26 @@ func NewClient(region, defaultFrom, accessKey, secretKey string) (*Client, error
 		return nil, errors.New("SES credentials are required")
 	}
 	return &Client{
-		defaultRegion:   region,
-		defaultFrom:     strings.TrimSpace(defaultFrom),
-		accessKey:       accessKey,
-		secretKey:       secretKey,
-		sendingClients:  make(map[string]sesAPI),
-		identityClients: make(map[string]sesIdentityAPI),
+		defaultRegion:    region,
+		defaultFrom:      strings.TrimSpace(defaultFrom),
+		accessKey:        accessKey,
+		secretKey:        secretKey,
+		configurationSet: firstTrimmed(configurationSet),
+		sendingClients:   make(map[string]sesAPI),
+		identityClients:  make(map[string]sesIdentityAPI),
 	}, nil
 }
 
+func firstTrimmed(values []string) string {
+	if len(values) == 0 {
+		return ""
+	}
+	return strings.TrimSpace(values[0])
+}
+
 // NewSESSender preserves the existing constructor used by the server and worker.
-func NewSESSender(_ context.Context, region, defaultFrom, accessKey, secretKey string) (*Client, error) {
-	return NewClient(region, defaultFrom, accessKey, secretKey)
+func NewSESSender(_ context.Context, region, defaultFrom, accessKey, secretKey string, configurationSet ...string) (*Client, error) {
+	return NewClient(region, defaultFrom, accessKey, secretKey, configurationSet...)
 }
 
 func (c *Client) awsConfig(region string) aws.Config {

@@ -71,7 +71,7 @@ func run() error {
 	}
 
 	processedEvents := inbox.NewRepository(db)
-	emailSender, err := emailintegration.NewSESSender(startupCtx, cfg.AWS.Region, cfg.AWS.FromEmail, cfg.AWS.AccessKey, cfg.AWS.SecretKey)
+	emailSender, err := emailintegration.NewSESSender(startupCtx, cfg.AWS.Region, cfg.AWS.FromEmail, cfg.AWS.AccessKey, cfg.AWS.SecretKey, cfg.AWS.SESConfigurationSet)
 	if err != nil {
 		return fmt.Errorf("initialize SES email sender: %w", err)
 	}

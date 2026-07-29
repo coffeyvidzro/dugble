@@ -10,11 +10,40 @@ import (
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 )
 
-type recordingSESClient struct{ calls int }
+type recordingSESClient struct {
+	calls int
+	input *ses.SendRawEmailInput
+}
 
-func (c *recordingSESClient) SendRawEmail(context.Context, *ses.SendRawEmailInput, ...func(*ses.Options)) (*ses.SendRawEmailOutput, error) {
+func (c *recordingSESClient) SendRawEmail(_ context.Context, input *ses.SendRawEmailInput, _ ...func(*ses.Options)) (*ses.SendRawEmailOutput, error) {
 	c.calls++
+	c.input = input
 	return &ses.SendRawEmailOutput{MessageId: aws.String("provider-message-id")}, nil
+}
+
+func TestSendUsesConfiguredSESConfigurationSet(t *testing.T) {
+	recorder := &recordingSESClient{}
+	client, err := NewClient("us-east-1", "default@example.com", "access-key", "secret-key", "dugble-transactional")
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	client.sendingClients["us-east-1"] = recorder
+
+	_, err = client.Send(context.Background(), platformemail.Message{
+		From:    platformemail.Address{Email: "sender@example.com"},
+		To:      []platformemail.Address{{Email: "recipient@example.com"}},
+		Subject: "Configuration set",
+		Text:    "Hello",
+	})
+	if err != nil {
+		t.Fatalf("send email: %v", err)
+	}
+	if recorder.input == nil {
+		t.Fatal("expected SES send input")
+	}
+	if got := aws.ToString(recorder.input.ConfigurationSetName); got != "dugble-transactional" {
+		t.Fatalf("configuration set = %q", got)
+	}
 }
 
 func TestSendUsesMessageRegion(t *testing.T) {

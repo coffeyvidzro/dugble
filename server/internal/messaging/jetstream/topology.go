@@ -16,7 +16,9 @@ const (
 	DLQSubject    = "dugble.dlq.>"
 )
 
-const maxMessageSize = 64 * 1024
+const SESProviderEventSubject = "dugble.event.provider.email.ses.v1"
+
+const maxMessageSize = 512 * 1024
 
 type StreamLimits struct {
 	JobsMaxBytes   int64

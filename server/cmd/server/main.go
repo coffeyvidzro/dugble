@@ -15,6 +15,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/config"
 	"github.com/coffeyvidzro/dugble/server/internal/database"
 	emaildelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/email"
+	"github.com/coffeyvidzro/dugble/server/internal/delivery/sesfeedback"
 	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
 	emailintegration "github.com/coffeyvidzro/dugble/server/internal/integration/email"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/security"
@@ -22,6 +23,8 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/arkesel"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/mnotify"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/routing"
+	snsintegration "github.com/coffeyvidzro/dugble/server/internal/integration/sns"
+	jetstreammessaging "github.com/coffeyvidzro/dugble/server/internal/messaging/jetstream"
 	"github.com/coffeyvidzro/dugble/server/internal/messaging/outbox"
 	"github.com/coffeyvidzro/dugble/server/internal/notifications"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/cache"
@@ -92,10 +95,26 @@ func run() error {
 		cfg.AWS.FromEmail,
 		cfg.AWS.AccessKey,
 		cfg.AWS.SecretKey,
+		cfg.AWS.SESConfigurationSet,
 	)
 	if err != nil {
 		return fmt.Errorf("initialize SES email client: %w", err)
 	}
+
+	messagingClient, err := jetstreammessaging.New(startupCtx, cfg.NATSURL, "dugble-api")
+	if err != nil {
+		return fmt.Errorf("initialize JetStream: %w", err)
+	}
+	defer func() {
+		if err := messagingClient.Close(); err != nil {
+			slog.Warn("close JetStream client", "error", err)
+		}
+	}()
+	if err := messagingClient.Provision(startupCtx, jetstreammessaging.DefaultStreamLimits()); err != nil {
+		return fmt.Errorf("provision JetStream streams: %w", err)
+	}
+	snsVerifier := snsintegration.NewVerifier(cfg.AWS.SNSTopicARNs, nil)
+	snsHandler := sesfeedback.NewHandler(snsVerifier, messagingClient, sesfeedback.NewHTTPConfirmer(nil))
 
 	smsRouter, err := routing.NewService(
 		routing.DefaultConfig(),
@@ -126,6 +145,7 @@ func run() error {
 			SMSSender:      smsSender,
 			SMSDelivery:    smsdelivery.NewQueue(outboxRepository),
 			EmailDelivery:  emaildelivery.NewQueue(outboxRepository),
+			SESFeedback:    snsHandler,
 		},
 	)
 	if err != nil {

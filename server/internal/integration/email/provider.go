@@ -32,7 +32,11 @@ func (c *Client) Send(ctx context.Context, message platformemail.Message) (platf
 		}
 		return platformemail.Result{}, platformemail.NewSendError(code, false, err)
 	}
-	output, err := client.SendRawEmail(ctx, &ses.SendRawEmailInput{RawMessage: &sestypes.RawMessage{Data: raw}})
+	input := &ses.SendRawEmailInput{RawMessage: &sestypes.RawMessage{Data: raw}}
+	if c.configurationSet != "" {
+		input.ConfigurationSetName = aws.String(c.configurationSet)
+	}
+	output, err := client.SendRawEmail(ctx, input)
 	if err != nil {
 		return platformemail.Result{}, classifySESFailure(err)
 	}
