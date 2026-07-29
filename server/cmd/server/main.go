@@ -15,7 +15,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/config"
 	"github.com/coffeyvidzro/dugble/server/internal/database"
 	emaildelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/email"
-	"github.com/coffeyvidzro/dugble/server/internal/delivery/sesfeedback"
+	"github.com/coffeyvidzro/dugble/server/internal/delivery/sesevents"
 	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
 	emailintegration "github.com/coffeyvidzro/dugble/server/internal/integration/email"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/security"
@@ -114,7 +114,7 @@ func run() error {
 		return fmt.Errorf("provision JetStream streams: %w", err)
 	}
 	snsVerifier := snsintegration.NewVerifier(cfg.AWS.SNSTopicARNs, nil)
-	snsHandler := sesfeedback.NewHandler(snsVerifier, messagingClient, sesfeedback.NewHTTPConfirmer(nil))
+	sesEventsHandler := sesevents.NewHandler(snsVerifier, messagingClient, sesevents.NewHTTPConfirmer(nil))
 
 	smsRouter, err := routing.NewService(
 		routing.DefaultConfig(),
@@ -145,7 +145,7 @@ func run() error {
 			SMSSender:      smsSender,
 			SMSDelivery:    smsdelivery.NewQueue(outboxRepository),
 			EmailDelivery:  emaildelivery.NewQueue(outboxRepository),
-			SESFeedback:    snsHandler,
+			SESEvents:      sesEventsHandler,
 		},
 	)
 	if err != nil {

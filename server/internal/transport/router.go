@@ -8,7 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/coffeyvidzro/dugble/server/internal/config"
-	"github.com/coffeyvidzro/dugble/server/internal/delivery/sesfeedback"
+	"github.com/coffeyvidzro/dugble/server/internal/delivery/sesevents"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/fx"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/hubtel"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/auth"
@@ -43,7 +43,7 @@ type Dependencies struct {
 	SMSSender      smsmodule.Sender
 	SMSDelivery    smsmodule.DeliveryQueue
 	EmailDelivery  emailmodule.DeliveryQueue
-	SESFeedback    *sesfeedback.Handler
+	SESEvents      *sesevents.Handler
 }
 
 func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
@@ -61,8 +61,8 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	healthHandler := health.NewHandler(deps.DB, deps.Redis)
 	router.GET("/health", healthHandler.Live)
 	router.GET("/ready", healthHandler.Ready)
-	if deps.SESFeedback != nil {
-		router.POST("/internal/providers/aws/ses/events", deps.SESFeedback.Receive)
+	if deps.SESEvents != nil {
+		router.POST("/internal/providers/aws/ses/events", deps.SESEvents.Receive)
 	}
 
 	emailService := notifications.NewEmailService(deps.Sender, deps.Renderer, cfg.FrontendURL, cfg.AWS.FromEmail)

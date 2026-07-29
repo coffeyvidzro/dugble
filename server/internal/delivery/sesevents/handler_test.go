@@ -1,4 +1,4 @@
-package sesfeedback
+package sesevents
 
 import (
 	"context"
