@@ -44,9 +44,11 @@ type stubSender struct {
 	result platformemail.Result
 	err    error
 	sent   platformemail.Message
+	calls  int
 }
 
 func (s *stubSender) Send(_ context.Context, message platformemail.Message) (platformemail.Result, error) {
+	s.calls++
 	s.sent = message
 	return s.result, s.err
 }
@@ -76,6 +78,19 @@ func TestHandlerSubmitsAcceptedMessage(t *testing.T) {
 	}
 	if sender.sent.Provider != "aws_ses" || sender.sent.Region != "eu-west-1" {
 		t.Fatalf("unexpected delivery route: %+v", sender.sent)
+	}
+}
+
+func TestHandlerStopsUnavailableSenderDomainBeforeProvider(t *testing.T) {
+	repository := &recordingDeliveryRepository{claimErr: ErrSenderDomainUnavailable}
+	sender := &stubSender{}
+
+	err := NewHandler(repository, sender).Handle(context.Background(), DeliverCommand{MessageID: uuid.New(), TeamID: uuid.New()})
+	if err != nil {
+		t.Fatalf("unavailable sender domain should be handled: %v", err)
+	}
+	if sender.calls != 0 {
+		t.Fatalf("sender calls = %d, want 0", sender.calls)
 	}
 }
 
