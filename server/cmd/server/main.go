@@ -116,7 +116,7 @@ func run() error {
 			return fmt.Errorf("provision JetStream streams for SES events: %w", provisionErr)
 		}
 		snsVerifier := snsintegration.NewVerifier(cfg.AWS.SNSTopicARNs, nil)
-		sesEventsHandler = sesevents.NewHandler(snsVerifier, messagingClient, sesevents.NewHTTPConfirmer(nil))
+		sesEventsHandler = sesevents.NewHandler(snsVerifier, messagingClient, snsintegration.NewHTTPConfirmer(nil))
 	}
 
 	smsRouter, err := routing.NewService(

@@ -74,11 +74,11 @@ func TestCanonicalMessageDoesNotEndWithNewline(t *testing.T) {
 
 func TestValidateAWSURL(t *testing.T) {
 	valid := "https://sns.us-east-1.amazonaws.com/SimpleNotificationService-deadbeef.pem"
-	if err := validateAWSURL(valid); err != nil {
+	if err := validateCertificateURL(valid); err != nil {
 		t.Fatalf("valid URL rejected: %v", err)
 	}
 	for _, candidate := range []string{"http://sns.us-east-1.amazonaws.com/SimpleNotificationService-x.pem", "https://sns.us-east-1.amazonaws.com.attacker.example/SimpleNotificationService-x.pem", "https://sns.us-east-1.amazonaws.com/not-a-certificate.pem"} {
-		if err := validateAWSURL(candidate); err == nil {
+		if err := validateCertificateURL(candidate); err == nil {
 			t.Errorf("expected %q to be rejected", candidate)
 		}
 	}
