@@ -23,7 +23,6 @@ curl --request GET \
 | `undelivered`    | The carrier or provider could not deliver it.                 | Yes             |
 | `rejected`       | The provider rejected the request.                            | Yes             |
 | `expired`        | The delivery window expired before delivery.                  | Yes             |
-| `refund_pending` | Delivery failed and Dugble is completing the wallet refund.   | No              |
 | `failed`         | Dugble could not complete delivery.                           | Yes             |
 | `unknown`        | The provider returned an unrecognized or indeterminate state. | Not necessarily |
 | `canceled`       | A scheduled SMS was canceled before processing.               | Yes             |

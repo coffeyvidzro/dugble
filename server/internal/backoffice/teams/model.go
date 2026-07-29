@@ -2,8 +2,6 @@ package teams
 
 import (
 	"time"
-
-	backofficewallets "github.com/coffeyvidzro/dugble/server/internal/backoffice/wallets"
 )
 
 type Filter struct {
@@ -20,7 +18,6 @@ type Row struct {
 type Detail struct {
 	Team    Row
 	Members []MemberRow
-	Wallets []backofficewallets.Row
 	SMS     []SMSRow
 }
 

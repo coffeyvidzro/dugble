@@ -8,8 +8,6 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/coffeyvidzro/dugble/server/internal/config"
-	"github.com/coffeyvidzro/dugble/server/internal/integration/fx"
-	"github.com/coffeyvidzro/dugble/server/internal/integration/hubtel"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/auth"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/domain"
 	emailmodule "github.com/coffeyvidzro/dugble/server/internal/modules/email"
@@ -19,7 +17,6 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/modules/team"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/teamtoken"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/user"
-	"github.com/coffeyvidzro/dugble/server/internal/modules/wallet"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/webhooks"
 	"github.com/coffeyvidzro/dugble/server/internal/notifications"
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
@@ -81,9 +78,6 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	webhookRepository := webhooks.NewRepository(deps.DB)
 	webhookEmitter := platformwebhook.NewEmitter(webhookRepository)
 	smsRepository := smsmodule.NewRepositoryWithWebhookEmitter(deps.DB, webhookEmitter)
-	walletRepository := wallet.NewRepository(deps.DB)
-	hubtelProvider := hubtel.NewProvider(hubtel.NewClient(cfg.Hubtel))
-	fxClient := fx.NewCachedProvider(fx.NewFrankfurterClient(), deps.Redis)
 	tenantMiddleware := func(permission tenant.Permission) echo.MiddlewareFunc {
 		return middlewares.Tenant(middlewares.TenantConfig{Memberships: teamRepository, Required: permission})
 	}
@@ -94,9 +88,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	teamtoken.RegisterRoutes(router, teamtoken.NewHandler(teamtoken.NewService(teamTokenRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	senderid.RegisterRoutes(router, senderid.NewHandler(senderid.NewService(senderIDRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	domain.RegisterRoutes(router, domain.NewHandler(domain.NewService(domainRepository, deps.DomainProvider, deps.DNSVerifier)), authMiddleware, csrfMiddleware, tenantMiddleware)
-	walletService := wallet.NewService(walletRepository, wallet.ServiceConfig{FrontendURL: cfg.FrontendURL, BackendURL: cfg.BackendURL}, hubtelProvider, fxClient)
-	wallet.RegisterRoutes(router, wallet.NewHandler(walletService), authMiddleware, csrfMiddleware, tenantMiddleware)
-	smsService := smsmodule.NewService(smsRepository, deps.SMSSender, walletRepository, deps.SMSDelivery)
+	smsService := smsmodule.NewService(smsRepository, deps.SMSSender, deps.SMSDelivery)
 	smsmodule.RegisterRoutes(router, smsmodule.NewHandler(smsService), tenantAccess)
 	emailServiceAPI := emailmodule.NewService(emailmodule.NewRepository(deps.DB), deps.EmailDelivery, emailmodule.ServiceConfig{
 		DefaultFromEmail: cfg.AWS.FromEmail,

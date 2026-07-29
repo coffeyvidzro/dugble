@@ -7,8 +7,6 @@
   <article><span>Created</span><strong>{{$detail.Team.CreatedAt.Format "2006-01-02 15:04"}}</strong></article>
   <article><span>ID</span><strong><code>{{$detail.Team.ID}}</code></strong></article>
 </section>
-<h2>SMS pricing</h2>
-<p><a class="button-link" href="/teams/{{$detail.Team.ID}}/sms-pricing">Manage pricing plan and traffic classes</a></p>
 <h2>Status</h2>
 <form class="control-panel" method="post" action="/teams/{{$detail.Team.ID}}/status">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
@@ -31,17 +29,6 @@
     <tr><td><a href="/users/{{.UserID}}">{{.Email}}</a></td><td>{{.Name}}</td><td>{{.Role}}</td><td>{{.Status}}</td><td>{{.CreatedAt.Format "2006-01-02 15:04"}}</td></tr>
   {{else}}
     <tr><td colspan="5">No members found.</td></tr>
-  {{end}}
-  </tbody>
-</table>
-<h2>Wallets</h2>
-<table>
-  <thead><tr><th>Currency</th><th>Balance</th><th>Status</th><th>Updated</th></tr></thead>
-  <tbody>
-  {{range $detail.Wallets}}
-    <tr><td>{{.Currency}}</td><td>{{money .Balance}}</td><td>{{.Status}}</td><td>{{.UpdatedAt.Format "2006-01-02 15:04"}}</td></tr>
-  {{else}}
-    <tr><td colspan="4">No wallets found.</td></tr>
   {{end}}
   </tbody>
 </table>

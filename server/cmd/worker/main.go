@@ -28,7 +28,6 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/messaging/outbox"
 	domainmodule "github.com/coffeyvidzro/dugble/server/internal/modules/domain"
 	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
-	"github.com/coffeyvidzro/dugble/server/internal/modules/wallet"
 	webhookmodule "github.com/coffeyvidzro/dugble/server/internal/modules/webhooks"
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 	platformwebhook "github.com/coffeyvidzro/dugble/server/internal/platform/webhook"
@@ -111,7 +110,7 @@ func run() error {
 	}
 	webhookModuleRepository := webhookmodule.NewRepository(db)
 	webhookEmitter := platformwebhook.NewEmitter(webhookModuleRepository)
-	smsHandler := smsdelivery.NewHandler(smsmodule.NewRepositoryWithWebhookEmitter(db, webhookEmitter), smsSender, wallet.NewRepository(db))
+	smsHandler := smsdelivery.NewHandler(smsmodule.NewRepositoryWithWebhookEmitter(db, webhookEmitter), smsSender)
 	smsConsumer := smsdelivery.NewConsumer(messagingClient, processedEvents, smsHandler, smsdelivery.ConsumerConfig{
 		Concurrency:    10,
 		AckWait:        2 * time.Minute,

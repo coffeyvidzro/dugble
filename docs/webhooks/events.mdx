@@ -38,7 +38,7 @@ Treat unknown fields and event types as forward-compatible additions. Do not fai
 | `sms.sent`        | The provider reported that the SMS was sent. | Continue waiting for final delivery when supported.         |
 | `sms.delivered`   | The provider reported delivery.              | Mark the notification delivered.                            |
 | `sms.undelivered` | The provider could not deliver the SMS.      | Verify the destination number before retrying.              |
-| `sms.failed`      | Dugble could not complete delivery.          | Record the failure and review any refund state.             |
+| `sms.failed`      | Dugble could not complete delivery.          | Record the failure for operational review.             |
 
 Email lifecycle webhooks and additional intermediate SMS states are not emitted
 during the preview. New event types will be documented before they become

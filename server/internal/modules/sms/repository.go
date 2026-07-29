@@ -62,13 +62,10 @@ type createMessageParams struct {
 	Body               string
 	Status             string
 	Segments           int32
-	CostMicros         int64
 	Metadata           json.RawMessage
 	Tags               []Tag
 	ScheduledAt        *time.Time
 	DestinationCountry string
-	PricingRuleID      uuid.UUID
-	UnitCostMicros     int64
 }
 
 func (r *Repository) Create(ctx context.Context, params createMessageParams) (Message, error) {
@@ -84,13 +81,10 @@ func (r *Repository) Create(ctx context.Context, params createMessageParams) (Me
 		Body:               params.Body,
 		Status:             params.Status,
 		Segments:           params.Segments,
-		CostMicros:         params.CostMicros,
 		Metadata:           ensureMetadata(params.Metadata),
 		Tags:               tags,
 		ScheduledAt:        timestamptz(params.ScheduledAt),
 		DestinationCountry: params.DestinationCountry,
-		PricingRuleID:      params.PricingRuleID,
-		UnitCostMicros:     params.UnitCostMicros,
 	})
 	if err != nil {
 		return Message{}, fmt.Errorf("create sms message: %w", err)
@@ -164,14 +158,6 @@ func (r *Repository) MarkProcessing(ctx context.Context, id uuid.UUID, teamID uu
 			return Message{}, ErrMessageNotFound
 		}
 		return Message{}, fmt.Errorf("mark sms message processing: %w", err)
-	}
-	return messageFromSQLC(row), nil
-}
-
-func (r *Repository) MarkRefundPending(ctx context.Context, id uuid.UUID, teamID uuid.UUID, message string) (Message, error) {
-	row, err := r.queries.MarkSMSMessageRefundPending(ctx, dbsqlc.MarkSMSMessageRefundPendingParams{ID: id, TeamID: teamID, ErrorMessage: &message})
-	if err != nil {
-		return Message{}, fmt.Errorf("mark sms message refund pending: %w", err)
 	}
 	return messageFromSQLC(row), nil
 }
@@ -330,7 +316,6 @@ func messageFromSQLC(row dbsqlc.SmsMessage) Message {
 		ProviderID:         row.ProviderID,
 		ProviderMessageID:  row.ProviderMessageID,
 		Segments:           row.Segments,
-		CostMicros:         row.CostMicros,
 		ErrorMessage:       row.ErrorMessage,
 		Metadata:           ensureMetadata(row.Metadata),
 		Tags:               decodeTags(row.Tags),
@@ -338,8 +323,6 @@ func messageFromSQLC(row dbsqlc.SmsMessage) Message {
 		CreatedAt:          row.CreatedAt.Time,
 		UpdatedAt:          row.UpdatedAt.Time,
 		DestinationCountry: row.DestinationCountry,
-		PricingRuleID:      row.PricingRuleID.String(),
-		UnitCostMicros:     row.UnitCostMicros,
 	}
 	if row.SenderID != nil {
 		value := row.SenderID.String()
@@ -351,7 +334,6 @@ func messageFromSQLC(row dbsqlc.SmsMessage) Message {
 	if row.DeliveredAt.Valid {
 		message.DeliveredAt = &row.DeliveredAt.Time
 	}
-	message.Billing = billingFromAmounts(message.UnitCostMicros, message.CostMicros)
 	return message
 }
 
@@ -373,18 +355,6 @@ func decodeTags(value []byte) []Tag {
 	result := []Tag{}
 	_ = json.Unmarshal(value, &result)
 	return result
-}
-
-func billingFromAmounts(unitCostMicros int64, totalCostMicros int64) Billing {
-	return Billing{
-		UnitCost:  microsToUSD(unitCostMicros),
-		TotalCost: microsToUSD(totalCostMicros),
-		Currency:  "USD",
-	}
-}
-
-func microsToUSD(micros int64) float64 {
-	return float64(micros) / 1_000_000
 }
 
 func ensureMetadata(metadata json.RawMessage) json.RawMessage {

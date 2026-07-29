@@ -18,9 +18,6 @@ x-app-env: &app-env
   ARKESEL_API_KEY: ${ARKESEL_API_KEY:-}
   MNOTIFY_BASE_URL: ${MNOTIFY_BASE_URL:-https://api.mnotify.com}
   MNOTIFY_API_KEY: ${MNOTIFY_API_KEY:-}
-  HUBTEL_API_ID: ${HUBTEL_API_ID:-}
-  HUBTEL_API_KEY: ${HUBTEL_API_KEY:-}
-  HUBTEL_MERCHANT_NUMBER: ${HUBTEL_MERCHANT_NUMBER:-}
 
 x-app-build: &app-build
   build:

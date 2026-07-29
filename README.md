@@ -91,7 +91,7 @@ bun run dev
 
 ### Backoffice
 
-The backoffice is an internal administrative application. It can inspect operational data and perform privileged mutations including team-status changes, SMS-pricing changes, wallet adjustments, sender-ID decisions, and domain-status decisions.
+The backoffice is an internal administrative application. It can inspect operational data and perform privileged mutations including team-status changes, sender-ID decisions, and domain-status decisions.
 
 It reuses the normal Dugble session cookie and restricts access to emails listed in `BACKOFFICE_ADMIN_EMAILS`. Treat the allowlist as a temporary administrative control, keep the service private, and audit privileged actions.
 
