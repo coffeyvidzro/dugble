@@ -1,199 +1,169 @@
 # Dugble Identity AI
 
-> Detect real users and deter bad actors using spoofs in seconds during facial verification.
+> Know when a real person is present during a digital verification.
 
-`identity-ai` is Dugble's private, self-hosted, country-neutral biometric evidence service for face liveness, capture guidance, optional one-to-one face comparison, presentation-attack detection, and biometric quality assessment.
+Dugble Identity AI is Dugble's face-liveness and facial-verification service. It helps products
+confirm that a verification is being completed by a live participant rather than a printed
+photo, screen replay, prerecorded video, or another supported spoof.
 
-The service analyzes facial capture sessions and returns measurements with component versions; it does not establish legal identity, authenticate government-issued credentials, determine age by itself, or make a final authorization decision.
+The service powers short, guided camera checks. It evaluates the quality and continuity of the
+capture, completion of a server-created challenge, and supported presentation-attack signals,
+then returns versioned evidence to Dugble's identity module. The identity module combines that
+evidence with the product's policy and decides whether to approve, retry, review, reject, or
+offer another verification method.
 
-The target product lifecycle, ownership boundaries, session states, private API, result semantics,
-and delivery milestones are defined in the
-[Face Liveness Product Contract](PRODUCT.md).
+Identity AI provides decision support. It does not establish legal identity, determine age,
+label a person as fraudulent, or authorize an account action by itself.
 
-## Capabilities
+## What it enables
 
 ### Face liveness
 
-Evaluates whether a facial session contains evidence of a live, physically present participant by analyzing short-lived challenges, ordered multi-frame observations, pose transitions, timing, and continuity signals.
+Confirm that a live participant is present for a fresh camera session. Each check uses a
+short-lived, single-use session and a server-created challenge rather than trusting a
+client-provided pass or a gallery upload.
 
-### Capture guidance
+### Guided capture
 
-Provides actionable instructions for face count, framing, distance, pose, stability, lighting, blur, and other conditions that affect genuine-user completion and downstream analysis.
-
-### Face comparison
-
-Performs optional one-to-one comparison between a caller-selected enrolled facial reference and a fresh probe, returning similarity evidence rather than identifying an unknown person from a population.
+Help users complete a usable selfie capture with real-time feedback about face count, framing,
+distance, pose, stability, lighting, and blur. Clear guidance reduces avoidable retries and
+improves the evidence used by downstream checks.
 
 ### Presentation-attack detection
 
-Provides a versioned boundary for detecting supported print, screen-replay, prerecorded-video, mask, camera-injection, and synthetic-media attacks without treating any single signal as conclusive proof of fraud.
+Evaluate supported signals associated with attacks such as printed photos and display replays.
+Signals are reported with model and analyzer versions so they can be evaluated by a versioned
+product policy rather than treated as universal proof of fraud.
 
-### Biometric quality assessment
+### One-to-one face comparison
 
-Separates general image suitability from face-specific quality measurements so calling applications can request a retry before relying on weak liveness or comparison evidence.
+Optionally compare the best frame from a successful live capture with one enrolled reference
+selected by the calling workflow. Identity AI returns similarity evidence; it does not search a
+population to identify an unknown person.
+
+### Biometric quality evidence
+
+Separate capture usability from liveness and face similarity. Low-quality or insufficient
+evidence can produce a targeted retry instead of an unreliable result.
 
 ## Use cases
 
-1. **User onboarding:** Reduce spoof-assisted account creation by confirming that a live person participates in onboarding.
-2. **Step-up authentication:** Strengthen device changes, password recovery, money transfers, and other high-value actions with fresh liveness and optional face comparison.
-3. **Age-assurance protection:** Protect a separate age-estimation or age-verification workflow from spoofing; liveness does not determine a person's age.
-4. **Bot deterrence:** Deter automated and synthetic participation in camera-gated workflows; general API and web bot protection remains the calling application's responsibility.
-5. **Account recovery:** Compare a fresh live capture with an account's enrolled facial reference as one signal in a broader recovery policy.
+### User onboarding
 
-## Responsibility boundary
+Add a fresh-presence check before creating or activating an account, especially when onboarding
+also uses a separate identity or document-verification provider.
 
-The service answers questions such as:
+### Account recovery
 
-- Is exactly one usable face present?
-- Is the capture suitable for biometric analysis?
-- Was the issued challenge completed in the expected order and time window?
-- Are supported presentation-attack indicators present?
-- How similar is the live face to the selected enrolled reference?
+Protect high-risk recovery flows with live capture and, when appropriate, one-to-one comparison
+against an account's enrolled reference.
 
-The service does not answer:
+### Step-up verification
 
-- What is this person's legal identity?
-- Is an account, transaction, or recovery request authorized?
-- Is the user old enough for restricted content?
-- Is the user fraudulent or universally free of bot activity?
+Request stronger evidence before sensitive actions such as changing security settings, adding a
+new device, accessing protected data, or completing a high-value transaction.
 
-The calling backend owns session authorization, account binding, attempt limits, risk policy, manual review, accessibility alternatives, and the final outcome.
+### Age-assurance protection
 
-## Country-neutral design
+Protect a separate age-estimation or age-verification flow from simple spoofing. Face liveness
+can show evidence of fresh participation, but it does not estimate or verify a person's age.
 
-The biometric pipeline operates on facial captures, session challenges, optional enrolled references, and capture metadata; it has no dependency on a national identity system, issuing authority, or country-specific registry.
+### Human-presence checks
 
-The technology is country-neutral, but each deployment remains responsible for the privacy, biometric-processing, retention, accessibility, and automated-decision requirements applicable to its users and use case.
+Deter automated and synthetic participation in camera-gated workflows. This complements, but
+does not replace, device integrity, abuse prevention, rate limiting, and general bot protection.
 
-## Recommended stack
+## Product experience
 
-| Capability | Stack |
-| --- | --- |
-| Face detection | **OpenCV YuNet** |
-| Face recognition and embeddings | **OpenCV SFace** |
-| Face landmarks and capture guidance | **MediaPipe Face Landmarker** |
-| Model execution | **ONNX Runtime**, where supported by the selected adapter |
-| Frame and image processing | **OpenCV** |
-| Capture-quality analysis | Deterministic image checks plus a face-specific quality assessor |
-| Liveness | Server-generated, short-lived, single-use challenges and multi-frame evidence |
-| Presentation-attack detection | Reviewed, versioned detector adapters evaluated by attack type |
-| Decision-making | Calling backend's deterministic, versioned policy engine |
-| Service boundary | Private **FastAPI** application |
-
-## Processing flows
-
-### Liveness
+A typical liveness check follows this flow:
 
 ```text
-calling backend creates a verification session
-    -> server issues a short-lived challenge
-    -> client captures a fresh frame sequence
-    -> capture and biometric quality assessment
-    -> face landmarks, pose, timing, and continuity observations
-    -> presentation-attack analysis
-    -> versioned evidence returned to the calling backend
-    -> calling backend applies policy
+Dugble application
+    -> asks the identity module to start a verification
+    -> receives a short-lived capture session
+    -> opens the guided camera experience
+    -> streams fresh capture evidence
+    -> receives capture guidance while the user completes the challenge
+    -> waits while Identity AI analyzes the session
+    -> receives an approved, retry, review, rejected, or alternative-method outcome
 ```
 
-### Optional facial verification
+The user-facing experience should be short and explain what the camera check needs. When a user
+cannot complete facial liveness, the calling product should provide an appropriate retry or
+alternative verification path.
+
+## How the product fits together
 
 ```text
-caller selects one enrolled facial reference
-    -> fresh capture passes quality and liveness analysis
-    -> service derives a probe embedding
-    -> one-to-one similarity comparison
-    -> versioned similarity evidence returned to the caller
+Dugble application
+        |
+        | application verification request
+        v
+server/internal/modules/identity
+        |
+        | private liveness session and result API
+        v
+services/identity-ai
+        ^
+        | short-lived capture session
+        |
+Dugble web or mobile capture client
 ```
 
-Routine verification must not search every enrolled face to identify an unknown participant.
+### Dugble identity module
 
-## Project structure
+The identity module owns the verification workflow: user authorization, purpose and account
+binding, attempt limits, policy thresholds, durable records, retries, fallbacks, and the final
+product outcome.
 
-```text
-services/identity-ai/
-├── app/
-│   ├── api/                  # Private HTTP transport, schemas, and dependencies
-│   ├── capture/              # Capture guidance and biometric quality boundaries
-│   ├── contracts/            # Face, liveness, quality, and attack evidence
-│   ├── core/                 # Configuration and internal authentication
-│   ├── face/                 # Detection, landmarks, embeddings, and 1:1 comparison
-│   ├── imaging/              # Bounded decoding, normalization, and image quality
-│   ├── inference/            # Model registry, runtime, manifest, and lifecycle
-│   └── liveness/             # Challenges, observations, attack detection, and evidence
-├── evaluation/               # Face, liveness, and presentation-attack metrics
-├── models/                   # Reviewed manifest; downloaded binaries remain untracked
-├── scripts/                  # Model verification, download, and synthetic benchmarks
-└── tests/                    # Unit and transport tests without real biometric media
-```
+### Dugble Identity AI
 
-## Current status
+Identity AI owns the biometric session: challenge generation, capture guidance, face and quality
+analysis, presentation-attack evidence, model execution, reference-frame selection, and the
+versioned analysis result.
 
-The repository currently provides deterministic image-quality checks, evidence contracts, capture guidance, challenge issuance and observation evaluation, face-comparison orchestration, presentation-attack and biometric-quality adapter boundaries, evaluation metrics, model-artifact tooling, the Phase 1 runtime foundation, the Phase 2 face pipeline, the Phase 3 capture-and-landmarks pipeline, the Phase 4 liveness-and-attacks orchestration, and the Phase 5 presentation-attack detector.
+### Dugble capture client
 
-The runtime foundation installs pinned NumPy, headless OpenCV, and ONNX Runtime dependencies; validates the configured model manifest and every required artifact before inference; creates optimized ONNX sessions with an explicit provider allowlist; initializes the model bundle during FastAPI lifespan startup; releases it during shutdown; and keeps readiness false when authentication or required models are unavailable.
+The capture client owns the camera experience: permissions, instructions, live evidence capture,
+real-time guidance, and session-scoped communication with Identity AI.
 
-The Phase 2 pipeline pins exact OpenCV Zoo YuNet and SFace artifacts by byte size and SHA-256 checksum. Concrete, thread-safe OpenCV adapters convert normalized images to BGR, map YuNet's box and five landmarks into stable contracts, use those landmarks for SFace alignment, validate its 128-value embedding, and compose both components into the existing one-to-one comparison service. The model bundle exposes this service only after both verified adapters initialize successfully.
+## What a result contains
 
-The Phase 3 pipeline pins the MediaPipe Face Landmarker task bundle and processes ordered, timezone-aware capture frames in video mode. It reports face count, normalized face size, and yaw, pitch, and roll from facial transformation matrices, then produces deterministic per-frame guidance. Multiple-face detection is deliberately enabled, timestamps must increase, model output is validated, and the MediaPipe task is released with the runtime bundle.
+A completed analysis can include:
 
-Phase 4 adds server-owned, verification-bound, expiring challenges with atomic single-use consumption and replay rejection. Its composite analyzer requires one landmark observation per ordered frame, evaluates the active challenge, invokes a versioned presentation-attack detector, and reports attack scores, the applied threshold, suspected attack types, and component failure reasons without making an account authorization decision.
+- session and challenge status;
+- a normalized liveness score;
+- evidence-sufficiency and capture-quality summaries;
+- challenge completion and timing evidence;
+- supported presentation-attack signals;
+- stable reason and retry codes;
+- a selected reference image when capture quality permits;
+- optional, policy-controlled audit images;
+- face-comparison similarity when requested; and
+- challenge, analyzer, threshold, and model versions.
 
-Phase 5 pins a commit-specific MiniFAS ONNX artifact and adds its reviewed preprocessing and inference adapter. The adapter requires 3–64 frames with exactly one face per frame, rejects faces smaller than 64 pixels, applies the model's square 1.5× crop and RGB normalization, validates two-class logits, and reports the median two-dimensional attack probability across the sequence. The model is intended for print and display-style attacks; it does not establish protection against 3D masks, camera injection, prerecorded video, or synthetic media.
+These measurements remain separate so the identity module can apply policy appropriate to the
+verification purpose. Completing a movement challenge alone is not treated as conclusive proof
+of liveness, and a low-confidence result is not presented as proof that a user is fraudulent.
 
-The process-local session store is for development and concurrency tests; a shared transactional store is required before horizontally scaled deployment. Thresholds must be calibrated on representative devices and attacks before production use and are therefore supplied explicitly rather than hidden in the model adapter. The authenticated HTTP endpoints execute configured analysis operations and return versioned evidence, while returning `503 Service Unavailable` when no deployment-specific operations are installed. Encoded frame-sequence decoding, capture-client integrity, media retrieval, and durable single-use session persistence remain deployment integrations rather than built-in storage implementations.
+## Product principles
 
-Completing a head-pose challenge is limited presence evidence, not strong liveness proof; production policy must combine it with presentation-attack analysis, replay and injection defenses, biometric quality, calibrated thresholds, rate limits, and manual fallback.
+- **Fresh participation:** liveness checks use server-created, expiring, single-use sessions.
+- **Evidence, not identity claims:** Identity AI reports measurements and reasons instead of
+  making legal-identity or authorization decisions.
+- **Guidance before rejection:** recoverable capture problems should lead to clear feedback and
+  targeted retries.
+- **Layered protection:** challenge, quality, temporal, presentation-attack, and device signals
+  contribute different evidence.
+- **Versioned decisions:** results identify the challenge, analyzer, models, and thresholds that
+  produced them.
+- **Purpose-bound comparison:** face comparison is one-to-one and uses an explicitly selected
+  reference.
+- **Accessible fallback:** products should offer an appropriate alternative when a user cannot
+  complete facial liveness.
 
-## Internal API
+## Internal product contract
 
-```text
-GET  /health
-GET  /ready
-POST /v1/liveness/check
-POST /v1/faces/compare
-```
-
-Analysis endpoints must remain private, require backend authentication, and accept only server-created verification sessions.
-
-## Runtime configuration
-
-Python 3.14.4 or newer is required. Runtime configuration is environment-backed:
-
-```text
-IDENTITY_AI_ENABLED=false
-IDENTITY_AI_API_KEY=<private service credential>
-IDENTITY_AI_MODEL_MANIFEST=models/manifest.json
-IDENTITY_AI_MODEL_DIR=models
-IDENTITY_AI_REQUIRED_MODELS=face-detector,face-embedder,face-landmarks,presentation-attack
-IDENTITY_AI_ONNX_PROVIDERS=CPUExecutionProvider
-```
-
-`/health` reports process liveness. `/ready` reports ready only when the service is disabled or, when enabled, internal authentication is configured and the complete reviewed model bundle has initialized successfully. It returns only a stable model status code rather than filesystem paths or runtime exception details.
-
-## Evaluation and model operations
-
-Evaluation inputs contain randomized sample identifiers and already-derived labels, scores, or outcomes. Raw facial images, videos, embeddings, account identifiers, and consent records must remain in approved encrypted storage and must never be written to reports or committed to Git.
-
-```sh
-python -m evaluation.face_verification samples/face-scores.jsonl --threshold 0.6 --output evaluation/reports/face.json
-python -m evaluation.liveness samples/challenge-outcomes.jsonl --output evaluation/reports/liveness.json
-python -m evaluation.presentation_attack samples/attack-outcomes.jsonl --output evaluation/reports/attacks.json
-python -m scripts.verify_models
-python -m scripts.download_models --accept-licenses
-python -m scripts.benchmark --rounds 20
-```
-
-`models/manifest.json` contains the reviewed YuNet and SFace artifacts for Phase 2 and the MediaPipe Face Landmarker task bundle for Phase 3. Downloaded artifacts are accepted only when their basename, byte size, and SHA-256 checksum match the manifest; accepting the download flag confirms that the operator has reviewed the linked model licenses.
-
-## Security and privacy requirements
-
-- Bind every randomized challenge to one verification session, expire it quickly, persist it server-side, and reject reuse.
-- Accept live-camera sessions through an integrity-protected client flow; gallery files alone are not liveness evidence.
-- Keep the FastAPI service on a private network and authenticate every request.
-- Encrypt biometric media and embeddings in transit and at rest with tightly scoped access.
-- Do not log raw frames, videos, embeddings, account identifiers, or authorization credentials.
-- Apply explicit retention and deletion rules to raw media, derived templates, backups, and evaluation data.
-- Record analyzer, model, threshold, and policy versions for auditability.
-- Measure genuine-user rejection and attack acceptance by device, capture condition, and appropriately governed cohorts.
-- Route uncertain outcomes to retry or manual review rather than presenting them as fraud.
-- Review source-code and model-weight licenses before distributing any model artifact.
+The detailed session lifecycle, ownership boundaries, target private API, result semantics,
+failure codes, retention model, evaluation gates, and delivery milestones are defined in the
+[Face Liveness Product Contract](PRODUCT.md).
