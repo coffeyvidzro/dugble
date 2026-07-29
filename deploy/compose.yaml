@@ -168,6 +168,7 @@ services:
       IDENTITY_AI_ENABLED: ${IDENTITY_AI_ENABLED:-false}
       IDENTITY_AI_BASE_URL: http://identity-ai:8000
       IDENTITY_AI_API_KEY: ${IDENTITY_AI_API_KEY:?set IDENTITY_AI_API_KEY}
+      IDENTITY_AI_TIMEOUT: ${IDENTITY_AI_TIMEOUT:-5s}
     expose:
       - "8080"
     networks:

@@ -1,7 +1,10 @@
 package config
 
 import (
+	"fmt"
+	"net/url"
 	"strings"
+	"time"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"
@@ -30,6 +33,13 @@ type BackofficeConfig struct {
 	AdminEmails []string `env:"ADMIN_EMAILS" envSeparator:","`
 }
 
+type IdentityAIConfig struct {
+	Enabled bool          `env:"ENABLED" envDefault:"false"`
+	BaseURL string        `env:"BASE_URL"`
+	APIKey  string        `env:"API_KEY"`
+	Timeout time.Duration `env:"TIMEOUT" envDefault:"5s"`
+}
+
 type Config struct {
 	AppEnv       string           `env:"APP_ENV"   envDefault:"development"`
 	HTTPPort     string           `env:"HTTP_PORT" envDefault:"8080"`
@@ -46,6 +56,7 @@ type Config struct {
 	MNotify      ProviderConfig   `envPrefix:"MNOTIFY_"`
 	Hubtel       HubtelConfig     `envPrefix:"HUBTEL_"`
 	Backoffice   BackofficeConfig `envPrefix:"BACKOFFICE_"`
+	IdentityAI   IdentityAIConfig `envPrefix:"IDENTITY_AI_"`
 }
 
 func Load() (*Config, error) {
@@ -57,6 +68,9 @@ func Load() (*Config, error) {
 	}
 
 	cfg.normalize()
+	if err := cfg.IdentityAI.Validate(); err != nil {
+		return nil, err
+	}
 
 	return cfg, nil
 }
@@ -87,6 +101,8 @@ func (c *Config) normalize() {
 	c.Hubtel.APIKey = strings.TrimSpace(c.Hubtel.APIKey)
 	c.Hubtel.MerchantNumber = strings.TrimSpace(c.Hubtel.MerchantNumber)
 	c.Backoffice.HTTPPort = strings.TrimSpace(c.Backoffice.HTTPPort)
+	c.IdentityAI.BaseURL = strings.TrimRight(strings.TrimSpace(c.IdentityAI.BaseURL), "/")
+	c.IdentityAI.APIKey = strings.TrimSpace(c.IdentityAI.APIKey)
 
 	origins := make([]string, 0, len(c.CORSOrigins))
 	for _, origin := range c.CORSOrigins {
@@ -109,4 +125,27 @@ func (c *Config) normalize() {
 		adminEmails = append(adminEmails, email)
 	}
 	c.Backoffice.AdminEmails = adminEmails
+}
+
+func (c IdentityAIConfig) Validate() error {
+	if !c.Enabled {
+		return nil
+	}
+	if c.BaseURL == "" {
+		return fmt.Errorf("identity AI base URL is required when enabled")
+	}
+	parsed, err := url.ParseRequestURI(c.BaseURL)
+	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return fmt.Errorf("identity AI base URL must be an absolute HTTP URL")
+	}
+	if parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return fmt.Errorf("identity AI base URL must not contain credentials, a query, or a fragment")
+	}
+	if c.APIKey == "" {
+		return fmt.Errorf("identity AI API key is required when enabled")
+	}
+	if c.Timeout <= 0 {
+		return fmt.Errorf("identity AI timeout must be positive")
+	}
+	return nil
 }
