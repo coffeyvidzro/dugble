@@ -1,8 +1,0 @@
-.pytest_cache/
-.venv/
-__pycache__/
-evaluation/reports/*
-!evaluation/reports/.gitkeep
-models/*
-!models/README.md
-!models/manifest.json
