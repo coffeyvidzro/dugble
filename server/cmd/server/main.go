@@ -101,20 +101,23 @@ func run() error {
 		return fmt.Errorf("initialize SES email client: %w", err)
 	}
 
-	messagingClient, err := jetstreammessaging.New(startupCtx, cfg.NATSURL, "dugble-api")
-	if err != nil {
-		return fmt.Errorf("initialize JetStream: %w", err)
-	}
-	defer func() {
-		if err := messagingClient.Close(); err != nil {
-			slog.Warn("close JetStream client", "error", err)
+	var sesEventsHandler *sesevents.Handler
+	if len(cfg.AWS.SNSTopicARNs) > 0 {
+		messagingClient, messagingErr := jetstreammessaging.New(startupCtx, cfg.NATSURL, "dugble-api")
+		if messagingErr != nil {
+			return fmt.Errorf("initialize JetStream for SES events: %w", messagingErr)
 		}
-	}()
-	if err := messagingClient.Provision(startupCtx, jetstreammessaging.DefaultStreamLimits()); err != nil {
-		return fmt.Errorf("provision JetStream streams: %w", err)
+		defer func() {
+			if closeErr := messagingClient.Close(); closeErr != nil {
+				slog.Warn("close SES events JetStream client", "error", closeErr)
+			}
+		}()
+		if provisionErr := messagingClient.Provision(startupCtx, jetstreammessaging.DefaultStreamLimits()); provisionErr != nil {
+			return fmt.Errorf("provision JetStream streams for SES events: %w", provisionErr)
+		}
+		snsVerifier := snsintegration.NewVerifier(cfg.AWS.SNSTopicARNs, nil)
+		sesEventsHandler = sesevents.NewHandler(snsVerifier, messagingClient, sesevents.NewHTTPConfirmer(nil))
 	}
-	snsVerifier := snsintegration.NewVerifier(cfg.AWS.SNSTopicARNs, nil)
-	sesEventsHandler := sesevents.NewHandler(snsVerifier, messagingClient, sesevents.NewHTTPConfirmer(nil))
 
 	smsRouter, err := routing.NewService(
 		routing.DefaultConfig(),
