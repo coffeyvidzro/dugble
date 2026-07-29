@@ -44,6 +44,22 @@ type EmailMessage struct {
 	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
+type EmailProviderEvent struct {
+	ID                     uuid.UUID          `db:"id" json:"id"`
+	EmailMessageID         *uuid.UUID         `db:"email_message_id" json:"email_message_id"`
+	Provider               string             `db:"provider" json:"provider"`
+	Transport              string             `db:"transport" json:"transport"`
+	ProviderNotificationID string             `db:"provider_notification_id" json:"provider_notification_id"`
+	ProviderMessageID      string             `db:"provider_message_id" json:"provider_message_id"`
+	EventType              string             `db:"event_type" json:"event_type"`
+	OccurredAt             pgtype.Timestamptz `db:"occurred_at" json:"occurred_at"`
+	ReceivedAt             pgtype.Timestamptz `db:"received_at" json:"received_at"`
+	NormalizedPayload      []byte             `db:"normalized_payload" json:"normalized_payload"`
+	ProviderPayload        []byte             `db:"provider_payload" json:"provider_payload"`
+	ProcessedAt            pgtype.Timestamptz `db:"processed_at" json:"processed_at"`
+	CreatedAt              pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
 type IdempotencyKey struct {
 	Scope               string             `db:"scope" json:"scope"`
 	IdempotencyKey      string             `db:"idempotency_key" json:"idempotency_key"`
