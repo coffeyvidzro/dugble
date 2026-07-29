@@ -11,6 +11,8 @@ import (
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
+const manualHealthFailureReason = "sender domain verification checks no longer pass"
+
 type Service struct {
 	repository *Repository
 	provider   platformemail.DomainProvider
@@ -110,16 +112,23 @@ func (s *Service) Verify(ctx context.Context, domainID string) (SenderDomain, er
 		return SenderDomain{}, apperrors.NewInternal("Sender domain verification is not configured", nil)
 	}
 
-	result, err := s.Check(ctx, domain)
-	if err != nil {
-		reason := err.Error()
+	result, checkErr := s.Check(ctx, domain)
+	if domain.Status == StatusVerified {
+		records, reason := manualHealthObservation(domain, result, checkErr)
+		updated, updateErr := s.repository.UpdateManualHealthCheck(ctx, id, tc.TeamID, records, reason)
+		if updateErr != nil {
+			return SenderDomain{}, apperrors.NewInternal("Unable to update sender domain health", updateErr)
+		}
+		return updated, nil
+	}
+	if checkErr != nil {
+		reason := checkErr.Error()
 		updated, updateErr := s.repository.UpdateVerification(ctx, id, tc.TeamID, StatusFailed, domain.VerificationRecords, &reason)
 		if updateErr != nil {
 			return SenderDomain{}, apperrors.NewInternal("Unable to update sender domain verification", updateErr)
 		}
 		return updated, nil
 	}
-	result.Status = authorizationStatusAfterCheck(domain.Status, result.Status)
 
 	updated, err := s.repository.UpdateVerification(ctx, id, tc.TeamID, result.Status, result.VerificationRecords, nil)
 	if err != nil {
@@ -128,13 +137,16 @@ func (s *Service) Verify(ctx context.Context, domainID string) (SenderDomain, er
 	return updated, nil
 }
 
-func authorizationStatusAfterCheck(currentStatus, observedStatus string) string {
-	if currentStatus == StatusVerified && observedStatus != StatusVerified {
-		// A manual or isolated negative observation must not revoke an already
-		// authorized domain. The health monitor applies the failure threshold.
-		return StatusVerified
+func manualHealthObservation(domain SenderDomain, result ReconciliationResult, checkErr error) ([]VerificationRecord, *string) {
+	if checkErr != nil {
+		reason := checkErr.Error()
+		return domain.VerificationRecords, &reason
 	}
-	return observedStatus
+	if result.Status != StatusVerified {
+		reason := manualHealthFailureReason
+		return result.VerificationRecords, &reason
+	}
+	return result.VerificationRecords, nil
 }
 
 func (s *Service) Check(ctx context.Context, domain SenderDomain) (ReconciliationResult, error) {

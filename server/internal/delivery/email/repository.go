@@ -15,6 +15,7 @@ import (
 )
 
 var ErrMessageNotDeliverable = errors.New("email message is not deliverable")
+var ErrSenderDomainUnavailable = errors.New("sender domain is no longer available for delivery")
 
 type DeliveryMessage struct {
 	ID          uuid.UUID
@@ -48,19 +49,51 @@ func (r *Repository) Claim(ctx context.Context, messageID, teamID uuid.UUID) (De
 	var fromName *string
 	var htmlBody, textBody *string
 	var recipientsJSON, headersJSON, attachmentsJSON []byte
+	var authorized bool
 	err := r.db.QueryRow(ctx, `
-		UPDATE email_messages
-		SET status = 'processing', processing_at = COALESCE(processing_at, now()),
-			error_code = NULL, error_message = NULL, updated_at = now()
-		WHERE id = $1 AND team_id = $2 AND status IN ('queued', 'processing')
-		RETURNING id, team_id, delivery_provider, provider_region, from_email, from_name, subject, html_body, text_body,
-			recipients, headers, attachments
-	`, messageID, teamID).Scan(&message.ID, &message.TeamID, &message.Provider, &message.Region, &message.FromEmail, &fromName, &message.Subject, &htmlBody, &textBody, &recipientsJSON, &headersJSON, &attachmentsJSON)
+		WITH candidate AS (
+			SELECT message.id,
+				message.sender_domain_id IS NULL OR EXISTS (
+					SELECT 1
+					FROM sender_domains AS domain
+					WHERE domain.id = message.sender_domain_id
+					  AND domain.team_id = message.team_id
+					  AND domain.status = 'verified'
+					  AND domain.disabled_at IS NULL
+					  AND domain.health_status <> 'degraded'
+				) AS authorized
+			FROM email_messages AS message
+			WHERE message.id = $1
+			  AND message.team_id = $2
+			  AND message.status IN ('queued', 'processing')
+			FOR UPDATE OF message
+		), updated AS (
+			UPDATE email_messages AS message
+			SET status = CASE WHEN candidate.authorized THEN 'processing' ELSE 'failed' END,
+				processing_at = CASE WHEN candidate.authorized THEN COALESCE(message.processing_at, now()) ELSE message.processing_at END,
+				error_code = CASE WHEN candidate.authorized THEN NULL ELSE 'sender_domain_unavailable' END,
+				error_message = CASE WHEN candidate.authorized THEN NULL ELSE 'Sender domain is no longer verified, enabled, and healthy' END,
+				failed_at = CASE WHEN candidate.authorized THEN message.failed_at ELSE now() END,
+				updated_at = now()
+			FROM candidate
+			WHERE message.id = candidate.id
+			RETURNING message.id, message.team_id, message.delivery_provider, message.provider_region,
+				message.from_email, message.from_name, message.subject, message.html_body, message.text_body,
+				message.recipients, message.headers, message.attachments, candidate.authorized
+		)
+		SELECT * FROM updated
+	`, messageID, teamID).Scan(
+		&message.ID, &message.TeamID, &message.Provider, &message.Region, &message.FromEmail, &fromName,
+		&message.Subject, &htmlBody, &textBody, &recipientsJSON, &headersJSON, &attachmentsJSON, &authorized,
+	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return DeliveryMessage{}, ErrMessageNotDeliverable
 	}
 	if err != nil {
 		return DeliveryMessage{}, fmt.Errorf("claim email message: %w", err)
+	}
+	if !authorized {
+		return DeliveryMessage{}, ErrSenderDomainUnavailable
 	}
 	if fromName != nil {
 		message.FromName = *fromName
