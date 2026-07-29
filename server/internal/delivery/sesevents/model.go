@@ -38,58 +38,58 @@ const (
 
 // ProviderEvent contains the normalized SES lifecycle data used by downstream workers.
 type ProviderEvent struct {
-	Type              EventType
-	ProviderMessageID string
-	OccurredAt        time.Time
-	Recipients        []Recipient
-	Bounce            *BounceDetails
-	Complaint         *ComplaintDetails
-	Delivery          *DeliveryDetails
-	Delay             *DelayDetails
-	Reject            *RejectDetails
-	RenderingFailure  *RenderingFailureDetails
+	Type              EventType                `json:"type"`
+	ProviderMessageID string                   `json:"provider_message_id"`
+	OccurredAt        time.Time                `json:"occurred_at"`
+	Recipients        []Recipient              `json:"recipients"`
+	Bounce            *BounceDetails           `json:"bounce,omitempty"`
+	Complaint         *ComplaintDetails        `json:"complaint,omitempty"`
+	Delivery          *DeliveryDetails         `json:"delivery,omitempty"`
+	Delay             *DelayDetails            `json:"delay,omitempty"`
+	Reject            *RejectDetails           `json:"reject,omitempty"`
+	RenderingFailure  *RenderingFailureDetails `json:"rendering_failure,omitempty"`
 }
 
 type Recipient struct {
-	Email          string
-	Action         string
-	Status         string
-	DiagnosticCode string
+	Email          string `json:"email"`
+	Action         string `json:"action,omitempty"`
+	Status         string `json:"status,omitempty"`
+	DiagnosticCode string `json:"diagnostic_code,omitempty"`
 }
 
 type BounceDetails struct {
-	Type         string
-	Subtype      string
-	FeedbackID   string
-	ReportingMTA string
+	Type         string `json:"type"`
+	Subtype      string `json:"subtype"`
+	FeedbackID   string `json:"feedback_id,omitempty"`
+	ReportingMTA string `json:"reporting_mta,omitempty"`
 }
 
 type ComplaintDetails struct {
-	Subtype      string
-	FeedbackType string
-	FeedbackID   string
-	UserAgent    string
-	ArrivalAt    *time.Time
+	Subtype      string     `json:"subtype,omitempty"`
+	FeedbackType string     `json:"feedback_type,omitempty"`
+	FeedbackID   string     `json:"feedback_id,omitempty"`
+	UserAgent    string     `json:"user_agent,omitempty"`
+	ArrivalAt    *time.Time `json:"arrival_at,omitempty"`
 }
 
 type DeliveryDetails struct {
-	ProcessingTimeMillis int64
-	SMTPResponse         string
-	ReportingMTA         string
-	RemoteMTAIP          string
+	ProcessingTimeMillis int64  `json:"processing_time_millis"`
+	SMTPResponse         string `json:"smtp_response,omitempty"`
+	ReportingMTA         string `json:"reporting_mta,omitempty"`
+	RemoteMTAIP          string `json:"remote_mta_ip,omitempty"`
 }
 
 type DelayDetails struct {
-	Type         string
-	ExpirationAt *time.Time
-	ReportingMTA string
+	Type         string     `json:"type"`
+	ExpirationAt *time.Time `json:"expiration_at,omitempty"`
+	ReportingMTA string     `json:"reporting_mta,omitempty"`
 }
 
 type RejectDetails struct {
-	Reason string
+	Reason string `json:"reason"`
 }
 
 type RenderingFailureDetails struct {
-	TemplateName string
-	ErrorMessage string
+	TemplateName string `json:"template_name,omitempty"`
+	ErrorMessage string `json:"error_message"`
 }
