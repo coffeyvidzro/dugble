@@ -54,6 +54,24 @@ func TestVerifierRejectsUnknownTopicBeforeCertificateFetch(t *testing.T) {
 	}
 }
 
+func TestCanonicalMessageDoesNotEndWithNewline(t *testing.T) {
+	message := Message{
+		Type:      "Notification",
+		MessageID: "notification-1",
+		TopicARN:  "arn:aws:sns:us-east-1:123456789012:events",
+		Message:   "My Test Message",
+		Timestamp: "2019-01-31T04:37:04.321Z",
+	}
+	canonical, err := canonicalMessage(message)
+	if err != nil {
+		t.Fatalf("canonicalize SNS message: %v", err)
+	}
+	want := "Message\nMy Test Message\nMessageId\nnotification-1\nTimestamp\n2019-01-31T04:37:04.321Z\nTopicArn\narn:aws:sns:us-east-1:123456789012:events\nType\nNotification"
+	if canonical != want {
+		t.Fatalf("canonical SNS message mismatch:\n got: %q\nwant: %q", canonical, want)
+	}
+}
+
 func TestValidateAWSURL(t *testing.T) {
 	valid := "https://sns.us-east-1.amazonaws.com/SimpleNotificationService-deadbeef.pem"
 	if err := validateAWSURL(valid); err != nil {

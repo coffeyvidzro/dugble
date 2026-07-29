@@ -132,7 +132,7 @@ func canonicalMessage(message Message) (string, error) {
 	default:
 		return "", errors.New("unsupported SNS message type")
 	}
-	return strings.Join(fields, "\n") + "\n", nil
+	return strings.Join(fields, "\n"), nil
 }
 
 type certificateCache struct {
