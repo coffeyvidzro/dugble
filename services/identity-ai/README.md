@@ -8,7 +8,7 @@ The service analyzes facial capture sessions and returns measurements with compo
 
 The target product lifecycle, ownership boundaries, session states, private API, result semantics,
 and delivery milestones are defined in the
-[Face Liveness Product Contract](../../docs/identity/face-liveness.md).
+[Face Liveness Product Contract](PRODUCT.md).
 
 ## Capabilities
 
