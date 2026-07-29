@@ -6,6 +6,10 @@
 
 The service analyzes facial capture sessions and returns measurements with component versions; it does not establish legal identity, authenticate government-issued credentials, determine age by itself, or make a final authorization decision.
 
+The target product lifecycle, ownership boundaries, session states, private API, result semantics,
+and delivery milestones are defined in the
+[Face Liveness Product Contract](../../docs/identity/face-liveness.md).
+
 ## Capabilities
 
 ### Face liveness
