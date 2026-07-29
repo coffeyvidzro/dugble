@@ -34,7 +34,7 @@ func (h *Handler) Handle(ctx context.Context, command DeliverCommand) error {
 		return errors.New("email sender is not configured")
 	}
 	message, err := h.repository.Claim(ctx, command.MessageID, command.TeamID)
-	if errors.Is(err, ErrMessageNotDeliverable) {
+	if errors.Is(err, ErrMessageNotDeliverable) || errors.Is(err, ErrSenderDomainUnavailable) {
 		return nil
 	}
 	if err != nil {
