@@ -97,7 +97,7 @@ func TestBatchSendRejectsAttachmentsBeforeStartingTransaction(t *testing.T) {
 func TestAuthorizeSenderUsesVerifiedTeamDomainRoute(t *testing.T) {
 	teamID, domainID := uuid.New(), uuid.New()
 	resolver := &stubSenderDomainResolver{route: SenderDomainRoute{
-		ID: domainID, Provider: "aws_ses", Region: "eu-west-1", Status: "verified",
+		ID: domainID, Provider: "aws_ses", Region: "eu-west-1", Status: "verified", HealthStatus: "healthy",
 	}}
 	service := NewService(nil, nil, testServiceConfig, resolver)
 	message := validatedSend{FromEmail: "Billing@Example.COM"}
@@ -122,10 +122,11 @@ func TestAuthorizeSenderRejectsUnauthorizedDomain(t *testing.T) {
 	}
 }
 
-func TestAuthorizeSenderRejectsUnverifiedOrDisabledDomain(t *testing.T) {
+func TestAuthorizeSenderRejectsUnverifiedDisabledOrDegradedDomain(t *testing.T) {
 	for name, route := range map[string]SenderDomainRoute{
 		"pending":  {Provider: "aws_ses", Region: "us-east-1", Status: "pending"},
 		"disabled": {Provider: "aws_ses", Region: "us-east-1", Status: "verified", Disabled: true},
+		"degraded": {Provider: "aws_ses", Region: "us-east-1", Status: "degraded", HealthStatus: "degraded"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			service := NewService(nil, nil, testServiceConfig, &stubSenderDomainResolver{route: route})
