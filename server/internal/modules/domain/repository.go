@@ -19,10 +19,11 @@ import (
 var ErrSenderDomainAlreadyExists = errors.New("sender domain already exists")
 
 type Repository struct {
+	db      *pgxpool.Pool
 	queries *dbsqlc.Queries
 }
 
-func NewRepository(db *pgxpool.Pool) *Repository { return &Repository{queries: dbsqlc.New(db)} }
+func NewRepository(db *pgxpool.Pool) *Repository { return &Repository{db: db, queries: dbsqlc.New(db)} }
 
 type ReconciliationClaim struct {
 	Domain  SenderDomain
@@ -160,6 +161,42 @@ func (r *Repository) UpdateVerification(ctx context.Context, id, teamID uuid.UUI
 		return SenderDomain{}, fmt.Errorf("update sender domain verification: %w", err)
 	}
 	return senderDomainFromSQLC(row), nil
+}
+
+func (r *Repository) UpdateManualHealthCheck(ctx context.Context, id, teamID uuid.UUID, records []VerificationRecord, failureReason *string) (SenderDomain, error) {
+	if r == nil || r.db == nil {
+		return SenderDomain{}, errors.New("sender domain repository is not configured")
+	}
+	recordsJSON, err := json.Marshal(records)
+	if err != nil {
+		return SenderDomain{}, fmt.Errorf("marshal sender domain verification records: %w", err)
+	}
+	commandTag, err := r.db.Exec(ctx, `
+		UPDATE sender_domains
+		SET verification_records = $3,
+			health_status = CASE
+				WHEN $4::text IS NULL THEN 'healthy'
+				WHEN consecutive_health_failures + 1 >= $5 THEN 'degraded'
+				ELSE health_status
+			END,
+			consecutive_health_failures = CASE
+				WHEN $4::text IS NULL THEN 0
+				ELSE consecutive_health_failures + 1
+			END,
+			failure_reason = $4,
+			last_checked_at = now(),
+			last_health_checked_at = now(),
+			last_health_failure_at = CASE WHEN $4::text IS NULL THEN last_health_failure_at ELSE now() END,
+			updated_at = now()
+		WHERE id = $1 AND team_id = $2 AND status = 'verified'
+	`, id, teamID, recordsJSON, failureReason, DefaultHealthFailureThreshold)
+	if err != nil {
+		return SenderDomain{}, fmt.Errorf("update manual sender domain health check: %w", err)
+	}
+	if commandTag.RowsAffected() == 0 {
+		return SenderDomain{}, errors.New("verified sender domain not found")
+	}
+	return r.Get(ctx, id, teamID)
 }
 
 func (r *Repository) Delete(ctx context.Context, id uuid.UUID, teamID uuid.UUID) (SenderDomain, error) {
