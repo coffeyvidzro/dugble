@@ -11,6 +11,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/modules/auth"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/domain"
 	emailmodule "github.com/coffeyvidzro/dugble/server/internal/modules/email"
+	"github.com/coffeyvidzro/dugble/server/internal/modules/identitypolicy"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/mfa"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/senderid"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
@@ -80,6 +81,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	user.RegisterRoutes(router, user.NewHandler(user.NewService(userRepository)), authMiddleware, csrfMiddleware)
 	teamRepository := team.NewRepository(deps.DB)
 	teamService := team.NewService(teamRepository, emailService)
+	identityPolicyRepository := identitypolicy.NewRepository(deps.DB)
 	teamTokenRepository := teamtoken.NewRepository(deps.DB)
 	domainRepository := domain.NewRepository(deps.DB)
 	senderIDRepository := senderid.NewRepository(deps.DB)
@@ -87,12 +89,13 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	webhookEmitter := platformwebhook.NewEmitter(webhookRepository)
 	smsRepository := smsmodule.NewRepositoryWithWebhookEmitter(deps.DB, webhookEmitter)
 	tenantMiddleware := func(permission tenant.Permission) echo.MiddlewareFunc {
-		return middlewares.Tenant(middlewares.TenantConfig{Memberships: teamRepository, Required: permission})
+		return middlewares.Tenant(middlewares.TenantConfig{Memberships: teamRepository, Policies: identityPolicyRepository, Required: permission})
 	}
 	tenantAccess := func(permission tenant.Permission) echo.MiddlewareFunc {
 		return middlewares.TenantAccess(middlewares.TenantAccessConfig{Sessions: sessionRepository, Users: authRepository, Memberships: teamRepository, Tokens: teamTokenRepository, CSRF: csrfConfig, Required: permission})
 	}
 	team.RegisterRoutes(router, team.NewHandler(teamService), authMiddleware, csrfMiddleware, tenantMiddleware)
+	identitypolicy.RegisterRoutes(router, identitypolicy.NewHandler(identitypolicy.NewService(identityPolicyRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	teamtoken.RegisterRoutes(router, teamtoken.NewHandler(teamtoken.NewService(teamTokenRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	senderid.RegisterRoutes(router, senderid.NewHandler(senderid.NewService(senderIDRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	domain.RegisterRoutes(router, domain.NewHandler(domain.NewService(domainRepository, deps.DomainProvider, deps.DNSVerifier)), authMiddleware, csrfMiddleware, tenantMiddleware)

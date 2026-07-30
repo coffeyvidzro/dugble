@@ -217,6 +217,15 @@ type Team struct {
 	UpdatedAt pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
+type TeamIdentityPolicy struct {
+	TeamID               uuid.UUID          `db:"team_id" json:"team_id"`
+	RequireMfa           bool               `db:"require_mfa" json:"require_mfa"`
+	SessionMaxAgeMinutes int32              `db:"session_max_age_minutes" json:"session_max_age_minutes"`
+	UpdatedBy            *uuid.UUID         `db:"updated_by" json:"updated_by"`
+	CreatedAt            pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
 type TeamInvitation struct {
 	ID         uuid.UUID          `db:"id" json:"id"`
 	TeamID     uuid.UUID          `db:"team_id" json:"team_id"`
