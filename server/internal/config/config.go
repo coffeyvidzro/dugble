@@ -34,7 +34,8 @@ type Config struct {
 	FrontendURL      string           `env:"FRONTEND_URL" envDefault:"http://localhost:3000"`
 	BackendURL       string           `env:"BACKEND_URL"  envDefault:"http://localhost:8080"`
 	CookieDomain     string           `env:"COOKIE_DOMAIN"`
-	MFAEncryptionKey string           `env:"MFA_ENCRYPTION_KEY,required,notEmpty"`
+	MFAEncryptionKey string           `env:"MFA_ENCRYPTION_KEY"`
+	EncryptionKeys   []string         `env:"ENCRYPTION_KEYS" envSeparator:","`
 	AWS              AWSConfig        `envPrefix:"AWS_"`
 	NATSURL          string           `env:"NATS_URL" envDefault:"nats://localhost:4222"`
 	Arkesel          ProviderConfig   `envPrefix:"ARKESEL_"`
@@ -69,6 +70,13 @@ func (c *Config) normalize() {
 	c.BackendURL = strings.TrimRight(strings.TrimSpace(c.BackendURL), "/")
 	c.CookieDomain = strings.TrimSpace(c.CookieDomain)
 	c.MFAEncryptionKey = strings.TrimSpace(c.MFAEncryptionKey)
+	keys := make([]string, 0, len(c.EncryptionKeys))
+	for _, key := range c.EncryptionKeys {
+		if key = strings.TrimSpace(key); key != "" {
+			keys = append(keys, key)
+		}
+	}
+	c.EncryptionKeys = keys
 	c.AWS.FromEmail = strings.TrimSpace(c.AWS.FromEmail)
 	c.AWS.Region = strings.TrimSpace(c.AWS.Region)
 	c.AWS.AccessKey = strings.TrimSpace(c.AWS.AccessKey)

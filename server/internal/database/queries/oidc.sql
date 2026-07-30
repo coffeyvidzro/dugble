@@ -46,3 +46,9 @@ WITH existing_identity AS (
   ON CONFLICT (team_id, user_id) DO NOTHING
 )
 SELECT users.* FROM users JOIN linked ON linked.user_id=users.id;
+
+-- name: RotateOIDCConnectionSecretCiphertext :exec
+UPDATE oidc_connections SET client_secret_ciphertext=sqlc.arg(new_ciphertext),updated_at=now() WHERE id=sqlc.arg(id) AND client_secret_ciphertext=sqlc.arg(old_ciphertext);
+
+-- name: ListOIDCSecretsForRotation :many
+SELECT id,client_secret_ciphertext FROM oidc_connections ORDER BY id;

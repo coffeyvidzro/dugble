@@ -180,3 +180,9 @@ WHERE authentication_challenges.token_hash = sqlc.arg(token_hash)
         AND users.credential_version = (authentication_challenges.state->>'credential_version')::bigint
   )
   AND EXISTS (SELECT 1 FROM accepted_code);
+
+-- name: RotateTOTPSecretCiphertext :exec
+UPDATE totp_credentials SET secret_ciphertext=sqlc.arg(new_ciphertext),updated_at=now() WHERE user_id=sqlc.arg(user_id) AND secret_ciphertext=sqlc.arg(old_ciphertext);
+
+-- name: ListTOTPSecretsForRotation :many
+SELECT user_id,secret_ciphertext FROM totp_credentials ORDER BY user_id;

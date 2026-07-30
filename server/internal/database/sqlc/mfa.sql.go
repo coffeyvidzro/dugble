@@ -308,6 +308,35 @@ func (q *Queries) IsTOTPEnabled(ctx context.Context, arg IsTOTPEnabledParams) (b
 	return exists, err
 }
 
+const listTOTPSecretsForRotation = `-- name: ListTOTPSecretsForRotation :many
+SELECT user_id,secret_ciphertext FROM totp_credentials ORDER BY user_id
+`
+
+type ListTOTPSecretsForRotationRow struct {
+	UserID           uuid.UUID `db:"user_id" json:"user_id"`
+	SecretCiphertext []byte    `db:"secret_ciphertext" json:"secret_ciphertext"`
+}
+
+func (q *Queries) ListTOTPSecretsForRotation(ctx context.Context) ([]ListTOTPSecretsForRotationRow, error) {
+	rows, err := q.db.Query(ctx, listTOTPSecretsForRotation)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTOTPSecretsForRotationRow{}
+	for rows.Next() {
+		var i ListTOTPSecretsForRotationRow
+		if err := rows.Scan(&i.UserID, &i.SecretCiphertext); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const putUnverifiedTOTPCredential = `-- name: PutUnverifiedTOTPCredential :execrows
 INSERT INTO totp_credentials (user_id, secret_ciphertext)
 VALUES ($1, $2)
@@ -347,6 +376,21 @@ type RevokeOtherSessionsAfterMFADisableParams struct {
 
 func (q *Queries) RevokeOtherSessionsAfterMFADisable(ctx context.Context, arg RevokeOtherSessionsAfterMFADisableParams) error {
 	_, err := q.db.Exec(ctx, revokeOtherSessionsAfterMFADisable, arg.UserID, arg.CurrentSessionID)
+	return err
+}
+
+const rotateTOTPSecretCiphertext = `-- name: RotateTOTPSecretCiphertext :exec
+UPDATE totp_credentials SET secret_ciphertext=$1,updated_at=now() WHERE user_id=$2 AND secret_ciphertext=$3
+`
+
+type RotateTOTPSecretCiphertextParams struct {
+	NewCiphertext []byte    `db:"new_ciphertext" json:"new_ciphertext"`
+	UserID        uuid.UUID `db:"user_id" json:"user_id"`
+	OldCiphertext []byte    `db:"old_ciphertext" json:"old_ciphertext"`
+}
+
+func (q *Queries) RotateTOTPSecretCiphertext(ctx context.Context, arg RotateTOTPSecretCiphertextParams) error {
+	_, err := q.db.Exec(ctx, rotateTOTPSecretCiphertext, arg.NewCiphertext, arg.UserID, arg.OldCiphertext)
 	return err
 }
 

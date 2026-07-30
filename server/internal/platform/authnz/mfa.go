@@ -13,42 +13,139 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 )
 
-type SecretCipher struct{ aead cipher.AEAD }
+var keyIDPattern = regexp.MustCompile(`^[A-Za-z0-9._-]{1,64}$`)
+var envelopeMagic = []byte("dgb1")
 
-func NewSecretCipher(encodedKey string) (*SecretCipher, error) {
-	key, err := base64.StdEncoding.DecodeString(strings.TrimSpace(encodedKey))
-	if err != nil || len(key) != 32 {
-		return nil, errors.New("MFA encryption key must be base64-encoded 32 bytes")
-	}
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-	aead, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, err
-	}
-	return &SecretCipher{aead: aead}, nil
+type cipherKey struct {
+	id   string
+	aead cipher.AEAD
+}
+type SecretCipher struct {
+	primary cipherKey
+	keys    map[string]cipherKey
+	ordered []cipherKey
 }
 
+func NewSecretCipher(encodedKey string) (*SecretCipher, error) {
+	return NewSecretCipherKeyring(nil, encodedKey)
+}
+func NewSecretCipherKeyring(specs []string, legacyKey string) (*SecretCipher, error) {
+	entries := make([]string, 0, len(specs)+1)
+	for _, s := range specs {
+		if strings.TrimSpace(s) != "" {
+			entries = append(entries, strings.TrimSpace(s))
+		}
+	}
+	legacyKey = strings.TrimSpace(legacyKey)
+	if legacyKey != "" {
+		hasLegacy := false
+		for _, entry := range entries {
+			if strings.HasPrefix(entry, "legacy:") {
+				hasLegacy = true
+				break
+			}
+		}
+		if !hasLegacy {
+			entries = append(entries, "legacy:"+legacyKey)
+		}
+	}
+	if len(entries) == 0 {
+		return nil, errors.New("at least one encryption key is required")
+	}
+	c := &SecretCipher{keys: map[string]cipherKey{}}
+	for _, entry := range entries {
+		parts := strings.SplitN(entry, ":", 2)
+		if len(parts) != 2 || !keyIDPattern.MatchString(parts[0]) {
+			return nil, errors.New("encryption keys must use key-id:base64-key format")
+		}
+		if _, ok := c.keys[parts[0]]; ok {
+			return nil, fmt.Errorf("duplicate encryption key id %q", parts[0])
+		}
+		raw, err := base64.StdEncoding.DecodeString(parts[1])
+		if err != nil || len(raw) != 32 {
+			return nil, fmt.Errorf("encryption key %q must be base64-encoded 32 bytes", parts[0])
+		}
+		block, err := aes.NewCipher(raw)
+		if err != nil {
+			return nil, err
+		}
+		aead, err := cipher.NewGCM(block)
+		if err != nil {
+			return nil, err
+		}
+		k := cipherKey{id: parts[0], aead: aead}
+		c.keys[k.id] = k
+		c.ordered = append(c.ordered, k)
+	}
+	c.primary = c.ordered[0]
+	return c, nil
+}
+func (c *SecretCipher) PrimaryKeyID() string { return c.primary.id }
 func (c *SecretCipher) Encrypt(value []byte) ([]byte, error) {
-	nonce := make([]byte, c.aead.NonceSize())
+	id := []byte(c.primary.id)
+	header := make([]byte, len(envelopeMagic)+2+len(id))
+	copy(header, envelopeMagic)
+	binary.BigEndian.PutUint16(header[len(envelopeMagic):], uint16(len(id)))
+	copy(header[len(envelopeMagic)+2:], id)
+	nonce := make([]byte, c.primary.aead.NonceSize())
 	if _, err := rand.Read(nonce); err != nil {
 		return nil, err
 	}
-	return c.aead.Seal(nonce, nonce, value, nil), nil
+	out := append(header, nonce...)
+	return c.primary.aead.Seal(out, nonce, value, header), nil
 }
-
 func (c *SecretCipher) Decrypt(value []byte) ([]byte, error) {
-	n := c.aead.NonceSize()
-	if len(value) < n {
-		return nil, errors.New("invalid encrypted secret")
+	plain, _, err := c.decrypt(value)
+	return plain, err
+}
+func (c *SecretCipher) DecryptAndRotate(value []byte) (plain, replacement []byte, rotated bool, err error) {
+	plain, id, err := c.decrypt(value)
+	if err != nil {
+		return nil, nil, false, err
 	}
-	return c.aead.Open(nil, value[:n], value[n:], nil)
+	if id == c.primary.id {
+		return plain, nil, false, nil
+	}
+	replacement, err = c.Encrypt(plain)
+	if err != nil {
+		return nil, nil, false, err
+	}
+	return plain, replacement, true, nil
+}
+func (c *SecretCipher) decrypt(value []byte) ([]byte, string, error) {
+	if len(value) >= len(envelopeMagic)+2 && string(value[:len(envelopeMagic)]) == string(envelopeMagic) {
+		n := int(binary.BigEndian.Uint16(value[len(envelopeMagic):]))
+		end := len(envelopeMagic) + 2 + n
+		if n == 0 || end > len(value) {
+			return nil, "", errors.New("invalid encrypted secret envelope")
+		}
+		id := string(value[len(envelopeMagic)+2 : end])
+		k, ok := c.keys[id]
+		if !ok {
+			return nil, "", fmt.Errorf("encryption key %q is not configured", id)
+		}
+		if len(value) < end+k.aead.NonceSize() {
+			return nil, "", errors.New("invalid encrypted secret")
+		}
+		nonce := value[end : end+k.aead.NonceSize()]
+		plain, err := k.aead.Open(nil, nonce, value[end+k.aead.NonceSize():], value[:end])
+		return plain, id, err
+	}
+	for _, k := range c.ordered {
+		n := k.aead.NonceSize()
+		if len(value) < n {
+			continue
+		}
+		if plain, err := k.aead.Open(nil, value[:n], value[n:], nil); err == nil {
+			return plain, "", nil
+		}
+	}
+	return nil, "", errors.New("unable to decrypt secret with configured keys")
 }
 
 func NewTOTPSecret() (string, error) {

@@ -1,6 +1,9 @@
 package authnz
 
 import (
+	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
 	"testing"
@@ -58,5 +61,63 @@ func TestRecoveryCodeHashNormalization(t *testing.T) {
 	}
 	if HashRecoveryCode(code) != HashRecoveryCode(code[:8]+code[9:]) {
 		t.Fatal("format changed recovery-code hash")
+	}
+}
+
+func TestSecretCipherKeyRotation(t *testing.T) {
+	newKey := bytes.Repeat([]byte{1}, 32)
+	oldKey := bytes.Repeat([]byte{2}, 32)
+	keyring, err := NewSecretCipherKeyring([]string{"2026-07:" + base64.StdEncoding.EncodeToString(newKey), "2026-01:" + base64.StdEncoding.EncodeToString(oldKey)}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldOnly, err := NewSecretCipherKeyring([]string{"2026-01:" + base64.StdEncoding.EncodeToString(oldKey)}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldCiphertext, err := oldOnly.Encrypt([]byte("rotate-me"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	plain, replacement, rotated, err := keyring.DecryptAndRotate(oldCiphertext)
+	if err != nil || string(plain) != "rotate-me" || !rotated || len(replacement) == 0 {
+		t.Fatalf("rotation = %q, %v, %v", plain, rotated, err)
+	}
+	plain, replacement, rotated, err = keyring.DecryptAndRotate(replacement)
+	if err != nil || string(plain) != "rotate-me" || rotated || replacement != nil {
+		t.Fatalf("primary decrypt = %q, %v, %v", plain, rotated, err)
+	}
+}
+func TestSecretCipherRejectsMissingKey(t *testing.T) {
+	first, _ := NewSecretCipherKeyring([]string{"first:" + base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{3}, 32))}, "")
+	second, _ := NewSecretCipherKeyring([]string{"second:" + base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{4}, 32))}, "")
+	ciphertext, _ := first.Encrypt([]byte("secret"))
+	if _, err := second.Decrypt(ciphertext); err == nil {
+		t.Fatal("decrypted ciphertext without its key")
+	}
+}
+
+func TestSecretCipherRotatesLegacyCiphertext(t *testing.T) {
+	oldKey := bytes.Repeat([]byte{5}, 32)
+	block, err := aes.NewCipher(oldKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	aead, err := cipher.NewGCM(block)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nonce := make([]byte, aead.NonceSize())
+	if _, err = rand.Read(nonce); err != nil {
+		t.Fatal(err)
+	}
+	legacy := aead.Seal(nonce, nonce, []byte("legacy-secret"), nil)
+	keyring, err := NewSecretCipherKeyring([]string{"current:" + base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{6}, 32)), "previous:" + base64.StdEncoding.EncodeToString(oldKey)}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	plain, replacement, rotated, err := keyring.DecryptAndRotate(legacy)
+	if err != nil || string(plain) != "legacy-secret" || !rotated || len(replacement) == 0 {
+		t.Fatalf("legacy rotation = %q, %v, %v", plain, rotated, err)
 	}
 }
