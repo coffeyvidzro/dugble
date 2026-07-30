@@ -3,6 +3,7 @@ package mfa
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -20,6 +21,7 @@ type fakeStore struct {
 	loginUser  uuid.UUID
 	tokenHash  string
 	loginStep  int64
+	loginErr   error
 }
 
 func (f *fakeStore) PutUnverified(_ context.Context, _ uuid.UUID, ciphertext []byte) error {
@@ -45,6 +47,9 @@ func (f *fakeStore) CreateLoginChallenge(_ context.Context, tokenHash string, us
 	return nil
 }
 func (f *fakeStore) GetLoginChallenge(context.Context, string) (uuid.UUID, Credential, error) {
+	if f.loginErr != nil {
+		return uuid.Nil, Credential{}, f.loginErr
+	}
 	return f.loginUser, f.credential, nil
 }
 func (f *fakeStore) ConsumeLoginTOTP(_ context.Context, _ string, _ uuid.UUID, step int64) error {
@@ -84,6 +89,20 @@ func TestBeginAndCompleteLoginTOTP(t *testing.T) {
 	}
 	if _, err := service.CompleteLoginTOTP(context.Background(), "invalid", "000000"); err == nil {
 		t.Fatal("accepted malformed login challenge")
+	}
+}
+
+func TestCompleteLoginPreservesChallengeLookupErrors(t *testing.T) {
+	t.Parallel()
+
+	lookupErr := errors.New("database unavailable")
+	service := NewService(&fakeStore{loginErr: lookupErr}, nil, "Dugble")
+
+	if _, err := service.CompleteLoginTOTP(context.Background(), loginChallengePrefix+"token", "000000"); !errors.Is(err, lookupErr) {
+		t.Fatalf("CompleteLoginTOTP() error = %v, want %v", err, lookupErr)
+	}
+	if _, err := service.CompleteLoginRecovery(context.Background(), loginChallengePrefix+"token", "recovery"); !errors.Is(err, lookupErr) {
+		t.Fatalf("CompleteLoginRecovery() error = %v, want %v", err, lookupErr)
 	}
 }
 

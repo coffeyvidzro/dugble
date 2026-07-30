@@ -8,6 +8,7 @@ const (
 	AuthenticationMethodPassword     AuthenticationMethod = "password"
 	AuthenticationMethodPasskey      AuthenticationMethod = "passkey"
 	AuthenticationMethodOIDC         AuthenticationMethod = "oidc"
+	AuthenticationMethodTOTP         AuthenticationMethod = "totp"
 	AuthenticationMethodRecoveryCode AuthenticationMethod = "recovery_code"
 )
 
