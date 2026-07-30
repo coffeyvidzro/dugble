@@ -89,6 +89,7 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 		PermissionWebhooksRead:        {},
 		PermissionWebhooksWrite:       {},
 		PermissionWorkloadsRead:       {},
+		PermissionWorkloadsWrite:      {},
 		PermissionAuditEventsRead:     {},
 		PermissionSSOManage:           {},
 		PermissionSCIMManage:          {},
