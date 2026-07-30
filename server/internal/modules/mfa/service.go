@@ -215,7 +215,10 @@ func (s *Service) CompleteLoginTOTP(ctx context.Context, challengeToken, code st
 	}
 	userID, credential, err := s.repository.GetLoginChallenge(ctx, tokenHash)
 	if err != nil {
-		return uuid.Nil, pgx.ErrNoRows
+		if errors.Is(err, pgx.ErrNoRows) {
+			return uuid.Nil, pgx.ErrNoRows
+		}
+		return uuid.Nil, err
 	}
 	step, ok := s.validateCredential(ctx, userID, credential, code)
 	if !ok || (credential.LastUsedStep != nil && step <= *credential.LastUsedStep) {
@@ -234,7 +237,10 @@ func (s *Service) CompleteLoginRecovery(ctx context.Context, challengeToken, cod
 	}
 	userID, _, err := s.repository.GetLoginChallenge(ctx, tokenHash)
 	if err != nil {
-		return uuid.Nil, pgx.ErrNoRows
+		if errors.Is(err, pgx.ErrNoRows) {
+			return uuid.Nil, pgx.ErrNoRows
+		}
+		return uuid.Nil, err
 	}
 	if err := s.repository.ConsumeLoginRecoveryCode(ctx, tokenHash, userID, authnz.HashRecoveryCode(code)); err != nil {
 		return uuid.Nil, err
