@@ -165,7 +165,7 @@ func (s *Service) CompleteMFALogin(ctx context.Context, request MFALoginRequest,
 		return LoginResponse{}, "", time.Time{}, apperrors.NewUnauthorized("MFA challenge is invalid or expired")
 	}
 	completedAt := time.Now().UTC()
-	method := authnz.AuthenticationMethodPassword
+	method := authnz.AuthenticationMethodTOTP
 	if recovery {
 		method = authnz.AuthenticationMethodRecoveryCode
 	}

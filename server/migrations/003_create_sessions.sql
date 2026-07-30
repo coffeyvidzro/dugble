@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 
     CONSTRAINT chk_sessions_credential_version CHECK (credential_version > 0),
     CONSTRAINT chk_sessions_authentication_method CHECK (
-        authentication_method IN ('password', 'passkey', 'oidc', 'recovery_code')
+        authentication_method IN ('password', 'passkey', 'oidc', 'totp', 'recovery_code')
     ),
     CONSTRAINT chk_sessions_assurance_level CHECK (
         assurance_level IN ('aal1', 'aal2', 'aal3')
