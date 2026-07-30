@@ -17,10 +17,10 @@ const marketingLinks = [
 ];
 
 const dashboardLinks = [
-    { label: "API Keys", href: "/dashboard/api-keys" },
-    { label: "Messages", href: "/dashboard/messages" },
-    { label: "Team", href: "/dashboard/team" },
-    { label: "Security", href: "/dashboard/security" },
+    { label: "API Keys", href: "/dashboard/developers/api-keys" },
+    { label: "Profile", href: "/dashboard/settings/profile" },
+    { label: "SMS", href: "/dashboard/sms" },
+    { label: "Wallet", href: "/dashboard/billing/wallet" },
 ];
 
 export default function NotFound() {
