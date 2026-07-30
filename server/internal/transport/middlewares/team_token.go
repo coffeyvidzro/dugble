@@ -56,12 +56,6 @@ func TeamToken(config TeamTokenConfig) echo.MiddlewareFunc {
 			if !ok {
 				return httputil.Error(c, apperrors.NewUnauthorized("Team token is invalid"))
 			}
-			if config.Required != "" && !tenant.HasPermission(permissions, config.Required) {
-				return httputil.Error(
-					c,
-					apperrors.NewForbidden("Team token permission is required"),
-				)
-			}
 			tokenID, err := uuid.Parse(token.ID)
 			if err != nil {
 				return httputil.Error(c, apperrors.NewUnauthorized("Team token is invalid"))
@@ -71,17 +65,14 @@ func TeamToken(config TeamTokenConfig) echo.MiddlewareFunc {
 				return httputil.Error(c, apperrors.NewUnauthorized("Team token is invalid"))
 			}
 			_ = config.Tokens.Touch(c.Request().Context(), tokenID)
-			ctx := tenant.ContextWithTenant(
-				c.Request().Context(),
-				tenant.Context{
-					TeamID:      teamID,
-					ActorType:   tenant.ActorTypeTeamToken,
-					TokenID:     tokenID,
-					Role:        string(tenant.ActorTypeTeamToken),
-					Status:      tenant.StatusActive,
-					Permissions: permissions,
-				},
-			)
+			access := tenant.AccessContext{
+				Actor: tenant.Actor{Type: tenant.ActorTypeTeamToken, TokenID: tokenID},
+				Scope: tenant.Scope{TeamID: teamID, Status: tenant.StatusActive, Permissions: permissions},
+			}
+			if decision := tenant.Authorize(access, config.Required); !decision.Allowed {
+				return httputil.Error(c, apperrors.NewForbidden(decision.Reason))
+			}
+			ctx := tenant.ContextWithAccess(c.Request().Context(), access)
 			c.SetRequest(c.Request().WithContext(ctx))
 			return next(c)
 		}

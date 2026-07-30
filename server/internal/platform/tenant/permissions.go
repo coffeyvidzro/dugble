@@ -108,10 +108,3 @@ func HasPermission(permissions []Permission, permission Permission) bool {
 	}
 	return false
 }
-
-func ContextCan(tenantContext Context, permission Permission) bool {
-	if HasPermission(tenantContext.Permissions, permission) {
-		return true
-	}
-	return Can(tenantContext.Role, permission)
-}

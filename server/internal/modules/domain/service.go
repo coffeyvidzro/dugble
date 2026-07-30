@@ -33,7 +33,7 @@ func (s *Service) List(ctx context.Context) ([]SenderDomain, error) {
 	if err != nil {
 		return nil, err
 	}
-	domains, err := s.repository.List(ctx, tc.TeamID)
+	domains, err := s.repository.List(ctx, tc.Scope.TeamID)
 	if err != nil {
 		return nil, apperrors.NewInternal("Unable to list sender domains", err)
 	}
@@ -49,7 +49,7 @@ func (s *Service) Get(ctx context.Context, domainID string) (SenderDomain, error
 	if err != nil {
 		return SenderDomain{}, err
 	}
-	domain, err := s.repository.Get(ctx, id, tc.TeamID)
+	domain, err := s.repository.Get(ctx, id, tc.Scope.TeamID)
 	if err != nil {
 		return SenderDomain{}, apperrors.NewNotFound("Sender domain not found")
 	}
@@ -69,7 +69,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (SenderDomain, 
 		return SenderDomain{}, apperrors.NewInternal("Sender domain provider is not configured", nil)
 	}
 
-	domain, err := s.repository.Create(ctx, tc.TeamID, domainName, DefaultProvider, region, []VerificationRecord{}, tc.UserID)
+	domain, err := s.repository.Create(ctx, tc.Scope.TeamID, domainName, DefaultProvider, region, []VerificationRecord{}, tc.Actor.UserID)
 	if err != nil {
 		if errors.Is(err, ErrSenderDomainAlreadyExists) {
 			return SenderDomain{}, apperrors.NewConflict("Sender domain already exists")
@@ -82,10 +82,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (SenderDomain, 
 	})
 	if provisionErr != nil {
 		reason := provisionErr.Error()
-		_, _ = s.repository.UpdateVerification(ctx, uuid.MustParse(domain.ID), tc.TeamID, StatusFailed, []VerificationRecord{}, &reason)
+		_, _ = s.repository.UpdateVerification(ctx, uuid.MustParse(domain.ID), tc.Scope.TeamID, StatusFailed, []VerificationRecord{}, &reason)
 		return SenderDomain{}, apperrors.NewInternal("Unable to provision sender domain", provisionErr)
 	}
-	updated, err := s.repository.UpdateVerification(ctx, uuid.MustParse(domain.ID), tc.TeamID, StatusPending, records, nil)
+	updated, err := s.repository.UpdateVerification(ctx, uuid.MustParse(domain.ID), tc.Scope.TeamID, StatusPending, records, nil)
 	if err != nil {
 		return SenderDomain{}, apperrors.NewInternal("Unable to save sender domain verification records", err)
 	}
@@ -101,7 +101,7 @@ func (s *Service) Verify(ctx context.Context, domainID string) (SenderDomain, er
 	if err != nil {
 		return SenderDomain{}, err
 	}
-	domain, err := s.repository.Get(ctx, id, tc.TeamID)
+	domain, err := s.repository.Get(ctx, id, tc.Scope.TeamID)
 	if err != nil {
 		return SenderDomain{}, apperrors.NewNotFound("Sender domain not found")
 	}
@@ -115,7 +115,7 @@ func (s *Service) Verify(ctx context.Context, domainID string) (SenderDomain, er
 	result, checkErr := s.Check(ctx, domain)
 	if domain.Status == StatusVerified {
 		records, reason := manualHealthObservation(domain, result, checkErr)
-		updated, updateErr := s.repository.UpdateManualHealthCheck(ctx, id, tc.TeamID, records, reason)
+		updated, updateErr := s.repository.UpdateManualHealthCheck(ctx, id, tc.Scope.TeamID, records, reason)
 		if updateErr != nil {
 			return SenderDomain{}, apperrors.NewInternal("Unable to update sender domain health", updateErr)
 		}
@@ -123,14 +123,14 @@ func (s *Service) Verify(ctx context.Context, domainID string) (SenderDomain, er
 	}
 	if checkErr != nil {
 		reason := checkErr.Error()
-		updated, updateErr := s.repository.UpdateVerification(ctx, id, tc.TeamID, StatusFailed, domain.VerificationRecords, &reason)
+		updated, updateErr := s.repository.UpdateVerification(ctx, id, tc.Scope.TeamID, StatusFailed, domain.VerificationRecords, &reason)
 		if updateErr != nil {
 			return SenderDomain{}, apperrors.NewInternal("Unable to update sender domain verification", updateErr)
 		}
 		return updated, nil
 	}
 
-	updated, err := s.repository.UpdateVerification(ctx, id, tc.TeamID, result.Status, result.VerificationRecords, nil)
+	updated, err := s.repository.UpdateVerification(ctx, id, tc.Scope.TeamID, result.Status, result.VerificationRecords, nil)
 	if err != nil {
 		return SenderDomain{}, apperrors.NewInternal("Unable to update sender domain verification", err)
 	}
@@ -195,20 +195,17 @@ func (s *Service) Delete(ctx context.Context, domainID string) (SenderDomain, er
 	if err != nil {
 		return SenderDomain{}, err
 	}
-	domain, err := s.repository.Delete(ctx, id, tc.TeamID)
+	domain, err := s.repository.Delete(ctx, id, tc.Scope.TeamID)
 	if err != nil {
 		return SenderDomain{}, apperrors.NewNotFound("Sender domain not found")
 	}
 	return domain, nil
 }
 
-func requireTenantPermission(ctx context.Context, permission tenant.Permission) (tenant.Context, error) {
-	tc, ok := tenant.FromContext(ctx)
-	if !ok {
-		return tenant.Context{}, apperrors.NewUnauthorized("Tenant context is required")
-	}
-	if !tenant.ContextCan(tc, permission) {
-		return tenant.Context{}, apperrors.NewForbidden("Sender domain permission is required")
+func requireTenantPermission(ctx context.Context, permission tenant.Permission) (tenant.AccessContext, error) {
+	tc, decision := tenant.ResolveAccess(ctx, permission)
+	if !decision.Allowed {
+		return tenant.AccessContext{}, apperrors.NewForbidden(decision.Reason)
 	}
 	return tc, nil
 }

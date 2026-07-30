@@ -11,7 +11,7 @@ import (
 )
 
 // TenantAccess authenticates a tenant-scoped request from either a dashboard
-// session or a team API token, then stores tenant.Context for downstream
+// session or a team API token, then stores tenant.AccessContext for downstream
 // handlers and services.
 type TenantAccessConfig struct {
 	Sessions     SessionStore

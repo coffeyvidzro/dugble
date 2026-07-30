@@ -64,18 +64,23 @@ func Tenant(config TenantConfig) echo.MiddlewareFunc {
 					apperrors.NewForbidden("Active team membership is required"),
 				)
 			}
-			if config.Required != "" && !tenant.Can(membership.Role, config.Required) {
-				return httputil.Error(c, apperrors.NewForbidden("Team permission is required"))
+			access := tenant.AccessContext{
+				Actor: tenant.Actor{
+					Type:      tenant.ActorTypeUser,
+					UserID:    membership.UserID,
+					SessionID: principal.SessionID,
+				},
+				Scope: tenant.Scope{
+					TeamID: membership.TeamID,
+					Role:   membership.Role,
+					Status: membership.Status,
+				},
+			}
+			if decision := tenant.Authorize(access, config.Required); !decision.Allowed {
+				return httputil.Error(c, apperrors.NewForbidden(decision.Reason))
 			}
 
-			tenantContext := tenant.Context{
-				TeamID:    membership.TeamID,
-				ActorType: tenant.ActorTypeUser,
-				UserID:    membership.UserID,
-				Role:      membership.Role,
-				Status:    membership.Status,
-			}
-			ctx := tenant.ContextWithTenant(c.Request().Context(), tenantContext)
+			ctx := tenant.ContextWithAccess(c.Request().Context(), access)
 			c.SetRequest(c.Request().WithContext(ctx))
 			return next(c)
 		}

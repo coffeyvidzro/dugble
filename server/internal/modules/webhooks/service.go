@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/coffeyvidzro/dugble/server/internal/platform/audit"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 	platformwebhook "github.com/coffeyvidzro/dugble/server/internal/platform/webhook"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
@@ -39,11 +39,11 @@ func (s *Service) CreateEndpoint(ctx context.Context, req CreateEndpointRequest)
 	if err != nil {
 		return CreatedEndpoint{}, apperrors.NewInternal("Unable to generate webhook signing secret", err)
 	}
-	endpoint, err := s.repository.CreateEndpoint(ctx, tenantContext.TeamID, validated, []byte(secret))
+	endpoint, err := s.repository.CreateEndpoint(ctx, tenantContext.Scope.TeamID, validated, []byte(secret))
 	if err != nil {
 		return CreatedEndpoint{}, apperrors.NewInternal("Unable to create webhook endpoint", err)
 	}
-	slog.Info("webhook endpoint created", "team_id", tenantContext.TeamID, "endpoint_id", endpoint.ID)
+	audit.Record(ctx, tenantContext, audit.Event{Action: "webhook_endpoint.created", ResourceType: "webhook_endpoint", ResourceID: endpoint.ID})
 	return CreatedEndpoint{Endpoint: endpoint, SigningSecret: secret}, nil
 }
 
@@ -53,7 +53,7 @@ func (s *Service) ListEndpoints(ctx context.Context, req ListRequest) ([]Endpoin
 		return nil, err
 	}
 	normalizeListRequest(&req)
-	endpoints, err := s.repository.ListEndpoints(ctx, tenantContext.TeamID, req.Limit, req.Offset)
+	endpoints, err := s.repository.ListEndpoints(ctx, tenantContext.Scope.TeamID, req.Limit, req.Offset)
 	if err != nil {
 		return nil, apperrors.NewInternal("Unable to list webhook endpoints", err)
 	}
@@ -69,7 +69,7 @@ func (s *Service) GetEndpoint(ctx context.Context, value string) (Endpoint, erro
 	if err != nil {
 		return Endpoint{}, err
 	}
-	endpoint, err := s.repository.GetEndpoint(ctx, id, tenantContext.TeamID)
+	endpoint, err := s.repository.GetEndpoint(ctx, id, tenantContext.Scope.TeamID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Endpoint{}, apperrors.NewNotFound("Webhook endpoint not found")
 	}
@@ -88,7 +88,7 @@ func (s *Service) UpdateEndpoint(ctx context.Context, value string, req UpdateEn
 	if err != nil {
 		return Endpoint{}, err
 	}
-	current, err := s.repository.GetEndpoint(ctx, id, tenantContext.TeamID)
+	current, err := s.repository.GetEndpoint(ctx, id, tenantContext.Scope.TeamID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Endpoint{}, apperrors.NewNotFound("Webhook endpoint not found")
 	}
@@ -99,14 +99,14 @@ func (s *Service) UpdateEndpoint(ctx context.Context, value string, req UpdateEn
 	if err != nil {
 		return Endpoint{}, err
 	}
-	endpoint, err := s.repository.UpdateEndpoint(ctx, id, tenantContext.TeamID, validated)
+	endpoint, err := s.repository.UpdateEndpoint(ctx, id, tenantContext.Scope.TeamID, validated)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Endpoint{}, apperrors.NewNotFound("Webhook endpoint not found")
 	}
 	if err != nil {
 		return Endpoint{}, apperrors.NewInternal("Unable to update webhook endpoint", err)
 	}
-	slog.Info("webhook endpoint updated", "team_id", tenantContext.TeamID, "endpoint_id", endpoint.ID)
+	audit.Record(ctx, tenantContext, audit.Event{Action: "webhook_endpoint.updated", ResourceType: "webhook_endpoint", ResourceID: endpoint.ID})
 	return endpoint, nil
 }
 
@@ -119,14 +119,14 @@ func (s *Service) DeleteEndpoint(ctx context.Context, value string) error {
 	if err != nil {
 		return err
 	}
-	endpoint, err := s.repository.DisableEndpoint(ctx, id, tenantContext.TeamID)
+	endpoint, err := s.repository.DisableEndpoint(ctx, id, tenantContext.Scope.TeamID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return apperrors.NewNotFound("Webhook endpoint not found")
 	}
 	if err != nil {
 		return apperrors.NewInternal("Unable to disable webhook endpoint", err)
 	}
-	slog.Info("webhook endpoint disabled", "team_id", tenantContext.TeamID, "endpoint_id", endpoint.ID)
+	audit.Record(ctx, tenantContext, audit.Event{Action: "webhook_endpoint.disabled", ResourceType: "webhook_endpoint", ResourceID: endpoint.ID})
 	return nil
 }
 
@@ -143,14 +143,14 @@ func (s *Service) RotateSecret(ctx context.Context, value string) (CreatedEndpoi
 	if err != nil {
 		return CreatedEndpoint{}, apperrors.NewInternal("Unable to generate webhook signing secret", err)
 	}
-	endpoint, err := s.repository.RotateSecret(ctx, id, tenantContext.TeamID, []byte(secret))
+	endpoint, err := s.repository.RotateSecret(ctx, id, tenantContext.Scope.TeamID, []byte(secret))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return CreatedEndpoint{}, apperrors.NewNotFound("Webhook endpoint not found")
 	}
 	if err != nil {
 		return CreatedEndpoint{}, apperrors.NewInternal("Unable to rotate webhook signing secret", err)
 	}
-	slog.Info("webhook endpoint secret rotated", "team_id", tenantContext.TeamID, "endpoint_id", endpoint.ID)
+	audit.Record(ctx, tenantContext, audit.Event{Action: "webhook_endpoint.secret_rotated", ResourceType: "webhook_endpoint", ResourceID: endpoint.ID})
 	return CreatedEndpoint{Endpoint: endpoint, SigningSecret: secret}, nil
 }
 
@@ -163,7 +163,7 @@ func (s *Service) TestEndpoint(ctx context.Context, value string) (Delivery, err
 	if err != nil {
 		return Delivery{}, err
 	}
-	endpoint, err := s.repository.GetEndpoint(ctx, endpointID, tenantContext.TeamID)
+	endpoint, err := s.repository.GetEndpoint(ctx, endpointID, tenantContext.Scope.TeamID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Delivery{}, apperrors.NewNotFound("Webhook endpoint not found")
 	}
@@ -185,7 +185,7 @@ func (s *Service) TestEndpoint(ctx context.Context, value string) (Delivery, err
 	err = s.repository.InTransaction(ctx, func(tx pgx.Tx) error {
 		_, createdDeliveryID, emitErr := s.emitter.EmitToEndpointTx(ctx, tx, platformwebhook.Event{
 			ID:         uuid.New(),
-			TeamID:     tenantContext.TeamID,
+			TeamID:     tenantContext.Scope.TeamID,
 			Type:       platformwebhook.EventTest,
 			ObjectType: "webhook_endpoint",
 			ObjectID:   &endpointID,
@@ -198,7 +198,7 @@ func (s *Service) TestEndpoint(ctx context.Context, value string) (Delivery, err
 	if err != nil {
 		return Delivery{}, apperrors.NewInternal("Unable to create webhook test delivery", err)
 	}
-	delivery, err := s.repository.GetDelivery(ctx, deliveryID, tenantContext.TeamID)
+	delivery, err := s.repository.GetDelivery(ctx, deliveryID, tenantContext.Scope.TeamID)
 	if err != nil {
 		return Delivery{}, apperrors.NewInternal("Unable to get webhook test delivery", err)
 	}
@@ -211,7 +211,7 @@ func (s *Service) ListEvents(ctx context.Context, req ListRequest) ([]Event, err
 		return nil, err
 	}
 	normalizeListRequest(&req)
-	events, err := s.repository.ListEvents(ctx, tenantContext.TeamID, req.Limit, req.Offset)
+	events, err := s.repository.ListEvents(ctx, tenantContext.Scope.TeamID, req.Limit, req.Offset)
 	if err != nil {
 		return nil, apperrors.NewInternal("Unable to list webhook events", err)
 	}
@@ -227,7 +227,7 @@ func (s *Service) GetEvent(ctx context.Context, value string) (Event, error) {
 	if err != nil {
 		return Event{}, err
 	}
-	event, err := s.repository.GetEvent(ctx, id, tenantContext.TeamID)
+	event, err := s.repository.GetEvent(ctx, id, tenantContext.Scope.TeamID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Event{}, apperrors.NewNotFound("Webhook event not found")
 	}
@@ -246,7 +246,7 @@ func (s *Service) GetDelivery(ctx context.Context, value string) (Delivery, erro
 	if err != nil {
 		return Delivery{}, err
 	}
-	delivery, err := s.repository.GetDelivery(ctx, id, tenantContext.TeamID)
+	delivery, err := s.repository.GetDelivery(ctx, id, tenantContext.Scope.TeamID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Delivery{}, apperrors.NewNotFound("Webhook delivery not found")
 	}
@@ -265,24 +265,21 @@ func (s *Service) RetryDelivery(ctx context.Context, value string) (Delivery, er
 	if err != nil {
 		return Delivery{}, err
 	}
-	delivery, err := s.repository.RetryDelivery(ctx, id, tenantContext.TeamID)
+	delivery, err := s.repository.RetryDelivery(ctx, id, tenantContext.Scope.TeamID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Delivery{}, apperrors.NewNotFound("Failed webhook delivery not found")
 	}
 	if err != nil {
 		return Delivery{}, apperrors.NewInternal("Unable to retry webhook delivery", err)
 	}
-	slog.Info("webhook delivery retried", "team_id", tenantContext.TeamID, "delivery_id", delivery.ID)
+	audit.Record(ctx, tenantContext, audit.Event{Action: "webhook_delivery.retried", ResourceType: "webhook_delivery", ResourceID: delivery.ID})
 	return delivery, nil
 }
 
-func requireTenant(ctx context.Context, permission tenant.Permission) (tenant.Context, error) {
-	tenantContext, ok := tenant.FromContext(ctx)
-	if !ok {
-		return tenant.Context{}, apperrors.NewForbidden("Team context is required")
-	}
-	if !tenant.ContextCan(tenantContext, permission) {
-		return tenant.Context{}, apperrors.NewForbidden("Team permission is required")
+func requireTenant(ctx context.Context, permission tenant.Permission) (tenant.AccessContext, error) {
+	tenantContext, decision := tenant.ResolveAccess(ctx, permission)
+	if !decision.Allowed {
+		return tenant.AccessContext{}, apperrors.NewForbidden(decision.Reason)
 	}
 	return tenantContext, nil
 }

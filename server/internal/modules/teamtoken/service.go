@@ -2,12 +2,12 @@ package teamtoken
 
 import (
 	"context"
-	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/coffeyvidzro/dugble/server/internal/platform/audit"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
@@ -43,7 +43,7 @@ func (s *Service) List(ctx context.Context) ([]Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	tokens, err := s.repository.List(ctx, tenantContext.TeamID)
+	tokens, err := s.repository.List(ctx, tenantContext.Scope.TeamID)
 	if err != nil {
 		return nil, apperrors.NewInternal("Unable to list team tokens", err)
 	}
@@ -68,28 +68,18 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (CreatedToken, 
 	}
 	token, err := s.repository.Create(
 		ctx,
-		tenantContext.TeamID,
+		tenantContext.Scope.TeamID,
 		name,
 		authnz.HashSessionToken(secret),
 		tokenDisplayPrefix(secret),
 		permissions,
-		tenantContext.UserID,
+		tenantContext.Actor.UserID,
 		expiresAt,
 	)
 	if err != nil {
 		return CreatedToken{}, apperrors.NewInternal("Unable to create team token", err)
 	}
-	slog.Info(
-		"team token created",
-		"team_id",
-		token.TeamID,
-		"token_id",
-		token.ID,
-		"token_prefix",
-		token.TokenPrefix,
-		"actor_user_id",
-		tenantContext.UserID.String(),
-	)
+	audit.Record(ctx, tenantContext, audit.Event{Action: "team_token.created", ResourceType: "team_token", ResourceID: token.ID, Metadata: map[string]any{"token_prefix": token.TokenPrefix}})
 	return CreatedToken{Token: token, Secret: secret}, nil
 }
 
@@ -112,7 +102,7 @@ func (s *Service) Update(ctx context.Context, tokenID string, req UpdateRequest)
 	token, err := s.repository.Update(
 		ctx,
 		parsedTokenID,
-		tenantContext.TeamID,
+		tenantContext.Scope.TeamID,
 		name,
 		permissions,
 		expiresAt,
@@ -120,17 +110,7 @@ func (s *Service) Update(ctx context.Context, tokenID string, req UpdateRequest)
 	if err != nil {
 		return Token{}, apperrors.NewNotFound("Team token not found")
 	}
-	slog.Info(
-		"team token updated",
-		"team_id",
-		token.TeamID,
-		"token_id",
-		token.ID,
-		"token_prefix",
-		token.TokenPrefix,
-		"actor_user_id",
-		tenantContext.UserID.String(),
-	)
+	audit.Record(ctx, tenantContext, audit.Event{Action: "team_token.updated", ResourceType: "team_token", ResourceID: token.ID, Metadata: map[string]any{"token_prefix": token.TokenPrefix}})
 	return token, nil
 }
 
@@ -146,40 +126,27 @@ func (s *Service) Revoke(ctx context.Context, tokenID string) (Token, error) {
 	if err != nil {
 		return Token{}, apperrors.NewBadRequest("Token id must be a valid UUID")
 	}
-	token, err := s.repository.Revoke(ctx, parsedTokenID, tenantContext.TeamID)
+	token, err := s.repository.Revoke(ctx, parsedTokenID, tenantContext.Scope.TeamID)
 	if err != nil {
 		return Token{}, apperrors.NewNotFound("Team token not found")
 	}
-	slog.Info(
-		"team token revoked",
-		"team_id",
-		token.TeamID,
-		"token_id",
-		token.ID,
-		"token_prefix",
-		token.TokenPrefix,
-		"actor_user_id",
-		tenantContext.UserID.String(),
-	)
+	audit.Record(ctx, tenantContext, audit.Event{Action: "team_token.revoked", ResourceType: "team_token", ResourceID: token.ID, Metadata: map[string]any{"token_prefix": token.TokenPrefix}})
 	return token, nil
 }
 
 func requireTenantPermission(
 	ctx context.Context,
 	permission tenant.Permission,
-) (tenant.Context, error) {
-	tenantContext, ok := tenant.FromContext(ctx)
-	if !ok {
-		return tenant.Context{}, apperrors.NewForbidden("Team context is required")
-	}
-	if !tenant.ContextCan(tenantContext, permission) {
-		return tenant.Context{}, apperrors.NewForbidden("Team permission is required")
+) (tenant.AccessContext, error) {
+	tenantContext, decision := tenant.ResolveAccess(ctx, permission)
+	if !decision.Allowed {
+		return tenant.AccessContext{}, apperrors.NewForbidden(decision.Reason)
 	}
 	return tenantContext, nil
 }
 
-func requireOwner(tenantContext tenant.Context) error {
-	if tenantContext.Role != tenant.RoleOwner {
+func requireOwner(tenantContext tenant.AccessContext) error {
+	if tenantContext.Scope.Role != tenant.RoleOwner {
 		return apperrors.NewForbidden("Team owner role is required")
 	}
 	return nil

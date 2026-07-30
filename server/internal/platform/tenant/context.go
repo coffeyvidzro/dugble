@@ -15,27 +15,36 @@ const (
 	ActorTypeTeamToken ActorType = "team_token"
 )
 
-type Context struct {
+type Actor struct {
+	Type      ActorType
+	UserID    uuid.UUID
+	SessionID string
+	TokenID   uuid.UUID
+}
+
+func (a Actor) IsUser() bool { return a.Type == ActorTypeUser && a.UserID != uuid.Nil }
+
+func (a Actor) IsTeamToken() bool {
+	return a.Type == ActorTypeTeamToken && a.TokenID != uuid.Nil
+}
+
+type Scope struct {
 	TeamID      uuid.UUID
-	ActorType   ActorType
-	UserID      uuid.UUID
 	Role        string
 	Status      string
-	TokenID     uuid.UUID
 	Permissions []Permission
 }
 
-func (c Context) IsUser() bool { return c.ActorType == ActorTypeUser || c.UserID != uuid.Nil }
-
-func (c Context) IsTeamToken() bool {
-	return c.ActorType == ActorTypeTeamToken || c.TokenID != uuid.Nil
+type AccessContext struct {
+	Actor Actor
+	Scope Scope
 }
 
-func ContextWithTenant(ctx context.Context, tenantContext Context) context.Context {
-	return context.WithValue(ctx, contextKey{}, tenantContext)
+func ContextWithAccess(ctx context.Context, access AccessContext) context.Context {
+	return context.WithValue(ctx, contextKey{}, access)
 }
 
-func FromContext(ctx context.Context) (Context, bool) {
-	tenantContext, ok := ctx.Value(contextKey{}).(Context)
-	return tenantContext, ok
+func AccessFromContext(ctx context.Context) (AccessContext, bool) {
+	access, ok := ctx.Value(contextKey{}).(AccessContext)
+	return access, ok
 }
