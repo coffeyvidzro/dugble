@@ -25,23 +25,23 @@ export const metadata: Metadata = {
 const quickStart = [
     {
         title: "Create workspace",
-        href: "/dashboard/settings",
+        href: "/dashboard/create-workspace",
     },
     {
         title: "Generate API key",
-        href: "/dashboard/api-keys",
+        href: "/dashboard/developers/api-keys",
     },
     {
-        title: "Send test email",
-        href: "/dashboard/messages/email",
+        title: "Send email",
+        href: "/dashboard/email/emails",
     },
     {
-        title: "Send test SMS",
-        href: "/dashboard/messages/sms",
+        title: "Send SMS",
+        href: "/dashboard/sms/send",
     },
     {
         title: "Configure webhook",
-        href: "/dashboard/webhooks",
+        href: "/dashboard/developers/webhooks",
     },
 ];
 
@@ -77,7 +77,7 @@ export default async function Page() {
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
             <div>
                 <p className="text-muted-foreground text-sm">Overview</p>
-                <h1 className="font-heading text-3xl font-semibold tracking-tight">
+                <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
                     Welcome back, {displayName}
                 </h1>
                 <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
@@ -86,7 +86,7 @@ export default async function Page() {
                 </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
                 {stats.map((stat, i) => (
                     <Card
                         key={stat.label}
@@ -109,7 +109,7 @@ export default async function Page() {
                 ))}
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
+            <div className="grid gap-4 lg:grid-cols-[1fr_0.8fr] lg:gap-6">
                 <Card>
                     <CardHeader>
                         <div className="flex items-center justify-between">
@@ -153,7 +153,7 @@ export default async function Page() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <div className="grid grid-cols-4 border-y bg-muted/20 px-4 py-2 font-mono text-[11px] text-muted-foreground">
+                        <div className="grid grid-cols-4 border-y bg-muted/20 px-3 py-2 font-mono text-[11px] text-muted-foreground sm:px-4">
                             <span>Message</span>
                             <span>Channel</span>
                             <span>Status</span>
