@@ -1,8 +1,6 @@
-// src/components/dashboard/workspace/create-workspace-form.tsx
-
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { memo, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -47,7 +45,11 @@ import {
     type FormValues,
 } from "./create-workspace-schema";
 
-function FieldStatus({ visible }: { visible: boolean }) {
+const FieldStatus = memo(function FieldStatus({
+    visible,
+}: {
+    visible: boolean;
+}) {
     return (
         <Check
             aria-hidden
@@ -57,7 +59,7 @@ function FieldStatus({ visible }: { visible: boolean }) {
             )}
         />
     );
-}
+});
 
 // Reusable Form Components
 
@@ -73,7 +75,7 @@ type InputFieldProps = {
     showStatus?: boolean;
 };
 
-function CustomInputField({
+const CustomInputField = memo(function CustomInputField({
     name,
     label,
     id,
@@ -90,11 +92,29 @@ function CustomInputField({
         <Controller
             name={name}
             control={control}
-            render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor={id}>{label}</FieldLabel>
-                    {showStatus ? (
-                        <div className="relative">
+            render={({ field, fieldState }) => {
+                const isFieldValueValid =
+                    !fieldState.invalid &&
+                    typeof field.value === "string" &&
+                    field.value.trim().length > 0;
+
+                return (
+                    <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor={id}>{label}</FieldLabel>
+                        {showStatus ? (
+                            <div className="relative">
+                                <Input
+                                    {...field}
+                                    id={id}
+                                    type={type}
+                                    aria-invalid={fieldState.invalid}
+                                    placeholder={placeholder}
+                                    disabled={loading}
+                                    className={className}
+                                />
+                                <FieldStatus visible={isFieldValueValid} />
+                            </div>
+                        ) : (
                             <Input
                                 {...field}
                                 id={id}
@@ -104,36 +124,22 @@ function CustomInputField({
                                 disabled={loading}
                                 className={className}
                             />
-                            <FieldStatus
-                                visible={
-                                    !fieldState.invalid &&
-                                    Boolean(field.value?.trim())
-                                }
-                            />
-                        </div>
-                    ) : (
-                        <Input
-                            {...field}
-                            id={id}
-                            type={type}
-                            aria-invalid={fieldState.invalid}
-                            placeholder={placeholder}
-                            disabled={loading}
-                            className={className}
-                        />
-                    )}
-                    {fieldState.invalid ? (
-                        <FieldError errors={[fieldState.error]} />
-                    ) : (
-                        description && (
-                            <FieldDescription>{description}</FieldDescription>
-                        )
-                    )}
-                </Field>
-            )}
+                        )}
+                        {fieldState.invalid ? (
+                            <FieldError errors={[fieldState.error]} />
+                        ) : (
+                            description && (
+                                <FieldDescription>
+                                    {description}
+                                </FieldDescription>
+                            )
+                        )}
+                    </Field>
+                );
+            }}
         />
     );
-}
+});
 
 type SelectFieldProps = {
     name: keyof FormValues;
@@ -145,7 +151,7 @@ type SelectFieldProps = {
     description?: string;
 };
 
-function CustomSelectField({
+const CustomSelectField = memo(function CustomSelectField({
     name,
     label,
     id,
@@ -194,9 +200,68 @@ function CustomSelectField({
             )}
         />
     );
-}
+});
 
-//Main Form Component
+// Progress bar indicator component to isolate field watching
+const FormProgressIndicator = memo(function FormProgressIndicator({
+    variant = "desktop",
+}: {
+    variant?: "mobile" | "desktop";
+}) {
+    const { control } = useFormContext<FormValues>();
+    const watchedValues = useWatch({
+        control,
+        name: requiredFieldKeys,
+    });
+
+    const totalCount = requiredFieldKeys.length;
+    const completedCount = Array.isArray(watchedValues)
+        ? watchedValues.filter((val) =>
+              Boolean(typeof val === "string" ? val.trim() : val),
+          ).length
+        : 0;
+    const progress = Math.round((completedCount / totalCount) * 100);
+
+    if (variant === "mobile") {
+        return (
+            <div className="space-y-2.5 sm:hidden">
+                <div className="flex items-center justify-between">
+                    <Link
+                        href="/dashboard"
+                        className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                        Cancel
+                    </Link>
+                    <span className="font-mono text-[11px] text-muted-foreground">
+                        {completedCount}/{totalCount} fields
+                    </span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                        className="h-full rounded-full bg-signal transition-[width] duration-500 ease-out"
+                        style={{ width: `${progress}%` }}
+                    />
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="hidden min-w-40 flex-1 items-center gap-3 sm:flex">
+            <div className="h-1.5 w-full max-w-40 overflow-hidden rounded-full bg-muted">
+                <div
+                    className="h-full rounded-full bg-signal transition-[width] duration-500 ease-out"
+                    style={{ width: `${progress}%` }}
+                />
+            </div>
+            <span className="whitespace-nowrap font-mono text-xs text-muted-foreground">
+                {completedCount}/{totalCount} fields
+            </span>
+        </div>
+    );
+});
+
+// Main Form Component
 
 export function CreateWorkspaceForm() {
     const router = useRouter();
@@ -219,13 +284,6 @@ export function CreateWorkspaceForm() {
         },
     });
 
-    const watched = useWatch({ control: form.control });
-    const completedCount = requiredFieldKeys.filter((key) =>
-        Boolean(watched?.[key]?.toString().trim()),
-    ).length;
-    const totalCount = requiredFieldKeys.length;
-    const progress = Math.round((completedCount / totalCount) * 100);
-
     async function onSubmit(data: FormValues) {
         setLoading(true);
         try {
@@ -240,6 +298,7 @@ export function CreateWorkspaceForm() {
                 toast.error(
                     error?.error?.message ?? "Unable to create workspace.",
                 );
+                setLoading(false);
                 return;
             }
 
@@ -248,22 +307,26 @@ export function CreateWorkspaceForm() {
             router.refresh();
         } catch {
             toast.error("Unable to create workspace. Please try again.");
-        } finally {
             setLoading(false);
         }
     }
+
+    // Reference handler to avoid stale closures
+    const handleSubmitRef = useRef(form.handleSubmit(onSubmit));
+    useEffect(() => {
+        handleSubmitRef.current = form.handleSubmit(onSubmit);
+    }, [form, onSubmit]);
 
     useEffect(() => {
         function handleKeyDown(event: KeyboardEvent) {
             if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
                 event.preventDefault();
-                void form.handleSubmit(onSubmit)();
+                void handleSubmitRef.current();
             }
         }
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [form]);
+    }, []);
 
     return (
         <FormProvider {...form}>
@@ -395,23 +458,7 @@ export function CreateWorkspaceForm() {
                 <div className="sticky bottom-0 inset-x-0 z-30 -mx-4 mt-8 border-t border-border/60 bg-background/95 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-lg shadow-black/4 backdrop-blur-md sm:mx-0 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:rounded-2xl sm:border sm:bottom-4 sm:px-5 sm:py-4">
                     {/* Mobile layout */}
                     <div className="space-y-2.5 sm:hidden">
-                        <div className="flex items-center justify-between">
-                            <Link
-                                href="/dashboard"
-                                className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-                            >
-                                Cancel
-                            </Link>
-                            <span className="font-mono text-[11px] text-muted-foreground">
-                                {completedCount}/{totalCount} fields
-                            </span>
-                        </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                            <div
-                                className="h-full rounded-full bg-signal transition-[width] duration-500 ease-out"
-                                style={{ width: `${progress}%` }}
-                            />
-                        </div>
+                        <FormProgressIndicator variant="mobile" />
                         <Button
                             type="submit"
                             form="create-business-form"
@@ -430,17 +477,7 @@ export function CreateWorkspaceForm() {
                     </div>
 
                     {/* Desktop / tablet layout */}
-                    <div className="hidden min-w-40 flex-1 items-center gap-3 sm:flex">
-                        <div className="h-1.5 w-full max-w-40 overflow-hidden rounded-full bg-muted">
-                            <div
-                                className="h-full rounded-full bg-signal transition-[width] duration-500 ease-out"
-                                style={{ width: `${progress}%` }}
-                            />
-                        </div>
-                        <span className="whitespace-nowrap font-mono text-xs text-muted-foreground">
-                            {completedCount}/{totalCount} fields
-                        </span>
-                    </div>
+                    <FormProgressIndicator variant="desktop" />
 
                     <div className="hidden items-center justify-end gap-3 sm:flex">
                         <Link
