@@ -69,6 +69,24 @@ func (h *Handler) Login(c *echo.Context) error {
 	if err != nil {
 		return httputil.Error(c, err)
 	}
+	if token != "" {
+		h.setSessionCookie(c, token, expiresAt)
+	}
+	return httputil.OK(c, response)
+}
+
+func (h *Handler) CompleteMFATOTP(c *echo.Context) error     { return h.completeMFALogin(c, false) }
+func (h *Handler) CompleteMFARecovery(c *echo.Context) error { return h.completeMFALogin(c, true) }
+
+func (h *Handler) completeMFALogin(c *echo.Context, recovery bool) error {
+	var req MFALoginRequest
+	if err := decodeJSON(c, &req); err != nil {
+		return err
+	}
+	response, token, expiresAt, err := h.service.CompleteMFALogin(c.Request().Context(), req, recovery, stringPtr(c.Request().UserAgent()), stringPtr(clientIP(c)))
+	if err != nil {
+		return httputil.Error(c, err)
+	}
 	h.setSessionCookie(c, token, expiresAt)
 	return httputil.OK(c, response)
 }

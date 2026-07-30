@@ -3,7 +3,6 @@ package team
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"net/mail"
 	"strings"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/coffeyvidzro/dugble/server/internal/notifications"
+	"github.com/coffeyvidzro/dugble/server/internal/platform/audit"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
@@ -56,7 +56,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Team, error) {
 	if name == "" {
 		return Team{}, apperrors.NewBadRequest("Team name is required")
 	}
-	team, err := s.repository.Create(ctx, name, principal.UserID)
+	team, err := s.repository.CreateWithOwner(ctx, name, principal.UserID)
 	if err != nil {
 		return Team{}, apperrors.NewInternal("Unable to create team", err)
 	}
@@ -64,15 +64,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Team, error) {
 	if err != nil {
 		return Team{}, apperrors.NewInternal("Unable to parse created team id", err)
 	}
-	if _, err := s.repository.CreateMember(
-		ctx,
-		createdTeamID,
-		principal.UserID,
-		RoleOwner,
-		"active",
-	); err != nil {
-		return Team{}, apperrors.NewInternal("Unable to create team owner", err)
-	}
+	audit.Record(ctx, tenant.AccessContext{
+		Actor: tenant.Actor{Type: tenant.ActorTypeUser, UserID: principal.UserID, SessionID: principal.SessionID},
+		Scope: tenant.Scope{TeamID: createdTeamID, Role: tenant.RoleOwner, Status: tenant.StatusActive},
+	}, audit.Event{Action: "team.created", ResourceType: "team", ResourceID: team.ID})
 	return team, nil
 }
 
@@ -81,7 +76,7 @@ func (s *Service) Get(ctx context.Context, teamID string) (Team, error) {
 	if err != nil {
 		return Team{}, err
 	}
-	team, err := s.repository.Get(ctx, tenantContext.TeamID)
+	team, err := s.repository.Get(ctx, tenantContext.Scope.TeamID)
 	if err != nil {
 		return Team{}, apperrors.NewNotFound("Team not found")
 	}
@@ -97,10 +92,11 @@ func (s *Service) Update(ctx context.Context, teamID string, req UpdateRequest) 
 	if name == "" {
 		return Team{}, apperrors.NewBadRequest("Team name is required")
 	}
-	team, err := s.repository.Update(ctx, tenantContext.TeamID, name)
+	team, err := s.repository.Update(ctx, tenantContext.Scope.TeamID, name)
 	if err != nil {
 		return Team{}, apperrors.NewInternal("Unable to update team", err)
 	}
+	audit.Record(ctx, tenantContext, audit.Event{Action: "team.updated", ResourceType: "team", ResourceID: team.ID})
 	return team, nil
 }
 
@@ -109,10 +105,11 @@ func (s *Service) Delete(ctx context.Context, teamID string) (Team, error) {
 	if err != nil {
 		return Team{}, err
 	}
-	team, err := s.repository.Disable(ctx, tenantContext.TeamID)
+	team, err := s.repository.Disable(ctx, tenantContext.Scope.TeamID)
 	if err != nil {
 		return Team{}, apperrors.NewInternal("Unable to disable team", err)
 	}
+	audit.Record(ctx, tenantContext, audit.Event{Action: "team.disabled", ResourceType: "team", ResourceID: team.ID})
 	return team, nil
 }
 
@@ -121,7 +118,7 @@ func (s *Service) ListMembers(ctx context.Context, teamID string) ([]Member, err
 	if err != nil {
 		return nil, err
 	}
-	members, err := s.repository.ListMembers(ctx, tenantContext.TeamID)
+	members, err := s.repository.ListMembers(ctx, tenantContext.Scope.TeamID)
 	if err != nil {
 		return nil, apperrors.NewInternal("Unable to list team members", err)
 	}
@@ -133,16 +130,17 @@ func (s *Service) Leave(ctx context.Context, teamID string) error {
 	if err != nil {
 		return err
 	}
-	if tenantContext.Role == RoleOwner {
+	if tenantContext.Scope.Role == RoleOwner {
 		return apperrors.NewBadRequest("Team owner cannot leave the team")
 	}
 	if err := s.repository.RemoveMember(
 		ctx,
-		tenantContext.TeamID,
-		tenantContext.UserID,
+		tenantContext.Scope.TeamID,
+		tenantContext.Actor.UserID,
 	); err != nil {
 		return apperrors.NewInternal("Unable to leave team", err)
 	}
+	audit.Record(ctx, tenantContext, audit.Event{Action: "team_member.left", ResourceType: "team_member", ResourceID: tenantContext.Actor.UserID.String()})
 	return nil
 }
 
@@ -155,16 +153,17 @@ func (s *Service) RemoveMember(ctx context.Context, teamID string, userID string
 	if err != nil {
 		return apperrors.NewBadRequest("User id must be a valid UUID")
 	}
-	member, err := s.repository.GetMember(ctx, tenantContext.TeamID, parsedUserID)
+	member, err := s.repository.GetMember(ctx, tenantContext.Scope.TeamID, parsedUserID)
 	if err != nil {
 		return apperrors.NewNotFound("Team member not found")
 	}
 	if member.Role == RoleOwner {
 		return apperrors.NewBadRequest("Team owner cannot be removed")
 	}
-	if err := s.repository.RemoveMember(ctx, tenantContext.TeamID, parsedUserID); err != nil {
+	if err := s.repository.RemoveMember(ctx, tenantContext.Scope.TeamID, parsedUserID); err != nil {
 		return apperrors.NewInternal("Unable to remove team member", err)
 	}
+	audit.Record(ctx, tenantContext, audit.Event{Action: "team_member.removed", ResourceType: "team_member", ResourceID: parsedUserID.String()})
 	return nil
 }
 
@@ -186,17 +185,18 @@ func (s *Service) UpdateMemberRole(
 	if role != RoleAdmin && role != RoleMember {
 		return Member{}, apperrors.NewBadRequest("Role must be admin or member")
 	}
-	existing, err := s.repository.GetMember(ctx, tenantContext.TeamID, parsedUserID)
+	existing, err := s.repository.GetMember(ctx, tenantContext.Scope.TeamID, parsedUserID)
 	if err != nil {
 		return Member{}, apperrors.NewNotFound("Team member not found")
 	}
 	if existing.Role == RoleOwner {
 		return Member{}, apperrors.NewBadRequest("Team owner role cannot be changed")
 	}
-	member, err := s.repository.UpdateMemberRole(ctx, tenantContext.TeamID, parsedUserID, role)
+	member, err := s.repository.UpdateMemberRole(ctx, tenantContext.Scope.TeamID, parsedUserID, role)
 	if err != nil {
 		return Member{}, apperrors.NewInternal("Unable to update team member role", err)
 	}
+	audit.Record(ctx, tenantContext, audit.Event{Action: "team_member.role_updated", ResourceType: "team_member", ResourceID: parsedUserID.String(), Metadata: map[string]any{"role": role}})
 	return member, nil
 }
 
@@ -231,35 +231,28 @@ func (s *Service) InviteMember(
 	expiresAt := time.Now().UTC().Add(teamInvitationTTL)
 	invitation, err := s.repository.CreateInvitation(
 		ctx,
-		tenantContext.TeamID,
+		tenantContext.Scope.TeamID,
 		email,
 		role,
 		authnz.HashSessionToken(token),
-		tenantContext.UserID,
+		tenantContext.Actor.UserID,
 		expiresAt,
 	)
 	if err != nil {
 		return Invitation{}, apperrors.NewInternal("Unable to create team invitation", err)
 	}
 	invitation.Token = token
-	team, err := s.repository.Get(ctx, tenantContext.TeamID)
+	team, err := s.repository.Get(ctx, tenantContext.Scope.TeamID)
 	if err != nil {
 		return Invitation{}, apperrors.NewInternal("Unable to load invited team", err)
 	}
 	if err := s.sendTeamInvitation(ctx, invitation, team, inviterDisplayName(principal)); err != nil {
 		return Invitation{}, err
 	}
-	slog.Info(
-		"team invitation created",
-		"team_id",
-		invitation.TeamID,
-		"email",
-		invitation.Email,
-		"role",
-		invitation.Role,
-		"expires_at",
-		invitation.ExpiresAt,
-	)
+	audit.Record(ctx, tenantContext, audit.Event{
+		Action: "team_member.invited", ResourceType: "team_invitation", ResourceID: invitation.ID,
+		Metadata: map[string]any{"email": invitation.Email, "role": invitation.Role, "expires_at": invitation.ExpiresAt},
+	})
 	return invitation, nil
 }
 
@@ -341,6 +334,10 @@ func (s *Service) AcceptInvitation(ctx context.Context, token string) (Invitatio
 			return Invitation{}, apperrors.NewInternal("Unable to accept invitation", err)
 		}
 	}
+	audit.Record(ctx, tenant.AccessContext{
+		Actor: tenant.Actor{Type: tenant.ActorTypeUser, UserID: principal.UserID, SessionID: principal.SessionID},
+		Scope: tenant.Scope{TeamID: teamID, Role: invitation.Role, Status: tenant.StatusActive},
+	}, audit.Event{Action: "team_invitation.accepted", ResourceType: "team_invitation", ResourceID: accepted.ID})
 	return accepted, nil
 }
 
@@ -361,6 +358,11 @@ func (s *Service) DeclineInvitation(ctx context.Context, token string) (Invitati
 	if err != nil {
 		return Invitation{}, apperrors.NewBadRequest("Invitation token is invalid or expired")
 	}
+	teamID, _ := uuid.Parse(declined.TeamID)
+	audit.Record(ctx, tenant.AccessContext{
+		Actor: tenant.Actor{Type: tenant.ActorTypeUser, UserID: principal.UserID, SessionID: principal.SessionID},
+		Scope: tenant.Scope{TeamID: teamID},
+	}, audit.Event{Action: "team_invitation.declined", ResourceType: "team_invitation", ResourceID: declined.ID})
 	return declined, nil
 }
 
@@ -401,20 +403,17 @@ func requireTenantPermission(
 	ctx context.Context,
 	teamID string,
 	permission tenant.Permission,
-) (tenant.Context, error) {
-	tenantContext, ok := tenant.FromContext(ctx)
-	if !ok {
-		return tenant.Context{}, apperrors.NewForbidden("Team context is required")
+) (tenant.AccessContext, error) {
+	tenantContext, decision := tenant.ResolveAccess(ctx, permission)
+	if !decision.Allowed {
+		return tenant.AccessContext{}, apperrors.NewForbidden(decision.Reason)
 	}
 	parsedTeamID, err := uuid.Parse(strings.TrimSpace(teamID))
 	if err != nil {
-		return tenant.Context{}, apperrors.NewBadRequest("Team id must be a valid UUID")
+		return tenant.AccessContext{}, apperrors.NewBadRequest("Team id must be a valid UUID")
 	}
-	if tenantContext.TeamID != parsedTeamID {
-		return tenant.Context{}, apperrors.NewForbidden("Team context does not match route")
-	}
-	if !tenant.Can(tenantContext.Role, permission) {
-		return tenant.Context{}, apperrors.NewForbidden("Team permission is required")
+	if tenantContext.Scope.TeamID != parsedTeamID {
+		return tenant.AccessContext{}, apperrors.NewForbidden("Team context does not match route")
 	}
 	return tenantContext, nil
 }

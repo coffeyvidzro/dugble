@@ -122,14 +122,6 @@ bun run lint
 bun run build
 ```
 
-Email transaction integration tests require a migrated, disposable PostgreSQL database and are skipped when `TEST_DATABASE_URL` is unset:
-
-```sh
-cd server
-TEST_DATABASE_URL='postgres://postgres:postgres@localhost:5432/dugble_test?sslmode=disable' \
-  go test ./internal/modules/email -run 'Test(Send|Batch|Get)' -v
-```
-
 ## Documentation
 
 Developer documentation lives in `docs/`, including the OpenAPI contract in `docs/openapi.json`. Public examples use team-scoped bearer tokens and should remain synchronized with the registered Go routes.
