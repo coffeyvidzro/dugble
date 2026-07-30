@@ -61,13 +61,28 @@ RETURNING *;
 SELECT wat.id AS token_id, wat.credential_id, wi.id AS workload_id, wi.team_id, wi.name, wi.permissions, wat.expires_at
 FROM workload_access_tokens wat
 JOIN workload_identities wi ON wi.id = wat.workload_id
-JOIN workload_credentials wc ON wc.id = wat.credential_id
+LEFT JOIN workload_credentials wc ON wc.id = wat.credential_id
+LEFT JOIN workload_oidc_federations wof ON wof.id = wat.federation_id
 JOIN teams t ON t.id = wi.team_id
 WHERE wat.token_hash = sqlc.arg(token_hash)
   AND wat.revoked_at IS NULL AND wat.expires_at > now()
-  AND wc.revoked_at IS NULL AND wc.expires_at > now()
+  AND ((wat.credential_id IS NOT NULL AND wc.revoked_at IS NULL AND wc.expires_at > now())
+    OR (wat.federation_id IS NOT NULL AND wof.enabled))
   AND wi.status = 'active' AND t.status = 'active';
 
 -- name: TouchWorkloadAccessToken :exec
 UPDATE workload_access_tokens SET last_used_at = now()
 WHERE id = sqlc.arg(id) AND (last_used_at IS NULL OR last_used_at < now() - interval '5 minutes');
+
+-- name: CreateWorkloadOIDCFederation :one
+INSERT INTO workload_oidc_federations(workload_id,name,issuer_url,audiences,subject,required_claims,enabled,created_by)
+SELECT wi.id,sqlc.arg(name),sqlc.arg(issuer_url),sqlc.arg(audiences),sqlc.arg(subject),sqlc.arg(required_claims),sqlc.arg(enabled),sqlc.arg(created_by)
+FROM workload_identities wi WHERE wi.id=sqlc.arg(workload_id) AND wi.team_id=sqlc.arg(team_id) AND wi.status='active' RETURNING workload_oidc_federations.*;
+-- name: ListWorkloadOIDCFederations :many
+SELECT f.* FROM workload_oidc_federations f JOIN workload_identities wi ON wi.id=f.workload_id WHERE f.workload_id=sqlc.arg(workload_id) AND wi.team_id=sqlc.arg(team_id) ORDER BY f.created_at;
+-- name: DeleteWorkloadOIDCFederation :exec
+DELETE FROM workload_oidc_federations f USING workload_identities wi WHERE f.id=sqlc.arg(id) AND f.workload_id=sqlc.arg(workload_id) AND wi.id=f.workload_id AND wi.team_id=sqlc.arg(team_id);
+-- name: GetActiveWorkloadOIDCFederation :one
+SELECT f.*,wi.team_id,wi.name AS workload_name,wi.permissions FROM workload_oidc_federations f JOIN workload_identities wi ON wi.id=f.workload_id JOIN teams t ON t.id=wi.team_id WHERE f.id=sqlc.arg(id) AND f.enabled AND wi.status='active' AND t.status='active';
+-- name: CreateFederatedWorkloadAccessToken :one
+INSERT INTO workload_access_tokens(workload_id,federation_id,token_hash,expires_at) VALUES(sqlc.arg(workload_id),sqlc.arg(federation_id),sqlc.arg(token_hash),sqlc.arg(expires_at)) RETURNING *;

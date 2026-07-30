@@ -2,11 +2,15 @@ package workload
 
 import (
 	"context"
+	"encoding/json"
+	"net/url"
 	"strings"
 	"time"
 
+	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/google/uuid"
 
+	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/audit"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
@@ -237,4 +241,172 @@ func permissionValues(values []string) []tenant.Permission {
 		out = append(out, tenant.Permission(v))
 	}
 	return out
+}
+
+func (s *Service) CreateOIDCFederation(ctx context.Context, workloadValue string, request OIDCFederationRequest) (OIDCFederation, error) {
+	access, err := requireAccess(ctx, tenant.PermissionWorkloadsWrite)
+	if err != nil {
+		return OIDCFederation{}, err
+	}
+	workloadID, err := parseID(workloadValue)
+	if err != nil {
+		return OIDCFederation{}, err
+	}
+	request.Name = strings.TrimSpace(request.Name)
+	request.IssuerURL = strings.TrimRight(strings.TrimSpace(request.IssuerURL), "/")
+	request.Subject = strings.TrimSpace(request.Subject)
+	u, parseErr := url.Parse(request.IssuerURL)
+	if parseErr != nil || u.Scheme != "https" || u.Host == "" || request.Name == "" || request.Subject == "" {
+		return OIDCFederation{}, apperrors.NewBadRequest("Name, HTTPS issuer URL, and subject are required")
+	}
+	request.Audiences = normalizedStrings(request.Audiences)
+	if len(request.Audiences) == 0 {
+		return OIDCFederation{}, apperrors.NewBadRequest("At least one audience is required")
+	}
+	for key, value := range request.RequiredClaims {
+		if strings.TrimSpace(key) == "" || strings.TrimSpace(value) == "" {
+			return OIDCFederation{}, apperrors.NewBadRequest("Required claims must contain non-empty string values")
+		}
+	}
+	if _, err = oidc.NewProvider(ctx, request.IssuerURL); err != nil {
+		return OIDCFederation{}, apperrors.NewBadRequest("OIDC issuer discovery failed")
+	}
+	claims, err := json.Marshal(request.RequiredClaims)
+	if err != nil {
+		return OIDCFederation{}, apperrors.NewBadRequest("Required claims are invalid")
+	}
+	row, err := s.repository.CreateOIDCFederation(ctx, workloadID, access.Scope.TeamID, access.Actor.UserID, request, claims)
+	if err != nil {
+		return OIDCFederation{}, apperrors.NewNotFound("Active workload identity not found")
+	}
+	result, err := federationFromRow(row)
+	if err != nil {
+		return OIDCFederation{}, apperrors.NewInternal("Unable to decode workload federation", err)
+	}
+	audit.Record(ctx, access, audit.Event{Action: "workload.oidc_federation_created", ResourceType: "workload_oidc_federation", ResourceID: row.ID.String(), Metadata: map[string]any{"workload_id": workloadID.String()}})
+	return result, nil
+}
+func (s *Service) ListOIDCFederations(ctx context.Context, workloadValue string) ([]OIDCFederation, error) {
+	access, err := requireAccess(ctx, tenant.PermissionWorkloadsRead)
+	if err != nil {
+		return nil, err
+	}
+	workloadID, err := parseID(workloadValue)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.repository.ListOIDCFederations(ctx, workloadID, access.Scope.TeamID)
+	if err != nil {
+		return nil, apperrors.NewInternal("Unable to list workload federations", err)
+	}
+	out := make([]OIDCFederation, 0, len(rows))
+	for _, row := range rows {
+		v, e := federationFromRow(row)
+		if e != nil {
+			return nil, apperrors.NewInternal("Unable to decode workload federation", e)
+		}
+		out = append(out, v)
+	}
+	return out, nil
+}
+func (s *Service) DeleteOIDCFederation(ctx context.Context, workloadValue, federationValue string) error {
+	access, err := requireAccess(ctx, tenant.PermissionWorkloadsWrite)
+	if err != nil {
+		return err
+	}
+	workloadID, err := parseID(workloadValue)
+	if err != nil {
+		return err
+	}
+	id, err := parseID(federationValue)
+	if err != nil {
+		return err
+	}
+	if err = s.repository.DeleteOIDCFederation(ctx, id, workloadID, access.Scope.TeamID); err != nil {
+		return apperrors.NewInternal("Unable to delete workload federation", err)
+	}
+	audit.Record(ctx, access, audit.Event{Action: "workload.oidc_federation_deleted", ResourceType: "workload_oidc_federation", ResourceID: id.String()})
+	return nil
+}
+func (s *Service) ExchangeOIDC(ctx context.Context, request OIDCExchangeRequest) (AccessToken, error) {
+	id, err := parseID(request.ProviderID)
+	if err != nil {
+		return AccessToken{}, apperrors.NewUnauthorized("Workload federation is invalid")
+	}
+	raw := strings.TrimSpace(request.SubjectToken)
+	if raw == "" || len(raw) > 65536 {
+		return AccessToken{}, apperrors.NewUnauthorized("OIDC subject token is invalid")
+	}
+	f, err := s.repository.GetOIDCFederation(ctx, id)
+	if err != nil {
+		return AccessToken{}, apperrors.NewUnauthorized("Workload federation is invalid")
+	}
+	provider, err := oidc.NewProvider(ctx, f.IssuerUrl)
+	if err != nil {
+		return AccessToken{}, apperrors.NewInternal("Unable to discover workload OIDC provider", err)
+	}
+	token, err := provider.Verifier(&oidc.Config{SkipClientIDCheck: true}).Verify(ctx, raw)
+	if err != nil {
+		return AccessToken{}, apperrors.NewUnauthorized("OIDC subject token is invalid or expired")
+	}
+	var claims map[string]any
+	if err = token.Claims(&claims); err != nil || token.Subject != f.Subject || !audienceAllowed(token.Audience, f.Audiences) {
+		return AccessToken{}, apperrors.NewUnauthorized("OIDC workload claims are not allowed")
+	}
+	var required map[string]string
+	if err = json.Unmarshal(f.RequiredClaims, &required); err != nil || !claimsMatch(claims, required) {
+		return AccessToken{}, apperrors.NewUnauthorized("OIDC workload claims are not allowed")
+	}
+	secret, err := newSecret(AccessTokenPrefix)
+	if err != nil {
+		return AccessToken{}, apperrors.NewInternal("Unable to issue workload access token", err)
+	}
+	expires := s.now().UTC().Add(accessTokenTTL)
+	if err = s.repository.CreateFederatedAccessToken(ctx, f.WorkloadID, f.ID, authnz.HashSessionToken(secret), expires); err != nil {
+		return AccessToken{}, apperrors.NewInternal("Unable to issue workload access token", err)
+	}
+	audit.Record(ctx, tenant.AccessContext{Actor: tenant.Actor{Type: tenant.ActorTypeWorkload, WorkloadID: f.WorkloadID}, Scope: tenant.Scope{TeamID: f.TeamID, Permissions: permissionValues(f.Permissions)}}, audit.Event{Action: "workload.oidc_token_exchanged", ResourceType: "workload_oidc_federation", ResourceID: f.ID.String(), Metadata: map[string]any{"subject": token.Subject}})
+	return AccessToken{AccessToken: secret, TokenType: "Bearer", ExpiresIn: int64(accessTokenTTL / time.Second), ExpiresAt: expires}, nil
+}
+func normalizedStrings(values []string) []string {
+	seen := map[string]struct{}{}
+	out := make([]string, 0, len(values))
+	for _, v := range values {
+		v = strings.TrimSpace(v)
+		if v == "" {
+			continue
+		}
+		if _, ok := seen[v]; ok {
+			continue
+		}
+		seen[v] = struct{}{}
+		out = append(out, v)
+	}
+	return out
+}
+func audienceAllowed(actual, allowed []string) bool {
+	for _, a := range actual {
+		for _, v := range allowed {
+			if a == v {
+				return true
+			}
+		}
+	}
+	return false
+}
+func claimsMatch(actual map[string]any, required map[string]string) bool {
+	for key, want := range required {
+		got, ok := actual[key].(string)
+		if !ok || got != want {
+			return false
+		}
+	}
+	return true
+}
+func federationFromRow(row dbsqlc.WorkloadOidcFederation) (OIDCFederation, error) {
+	var claims map[string]string
+	if err := json.Unmarshal(row.RequiredClaims, &claims); err != nil {
+		return OIDCFederation{}, err
+	}
+	return OIDCFederation{ID: row.ID.String(), WorkloadID: row.WorkloadID.String(), Name: row.Name, IssuerURL: row.IssuerUrl, Audiences: row.Audiences, Subject: row.Subject, RequiredClaims: claims, Enabled: row.Enabled, CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time}, nil
 }

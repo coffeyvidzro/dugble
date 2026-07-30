@@ -56,3 +56,28 @@ type TokenPrincipal struct {
 	Permissions                               []string
 	ExpiresAt                                 time.Time
 }
+
+type OIDCFederation struct {
+	ID             string            `json:"id"`
+	WorkloadID     string            `json:"workload_id"`
+	Name           string            `json:"name"`
+	IssuerURL      string            `json:"issuer_url"`
+	Audiences      []string          `json:"audiences"`
+	Subject        string            `json:"subject"`
+	RequiredClaims map[string]string `json:"required_claims"`
+	Enabled        bool              `json:"enabled"`
+	CreatedAt      time.Time         `json:"created_at"`
+	UpdatedAt      time.Time         `json:"updated_at"`
+}
+type OIDCFederationRequest struct {
+	Name           string            `json:"name"`
+	IssuerURL      string            `json:"issuer_url"`
+	Audiences      []string          `json:"audiences"`
+	Subject        string            `json:"subject"`
+	RequiredClaims map[string]string `json:"required_claims"`
+	Enabled        *bool             `json:"enabled,omitempty"`
+}
+type OIDCExchangeRequest struct {
+	ProviderID   string `json:"provider_id"`
+	SubjectToken string `json:"subject_token"`
+}

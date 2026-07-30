@@ -24,6 +24,7 @@ type Querier interface {
 	CountSCIMUsers(ctx context.Context, arg CountSCIMUsersParams) (int64, error)
 	CreateAuditEvent(ctx context.Context, arg CreateAuditEventParams) (AuditEvent, error)
 	CreateEmailMessage(ctx context.Context, arg CreateEmailMessageParams) (EmailMessage, error)
+	CreateFederatedWorkloadAccessToken(ctx context.Context, arg CreateFederatedWorkloadAccessTokenParams) (WorkloadAccessToken, error)
 	CreateIdempotencyKey(ctx context.Context, arg CreateIdempotencyKeyParams) (IdempotencyKey, error)
 	CreateMFALoginChallenge(ctx context.Context, arg CreateMFALoginChallengeParams) error
 	CreateMFALoginChallenge(ctx context.Context, arg CreateMFALoginChallengeParams) error
@@ -52,6 +53,7 @@ type Querier interface {
 	CreateWorkloadAccessToken(ctx context.Context, arg CreateWorkloadAccessTokenParams) (WorkloadAccessToken, error)
 	CreateWorkloadCredential(ctx context.Context, arg CreateWorkloadCredentialParams) (WorkloadCredential, error)
 	CreateWorkloadIdentity(ctx context.Context, arg CreateWorkloadIdentityParams) (WorkloadIdentity, error)
+	CreateWorkloadOIDCFederation(ctx context.Context, arg CreateWorkloadOIDCFederationParams) (WorkloadOidcFederation, error)
 	DeclineTeamInvitation(ctx context.Context, arg DeclineTeamInvitationParams) (TeamInvitation, error)
 	DeleteExpiredVerificationTokens(ctx context.Context) error
 	DeleteIdempotencyKey(ctx context.Context, arg DeleteIdempotencyKeyParams) error
@@ -66,6 +68,7 @@ type Querier interface {
 	DeleteUser(ctx context.Context, arg DeleteUserParams) error
 	DeleteVerificationToken(ctx context.Context, arg DeleteVerificationTokenParams) error
 	DeleteVerificationTokensByIdentifier(ctx context.Context, arg DeleteVerificationTokensByIdentifierParams) error
+	DeleteWorkloadOIDCFederation(ctx context.Context, arg DeleteWorkloadOIDCFederationParams) error
 	DeprovisionSCIMUser(ctx context.Context, arg DeprovisionSCIMUserParams) error
 	DisableTeam(ctx context.Context, arg DisableTeamParams) (Team, error)
 	DisableWebhookEndpoint(ctx context.Context, arg DisableWebhookEndpointParams) (WebhookEndpoint, error)
@@ -83,6 +86,7 @@ type Querier interface {
 	GetActiveWorkloadCredentialByHash(ctx context.Context, arg GetActiveWorkloadCredentialByHashParams) (GetActiveWorkloadCredentialByHashRow, error)
 	GetActiveWorkloadAccessTokenByHash(ctx context.Context, arg GetActiveWorkloadAccessTokenByHashParams) (GetActiveWorkloadAccessTokenByHashRow, error)
 	GetActiveWorkloadCredentialByHash(ctx context.Context, arg GetActiveWorkloadCredentialByHashParams) (GetActiveWorkloadCredentialByHashRow, error)
+	GetActiveWorkloadOIDCFederation(ctx context.Context, arg GetActiveWorkloadOIDCFederationParams) (GetActiveWorkloadOIDCFederationRow, error)
 	GetEmailMessage(ctx context.Context, arg GetEmailMessageParams) (EmailMessage, error)
 	GetIdempotencyKey(ctx context.Context, arg GetIdempotencyKeyParams) (IdempotencyKey, error)
 	GetOAuthIdentity(ctx context.Context, arg GetOAuthIdentityParams) (OauthIdentity, error)
@@ -133,6 +137,7 @@ type Querier interface {
 	ListWebhookEventsForObject(ctx context.Context, arg ListWebhookEventsForObjectParams) ([]WebhookEvent, error)
 	ListWorkloadIdentities(ctx context.Context, arg ListWorkloadIdentitiesParams) ([]WorkloadIdentity, error)
 	ListWorkloadIdentities(ctx context.Context, arg ListWorkloadIdentitiesParams) ([]WorkloadIdentity, error)
+	ListWorkloadOIDCFederations(ctx context.Context, arg ListWorkloadOIDCFederationsParams) ([]WorkloadOidcFederation, error)
 	MarkSMSMessageDeliveryUnknown(ctx context.Context, arg MarkSMSMessageDeliveryUnknownParams) (SmsMessage, error)
 	MarkSMSMessageFailed(ctx context.Context, arg MarkSMSMessageFailedParams) (SmsMessage, error)
 	MarkSMSMessageProcessing(ctx context.Context, arg MarkSMSMessageProcessingParams) (SmsMessage, error)
