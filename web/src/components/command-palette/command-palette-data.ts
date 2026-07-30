@@ -1,5 +1,5 @@
-import { dashboardNavigation } from "@/components/dashboard/dashboard-nav";
 import { changelogEntries } from "@/components/marketing/changelog/changelog-data";
+import { dashboardPortals } from "@/components/dashboard/dashboard-nav";
 
 export type CommandItem = {
     group: string;
@@ -22,10 +22,12 @@ export const MARKETING_GROUP_ORDER = [
 
 export const DASHBOARD_GROUP_ORDER = [
     "Overview",
-    "Messaging",
+    "Communications",
+    "Sending",
+    "Finance",
+    "Settings",
+    "Security",
     "Developers",
-    "Workspace",
-    "Account",
 ];
 
 const marketingItems: CommandItem[] = [
@@ -183,13 +185,15 @@ const changelogItems: CommandItem[] = changelogEntries
         keywords: [entry.tag],
     }));
 
-const dashboardItems: CommandItem[] = dashboardNavigation.flatMap((section) =>
-    section.items.map((item) => ({
-        group: section.label,
-        title: item.title,
-        description: item.description,
-        href: item.href,
-    })),
+const dashboardItems: CommandItem[] = dashboardPortals.flatMap((portal) =>
+    portal.groups.flatMap((group) =>
+        group.items.map((item) => ({
+            group: group.label,
+            title: item.title,
+            description: item.description,
+            href: item.href,
+        })),
+    ),
 );
 
 export function getCommandItems(scope: CommandPaletteScope): CommandItem[] {
