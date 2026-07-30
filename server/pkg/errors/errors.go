@@ -89,3 +89,12 @@ func NewInternal(message string, err error) *AppError {
 		Err:     err,
 	}
 }
+
+func NewServiceUnavailable(message string, err error) *AppError {
+	return &AppError{
+		Code:    "SERVICE_UNAVAILABLE",
+		Message: message,
+		Status:  http.StatusServiceUnavailable,
+		Err:     err,
+	}
+}
