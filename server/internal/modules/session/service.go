@@ -66,12 +66,16 @@ func (s *Service) RevokeAll(ctx context.Context) error {
 
 func sessionFromRecord(row Record) Session {
 	return Session{
-		ID:         row.ID,
-		UserAgent:  row.UserAgent,
-		IPAddress:  row.IPAddress,
-		ExpiresAt:  row.ExpiresAt,
-		RevokedAt:  row.RevokedAt,
-		CreatedAt:  row.CreatedAt,
-		LastSeenAt: row.LastSeenAt,
+		ID:                   row.ID,
+		UserAgent:            row.UserAgent,
+		IPAddress:            row.IPAddress,
+		ExpiresAt:            row.ExpiresAt,
+		RevokedAt:            row.RevokedAt,
+		CreatedAt:            row.CreatedAt,
+		LastSeenAt:           row.LastSeenAt,
+		AuthenticationMethod: row.Method,
+		AssuranceLevel:       row.Assurance,
+		AuthenticatedAt:      row.AuthenticatedAt,
+		MFACompletedAt:       row.MFACompletedAt,
 	}
 }

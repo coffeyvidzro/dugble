@@ -9,6 +9,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AuthenticationChallenge struct {
+	TokenHash  string             `db:"token_hash" json:"token_hash"`
+	UserID     *uuid.UUID         `db:"user_id" json:"user_id"`
+	Purpose    string             `db:"purpose" json:"purpose"`
+	State      []byte             `db:"state" json:"state"`
+	ExpiresAt  pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+	ConsumedAt pgtype.Timestamptz `db:"consumed_at" json:"consumed_at"`
+	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
 type EmailMessage struct {
 	ID                uuid.UUID          `db:"id" json:"id"`
 	TeamID            uuid.UUID          `db:"team_id" json:"team_id"`
@@ -87,11 +97,34 @@ type OutboxEvent struct {
 	UpdatedAt     pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
+type PasskeyCredential struct {
+	ID             uuid.UUID          `db:"id" json:"id"`
+	UserID         uuid.UUID          `db:"user_id" json:"user_id"`
+	CredentialID   []byte             `db:"credential_id" json:"credential_id"`
+	PublicKey      []byte             `db:"public_key" json:"public_key"`
+	SignCount      int64              `db:"sign_count" json:"sign_count"`
+	Transports     []string           `db:"transports" json:"transports"`
+	BackupEligible bool               `db:"backup_eligible" json:"backup_eligible"`
+	BackupState    bool               `db:"backup_state" json:"backup_state"`
+	Name           string             `db:"name" json:"name"`
+	CreatedAt      pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	LastUsedAt     pgtype.Timestamptz `db:"last_used_at" json:"last_used_at"`
+	RevokedAt      pgtype.Timestamptz `db:"revoked_at" json:"revoked_at"`
+}
+
 type ProcessedEvent struct {
 	ConsumerName string             `db:"consumer_name" json:"consumer_name"`
 	EventID      uuid.UUID          `db:"event_id" json:"event_id"`
 	ProcessedAt  pgtype.Timestamptz `db:"processed_at" json:"processed_at"`
 	Metadata     []byte             `db:"metadata" json:"metadata"`
+}
+
+type RecoveryCode struct {
+	ID        uuid.UUID          `db:"id" json:"id"`
+	UserID    uuid.UUID          `db:"user_id" json:"user_id"`
+	CodeHash  string             `db:"code_hash" json:"code_hash"`
+	UsedAt    pgtype.Timestamptz `db:"used_at" json:"used_at"`
+	CreatedAt pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
 type SenderDomain struct {
@@ -137,15 +170,20 @@ type SenderID struct {
 }
 
 type Session struct {
-	ID         string             `db:"id" json:"id"`
-	UserID     uuid.UUID          `db:"user_id" json:"user_id"`
-	TokenHash  string             `db:"token_hash" json:"token_hash"`
-	UserAgent  *string            `db:"user_agent" json:"user_agent"`
-	IpAddress  *string            `db:"ip_address" json:"ip_address"`
-	ExpiresAt  pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
-	RevokedAt  pgtype.Timestamptz `db:"revoked_at" json:"revoked_at"`
-	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	LastSeenAt pgtype.Timestamptz `db:"last_seen_at" json:"last_seen_at"`
+	ID                   string             `db:"id" json:"id"`
+	UserID               uuid.UUID          `db:"user_id" json:"user_id"`
+	TokenHash            string             `db:"token_hash" json:"token_hash"`
+	UserAgent            *string            `db:"user_agent" json:"user_agent"`
+	IpAddress            *string            `db:"ip_address" json:"ip_address"`
+	ExpiresAt            pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+	RevokedAt            pgtype.Timestamptz `db:"revoked_at" json:"revoked_at"`
+	CreatedAt            pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	LastSeenAt           pgtype.Timestamptz `db:"last_seen_at" json:"last_seen_at"`
+	CredentialVersion    int64              `db:"credential_version" json:"credential_version"`
+	AuthenticationMethod string             `db:"authentication_method" json:"authentication_method"`
+	AssuranceLevel       string             `db:"assurance_level" json:"assurance_level"`
+	AuthenticatedAt      pgtype.Timestamptz `db:"authenticated_at" json:"authenticated_at"`
+	MfaCompletedAt       pgtype.Timestamptz `db:"mfa_completed_at" json:"mfa_completed_at"`
 }
 
 type SmsMessage struct {
@@ -177,6 +215,15 @@ type Team struct {
 	CreatedBy *uuid.UUID         `db:"created_by" json:"created_by"`
 	CreatedAt pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type TeamIdentityPolicy struct {
+	TeamID               uuid.UUID          `db:"team_id" json:"team_id"`
+	RequireMfa           bool               `db:"require_mfa" json:"require_mfa"`
+	SessionMaxAgeMinutes int32              `db:"session_max_age_minutes" json:"session_max_age_minutes"`
+	UpdatedBy            *uuid.UUID         `db:"updated_by" json:"updated_by"`
+	CreatedAt            pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
 type TeamInvitation struct {
@@ -218,14 +265,25 @@ type TeamToken struct {
 	UpdatedAt   pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
+type TotpCredential struct {
+	UserID           uuid.UUID          `db:"user_id" json:"user_id"`
+	SecretCiphertext []byte             `db:"secret_ciphertext" json:"secret_ciphertext"`
+	VerifiedAt       pgtype.Timestamptz `db:"verified_at" json:"verified_at"`
+	LastUsedStep     *int64             `db:"last_used_step" json:"last_used_step"`
+	CreatedAt        pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
 type User struct {
-	ID            uuid.UUID          `db:"id" json:"id"`
-	Email         string             `db:"email" json:"email"`
-	EmailVerified bool               `db:"email_verified" json:"email_verified"`
-	Name          string             `db:"name" json:"name"`
-	PasswordHash  *string            `db:"password_hash" json:"password_hash"`
-	CreatedAt     pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ID                uuid.UUID          `db:"id" json:"id"`
+	Email             string             `db:"email" json:"email"`
+	EmailVerified     bool               `db:"email_verified" json:"email_verified"`
+	Name              string             `db:"name" json:"name"`
+	PasswordHash      *string            `db:"password_hash" json:"password_hash"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	CredentialVersion int64              `db:"credential_version" json:"credential_version"`
+	SecurityUpdatedAt pgtype.Timestamptz `db:"security_updated_at" json:"security_updated_at"`
 }
 
 type VerificationToken struct {
@@ -277,4 +335,39 @@ type WebhookEvent struct {
 	Payload    []byte             `db:"payload" json:"payload"`
 	OccurredAt pgtype.Timestamptz `db:"occurred_at" json:"occurred_at"`
 	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
+type WorkloadAccessToken struct {
+	ID           uuid.UUID          `db:"id" json:"id"`
+	WorkloadID   uuid.UUID          `db:"workload_id" json:"workload_id"`
+	CredentialID uuid.UUID          `db:"credential_id" json:"credential_id"`
+	TokenHash    string             `db:"token_hash" json:"token_hash"`
+	ExpiresAt    pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+	LastUsedAt   pgtype.Timestamptz `db:"last_used_at" json:"last_used_at"`
+	RevokedAt    pgtype.Timestamptz `db:"revoked_at" json:"revoked_at"`
+	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
+type WorkloadCredential struct {
+	ID           uuid.UUID          `db:"id" json:"id"`
+	WorkloadID   uuid.UUID          `db:"workload_id" json:"workload_id"`
+	SecretHash   string             `db:"secret_hash" json:"secret_hash"`
+	SecretPrefix string             `db:"secret_prefix" json:"secret_prefix"`
+	ExpiresAt    pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+	LastUsedAt   pgtype.Timestamptz `db:"last_used_at" json:"last_used_at"`
+	RevokedAt    pgtype.Timestamptz `db:"revoked_at" json:"revoked_at"`
+	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
+type WorkloadIdentity struct {
+	ID          uuid.UUID          `db:"id" json:"id"`
+	TeamID      uuid.UUID          `db:"team_id" json:"team_id"`
+	Name        string             `db:"name" json:"name"`
+	Description string             `db:"description" json:"description"`
+	Status      string             `db:"status" json:"status"`
+	Permissions []string           `db:"permissions" json:"permissions"`
+	CreatedBy   *uuid.UUID         `db:"created_by" json:"created_by"`
+	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	DisabledAt  pgtype.Timestamptz `db:"disabled_at" json:"disabled_at"`
 }

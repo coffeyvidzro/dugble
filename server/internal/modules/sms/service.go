@@ -55,7 +55,7 @@ func (s *Service) List(ctx context.Context, req ListRequest) ([]Message, error) 
 	if req.Offset < 0 {
 		req.Offset = 0
 	}
-	messages, err := s.repository.List(ctx, tenantContext.TeamID, limit, req.Offset)
+	messages, err := s.repository.List(ctx, tenantContext.Scope.TeamID, limit, req.Offset)
 	if err != nil {
 		return nil, apperrors.NewInternal("Unable to list SMS messages", err)
 	}
@@ -71,7 +71,7 @@ func (s *Service) Get(ctx context.Context, messageID string) (Message, error) {
 	if err != nil {
 		return Message{}, apperrors.NewBadRequest("SMS message id must be a valid UUID")
 	}
-	message, err := s.repository.Get(ctx, parsedID, tenantContext.TeamID)
+	message, err := s.repository.Get(ctx, parsedID, tenantContext.Scope.TeamID)
 	if err != nil {
 		if errors.Is(err, ErrMessageNotFound) {
 			return Message{}, apperrors.NewNotFound("SMS message not found")
@@ -94,7 +94,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	if err != nil {
 		return Message{}, err
 	}
-	senderID, err := s.repository.FindApprovedSender(ctx, tenantContext.TeamID, normalized.From)
+	senderID, err := s.repository.FindApprovedSender(ctx, tenantContext.Scope.TeamID, normalized.From)
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to validate SMS sender ID", err)
 	}
@@ -112,7 +112,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	txRepository := s.repository.WithTx(tx)
 
 	created, err := txRepository.Create(ctx, createMessageParams{
-		TeamID: tenantContext.TeamID, SenderID: senderID, To: normalized.To, From: normalized.From,
+		TeamID: tenantContext.Scope.TeamID, SenderID: senderID, To: normalized.To, From: normalized.From,
 		Body: normalized.Body, Status: StatusQueued, Segments: segments,
 		Metadata:           normalized.Metadata,
 		Tags:               normalized.Tags,
@@ -130,7 +130,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	}
 
 	messageID := uuid.MustParse(created.ID)
-	if err := enqueueSMSDelivery(ctx, s.delivery, tx, messageID, tenantContext.TeamID, created.ScheduledAt); err != nil {
+	if err := enqueueSMSDelivery(ctx, s.delivery, tx, messageID, tenantContext.Scope.TeamID, created.ScheduledAt); err != nil {
 		return Message{}, apperrors.NewInternal("Unable to enqueue SMS delivery", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -167,7 +167,7 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 		senderKey := strings.ToLower(normalized.From)
 		senderID, exists := senders[senderKey]
 		if !exists {
-			senderID, err = s.repository.FindApprovedSender(ctx, tenantContext.TeamID, normalized.From)
+			senderID, err = s.repository.FindApprovedSender(ctx, tenantContext.Scope.TeamID, normalized.From)
 			if err != nil {
 				return nil, apperrors.NewInternal("Unable to validate SMS sender ID", err)
 			}
@@ -189,7 +189,7 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 	for _, item := range prepared {
 
 		created, err := txRepository.Create(ctx, createMessageParams{
-			TeamID: tenantContext.TeamID, SenderID: item.senderID, To: item.request.To, From: item.request.From,
+			TeamID: tenantContext.Scope.TeamID, SenderID: item.senderID, To: item.request.To, From: item.request.From,
 			Body: item.request.Body, Status: StatusQueued, Segments: item.segments,
 			Metadata: item.request.Metadata, Tags: item.request.Tags,
 			ScheduledAt:        normalizedScheduledAt(item.request.ScheduledAt),
@@ -199,7 +199,7 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 			return nil, apperrors.NewInternal("Unable to create SMS batch message", err)
 		}
 		messageID := uuid.MustParse(created.ID)
-		if err := enqueueSMSDelivery(ctx, s.delivery, tx, messageID, tenantContext.TeamID, created.ScheduledAt); err != nil {
+		if err := enqueueSMSDelivery(ctx, s.delivery, tx, messageID, tenantContext.Scope.TeamID, created.ScheduledAt); err != nil {
 			return nil, apperrors.NewInternal("Unable to enqueue SMS batch delivery", err)
 		}
 		result = append(result, created)
@@ -220,11 +220,11 @@ func (s *Service) Cancel(ctx context.Context, value string) (SendResponse, error
 		return SendResponse{}, apperrors.NewInternal("Unable to begin SMS cancellation transaction", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	message, err := s.repository.CancelTx(ctx, tx, id, tenantContext.TeamID)
+	message, err := s.repository.CancelTx(ctx, tx, id, tenantContext.Scope.TeamID)
 	if err != nil {
 		return SendResponse{}, scheduledMutationError(err, "canceled")
 	}
-	if err := queue.CancelSMSDeliveryTx(ctx, tx, id, tenantContext.TeamID); err != nil {
+	if err := queue.CancelSMSDeliveryTx(ctx, tx, id, tenantContext.Scope.TeamID); err != nil {
 		return SendResponse{}, apperrors.NewInternal("Unable to cancel SMS delivery", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -250,11 +250,11 @@ func (s *Service) Update(ctx context.Context, value string, req UpdateRequest) (
 		return SendResponse{}, apperrors.NewInternal("Unable to begin SMS update transaction", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	message, err := s.repository.RescheduleTx(ctx, tx, id, tenantContext.TeamID, *scheduledAt)
+	message, err := s.repository.RescheduleTx(ctx, tx, id, tenantContext.Scope.TeamID, *scheduledAt)
 	if err != nil {
 		return SendResponse{}, scheduledMutationError(err, "updated")
 	}
-	if err := queue.RescheduleSMSDeliveryTx(ctx, tx, id, tenantContext.TeamID, *scheduledAt); err != nil {
+	if err := queue.RescheduleSMSDeliveryTx(ctx, tx, id, tenantContext.Scope.TeamID, *scheduledAt); err != nil {
 		return SendResponse{}, apperrors.NewInternal("Unable to reschedule SMS delivery", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -263,18 +263,18 @@ func (s *Service) Update(ctx context.Context, value string, req UpdateRequest) (
 	return message.SendResponse(), nil
 }
 
-func (s *Service) scheduledMutationContext(ctx context.Context, value string) (tenant.Context, uuid.UUID, scheduledDeliveryQueue, error) {
+func (s *Service) scheduledMutationContext(ctx context.Context, value string) (tenant.AccessContext, uuid.UUID, scheduledDeliveryQueue, error) {
 	tenantContext, err := requireTenant(ctx, tenant.PermissionSMSSend)
 	if err != nil {
-		return tenant.Context{}, uuid.Nil, nil, err
+		return tenant.AccessContext{}, uuid.Nil, nil, err
 	}
 	id, err := uuid.Parse(strings.TrimSpace(value))
 	if err != nil {
-		return tenant.Context{}, uuid.Nil, nil, apperrors.NewBadRequest("SMS message id must be a valid UUID")
+		return tenant.AccessContext{}, uuid.Nil, nil, apperrors.NewBadRequest("SMS message id must be a valid UUID")
 	}
 	queue, ok := s.delivery.(scheduledDeliveryQueue)
 	if !ok {
-		return tenant.Context{}, uuid.Nil, nil, apperrors.NewInternal("SMS delivery queue does not support scheduling", nil)
+		return tenant.AccessContext{}, uuid.Nil, nil, apperrors.NewInternal("SMS delivery queue does not support scheduling", nil)
 	}
 	return tenantContext, id, queue, nil
 }
@@ -317,7 +317,7 @@ func (s *Service) SyncStatus(ctx context.Context, messageID string) (Message, er
 	if err != nil {
 		return Message{}, apperrors.NewBadRequest("SMS message id must be a valid UUID")
 	}
-	message, err := s.repository.Get(ctx, parsedID, tenantContext.TeamID)
+	message, err := s.repository.Get(ctx, parsedID, tenantContext.Scope.TeamID)
 	if err != nil {
 		if errors.Is(err, ErrMessageNotFound) {
 			return Message{}, apperrors.NewNotFound("SMS message not found")
@@ -338,7 +338,7 @@ func (s *Service) SyncStatus(ctx context.Context, messageID string) (Message, er
 	if nextStatus == message.Status {
 		return message, nil
 	}
-	updated, err := s.repository.UpdateStatus(ctx, parsedID, tenantContext.TeamID, nextStatus)
+	updated, err := s.repository.UpdateStatus(ctx, parsedID, tenantContext.Scope.TeamID, nextStatus)
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to update SMS status", err)
 	}
@@ -394,13 +394,10 @@ func MapProviderStatus(status string) string {
 	}
 }
 
-func requireTenant(ctx context.Context, permission tenant.Permission) (tenant.Context, error) {
-	tenantContext, ok := tenant.FromContext(ctx)
-	if !ok {
-		return tenant.Context{}, apperrors.NewUnauthorized("Team context is required")
-	}
-	if !tenant.ContextCan(tenantContext, permission) {
-		return tenant.Context{}, apperrors.NewForbidden("Insufficient permissions")
+func requireTenant(ctx context.Context, permission tenant.Permission) (tenant.AccessContext, error) {
+	tenantContext, decision := tenant.ResolveAccess(ctx, permission)
+	if !decision.Allowed {
+		return tenant.AccessContext{}, apperrors.NewForbidden(decision.Reason)
 	}
 	return tenantContext, nil
 }
