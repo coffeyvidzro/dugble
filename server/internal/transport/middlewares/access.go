@@ -17,6 +17,7 @@ type TenantAccessConfig struct {
 	Sessions     SessionStore
 	Users        PrincipalRepository
 	Memberships  tenant.MembershipStore
+	Policies     tenant.IdentityPolicyStore
 	Tokens       TeamTokenStore
 	Workloads    WorkloadTokenStore
 	CSRF         CSRFConfig
@@ -54,6 +55,7 @@ func sessionTenantAccess(config TenantAccessConfig) echo.MiddlewareFunc {
 			Users:    config.Users,
 		})(CSRF(config.CSRF)(Tenant(TenantConfig{
 			Memberships: config.Memberships,
+			Policies:    config.Policies,
 			ParamName:   config.TenantParam,
 			HeaderName:  config.TenantHeader,
 			Required:    config.Required,

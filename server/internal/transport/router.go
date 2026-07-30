@@ -103,7 +103,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		return middlewares.Tenant(middlewares.TenantConfig{Memberships: teamRepository, Policies: identityPolicyRepository, Required: permission})
 	}
 	tenantAccess := func(permission tenant.Permission) echo.MiddlewareFunc {
-		return middlewares.TenantAccess(middlewares.TenantAccessConfig{Sessions: sessionRepository, Users: authRepository, Memberships: teamRepository, Tokens: teamTokenRepository, Workloads: workloadRepository, CSRF: csrfConfig, Required: permission})
+		return middlewares.TenantAccess(middlewares.TenantAccessConfig{Sessions: sessionRepository, Users: authRepository, Memberships: teamRepository, Policies: identityPolicyRepository, Tokens: teamTokenRepository, Workloads: workloadRepository, CSRF: csrfConfig, Required: permission})
 	}
 	team.RegisterRoutes(router, team.NewHandler(teamService), authMiddleware, csrfMiddleware, tenantMiddleware)
 	sso.RegisterRoutes(router, sso.NewHandler(ssoService, cfg.IsDevelopment(), cfg.CookieDomain), authMiddleware, csrfMiddleware, tenantMiddleware)
