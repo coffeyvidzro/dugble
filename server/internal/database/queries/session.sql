@@ -33,7 +33,8 @@ ORDER BY last_seen_at DESC;
 -- name: TouchSession :exec
 UPDATE sessions
 SET last_seen_at = now()
-WHERE id = sqlc.arg(id);
+WHERE id = sqlc.arg(id)
+  AND last_seen_at < now() - interval '5 minutes';
 
 -- name: RevokeSession :exec
 UPDATE sessions

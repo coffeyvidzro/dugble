@@ -211,6 +211,7 @@ const touchSession = `-- name: TouchSession :exec
 UPDATE sessions
 SET last_seen_at = now()
 WHERE id = $1
+  AND last_seen_at < now() - interval '5 minutes'
 `
 
 type TouchSessionParams struct {

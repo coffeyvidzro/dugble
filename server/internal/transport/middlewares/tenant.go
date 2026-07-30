@@ -83,16 +83,33 @@ func Tenant(config TenantConfig) echo.MiddlewareFunc {
 }
 
 func teamIDFromRequest(c *echo.Context, paramName string, headerName string) (uuid.UUID, error) {
-	teamID := strings.TrimSpace(c.Param(paramName))
-	if teamID == "" {
-		teamID = strings.TrimSpace(c.Request().Header.Get(headerName))
-	}
-	if teamID == "" {
+	pathTeamID := strings.TrimSpace(c.Param(paramName))
+	headerTeamID := strings.TrimSpace(c.Request().Header.Get(headerName))
+	if pathTeamID == "" && headerTeamID == "" {
 		return uuid.Nil, apperrors.NewBadRequest("Team id is required")
 	}
-	parsedTeamID, err := uuid.Parse(teamID)
-	if err != nil {
-		return uuid.Nil, apperrors.NewBadRequest("Team id must be a valid UUID")
+
+	var parsedPathTeamID uuid.UUID
+	if pathTeamID != "" {
+		var err error
+		parsedPathTeamID, err = uuid.Parse(pathTeamID)
+		if err != nil {
+			return uuid.Nil, apperrors.NewBadRequest("Team id must be a valid UUID")
+		}
 	}
-	return parsedTeamID, nil
+	var parsedHeaderTeamID uuid.UUID
+	if headerTeamID != "" {
+		var err error
+		parsedHeaderTeamID, err = uuid.Parse(headerTeamID)
+		if err != nil {
+			return uuid.Nil, apperrors.NewBadRequest("Team id must be a valid UUID")
+		}
+	}
+	if pathTeamID != "" && headerTeamID != "" && parsedPathTeamID != parsedHeaderTeamID {
+		return uuid.Nil, apperrors.NewBadRequest("Team id in path and header must match")
+	}
+	if pathTeamID != "" {
+		return parsedPathTeamID, nil
+	}
+	return parsedHeaderTeamID, nil
 }

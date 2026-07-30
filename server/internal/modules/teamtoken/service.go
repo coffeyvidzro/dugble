@@ -234,7 +234,7 @@ func validatePermissions(values []string) ([]string, error) {
 		if permission == "" {
 			continue
 		}
-		if !allowedTokenPermission(permission) {
+		if !IsAllowedPermission(permission) {
 			return nil, apperrors.NewBadRequest("Unsupported token permission")
 		}
 		key := string(permission)
@@ -250,7 +250,7 @@ func validatePermissions(values []string) ([]string, error) {
 	return permissions, nil
 }
 
-func allowedTokenPermission(permission tenant.Permission) bool {
+func IsAllowedPermission(permission tenant.Permission) bool {
 	_, ok := allowedPermissions[permission]
 	return ok
 }

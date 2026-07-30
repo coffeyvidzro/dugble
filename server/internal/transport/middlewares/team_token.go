@@ -52,7 +52,10 @@ func TeamToken(config TeamTokenConfig) echo.MiddlewareFunc {
 					apperrors.NewUnauthorized("Team token is invalid or expired"),
 				)
 			}
-			permissions := tokenPermissions(token.Permissions)
+			permissions, ok := tokenPermissions(token.Permissions)
+			if !ok {
+				return httputil.Error(c, apperrors.NewUnauthorized("Team token is invalid"))
+			}
 			if config.Required != "" && !tenant.HasPermission(permissions, config.Required) {
 				return httputil.Error(
 					c,
@@ -93,13 +96,17 @@ func parseBearerToken(value string) (string, bool) {
 	return strings.TrimSpace(token), true
 }
 
-func tokenPermissions(values []string) []tenant.Permission {
+func tokenPermissions(values []string) ([]tenant.Permission, bool) {
 	permissions := make([]tenant.Permission, 0, len(values))
 	for _, value := range values {
 		permission := tenant.Permission(strings.TrimSpace(value))
-		if permission != "" {
-			permissions = append(permissions, permission)
+		if permission == "" || !teamtoken.IsAllowedPermission(permission) {
+			return nil, false
 		}
+		permissions = append(permissions, permission)
 	}
-	return permissions
+	if len(permissions) == 0 {
+		return nil, false
+	}
+	return permissions, true
 }

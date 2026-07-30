@@ -4,7 +4,6 @@ type Permission string
 
 const (
 	PermissionTeamRead            Permission = "team:read"
-	PermissionTeamCreate          Permission = "team:create"
 	PermissionTeamUpdate          Permission = "team:update"
 	PermissionTeamDelete          Permission = "team:delete"
 	PermissionTeamMembersRead     Permission = "team_members:read"
@@ -33,7 +32,6 @@ const (
 var permissionsByRole = map[string]map[Permission]struct{}{
 	RoleOwner: {
 		PermissionTeamRead:            {},
-		PermissionTeamCreate:          {},
 		PermissionTeamUpdate:          {},
 		PermissionTeamDelete:          {},
 		PermissionTeamMembersRead:     {},
@@ -59,7 +57,6 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 	},
 	RoleAdmin: {
 		PermissionTeamRead:            {},
-		PermissionTeamCreate:          {},
 		PermissionTeamUpdate:          {},
 		PermissionTeamMembersRead:     {},
 		PermissionTeamMemberLeave:     {},
@@ -84,7 +81,6 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 	},
 	RoleMember: {
 		PermissionTeamRead:          {},
-		PermissionTeamCreate:        {},
 		PermissionTeamMembersRead:   {},
 		PermissionTeamMemberLeave:   {},
 		PermissionSenderIDsRead:     {},

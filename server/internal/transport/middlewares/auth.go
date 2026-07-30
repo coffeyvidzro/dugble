@@ -2,8 +2,10 @@ package middlewares
 
 import (
 	"context"
+	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v5"
 
 	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
@@ -46,6 +48,9 @@ func SessionAuth(config SessionAuthConfig) echo.MiddlewareFunc {
 				authnz.HashSessionToken(cookie.Value),
 			)
 			if err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					return httputil.Error(c, apperrors.NewUnauthorized("Session is invalid or expired"))
+				}
 				return httputil.Error(c, apperrors.NewInternal("Unable to load session", err))
 			}
 			if session.RevokedAt != nil || !session.ExpiresAt.After(time.Now().UTC()) {
