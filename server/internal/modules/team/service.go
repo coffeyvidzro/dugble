@@ -56,22 +56,13 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Team, error) {
 	if name == "" {
 		return Team{}, apperrors.NewBadRequest("Team name is required")
 	}
-	team, err := s.repository.Create(ctx, name, principal.UserID)
+	team, err := s.repository.CreateWithOwner(ctx, name, principal.UserID)
 	if err != nil {
 		return Team{}, apperrors.NewInternal("Unable to create team", err)
 	}
 	createdTeamID, err := uuid.Parse(team.ID)
 	if err != nil {
 		return Team{}, apperrors.NewInternal("Unable to parse created team id", err)
-	}
-	if _, err := s.repository.CreateMember(
-		ctx,
-		createdTeamID,
-		principal.UserID,
-		RoleOwner,
-		"active",
-	); err != nil {
-		return Team{}, apperrors.NewInternal("Unable to create team owner", err)
 	}
 	audit.Record(ctx, tenant.AccessContext{
 		Actor: tenant.Actor{Type: tenant.ActorTypeUser, UserID: principal.UserID, SessionID: principal.SessionID},

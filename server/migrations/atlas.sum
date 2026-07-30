@@ -1,4 +1,4 @@
-h1:PrY0xgo4QC0vODoYhpAMt20p1SadUb0sJiTipLENDmo=
+h1:eVYl1dFacRJ3z5UIQw7Dud7XZLF8+mpjfWoRXKBGgIw=
 001_create_users.sql h1:eBbhTPvYBEkMnWedFTFlS/IdkL5cO2OWFiJLUfkciSo=
 003_create_sessions.sql h1:GHYsOJ7+Wella28My8yKLbt0MhHNFFvWQFwGWqDNjtA=
 004_create_oauth_identities.sql h1:cDYHOX3gOS+TXEr4/iJuq1aAPlh/0VtzVtxf5MWFjQI=
@@ -13,3 +13,4 @@ h1:PrY0xgo4QC0vODoYhpAMt20p1SadUb0sJiTipLENDmo=
 016_create_outbox.sql h1:XgPNfyDW/tMKtO+zuW+r2MpHsv8DPwkz9Uq6DnaqE6s=
 017_create_email_messages.sql h1:Pdt9Cg/VNnY7osOzAAtDrLfQfoLaN/ja9yhRylNCeCE=
 018_create_webhooks.sql h1:CatnwY1FbP8puGAsgS0HhqIFz1cafGtOwDD0MhwVGBs=
+019_enforce_tenant_invariants.sql h1:XXGiKvs8bt2IIffez/xEwMDxTW/5n4kzBYnLW8lTPEU=
