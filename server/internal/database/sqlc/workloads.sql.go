@@ -12,15 +12,48 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createFederatedWorkloadAccessToken = `-- name: CreateFederatedWorkloadAccessToken :one
+INSERT INTO workload_access_tokens(workload_id,federation_id,token_hash,expires_at) VALUES($1,$2,$3,$4) RETURNING id, workload_id, credential_id, token_hash, expires_at, last_used_at, revoked_at, created_at, federation_id
+`
+
+type CreateFederatedWorkloadAccessTokenParams struct {
+	WorkloadID   uuid.UUID          `db:"workload_id" json:"workload_id"`
+	FederationID *uuid.UUID         `db:"federation_id" json:"federation_id"`
+	TokenHash    string             `db:"token_hash" json:"token_hash"`
+	ExpiresAt    pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+}
+
+func (q *Queries) CreateFederatedWorkloadAccessToken(ctx context.Context, arg CreateFederatedWorkloadAccessTokenParams) (WorkloadAccessToken, error) {
+	row := q.db.QueryRow(ctx, createFederatedWorkloadAccessToken,
+		arg.WorkloadID,
+		arg.FederationID,
+		arg.TokenHash,
+		arg.ExpiresAt,
+	)
+	var i WorkloadAccessToken
+	err := row.Scan(
+		&i.ID,
+		&i.WorkloadID,
+		&i.CredentialID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.LastUsedAt,
+		&i.RevokedAt,
+		&i.CreatedAt,
+		&i.FederationID,
+	)
+	return i, err
+}
+
 const createWorkloadAccessToken = `-- name: CreateWorkloadAccessToken :one
 INSERT INTO workload_access_tokens (workload_id, credential_id, token_hash, expires_at)
 VALUES ($1, $2, $3, $4)
-RETURNING id, workload_id, credential_id, token_hash, expires_at, last_used_at, revoked_at, created_at
+RETURNING id, workload_id, credential_id, token_hash, expires_at, last_used_at, revoked_at, created_at, federation_id
 `
 
 type CreateWorkloadAccessTokenParams struct {
 	WorkloadID   uuid.UUID          `db:"workload_id" json:"workload_id"`
-	CredentialID uuid.UUID          `db:"credential_id" json:"credential_id"`
+	CredentialID *uuid.UUID         `db:"credential_id" json:"credential_id"`
 	TokenHash    string             `db:"token_hash" json:"token_hash"`
 	ExpiresAt    pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
 }
@@ -42,6 +75,7 @@ func (q *Queries) CreateWorkloadAccessToken(ctx context.Context, arg CreateWorkl
 		&i.LastUsedAt,
 		&i.RevokedAt,
 		&i.CreatedAt,
+		&i.FederationID,
 	)
 	return i, err
 }
@@ -122,6 +156,68 @@ func (q *Queries) CreateWorkloadIdentity(ctx context.Context, arg CreateWorkload
 	return i, err
 }
 
+const createWorkloadOIDCFederation = `-- name: CreateWorkloadOIDCFederation :one
+INSERT INTO workload_oidc_federations(workload_id,name,issuer_url,audiences,subject,required_claims,enabled,created_by)
+SELECT wi.id,$1,$2,$3,$4,$5,$6,$7
+FROM workload_identities wi WHERE wi.id=$8 AND wi.team_id=$9 AND wi.status='active' RETURNING workload_oidc_federations.id, workload_oidc_federations.workload_id, workload_oidc_federations.name, workload_oidc_federations.issuer_url, workload_oidc_federations.audiences, workload_oidc_federations.subject, workload_oidc_federations.required_claims, workload_oidc_federations.enabled, workload_oidc_federations.created_by, workload_oidc_federations.created_at, workload_oidc_federations.updated_at
+`
+
+type CreateWorkloadOIDCFederationParams struct {
+	Name           string     `db:"name" json:"name"`
+	IssuerUrl      string     `db:"issuer_url" json:"issuer_url"`
+	Audiences      []string   `db:"audiences" json:"audiences"`
+	Subject        string     `db:"subject" json:"subject"`
+	RequiredClaims []byte     `db:"required_claims" json:"required_claims"`
+	Enabled        bool       `db:"enabled" json:"enabled"`
+	CreatedBy      *uuid.UUID `db:"created_by" json:"created_by"`
+	WorkloadID     uuid.UUID  `db:"workload_id" json:"workload_id"`
+	TeamID         uuid.UUID  `db:"team_id" json:"team_id"`
+}
+
+func (q *Queries) CreateWorkloadOIDCFederation(ctx context.Context, arg CreateWorkloadOIDCFederationParams) (WorkloadOidcFederation, error) {
+	row := q.db.QueryRow(ctx, createWorkloadOIDCFederation,
+		arg.Name,
+		arg.IssuerUrl,
+		arg.Audiences,
+		arg.Subject,
+		arg.RequiredClaims,
+		arg.Enabled,
+		arg.CreatedBy,
+		arg.WorkloadID,
+		arg.TeamID,
+	)
+	var i WorkloadOidcFederation
+	err := row.Scan(
+		&i.ID,
+		&i.WorkloadID,
+		&i.Name,
+		&i.IssuerUrl,
+		&i.Audiences,
+		&i.Subject,
+		&i.RequiredClaims,
+		&i.Enabled,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const deleteWorkloadOIDCFederation = `-- name: DeleteWorkloadOIDCFederation :exec
+DELETE FROM workload_oidc_federations f USING workload_identities wi WHERE f.id=$1 AND f.workload_id=$2 AND wi.id=f.workload_id AND wi.team_id=$3
+`
+
+type DeleteWorkloadOIDCFederationParams struct {
+	ID         uuid.UUID `db:"id" json:"id"`
+	WorkloadID uuid.UUID `db:"workload_id" json:"workload_id"`
+	TeamID     uuid.UUID `db:"team_id" json:"team_id"`
+}
+
+func (q *Queries) DeleteWorkloadOIDCFederation(ctx context.Context, arg DeleteWorkloadOIDCFederationParams) error {
+	_, err := q.db.Exec(ctx, deleteWorkloadOIDCFederation, arg.ID, arg.WorkloadID, arg.TeamID)
+	return err
+}
+
 const disableWorkloadIdentity = `-- name: DisableWorkloadIdentity :one
 UPDATE workload_identities
 SET status = 'disabled', disabled_at = now(), updated_at = now()
@@ -156,11 +252,13 @@ const getActiveWorkloadAccessTokenByHash = `-- name: GetActiveWorkloadAccessToke
 SELECT wat.id AS token_id, wat.credential_id, wi.id AS workload_id, wi.team_id, wi.name, wi.permissions, wat.expires_at
 FROM workload_access_tokens wat
 JOIN workload_identities wi ON wi.id = wat.workload_id
-JOIN workload_credentials wc ON wc.id = wat.credential_id
+LEFT JOIN workload_credentials wc ON wc.id = wat.credential_id
+LEFT JOIN workload_oidc_federations wof ON wof.id = wat.federation_id
 JOIN teams t ON t.id = wi.team_id
 WHERE wat.token_hash = $1
   AND wat.revoked_at IS NULL AND wat.expires_at > now()
-  AND wc.revoked_at IS NULL AND wc.expires_at > now()
+  AND ((wat.credential_id IS NOT NULL AND wc.revoked_at IS NULL AND wc.expires_at > now())
+    OR (wat.federation_id IS NOT NULL AND wof.enabled))
   AND wi.status = 'active' AND t.status = 'active'
 `
 
@@ -170,7 +268,7 @@ type GetActiveWorkloadAccessTokenByHashParams struct {
 
 type GetActiveWorkloadAccessTokenByHashRow struct {
 	TokenID      uuid.UUID          `db:"token_id" json:"token_id"`
-	CredentialID uuid.UUID          `db:"credential_id" json:"credential_id"`
+	CredentialID *uuid.UUID         `db:"credential_id" json:"credential_id"`
 	WorkloadID   uuid.UUID          `db:"workload_id" json:"workload_id"`
 	TeamID       uuid.UUID          `db:"team_id" json:"team_id"`
 	Name         string             `db:"name" json:"name"`
@@ -223,6 +321,53 @@ func (q *Queries) GetActiveWorkloadCredentialByHash(ctx context.Context, arg Get
 		&i.WorkloadID,
 		&i.TeamID,
 		&i.Name,
+		&i.Permissions,
+	)
+	return i, err
+}
+
+const getActiveWorkloadOIDCFederation = `-- name: GetActiveWorkloadOIDCFederation :one
+SELECT f.id, f.workload_id, f.name, f.issuer_url, f.audiences, f.subject, f.required_claims, f.enabled, f.created_by, f.created_at, f.updated_at,wi.team_id,wi.name AS workload_name,wi.permissions FROM workload_oidc_federations f JOIN workload_identities wi ON wi.id=f.workload_id JOIN teams t ON t.id=wi.team_id WHERE f.id=$1 AND f.enabled AND wi.status='active' AND t.status='active'
+`
+
+type GetActiveWorkloadOIDCFederationParams struct {
+	ID uuid.UUID `db:"id" json:"id"`
+}
+
+type GetActiveWorkloadOIDCFederationRow struct {
+	ID             uuid.UUID          `db:"id" json:"id"`
+	WorkloadID     uuid.UUID          `db:"workload_id" json:"workload_id"`
+	Name           string             `db:"name" json:"name"`
+	IssuerUrl      string             `db:"issuer_url" json:"issuer_url"`
+	Audiences      []string           `db:"audiences" json:"audiences"`
+	Subject        string             `db:"subject" json:"subject"`
+	RequiredClaims []byte             `db:"required_claims" json:"required_claims"`
+	Enabled        bool               `db:"enabled" json:"enabled"`
+	CreatedBy      *uuid.UUID         `db:"created_by" json:"created_by"`
+	CreatedAt      pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	TeamID         uuid.UUID          `db:"team_id" json:"team_id"`
+	WorkloadName   string             `db:"workload_name" json:"workload_name"`
+	Permissions    []string           `db:"permissions" json:"permissions"`
+}
+
+func (q *Queries) GetActiveWorkloadOIDCFederation(ctx context.Context, arg GetActiveWorkloadOIDCFederationParams) (GetActiveWorkloadOIDCFederationRow, error) {
+	row := q.db.QueryRow(ctx, getActiveWorkloadOIDCFederation, arg.ID)
+	var i GetActiveWorkloadOIDCFederationRow
+	err := row.Scan(
+		&i.ID,
+		&i.WorkloadID,
+		&i.Name,
+		&i.IssuerUrl,
+		&i.Audiences,
+		&i.Subject,
+		&i.RequiredClaims,
+		&i.Enabled,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.TeamID,
+		&i.WorkloadName,
 		&i.Permissions,
 	)
 	return i, err
@@ -286,6 +431,47 @@ func (q *Queries) ListWorkloadIdentities(ctx context.Context, arg ListWorkloadId
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DisabledAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listWorkloadOIDCFederations = `-- name: ListWorkloadOIDCFederations :many
+SELECT f.id, f.workload_id, f.name, f.issuer_url, f.audiences, f.subject, f.required_claims, f.enabled, f.created_by, f.created_at, f.updated_at FROM workload_oidc_federations f JOIN workload_identities wi ON wi.id=f.workload_id WHERE f.workload_id=$1 AND wi.team_id=$2 ORDER BY f.created_at
+`
+
+type ListWorkloadOIDCFederationsParams struct {
+	WorkloadID uuid.UUID `db:"workload_id" json:"workload_id"`
+	TeamID     uuid.UUID `db:"team_id" json:"team_id"`
+}
+
+func (q *Queries) ListWorkloadOIDCFederations(ctx context.Context, arg ListWorkloadOIDCFederationsParams) ([]WorkloadOidcFederation, error) {
+	rows, err := q.db.Query(ctx, listWorkloadOIDCFederations, arg.WorkloadID, arg.TeamID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []WorkloadOidcFederation{}
+	for rows.Next() {
+		var i WorkloadOidcFederation
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkloadID,
+			&i.Name,
+			&i.IssuerUrl,
+			&i.Audiences,
+			&i.Subject,
+			&i.RequiredClaims,
+			&i.Enabled,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

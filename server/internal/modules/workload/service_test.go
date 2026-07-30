@@ -31,3 +31,27 @@ func TestCredentialExpiry(t *testing.T) {
 		t.Fatal("accepted credential beyond maximum TTL")
 	}
 }
+
+func TestFederatedClaimsValidation(t *testing.T) {
+	t.Parallel()
+	if !audienceAllowed([]string{"api://dugble"}, []string{"other", "api://dugble"}) {
+		t.Fatal("expected matching audience")
+	}
+	if audienceAllowed([]string{"attacker"}, []string{"api://dugble"}) {
+		t.Fatal("accepted unexpected audience")
+	}
+	claims := map[string]any{"repository": "dugble/server", "environment": "production"}
+	if !claimsMatch(claims, map[string]string{"repository": "dugble/server"}) {
+		t.Fatal("expected matching claims")
+	}
+	if claimsMatch(claims, map[string]string{"environment": "staging"}) {
+		t.Fatal("accepted mismatched required claim")
+	}
+}
+func TestNormalizedStrings(t *testing.T) {
+	t.Parallel()
+	got := normalizedStrings([]string{" audience ", "", "audience"})
+	if len(got) != 1 || got[0] != "audience" {
+		t.Fatalf("unexpected values: %v", got)
+	}
+}

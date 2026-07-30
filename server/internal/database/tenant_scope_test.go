@@ -37,6 +37,7 @@ func TestTenantOwnedQueriesDeclareTenantScope(t *testing.T) {
 		"workloads.sql": querySet(
 			"GetActiveWorkloadCredentialByHash", "TouchWorkloadCredential",
 			"CreateWorkloadAccessToken", "GetActiveWorkloadAccessTokenByHash", "TouchWorkloadAccessToken",
+			"GetActiveWorkloadOIDCFederation", "CreateFederatedWorkloadAccessToken",
 		),
 	}
 	files := []string{
