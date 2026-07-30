@@ -31,11 +31,15 @@ func TestTenantOwnedQueriesDeclareTenantScope(t *testing.T) {
 			"CreateWebhookDelivery", "CreateWebhookDeliveriesForEvent", "ClaimWebhookDeliveries", "MarkWebhookDeliverySucceeded",
 			"ScheduleWebhookDeliveryRetry", "MarkWebhookDeliveryFailed", "ReleaseWebhookDeliveryClaim",
 		),
+		"workloads.sql": querySet(
+			"GetActiveWorkloadCredentialByHash", "TouchWorkloadCredential",
+			"CreateWorkloadAccessToken", "GetActiveWorkloadAccessTokenByHash", "TouchWorkloadAccessToken",
+		),
 	}
 	files := []string{
 		"email_messages.sql", "sender_domains.sql", "sender_ids.sql", "sms_messages.sql",
 		"team_invitations.sql", "team_tokens.sql", "teams.sql", "webhook_deliveries.sql",
-		"webhook_endpoints.sql", "webhook_events.sql",
+		"webhook_endpoints.sql", "webhook_events.sql", "workloads.sql",
 	}
 
 	for _, file := range files {

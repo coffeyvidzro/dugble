@@ -23,6 +23,8 @@ func TestRoleAuthorizer(t *testing.T) {
 		{name: "member allowed read", access: userAccess(teamID, RoleMember), permission: PermissionSMSRead, allowed: true},
 		{name: "token explicit permission", access: tokenAccess(teamID, PermissionSMSSend), permission: PermissionSMSSend, allowed: true},
 		{name: "token does not inherit role", access: tokenAccess(teamID, PermissionSMSRead), permission: PermissionSMSSend},
+		{name: "workload explicit permission", access: workloadAccess(teamID, PermissionEmailSend), permission: PermissionEmailSend, allowed: true},
+		{name: "workload denied missing permission", access: workloadAccess(teamID, PermissionEmailRead), permission: PermissionEmailSend},
 		{name: "missing actor", access: AccessContext{Scope: Scope{TeamID: teamID, Role: RoleOwner, Status: StatusActive}}, permission: PermissionSMSSend},
 		{name: "missing scope", access: userAccess(uuid.Nil, RoleOwner), permission: PermissionSMSSend},
 	}
@@ -65,6 +67,13 @@ func userAccess(teamID uuid.UUID, role string) AccessContext {
 func tokenAccess(teamID uuid.UUID, permissions ...Permission) AccessContext {
 	return AccessContext{
 		Actor: Actor{Type: ActorTypeTeamToken, TokenID: uuid.New()},
+		Scope: Scope{TeamID: teamID, Status: StatusActive, Permissions: permissions},
+	}
+}
+
+func workloadAccess(teamID uuid.UUID, permissions ...Permission) AccessContext {
+	return AccessContext{
+		Actor: Actor{Type: ActorTypeWorkload, WorkloadID: uuid.New(), CredentialID: uuid.New()},
 		Scope: Scope{TeamID: teamID, Status: StatusActive, Permissions: permissions},
 	}
 }

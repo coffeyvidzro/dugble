@@ -27,6 +27,8 @@ const (
 	PermissionEmailSend           Permission = "email:send"
 	PermissionWebhooksRead        Permission = "webhooks:read"
 	PermissionWebhooksWrite       Permission = "webhooks:write"
+	PermissionWorkloadsRead       Permission = "workloads:read"
+	PermissionWorkloadsWrite      Permission = "workloads:write"
 )
 
 var permissionsByRole = map[string]map[Permission]struct{}{
@@ -54,6 +56,8 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 		PermissionEmailSend:           {},
 		PermissionWebhooksRead:        {},
 		PermissionWebhooksWrite:       {},
+		PermissionWorkloadsRead:       {},
+		PermissionWorkloadsWrite:      {},
 	},
 	RoleAdmin: {
 		PermissionTeamRead:            {},
@@ -78,6 +82,7 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 		PermissionEmailSend:           {},
 		PermissionWebhooksRead:        {},
 		PermissionWebhooksWrite:       {},
+		PermissionWorkloadsRead:       {},
 	},
 	RoleMember: {
 		PermissionTeamRead:          {},

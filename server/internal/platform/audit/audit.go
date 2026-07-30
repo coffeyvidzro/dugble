@@ -30,6 +30,12 @@ func Record(ctx context.Context, access tenant.AccessContext, event Event) {
 	if access.Actor.TokenID != uuid.Nil {
 		attributes = append(attributes, slog.String("actor_token_id", access.Actor.TokenID.String()))
 	}
+	if access.Actor.WorkloadID != uuid.Nil {
+		attributes = append(attributes, slog.String("actor_workload_id", access.Actor.WorkloadID.String()))
+	}
+	if access.Actor.CredentialID != uuid.Nil {
+		attributes = append(attributes, slog.String("actor_credential_id", access.Actor.CredentialID.String()))
+	}
 	record(ctx, event, attributes)
 }
 

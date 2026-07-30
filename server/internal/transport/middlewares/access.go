@@ -10,14 +10,15 @@ import (
 	"github.com/coffeyvidzro/dugble/server/pkg/httputil"
 )
 
-// TenantAccess authenticates a tenant-scoped request from either a dashboard
-// session or a team API token, then stores tenant.AccessContext for downstream
-// handlers and services.
+// TenantAccess authenticates a tenant-scoped request from a dashboard session,
+// team API token, or short-lived workload token, then stores tenant.AccessContext
+// for downstream handlers and services.
 type TenantAccessConfig struct {
 	Sessions     SessionStore
 	Users        PrincipalRepository
 	Memberships  tenant.MembershipStore
 	Tokens       TeamTokenStore
+	Workloads    WorkloadTokenStore
 	CSRF         CSRFConfig
 	TenantParam  string
 	TenantHeader string
@@ -27,6 +28,7 @@ type TenantAccessConfig struct {
 func TenantAccess(config TenantAccessConfig) echo.MiddlewareFunc {
 	sessionAccess := sessionTenantAccess(config)
 	teamTokenAccess := teamTokenTenantAccess(config)
+	workloadAccess := Workload(config)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
@@ -36,6 +38,9 @@ func TenantAccess(config TenantAccessConfig) echo.MiddlewareFunc {
 			}
 			if _, ok := parseBearerToken(authorization); !ok {
 				return httputil.Error(c, apperrors.NewUnauthorized("Authorization header is invalid"))
+			}
+			if secret, _ := parseBearerToken(authorization); strings.HasPrefix(secret, "dgb_wa_") {
+				return workloadAccess(next)(c)
 			}
 			return teamTokenAccess(next)(c)
 		}

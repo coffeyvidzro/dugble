@@ -336,3 +336,38 @@ type WebhookEvent struct {
 	OccurredAt pgtype.Timestamptz `db:"occurred_at" json:"occurred_at"`
 	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
+
+type WorkloadAccessToken struct {
+	ID           uuid.UUID          `db:"id" json:"id"`
+	WorkloadID   uuid.UUID          `db:"workload_id" json:"workload_id"`
+	CredentialID uuid.UUID          `db:"credential_id" json:"credential_id"`
+	TokenHash    string             `db:"token_hash" json:"token_hash"`
+	ExpiresAt    pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+	LastUsedAt   pgtype.Timestamptz `db:"last_used_at" json:"last_used_at"`
+	RevokedAt    pgtype.Timestamptz `db:"revoked_at" json:"revoked_at"`
+	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
+type WorkloadCredential struct {
+	ID           uuid.UUID          `db:"id" json:"id"`
+	WorkloadID   uuid.UUID          `db:"workload_id" json:"workload_id"`
+	SecretHash   string             `db:"secret_hash" json:"secret_hash"`
+	SecretPrefix string             `db:"secret_prefix" json:"secret_prefix"`
+	ExpiresAt    pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+	LastUsedAt   pgtype.Timestamptz `db:"last_used_at" json:"last_used_at"`
+	RevokedAt    pgtype.Timestamptz `db:"revoked_at" json:"revoked_at"`
+	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
+type WorkloadIdentity struct {
+	ID          uuid.UUID          `db:"id" json:"id"`
+	TeamID      uuid.UUID          `db:"team_id" json:"team_id"`
+	Name        string             `db:"name" json:"name"`
+	Description string             `db:"description" json:"description"`
+	Status      string             `db:"status" json:"status"`
+	Permissions []string           `db:"permissions" json:"permissions"`
+	CreatedBy   *uuid.UUID         `db:"created_by" json:"created_by"`
+	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	DisabledAt  pgtype.Timestamptz `db:"disabled_at" json:"disabled_at"`
+}

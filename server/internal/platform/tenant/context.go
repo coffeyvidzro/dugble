@@ -13,19 +13,26 @@ type ActorType string
 const (
 	ActorTypeUser      ActorType = "user"
 	ActorTypeTeamToken ActorType = "team_token"
+	ActorTypeWorkload  ActorType = "workload"
 )
 
 type Actor struct {
-	Type      ActorType
-	UserID    uuid.UUID
-	SessionID string
-	TokenID   uuid.UUID
+	Type         ActorType
+	UserID       uuid.UUID
+	SessionID    string
+	TokenID      uuid.UUID
+	WorkloadID   uuid.UUID
+	CredentialID uuid.UUID
 }
 
 func (a Actor) IsUser() bool { return a.Type == ActorTypeUser && a.UserID != uuid.Nil }
 
 func (a Actor) IsTeamToken() bool {
 	return a.Type == ActorTypeTeamToken && a.TokenID != uuid.Nil
+}
+
+func (a Actor) IsWorkload() bool {
+	return a.Type == ActorTypeWorkload && a.WorkloadID != uuid.Nil
 }
 
 type Scope struct {
