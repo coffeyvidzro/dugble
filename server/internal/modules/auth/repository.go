@@ -15,13 +15,15 @@ import (
 )
 
 type UserRecord struct {
-	ID            uuid.UUID
-	Email         string
-	EmailVerified bool
-	Name          string
-	PasswordHash  *string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID                uuid.UUID
+	Email             string
+	EmailVerified     bool
+	Name              string
+	PasswordHash      *string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	CredentialVersion int64
+	SecurityUpdatedAt time.Time
 }
 
 type Repository struct {
@@ -79,10 +81,11 @@ func (r *Repository) GetPrincipalByUserID(
 	}
 
 	return authnz.Principal{
-		UserID:        user.ID,
-		Email:         user.Email,
-		Name:          user.Name,
-		EmailVerified: user.EmailVerified,
+		UserID:            user.ID,
+		Email:             user.Email,
+		Name:              user.Name,
+		EmailVerified:     user.EmailVerified,
+		CredentialVersion: user.CredentialVersion,
 	}, nil
 }
 
@@ -104,69 +107,37 @@ func (r *Repository) CreateVerificationToken(
 	return nil
 }
 
-func (r *Repository) HasVerificationToken(
-	ctx context.Context,
-	identifier string,
-	tokenHash string,
-) error {
-	_, err := r.queries.GetVerificationToken(
-		ctx,
-		dbsqlc.GetVerificationTokenParams{Identifier: identifier, TokenHash: tokenHash},
-	)
+func (r *Repository) VerifyEmailWithToken(ctx context.Context, email string, identifier string, tokenHash string) (UserRecord, error) {
+	row, err := r.queries.VerifyEmailWithToken(ctx, dbsqlc.VerifyEmailWithTokenParams{Email: email, Identifier: identifier, TokenHash: tokenHash})
 	if err != nil {
-		return fmt.Errorf("get verification token: %w", err)
-	}
-	return nil
-}
-
-func (r *Repository) DeleteVerificationToken(
-	ctx context.Context,
-	identifier string,
-	tokenHash string,
-) error {
-	if err := r.queries.DeleteVerificationToken(
-		ctx,
-		dbsqlc.DeleteVerificationTokenParams{Identifier: identifier, TokenHash: tokenHash},
-	); err != nil {
-		return fmt.Errorf("delete verification token: %w", err)
-	}
-	return nil
-}
-
-func (r *Repository) MarkEmailVerified(ctx context.Context, email string) (UserRecord, error) {
-	row, err := r.queries.MarkUserEmailVerifiedByEmail(
-		ctx,
-		dbsqlc.MarkUserEmailVerifiedByEmailParams{Email: email},
-	)
-	if err != nil {
-		return UserRecord{}, fmt.Errorf("mark email verified: %w", err)
+		return UserRecord{}, fmt.Errorf("verify email with token: %w", err)
 	}
 	return userRecordFromSQLC(row), nil
 }
 
-func (r *Repository) UpdatePasswordByEmail(
+func (r *Repository) ResetPasswordWithToken(
 	ctx context.Context,
 	email string,
+	identifier string,
+	tokenHash string,
 	passwordHash string,
 ) (UserRecord, error) {
-	row, err := r.queries.UpdateUserPasswordByEmail(
-		ctx,
-		dbsqlc.UpdateUserPasswordByEmailParams{Email: email, PasswordHash: &passwordHash},
-	)
+	row, err := r.queries.ResetPasswordWithToken(ctx, dbsqlc.ResetPasswordWithTokenParams{
+		Email: email, Identifier: identifier, TokenHash: tokenHash, PasswordHash: &passwordHash,
+	})
 	if err != nil {
-		return UserRecord{}, fmt.Errorf("update password by email: %w", err)
+		return UserRecord{}, fmt.Errorf("reset password with token: %w", err)
 	}
-	return userRecordFromSQLC(row), nil
+	return userRecordFromValues(row.ID, row.Email, row.EmailVerified, row.Name, row.PasswordHash, row.CreatedAt.Time, row.UpdatedAt.Time, row.CredentialVersion, row.SecurityUpdatedAt.Time), nil
 }
 
 func userRecordFromSQLC(row dbsqlc.User) UserRecord {
+	return userRecordFromValues(row.ID, row.Email, row.EmailVerified, row.Name, row.PasswordHash, row.CreatedAt.Time, row.UpdatedAt.Time, row.CredentialVersion, row.SecurityUpdatedAt.Time)
+}
+
+func userRecordFromValues(id uuid.UUID, email string, verified bool, name string, passwordHash *string, createdAt time.Time, updatedAt time.Time, credentialVersion int64, securityUpdatedAt time.Time) UserRecord {
 	return UserRecord{
-		ID:            row.ID,
-		Email:         row.Email,
-		EmailVerified: row.EmailVerified,
-		Name:          row.Name,
-		PasswordHash:  row.PasswordHash,
-		CreatedAt:     row.CreatedAt.Time,
-		UpdatedAt:     row.UpdatedAt.Time,
+		ID: id, Email: email, EmailVerified: verified, Name: name, PasswordHash: passwordHash,
+		CreatedAt: createdAt, UpdatedAt: updatedAt, CredentialVersion: credentialVersion, SecurityUpdatedAt: securityUpdatedAt,
 	}
 }
