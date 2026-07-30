@@ -30,3 +30,18 @@ func TestRecordIncludesActorTenantAndResource(t *testing.T) {
 		}
 	}
 }
+
+func TestRecordIdentityIncludesUser(t *testing.T) {
+	var output bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&output, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	userID := uuid.New()
+	RecordIdentity(context.Background(), userID, Event{Action: "identity.password_reset", ResourceType: "user", ResourceID: userID.String()})
+	for _, value := range []string{"identity.password_reset", userID.String(), "success"} {
+		if !strings.Contains(output.String(), value) {
+			t.Fatalf("identity audit output does not contain %q: %s", value, output.String())
+		}
+	}
+}

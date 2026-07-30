@@ -137,15 +137,20 @@ type SenderID struct {
 }
 
 type Session struct {
-	ID         string             `db:"id" json:"id"`
-	UserID     uuid.UUID          `db:"user_id" json:"user_id"`
-	TokenHash  string             `db:"token_hash" json:"token_hash"`
-	UserAgent  *string            `db:"user_agent" json:"user_agent"`
-	IpAddress  *string            `db:"ip_address" json:"ip_address"`
-	ExpiresAt  pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
-	RevokedAt  pgtype.Timestamptz `db:"revoked_at" json:"revoked_at"`
-	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	LastSeenAt pgtype.Timestamptz `db:"last_seen_at" json:"last_seen_at"`
+	ID                   string             `db:"id" json:"id"`
+	UserID               uuid.UUID          `db:"user_id" json:"user_id"`
+	TokenHash            string             `db:"token_hash" json:"token_hash"`
+	UserAgent            *string            `db:"user_agent" json:"user_agent"`
+	IpAddress            *string            `db:"ip_address" json:"ip_address"`
+	ExpiresAt            pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+	RevokedAt            pgtype.Timestamptz `db:"revoked_at" json:"revoked_at"`
+	CreatedAt            pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	LastSeenAt           pgtype.Timestamptz `db:"last_seen_at" json:"last_seen_at"`
+	CredentialVersion    int64              `db:"credential_version" json:"credential_version"`
+	AuthenticationMethod string             `db:"authentication_method" json:"authentication_method"`
+	AssuranceLevel       string             `db:"assurance_level" json:"assurance_level"`
+	AuthenticatedAt      pgtype.Timestamptz `db:"authenticated_at" json:"authenticated_at"`
+	MfaCompletedAt       pgtype.Timestamptz `db:"mfa_completed_at" json:"mfa_completed_at"`
 }
 
 type SmsMessage struct {
@@ -219,13 +224,15 @@ type TeamToken struct {
 }
 
 type User struct {
-	ID            uuid.UUID          `db:"id" json:"id"`
-	Email         string             `db:"email" json:"email"`
-	EmailVerified bool               `db:"email_verified" json:"email_verified"`
-	Name          string             `db:"name" json:"name"`
-	PasswordHash  *string            `db:"password_hash" json:"password_hash"`
-	CreatedAt     pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ID                uuid.UUID          `db:"id" json:"id"`
+	Email             string             `db:"email" json:"email"`
+	EmailVerified     bool               `db:"email_verified" json:"email_verified"`
+	Name              string             `db:"name" json:"name"`
+	PasswordHash      *string            `db:"password_hash" json:"password_hash"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	CredentialVersion int64              `db:"credential_version" json:"credential_version"`
+	SecurityUpdatedAt pgtype.Timestamptz `db:"security_updated_at" json:"security_updated_at"`
 }
 
 type VerificationToken struct {

@@ -2,12 +2,16 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"net/mail"
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
 	"github.com/coffeyvidzro/dugble/server/internal/notifications"
+	"github.com/coffeyvidzro/dugble/server/internal/platform/audit"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
@@ -120,13 +124,14 @@ func (s *Service) VerifyEmail(ctx context.Context, req VerifyEmailRequest) error
 
 	identifier := emailVerificationIdentifier(email)
 	tokenHash := authnz.HashSessionToken(token)
-	if err := s.repository.HasVerificationToken(ctx, identifier, tokenHash); err != nil {
-		return apperrors.NewBadRequest("Email verification token is invalid or expired")
-	}
-	if _, err := s.repository.MarkEmailVerified(ctx, email); err != nil {
+	user, err := s.repository.VerifyEmailWithToken(ctx, email, identifier, tokenHash)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperrors.NewBadRequest("Email verification token is invalid or expired")
+		}
 		return apperrors.NewInternal("Unable to verify email", err)
 	}
-	_ = s.repository.DeleteVerificationToken(ctx, identifier, tokenHash)
+	audit.RecordIdentity(ctx, user.ID, audit.Event{Action: "identity.email_verified", ResourceType: "user", ResourceID: user.ID.String()})
 	return nil
 }
 
@@ -167,17 +172,18 @@ func (s *Service) ResetPassword(ctx context.Context, req ResetPasswordRequest) e
 
 	identifier := passwordResetIdentifier(email)
 	tokenHash := authnz.HashSessionToken(token)
-	if err := s.repository.HasVerificationToken(ctx, identifier, tokenHash); err != nil {
-		return apperrors.NewBadRequest("Password reset token is invalid or expired")
-	}
 	passwordHash, err := authnz.HashPassword(password)
 	if err != nil {
 		return apperrors.NewInternal("Unable to hash password", err)
 	}
-	if _, err := s.repository.UpdatePasswordByEmail(ctx, email, passwordHash); err != nil {
+	user, err := s.repository.ResetPasswordWithToken(ctx, email, identifier, tokenHash, passwordHash)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperrors.NewBadRequest("Password reset token is invalid or expired")
+		}
 		return apperrors.NewInternal("Unable to reset password", err)
 	}
-	_ = s.repository.DeleteVerificationToken(ctx, identifier, tokenHash)
+	audit.RecordIdentity(ctx, user.ID, audit.Event{Action: "identity.password_reset", ResourceType: "user", ResourceID: user.ID.String()})
 	return nil
 }
 
@@ -225,7 +231,8 @@ func (s *Service) createSession(
 			err,
 		)
 	}
-	expiresAt := time.Now().UTC().Add(sessionTTL)
+	authenticatedAt := time.Now().UTC()
+	expiresAt := authenticatedAt.Add(sessionTTL)
 	if _, err := s.sessions.Create(
 		ctx,
 		user.ID,
@@ -233,6 +240,12 @@ func (s *Service) createSession(
 		userAgent,
 		ipAddress,
 		expiresAt,
+		session.Authentication{
+			CredentialVersion: user.CredentialVersion,
+			Method:            authnz.AuthenticationMethodPassword,
+			Assurance:         authnz.AssuranceLevelOne,
+			AuthenticatedAt:   authenticatedAt,
+		},
 	); err != nil {
 		return AuthResponse{}, "", time.Time{}, apperrors.NewInternal(
 			"Unable to create session",

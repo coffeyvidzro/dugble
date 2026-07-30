@@ -4,13 +4,23 @@ INSERT INTO sessions (
     token_hash,
     user_agent,
     ip_address,
-    expires_at
+    expires_at,
+    credential_version,
+    authentication_method,
+    assurance_level,
+    authenticated_at,
+    mfa_completed_at
 ) VALUES (
     sqlc.arg(user_id),
     sqlc.arg(token_hash),
     sqlc.narg(user_agent),
     sqlc.narg(ip_address),
-    sqlc.arg(expires_at)
+    sqlc.arg(expires_at),
+    sqlc.arg(credential_version),
+    sqlc.arg(authentication_method),
+    sqlc.arg(assurance_level),
+    sqlc.arg(authenticated_at),
+    sqlc.narg(mfa_completed_at)
 )
 RETURNING *;
 

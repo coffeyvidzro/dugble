@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
+	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
 )
 
 type Repository struct {
@@ -27,13 +28,19 @@ func (r *Repository) Create(
 	userAgent *string,
 	ipAddress *string,
 	expiresAt time.Time,
+	authentication Authentication,
 ) (Record, error) {
 	created, err := r.queries.CreateSession(ctx, dbsqlc.CreateSessionParams{
-		UserID:    userID,
-		TokenHash: tokenHash,
-		UserAgent: userAgent,
-		IpAddress: ipAddress,
-		ExpiresAt: pgtype.Timestamptz{Time: expiresAt, Valid: true},
+		UserID:               userID,
+		TokenHash:            tokenHash,
+		UserAgent:            userAgent,
+		IpAddress:            ipAddress,
+		ExpiresAt:            pgtype.Timestamptz{Time: expiresAt, Valid: true},
+		CredentialVersion:    authentication.CredentialVersion,
+		AuthenticationMethod: string(authentication.Method),
+		AssuranceLevel:       string(authentication.Assurance),
+		AuthenticatedAt:      pgtype.Timestamptz{Time: authentication.AuthenticatedAt, Valid: true},
+		MfaCompletedAt:       nullableTime(authentication.MFACompletedAt),
 	})
 	if err != nil {
 		return Record{}, fmt.Errorf("create session: %w", err)
@@ -108,5 +115,26 @@ func recordFromSQLC(row dbsqlc.Session) Record {
 		RevokedAt:  revokedAt,
 		CreatedAt:  row.CreatedAt.Time,
 		LastSeenAt: row.LastSeenAt.Time,
+		Authentication: Authentication{
+			CredentialVersion: row.CredentialVersion,
+			Method:            authnz.AuthenticationMethod(row.AuthenticationMethod),
+			Assurance:         authnz.AssuranceLevel(row.AssuranceLevel),
+			AuthenticatedAt:   row.AuthenticatedAt.Time,
+			MFACompletedAt:    timePointer(row.MfaCompletedAt),
+		},
 	}
+}
+
+func nullableTime(value *time.Time) pgtype.Timestamptz {
+	if value == nil {
+		return pgtype.Timestamptz{}
+	}
+	return pgtype.Timestamptz{Time: *value, Valid: true}
+}
+
+func timePointer(value pgtype.Timestamptz) *time.Time {
+	if !value.Valid {
+		return nil
+	}
+	return &value.Time
 }

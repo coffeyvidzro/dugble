@@ -90,6 +90,7 @@ type Querier interface {
 	RecordSenderDomainReconciliationFailure(ctx context.Context, arg RecordSenderDomainReconciliationFailureParams) (SenderDomain, error)
 	ReleaseWebhookDeliveryClaim(ctx context.Context, arg ReleaseWebhookDeliveryClaimParams) (int64, error)
 	RemoveTeamMember(ctx context.Context, arg RemoveTeamMemberParams) error
+	ResetPasswordWithToken(ctx context.Context, arg ResetPasswordWithTokenParams) (ResetPasswordWithTokenRow, error)
 	RetryWebhookDelivery(ctx context.Context, arg RetryWebhookDeliveryParams) (WebhookDelivery, error)
 	RevokeOtherUserSessions(ctx context.Context, arg RevokeOtherUserSessionsParams) error
 	RevokeSession(ctx context.Context, arg RevokeSessionParams) error
@@ -109,6 +110,7 @@ type Querier interface {
 	UpdateUserPasswordByEmail(ctx context.Context, arg UpdateUserPasswordByEmailParams) (User, error)
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error)
 	UpdateWebhookEndpoint(ctx context.Context, arg UpdateWebhookEndpointParams) (WebhookEndpoint, error)
+	VerifyEmailWithToken(ctx context.Context, arg VerifyEmailWithTokenParams) (User, error)
 }
 
 var _ Querier = (*Queries)(nil)
