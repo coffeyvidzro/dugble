@@ -30,6 +30,7 @@ const (
 	PermissionWorkloadsRead       Permission = "workloads:read"
 	PermissionWorkloadsWrite      Permission = "workloads:write"
 	PermissionAuditEventsRead     Permission = "audit_events:read"
+	PermissionSSOManage           Permission = "sso:manage"
 )
 
 var permissionsByRole = map[string]map[Permission]struct{}{
@@ -60,6 +61,7 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 		PermissionWorkloadsRead:       {},
 		PermissionWorkloadsWrite:      {},
 		PermissionAuditEventsRead:     {},
+		PermissionSSOManage:           {},
 	},
 	RoleAdmin: {
 		PermissionTeamRead:            {},
@@ -86,6 +88,7 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 		PermissionWebhooksWrite:       {},
 		PermissionWorkloadsRead:       {},
 		PermissionAuditEventsRead:     {},
+		PermissionSSOManage:           {},
 	},
 	RoleMember: {
 		PermissionTeamRead:          {},

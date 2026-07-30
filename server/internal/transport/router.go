@@ -17,6 +17,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/modules/senderid"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
 	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
+	"github.com/coffeyvidzro/dugble/server/internal/modules/sso"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/team"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/teamtoken"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/user"
@@ -73,6 +74,8 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	if err != nil {
 		return nil, err
 	}
+	ssoRepository := sso.NewRepository(deps.DB)
+	ssoService := sso.NewService(ssoRepository, sessionRepository, mfaCipher, cfg.BackendURL)
 	mfaService := mfa.NewService(mfa.NewRepository(deps.DB), mfaCipher, "Dugble")
 	authService := auth.NewService(authRepository, sessionRepository, emailService, mfaService)
 	authMiddleware := middlewares.SessionAuth(middlewares.SessionAuthConfig{Sessions: sessionRepository, Users: authRepository})
@@ -103,6 +106,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		return middlewares.TenantAccess(middlewares.TenantAccessConfig{Sessions: sessionRepository, Users: authRepository, Memberships: teamRepository, Tokens: teamTokenRepository, Workloads: workloadRepository, CSRF: csrfConfig, Required: permission})
 	}
 	team.RegisterRoutes(router, team.NewHandler(teamService), authMiddleware, csrfMiddleware, tenantMiddleware)
+	sso.RegisterRoutes(router, sso.NewHandler(ssoService, cfg.IsDevelopment(), cfg.CookieDomain), authMiddleware, csrfMiddleware, tenantMiddleware)
 	auditevent.RegisterRoutes(router, auditevent.NewHandler(auditevent.NewService(auditRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	identitypolicy.RegisterRoutes(router, identitypolicy.NewHandler(identitypolicy.NewService(identityPolicyRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	teamtoken.RegisterRoutes(router, teamtoken.NewHandler(teamtoken.NewService(teamTokenRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
