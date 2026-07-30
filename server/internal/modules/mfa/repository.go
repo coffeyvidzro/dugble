@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
@@ -135,4 +136,43 @@ func (r *Repository) Disable(ctx context.Context, userID uuid.UUID, currentSessi
 
 func (r *Repository) Enabled(ctx context.Context, userID uuid.UUID) (bool, error) {
 	return r.queries.IsTOTPEnabled(ctx, dbsqlc.IsTOTPEnabledParams{UserID: userID})
+}
+
+func (r *Repository) CreateLoginChallenge(ctx context.Context, tokenHash string, userID uuid.UUID, credentialVersion int64, expiresAt time.Time) error {
+	return r.queries.CreateMFALoginChallenge(ctx, dbsqlc.CreateMFALoginChallengeParams{
+		TokenHash:         tokenHash,
+		UserID:            &userID,
+		CredentialVersion: credentialVersion,
+		ExpiresAt:         pgtype.Timestamptz{Time: expiresAt, Valid: true},
+	})
+}
+
+func (r *Repository) GetLoginChallenge(ctx context.Context, tokenHash string) (uuid.UUID, Credential, error) {
+	row, err := r.queries.GetActiveMFALoginChallenge(ctx, dbsqlc.GetActiveMFALoginChallengeParams{TokenHash: tokenHash})
+	if err != nil {
+		return uuid.Nil, Credential{}, err
+	}
+	return *row.UserID, Credential{SecretCiphertext: row.SecretCiphertext, LastUsedStep: row.LastUsedStep}, nil
+}
+
+func (r *Repository) ConsumeLoginTOTP(ctx context.Context, tokenHash string, userID uuid.UUID, step int64) error {
+	rows, err := r.queries.ConsumeMFALoginChallengeWithTOTP(ctx, dbsqlc.ConsumeMFALoginChallengeWithTOTPParams{TokenHash: tokenHash, UserID: &userID, LastUsedStep: &step})
+	if err != nil {
+		return err
+	}
+	if rows != 1 {
+		return pgx.ErrNoRows
+	}
+	return nil
+}
+
+func (r *Repository) ConsumeLoginRecoveryCode(ctx context.Context, tokenHash string, userID uuid.UUID, codeHash string) error {
+	rows, err := r.queries.ConsumeMFALoginChallengeWithRecoveryCode(ctx, dbsqlc.ConsumeMFALoginChallengeWithRecoveryCodeParams{TokenHash: tokenHash, UserID: &userID, CodeHash: codeHash})
+	if err != nil {
+		return err
+	}
+	if rows != 1 {
+		return pgx.ErrNoRows
+	}
+	return nil
 }

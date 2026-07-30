@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
@@ -26,6 +27,14 @@ type Service struct {
 	repository *Repository
 	sessions   *session.Repository
 	notifier   IdentityNotifier
+	mfa        LoginMFA
+}
+
+type LoginMFA interface {
+	LoginEnabled(context.Context, uuid.UUID) (bool, error)
+	BeginLogin(context.Context, uuid.UUID, int64) (string, error)
+	CompleteLoginTOTP(context.Context, string, string) (uuid.UUID, error)
+	CompleteLoginRecovery(context.Context, string, string) (uuid.UUID, error)
 }
 
 type IdentityNotifier interface {
@@ -37,8 +46,13 @@ func NewService(
 	repository *Repository,
 	sessions *session.Repository,
 	notifier IdentityNotifier,
+	mfa ...LoginMFA,
 ) *Service {
-	return &Service{repository: repository, sessions: sessions, notifier: notifier}
+	service := &Service{repository: repository, sessions: sessions, notifier: notifier}
+	if len(mfa) > 0 {
+		service.mfa = mfa[0]
+	}
+	return service
 }
 
 func (s *Service) GetUser(ctx context.Context) (AuthResponse, error) {
@@ -90,11 +104,11 @@ func (s *Service) Login(
 	req LoginRequest,
 	userAgent *string,
 	ipAddress *string,
-) (AuthResponse, string, time.Time, error) {
+) (LoginResponse, string, time.Time, error) {
 	email := normalizeEmail(req.Email)
 	password := strings.TrimSpace(req.Password)
 	if email == "" || password == "" {
-		return AuthResponse{}, "", time.Time{}, apperrors.NewBadRequest(
+		return LoginResponse{}, "", time.Time{}, apperrors.NewBadRequest(
 			"Email and password are required",
 		)
 	}
@@ -102,17 +116,65 @@ func (s *Service) Login(
 	user, err := s.repository.GetUserByEmail(ctx, email)
 	if err != nil || user.PasswordHash == nil ||
 		!authnz.CheckPassword(*user.PasswordHash, password) {
-		return AuthResponse{}, "", time.Time{}, apperrors.NewUnauthorized(
+		return LoginResponse{}, "", time.Time{}, apperrors.NewUnauthorized(
 			"Invalid email or password",
 		)
 	}
 	if !user.EmailVerified {
-		return AuthResponse{}, "", time.Time{}, apperrors.NewForbidden(
+		return LoginResponse{}, "", time.Time{}, apperrors.NewForbidden(
 			"Email verification is required",
 		)
 	}
 
-	return s.createSession(ctx, user, userAgent, ipAddress)
+	if s.mfa != nil {
+		enabled, err := s.mfa.LoginEnabled(ctx, user.ID)
+		if err != nil {
+			return LoginResponse{}, "", time.Time{}, apperrors.NewInternal("Unable to determine MFA requirements", err)
+		}
+		if enabled {
+			challenge, err := s.mfa.BeginLogin(ctx, user.ID, user.CredentialVersion)
+			if err != nil {
+				return LoginResponse{}, "", time.Time{}, apperrors.NewInternal("Unable to begin MFA login", err)
+			}
+			return LoginResponse{MFARequired: true, ChallengeToken: challenge, Methods: []string{"totp", "recovery_code"}}, "", time.Time{}, nil
+		}
+	}
+	response, token, expiresAt, err := s.createSession(ctx, user, userAgent, ipAddress, authnz.AuthenticationMethodPassword, authnz.AssuranceLevelOne, nil)
+	if err != nil {
+		return LoginResponse{}, "", time.Time{}, err
+	}
+	return LoginResponse{User: &response.User}, token, expiresAt, nil
+}
+
+func (s *Service) CompleteMFALogin(ctx context.Context, request MFALoginRequest, recovery bool, userAgent, ipAddress *string) (LoginResponse, string, time.Time, error) {
+	if s.mfa == nil {
+		return LoginResponse{}, "", time.Time{}, apperrors.NewInternal("MFA login is not configured", nil)
+	}
+	var userID uuid.UUID
+	var err error
+	if recovery {
+		userID, err = s.mfa.CompleteLoginRecovery(ctx, request.ChallengeToken, request.Code)
+	} else {
+		userID, err = s.mfa.CompleteLoginTOTP(ctx, request.ChallengeToken, request.Code)
+	}
+	if err != nil {
+		return LoginResponse{}, "", time.Time{}, apperrors.NewUnauthorized("MFA challenge is invalid or expired")
+	}
+	user, err := s.repository.GetUserByID(ctx, userID)
+	if err != nil {
+		return LoginResponse{}, "", time.Time{}, apperrors.NewUnauthorized("MFA challenge is invalid or expired")
+	}
+	completedAt := time.Now().UTC()
+	method := authnz.AuthenticationMethodPassword
+	if recovery {
+		method = authnz.AuthenticationMethodRecoveryCode
+	}
+	response, token, expiresAt, err := s.createSession(ctx, user, userAgent, ipAddress, method, authnz.AssuranceLevelTwo, &completedAt)
+	if err != nil {
+		return LoginResponse{}, "", time.Time{}, err
+	}
+	audit.RecordIdentity(ctx, user.ID, audit.Event{Action: "identity.mfa_login_completed", ResourceType: "user", ResourceID: user.ID.String(), Metadata: map[string]any{"method": method}})
+	return LoginResponse{User: &response.User}, token, expiresAt, nil
 }
 
 func (s *Service) VerifyEmail(ctx context.Context, req VerifyEmailRequest) error {
@@ -223,6 +285,9 @@ func (s *Service) createSession(
 	user UserRecord,
 	userAgent *string,
 	ipAddress *string,
+	method authnz.AuthenticationMethod,
+	assurance authnz.AssuranceLevel,
+	mfaCompletedAt *time.Time,
 ) (AuthResponse, string, time.Time, error) {
 	token, err := authnz.NewSessionToken()
 	if err != nil {
@@ -242,9 +307,10 @@ func (s *Service) createSession(
 		expiresAt,
 		session.Authentication{
 			CredentialVersion: user.CredentialVersion,
-			Method:            authnz.AuthenticationMethodPassword,
-			Assurance:         authnz.AssuranceLevelOne,
+			Method:            method,
+			Assurance:         assurance,
 			AuthenticatedAt:   authenticatedAt,
+			MFACompletedAt:    mfaCompletedAt,
 		},
 	); err != nil {
 		return AuthResponse{}, "", time.Time{}, apperrors.NewInternal(

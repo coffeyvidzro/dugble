@@ -18,8 +18,11 @@ type Querier interface {
 	CompleteSenderDomainHealthCheck(ctx context.Context, arg CompleteSenderDomainHealthCheckParams) (SenderDomain, error)
 	CompleteSenderDomainReconciliation(ctx context.Context, arg CompleteSenderDomainReconciliationParams) (SenderDomain, error)
 	ConfirmTOTPCredential(ctx context.Context, arg ConfirmTOTPCredentialParams) (int64, error)
+	ConsumeMFALoginChallengeWithRecoveryCode(ctx context.Context, arg ConsumeMFALoginChallengeWithRecoveryCodeParams) (int64, error)
+	ConsumeMFALoginChallengeWithTOTP(ctx context.Context, arg ConsumeMFALoginChallengeWithTOTPParams) (int64, error)
 	CreateEmailMessage(ctx context.Context, arg CreateEmailMessageParams) (EmailMessage, error)
 	CreateIdempotencyKey(ctx context.Context, arg CreateIdempotencyKeyParams) (IdempotencyKey, error)
+	CreateMFALoginChallenge(ctx context.Context, arg CreateMFALoginChallengeParams) error
 	CreateOAuthIdentity(ctx context.Context, arg CreateOAuthIdentityParams) (OauthIdentity, error)
 	CreateRecoveryCode(ctx context.Context, arg CreateRecoveryCodeParams) error
 	CreateSMSMessage(ctx context.Context, arg CreateSMSMessageParams) (SmsMessage, error)
@@ -55,6 +58,7 @@ type Querier interface {
 	DowngradeSessionAfterMFADisable(ctx context.Context, arg DowngradeSessionAfterMFADisableParams) error
 	ElevateSessionAfterMFAEnrollment(ctx context.Context, arg ElevateSessionAfterMFAEnrollmentParams) (int64, error)
 	FindApprovedSMSSender(ctx context.Context, arg FindApprovedSMSSenderParams) (uuid.UUID, error)
+	GetActiveMFALoginChallenge(ctx context.Context, arg GetActiveMFALoginChallengeParams) (GetActiveMFALoginChallengeRow, error)
 	GetActiveTeamTokenByHash(ctx context.Context, arg GetActiveTeamTokenByHashParams) (TeamToken, error)
 	GetActiveWorkloadAccessTokenByHash(ctx context.Context, arg GetActiveWorkloadAccessTokenByHashParams) (GetActiveWorkloadAccessTokenByHashRow, error)
 	GetActiveWorkloadCredentialByHash(ctx context.Context, arg GetActiveWorkloadCredentialByHashParams) (GetActiveWorkloadCredentialByHashRow, error)

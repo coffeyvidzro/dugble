@@ -17,6 +17,9 @@ type fakeStore struct {
 	confirmed  bool
 	step       int64
 	hashes     []string
+	loginUser  uuid.UUID
+	tokenHash  string
+	loginStep  int64
 }
 
 func (f *fakeStore) PutUnverified(_ context.Context, _ uuid.UUID, ciphertext []byte) error {
@@ -35,6 +38,53 @@ func (f *fakeStore) UseRecoveryCode(context.Context, uuid.UUID, string, string) 
 func (f *fakeStore) Disable(context.Context, uuid.UUID, string) error                 { return nil }
 func (f *fakeStore) Enabled(context.Context, uuid.UUID) (bool, error) {
 	return f.credential.VerifiedAt != nil, nil
+}
+
+func (f *fakeStore) CreateLoginChallenge(_ context.Context, tokenHash string, userID uuid.UUID, _ int64, _ time.Time) error {
+	f.tokenHash, f.loginUser = tokenHash, userID
+	return nil
+}
+func (f *fakeStore) GetLoginChallenge(context.Context, string) (uuid.UUID, Credential, error) {
+	return f.loginUser, f.credential, nil
+}
+func (f *fakeStore) ConsumeLoginTOTP(_ context.Context, _ string, _ uuid.UUID, step int64) error {
+	f.loginStep = step
+	return nil
+}
+func (f *fakeStore) ConsumeLoginRecoveryCode(context.Context, string, uuid.UUID, string) error {
+	return nil
+}
+
+func TestBeginAndCompleteLoginTOTP(t *testing.T) {
+	key := make([]byte, 32)
+	cipher, err := authnz.NewSecretCipher(base64.StdEncoding.EncodeToString(key))
+	if err != nil {
+		t.Fatal(err)
+	}
+	secret, err := authnz.NewTOTPSecret()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ciphertext, err := cipher.Encrypt([]byte(secret))
+	if err != nil {
+		t.Fatal(err)
+	}
+	userID := uuid.New()
+	repository := &fakeStore{loginUser: userID, credential: Credential{SecretCiphertext: ciphertext}}
+	service := NewService(repository, cipher, "Dugble")
+	now := time.Unix(1_700_000_000, 0).UTC()
+	service.now = func() time.Time { return now }
+	challenge, err := service.BeginLogin(context.Background(), userID, 1)
+	if err != nil || challenge == "" || repository.tokenHash == "" {
+		t.Fatalf("BeginLogin() = %q, %v", challenge, err)
+	}
+	got, err := service.CompleteLoginTOTP(context.Background(), challenge, totpAt(secret, now))
+	if err != nil || got != userID || repository.loginStep == 0 {
+		t.Fatalf("CompleteLoginTOTP() = %s, %v", got, err)
+	}
+	if _, err := service.CompleteLoginTOTP(context.Background(), "invalid", "000000"); err == nil {
+		t.Fatal("accepted malformed login challenge")
+	}
 }
 
 func TestEnrollAndConfirm(t *testing.T) {

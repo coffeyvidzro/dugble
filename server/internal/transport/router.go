@@ -64,18 +64,18 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	emailService := notifications.NewEmailService(deps.Sender, deps.Renderer, cfg.FrontendURL, cfg.AWS.FromEmail)
 	sessionRepository := session.NewRepository(deps.DB)
 	authRepository := auth.NewRepository(deps.DB)
-	authService := auth.NewService(authRepository, sessionRepository, emailService)
+	mfaCipher, err := authnz.NewSecretCipher(cfg.MFAEncryptionKey)
+	if err != nil {
+		return nil, err
+	}
+	mfaService := mfa.NewService(mfa.NewRepository(deps.DB), mfaCipher, "Dugble")
+	authService := auth.NewService(authRepository, sessionRepository, emailService, mfaService)
 	authMiddleware := middlewares.SessionAuth(middlewares.SessionAuthConfig{Sessions: sessionRepository, Users: authRepository})
 	csrfConfig := middlewares.CSRFConfig{Development: cfg.IsDevelopment(), TrustedOrigins: cfg.CORSOrigins}
 	csrfMiddleware := middlewares.CSRF(csrfConfig)
 	csrfHandler := csrf.NewHandler()
 	router.GET("/csrf", csrfHandler.Token, csrfMiddleware)
 	auth.RegisterRoutes(router, auth.NewHandler(authService, cfg.IsDevelopment(), cfg.CookieDomain), authMiddleware, csrfMiddleware)
-	mfaCipher, err := authnz.NewSecretCipher(cfg.MFAEncryptionKey)
-	if err != nil {
-		return nil, err
-	}
-	mfaService := mfa.NewService(mfa.NewRepository(deps.DB), mfaCipher, "Dugble")
 	mfa.RegisterRoutes(router, mfa.NewHandler(mfaService), authMiddleware, csrfMiddleware)
 
 	userRepository := user.NewRepository(deps.DB)

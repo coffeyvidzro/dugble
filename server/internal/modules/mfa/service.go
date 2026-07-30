@@ -15,6 +15,8 @@ import (
 )
 
 const recoveryCodeCount = 10
+const loginChallengeTTL = 5 * time.Minute
+const loginChallengePrefix = "dgb_mfa_"
 
 type store interface {
 	PutUnverified(context.Context, uuid.UUID, []byte) error
@@ -24,6 +26,10 @@ type store interface {
 	UseRecoveryCode(context.Context, uuid.UUID, string, string) error
 	Disable(context.Context, uuid.UUID, string) error
 	Enabled(context.Context, uuid.UUID) (bool, error)
+	CreateLoginChallenge(context.Context, string, uuid.UUID, int64, time.Time) error
+	GetLoginChallenge(context.Context, string) (uuid.UUID, Credential, error)
+	ConsumeLoginTOTP(context.Context, string, uuid.UUID, int64) error
+	ConsumeLoginRecoveryCode(context.Context, string, uuid.UUID, string) error
 }
 
 type Service struct {
@@ -180,4 +186,62 @@ func newRecoveryCodes() ([]string, []string, error) {
 		hashes = append(hashes, authnz.HashRecoveryCode(code))
 	}
 	return codes, hashes, nil
+}
+
+func (s *Service) LoginEnabled(ctx context.Context, userID uuid.UUID) (bool, error) {
+	return s.repository.Enabled(ctx, userID)
+}
+
+func (s *Service) BeginLogin(ctx context.Context, userID uuid.UUID, credentialVersion int64) (string, error) {
+	value, err := authnz.NewSessionToken()
+	if err != nil {
+		return "", err
+	}
+	token := loginChallengePrefix + value
+	if err := s.repository.CreateLoginChallenge(ctx, authnz.HashSessionToken(token), userID, credentialVersion, s.now().UTC().Add(loginChallengeTTL)); err != nil {
+		return "", err
+	}
+	return token, nil
+}
+
+func (s *Service) CompleteLoginTOTP(ctx context.Context, challengeToken, code string) (uuid.UUID, error) {
+	tokenHash, err := loginChallengeHash(challengeToken)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	userID, credential, err := s.repository.GetLoginChallenge(ctx, tokenHash)
+	if err != nil {
+		return uuid.Nil, pgx.ErrNoRows
+	}
+	step, ok := s.validateCredential(credential, code)
+	if !ok || (credential.LastUsedStep != nil && step <= *credential.LastUsedStep) {
+		return uuid.Nil, pgx.ErrNoRows
+	}
+	if err := s.repository.ConsumeLoginTOTP(ctx, tokenHash, userID, step); err != nil {
+		return uuid.Nil, err
+	}
+	return userID, nil
+}
+
+func (s *Service) CompleteLoginRecovery(ctx context.Context, challengeToken, code string) (uuid.UUID, error) {
+	tokenHash, err := loginChallengeHash(challengeToken)
+	if err != nil || strings.TrimSpace(code) == "" {
+		return uuid.Nil, pgx.ErrNoRows
+	}
+	userID, _, err := s.repository.GetLoginChallenge(ctx, tokenHash)
+	if err != nil {
+		return uuid.Nil, pgx.ErrNoRows
+	}
+	if err := s.repository.ConsumeLoginRecoveryCode(ctx, tokenHash, userID, authnz.HashRecoveryCode(code)); err != nil {
+		return uuid.Nil, err
+	}
+	return userID, nil
+}
+
+func loginChallengeHash(token string) (string, error) {
+	token = strings.TrimSpace(token)
+	if !strings.HasPrefix(token, loginChallengePrefix) {
+		return "", pgx.ErrNoRows
+	}
+	return authnz.HashSessionToken(token), nil
 }

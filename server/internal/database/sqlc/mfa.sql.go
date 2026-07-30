@@ -34,6 +34,124 @@ func (q *Queries) ConfirmTOTPCredential(ctx context.Context, arg ConfirmTOTPCred
 	return result.RowsAffected(), nil
 }
 
+const consumeMFALoginChallengeWithRecoveryCode = `-- name: ConsumeMFALoginChallengeWithRecoveryCode :execrows
+WITH accepted_code AS (
+    UPDATE recovery_codes
+    SET used_at = now()
+    WHERE user_id = $2
+      AND code_hash = $3
+      AND used_at IS NULL
+      AND EXISTS (
+          SELECT 1 FROM authentication_challenges ac
+          JOIN users u ON u.id = ac.user_id
+          WHERE ac.token_hash = $1
+            AND ac.user_id = $2
+            AND ac.purpose = 'mfa_login'
+            AND ac.consumed_at IS NULL
+            AND ac.expires_at > now()
+            AND u.credential_version = (ac.state->>'credential_version')::bigint
+      )
+    RETURNING user_id
+)
+UPDATE authentication_challenges
+SET consumed_at = now()
+WHERE authentication_challenges.token_hash = $1
+  AND authentication_challenges.user_id = $2
+  AND authentication_challenges.purpose = 'mfa_login'
+  AND authentication_challenges.consumed_at IS NULL
+  AND authentication_challenges.expires_at > now()
+  AND EXISTS (
+      SELECT 1 FROM users
+      WHERE users.id = authentication_challenges.user_id
+        AND users.credential_version = (authentication_challenges.state->>'credential_version')::bigint
+  )
+  AND EXISTS (SELECT 1 FROM accepted_code)
+`
+
+type ConsumeMFALoginChallengeWithRecoveryCodeParams struct {
+	TokenHash string     `db:"token_hash" json:"token_hash"`
+	UserID    *uuid.UUID `db:"user_id" json:"user_id"`
+	CodeHash  string     `db:"code_hash" json:"code_hash"`
+}
+
+func (q *Queries) ConsumeMFALoginChallengeWithRecoveryCode(ctx context.Context, arg ConsumeMFALoginChallengeWithRecoveryCodeParams) (int64, error) {
+	result, err := q.db.Exec(ctx, consumeMFALoginChallengeWithRecoveryCode, arg.TokenHash, arg.UserID, arg.CodeHash)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const consumeMFALoginChallengeWithTOTP = `-- name: ConsumeMFALoginChallengeWithTOTP :execrows
+WITH accepted_totp AS (
+    UPDATE totp_credentials
+    SET last_used_step = $3, updated_at = now()
+    WHERE user_id = $2
+      AND verified_at IS NOT NULL
+      AND (last_used_step IS NULL OR last_used_step < $3)
+      AND EXISTS (
+          SELECT 1 FROM authentication_challenges ac
+          JOIN users u ON u.id = ac.user_id
+          WHERE ac.token_hash = $1
+            AND ac.user_id = $2
+            AND ac.purpose = 'mfa_login'
+            AND ac.consumed_at IS NULL
+            AND ac.expires_at > now()
+            AND u.credential_version = (ac.state->>'credential_version')::bigint
+      )
+    RETURNING user_id
+)
+UPDATE authentication_challenges
+SET consumed_at = now()
+WHERE authentication_challenges.token_hash = $1
+  AND authentication_challenges.user_id = $2
+  AND authentication_challenges.purpose = 'mfa_login'
+  AND authentication_challenges.consumed_at IS NULL
+  AND authentication_challenges.expires_at > now()
+  AND EXISTS (
+      SELECT 1 FROM users
+      WHERE users.id = authentication_challenges.user_id
+        AND users.credential_version = (authentication_challenges.state->>'credential_version')::bigint
+  )
+  AND EXISTS (SELECT 1 FROM accepted_totp)
+`
+
+type ConsumeMFALoginChallengeWithTOTPParams struct {
+	TokenHash    string     `db:"token_hash" json:"token_hash"`
+	UserID       *uuid.UUID `db:"user_id" json:"user_id"`
+	LastUsedStep *int64     `db:"last_used_step" json:"last_used_step"`
+}
+
+func (q *Queries) ConsumeMFALoginChallengeWithTOTP(ctx context.Context, arg ConsumeMFALoginChallengeWithTOTPParams) (int64, error) {
+	result, err := q.db.Exec(ctx, consumeMFALoginChallengeWithTOTP, arg.TokenHash, arg.UserID, arg.LastUsedStep)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const createMFALoginChallenge = `-- name: CreateMFALoginChallenge :exec
+INSERT INTO authentication_challenges (token_hash, user_id, purpose, state, expires_at)
+VALUES ($1, $2, 'mfa_login', jsonb_build_object('credential_version', $3::bigint), $4)
+`
+
+type CreateMFALoginChallengeParams struct {
+	TokenHash         string             `db:"token_hash" json:"token_hash"`
+	UserID            *uuid.UUID         `db:"user_id" json:"user_id"`
+	CredentialVersion int64              `db:"credential_version" json:"credential_version"`
+	ExpiresAt         pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+}
+
+func (q *Queries) CreateMFALoginChallenge(ctx context.Context, arg CreateMFALoginChallengeParams) error {
+	_, err := q.db.Exec(ctx, createMFALoginChallenge,
+		arg.TokenHash,
+		arg.UserID,
+		arg.CredentialVersion,
+		arg.ExpiresAt,
+	)
+	return err
+}
+
 const createRecoveryCode = `-- name: CreateRecoveryCode :exec
 INSERT INTO recovery_codes (user_id, code_hash)
 VALUES ($1, $2)
@@ -116,6 +234,35 @@ func (q *Queries) ElevateSessionAfterMFAEnrollment(ctx context.Context, arg Elev
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const getActiveMFALoginChallenge = `-- name: GetActiveMFALoginChallenge :one
+SELECT ac.user_id, tc.secret_ciphertext, tc.last_used_step
+FROM authentication_challenges ac
+JOIN totp_credentials tc ON tc.user_id = ac.user_id AND tc.verified_at IS NOT NULL
+JOIN users u ON u.id = ac.user_id
+WHERE ac.token_hash = $1
+  AND ac.purpose = 'mfa_login'
+  AND ac.consumed_at IS NULL
+  AND ac.expires_at > now()
+  AND (ac.state->>'credential_version')::bigint = u.credential_version
+`
+
+type GetActiveMFALoginChallengeParams struct {
+	TokenHash string `db:"token_hash" json:"token_hash"`
+}
+
+type GetActiveMFALoginChallengeRow struct {
+	UserID           *uuid.UUID `db:"user_id" json:"user_id"`
+	SecretCiphertext []byte     `db:"secret_ciphertext" json:"secret_ciphertext"`
+	LastUsedStep     *int64     `db:"last_used_step" json:"last_used_step"`
+}
+
+func (q *Queries) GetActiveMFALoginChallenge(ctx context.Context, arg GetActiveMFALoginChallengeParams) (GetActiveMFALoginChallengeRow, error) {
+	row := q.db.QueryRow(ctx, getActiveMFALoginChallenge, arg.TokenHash)
+	var i GetActiveMFALoginChallengeRow
+	err := row.Scan(&i.UserID, &i.SecretCiphertext, &i.LastUsedStep)
+	return i, err
 }
 
 const getTOTPCredential = `-- name: GetTOTPCredential :one
