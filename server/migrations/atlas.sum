@@ -1,4 +1,4 @@
-h1:rKUoZYGkZr8Ck3oNdeNZIeN2qUTIKqahyDBR3h5rA+4=
+h1:n+rJcBS73q6l9iZGl7bnr4GfgMfou3/qqOkyxN3kYuc=
 001_create_users.sql h1:ZnfCa2IqXF1xhkheZcJF1k8scsvdcQeouGHZVN5qRVM=
 003_create_sessions.sql h1:hljR7D894KpfQroTrICOIVSrzxHauIPdQUjmu9SQXpA=
 004_create_oauth_identities.sql h1:IDcKgQsORM8KZGQJbluCUSk1Q5cSNDp0ShlpF2UYfAY=
@@ -16,3 +16,4 @@ h1:rKUoZYGkZr8Ck3oNdeNZIeN2qUTIKqahyDBR3h5rA+4=
 019_enforce_tenant_invariants.sql h1:7ajYtqcjFY6XKVsfh4vqQAV1XmzNM8IJlSgvUtntDBI=
 020_create_audit_events.sql h1:H9cEpScuCxXHUpITkLJ51JejtXvy9UlsdPMxufqOtDg=
 021_create_oidc_sso.sql h1:6QpTDImTDmEL66h0oZ1st6NNhV1a8xnmnUdfpWF50BU=
+022_create_scim.sql h1:TUVP6jUDWsoQ1rTlO6d7YJpR4YrtU6oNf1jeEHqWzu0=

@@ -14,6 +14,7 @@ import (
 	emailmodule "github.com/coffeyvidzro/dugble/server/internal/modules/email"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/identitypolicy"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/mfa"
+	"github.com/coffeyvidzro/dugble/server/internal/modules/scim"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/senderid"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
 	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
@@ -52,6 +53,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	router := echo.New()
 	router.Use(middleware.RequestID())
 	router.Use(middlewares.AuditRequestContext)
+	router.Use(middlewares.AuditRequestContext)
 	router.Use(middleware.RequestLogger())
 	router.Use(middleware.Recover())
 	router.Use(middleware.BodyLimit(12 << 20))
@@ -68,12 +70,15 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	emailService := notifications.NewEmailService(deps.Sender, deps.Renderer, cfg.FrontendURL, cfg.AWS.FromEmail)
 	auditRepository := audit.NewRepository(deps.DB)
 	audit.SetSink(auditRepository)
+	auditRepository := audit.NewRepository(deps.DB)
+	audit.SetSink(auditRepository)
 	sessionRepository := session.NewRepository(deps.DB)
 	authRepository := auth.NewRepository(deps.DB)
 	mfaCipher, err := authnz.NewSecretCipher(cfg.MFAEncryptionKey)
 	if err != nil {
 		return nil, err
 	}
+	scimService := scim.NewService(scim.NewRepository(deps.DB))
 	ssoRepository := sso.NewRepository(deps.DB)
 	ssoService := sso.NewService(ssoRepository, sessionRepository, mfaCipher, cfg.BackendURL)
 	mfaService := mfa.NewService(mfa.NewRepository(deps.DB), mfaCipher, "Dugble")
@@ -85,13 +90,17 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	router.GET("/csrf", csrfHandler.Token, csrfMiddleware)
 	auth.RegisterRoutes(router, auth.NewHandler(authService, cfg.IsDevelopment(), cfg.CookieDomain), authMiddleware, csrfMiddleware)
 	mfa.RegisterRoutes(router, mfa.NewHandler(mfaService), authMiddleware, csrfMiddleware)
+	mfa.RegisterRoutes(router, mfa.NewHandler(mfaService), authMiddleware, csrfMiddleware)
 
 	userRepository := user.NewRepository(deps.DB)
 	user.RegisterRoutes(router, user.NewHandler(user.NewService(userRepository)), authMiddleware, csrfMiddleware)
 	teamRepository := team.NewRepository(deps.DB)
 	teamService := team.NewService(teamRepository, emailService)
 	identityPolicyRepository := identitypolicy.NewRepository(deps.DB)
+	identityPolicyRepository := identitypolicy.NewRepository(deps.DB)
 	teamTokenRepository := teamtoken.NewRepository(deps.DB)
+	workloadRepository := workload.NewRepository(deps.DB)
+	workloadService := workload.NewService(workloadRepository)
 	workloadRepository := workload.NewRepository(deps.DB)
 	workloadService := workload.NewService(workloadRepository)
 	domainRepository := domain.NewRepository(deps.DB)
@@ -101,15 +110,18 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	smsRepository := smsmodule.NewRepositoryWithWebhookEmitter(deps.DB, webhookEmitter)
 	tenantMiddleware := func(permission tenant.Permission) echo.MiddlewareFunc {
 		return middlewares.Tenant(middlewares.TenantConfig{Memberships: teamRepository, Policies: identityPolicyRepository, Required: permission})
+		return middlewares.Tenant(middlewares.TenantConfig{Memberships: teamRepository, Policies: identityPolicyRepository, Required: permission})
 	}
 	tenantAccess := func(permission tenant.Permission) echo.MiddlewareFunc {
-		return middlewares.TenantAccess(middlewares.TenantAccessConfig{Sessions: sessionRepository, Users: authRepository, Memberships: teamRepository, Policies: identityPolicyRepository, Tokens: teamTokenRepository, Workloads: workloadRepository, CSRF: csrfConfig, Required: permission})
+		return middlewares.TenantAccess(middlewares.TenantAccessConfig{Sessions: sessionRepository, Users: authRepository, Memberships: teamRepository, Tokens: teamTokenRepository, Workloads: workloadRepository, CSRF: csrfConfig, Required: permission})
 	}
 	team.RegisterRoutes(router, team.NewHandler(teamService), authMiddleware, csrfMiddleware, tenantMiddleware)
+	scim.RegisterRoutes(router, scim.NewHandler(scimService), authMiddleware, csrfMiddleware, tenantMiddleware)
 	sso.RegisterRoutes(router, sso.NewHandler(ssoService, cfg.IsDevelopment(), cfg.CookieDomain), authMiddleware, csrfMiddleware, tenantMiddleware)
 	auditevent.RegisterRoutes(router, auditevent.NewHandler(auditevent.NewService(auditRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	identitypolicy.RegisterRoutes(router, identitypolicy.NewHandler(identitypolicy.NewService(identityPolicyRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	teamtoken.RegisterRoutes(router, teamtoken.NewHandler(teamtoken.NewService(teamTokenRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
+	workload.RegisterRoutes(router, workload.NewHandler(workloadService), authMiddleware, csrfMiddleware, tenantMiddleware)
 	workload.RegisterRoutes(router, workload.NewHandler(workloadService), authMiddleware, csrfMiddleware, tenantMiddleware)
 	senderid.RegisterRoutes(router, senderid.NewHandler(senderid.NewService(senderIDRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	domain.RegisterRoutes(router, domain.NewHandler(domain.NewService(domainRepository, deps.DomainProvider, deps.DNSVerifier)), authMiddleware, csrfMiddleware, tenantMiddleware)

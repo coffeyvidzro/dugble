@@ -181,6 +181,27 @@ type RecoveryCode struct {
 	CreatedAt pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
+type ScimExternalID struct {
+	TeamID      uuid.UUID          `db:"team_id" json:"team_id"`
+	UserID      uuid.UUID          `db:"user_id" json:"user_id"`
+	ExternalID  string             `db:"external_id" json:"external_id"`
+	DisplayName string             `db:"display_name" json:"display_name"`
+	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type ScimToken struct {
+	ID         uuid.UUID          `db:"id" json:"id"`
+	TeamID     uuid.UUID          `db:"team_id" json:"team_id"`
+	Name       string             `db:"name" json:"name"`
+	TokenHash  string             `db:"token_hash" json:"token_hash"`
+	CreatedBy  *uuid.UUID         `db:"created_by" json:"created_by"`
+	LastUsedAt pgtype.Timestamptz `db:"last_used_at" json:"last_used_at"`
+	ExpiresAt  pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+	RevokedAt  pgtype.Timestamptz `db:"revoked_at" json:"revoked_at"`
+	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
 type SenderDomain struct {
 	ID                        uuid.UUID          `db:"id" json:"id"`
 	TeamID                    uuid.UUID          `db:"team_id" json:"team_id"`

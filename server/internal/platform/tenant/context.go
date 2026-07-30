@@ -14,8 +14,29 @@ const (
 	ActorTypeUser      ActorType = "user"
 	ActorTypeTeamToken ActorType = "team_token"
 	ActorTypeWorkload  ActorType = "workload"
+	ActorTypeSCIMToken ActorType = "scim_token"
 )
 
+type Actor struct {
+	Type         ActorType
+	UserID       uuid.UUID
+	SessionID    string
+	TokenID      uuid.UUID
+	WorkloadID   uuid.UUID
+	CredentialID uuid.UUID
+}
+
+func (a Actor) IsUser() bool { return a.Type == ActorTypeUser && a.UserID != uuid.Nil }
+
+func (a Actor) IsTeamToken() bool {
+	return a.Type == ActorTypeTeamToken && a.TokenID != uuid.Nil
+}
+
+func (a Actor) IsWorkload() bool {
+	return a.Type == ActorTypeWorkload && a.WorkloadID != uuid.Nil
+}
+
+type Scope struct {
 type Actor struct {
 	Type         ActorType
 	UserID       uuid.UUID
@@ -45,12 +66,20 @@ type Scope struct {
 type AccessContext struct {
 	Actor Actor
 	Scope Scope
+type AccessContext struct {
+	Actor Actor
+	Scope Scope
 }
 
 func ContextWithAccess(ctx context.Context, access AccessContext) context.Context {
 	return context.WithValue(ctx, contextKey{}, access)
+func ContextWithAccess(ctx context.Context, access AccessContext) context.Context {
+	return context.WithValue(ctx, contextKey{}, access)
 }
 
+func AccessFromContext(ctx context.Context) (AccessContext, bool) {
+	access, ok := ctx.Value(contextKey{}).(AccessContext)
+	return access, ok
 func AccessFromContext(ctx context.Context) (AccessContext, bool) {
 	access, ok := ctx.Value(contextKey{}).(AccessContext)
 	return access, ok

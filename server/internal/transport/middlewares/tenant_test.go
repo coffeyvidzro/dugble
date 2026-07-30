@@ -66,6 +66,7 @@ func TestTenantEnforcesIdentityPolicy(t *testing.T) {
 	}
 }
 
+<<<<<<< HEAD
 func TestTenantAccessSessionEnforcesIdentityPolicy(t *testing.T) {
 	t.Parallel()
 
@@ -99,6 +100,8 @@ func TestTenantAccessSessionEnforcesIdentityPolicy(t *testing.T) {
 	}
 }
 
+=======
+>>>>>>> 9496bd1 (Add SCIM user provisioning)
 func TestTenantRejectsDisabledTeam(t *testing.T) {
 	t.Parallel()
 
