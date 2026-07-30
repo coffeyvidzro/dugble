@@ -4,7 +4,6 @@ type Permission string
 
 const (
 	PermissionTeamRead            Permission = "team:read"
-	PermissionTeamCreate          Permission = "team:create"
 	PermissionTeamUpdate          Permission = "team:update"
 	PermissionTeamDelete          Permission = "team:delete"
 	PermissionTeamMembersRead     Permission = "team_members:read"
@@ -28,12 +27,16 @@ const (
 	PermissionEmailSend           Permission = "email:send"
 	PermissionWebhooksRead        Permission = "webhooks:read"
 	PermissionWebhooksWrite       Permission = "webhooks:write"
+	PermissionWorkloadsRead       Permission = "workloads:read"
+	PermissionWorkloadsWrite      Permission = "workloads:write"
+	PermissionAuditEventsRead     Permission = "audit_events:read"
+	PermissionSSOManage           Permission = "sso:manage"
+	PermissionSCIMManage          Permission = "scim:manage"
 )
 
 var permissionsByRole = map[string]map[Permission]struct{}{
 	RoleOwner: {
 		PermissionTeamRead:            {},
-		PermissionTeamCreate:          {},
 		PermissionTeamUpdate:          {},
 		PermissionTeamDelete:          {},
 		PermissionTeamMembersRead:     {},
@@ -56,10 +59,14 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 		PermissionEmailSend:           {},
 		PermissionWebhooksRead:        {},
 		PermissionWebhooksWrite:       {},
+		PermissionWorkloadsRead:       {},
+		PermissionWorkloadsWrite:      {},
+		PermissionAuditEventsRead:     {},
+		PermissionSSOManage:           {},
+		PermissionSCIMManage:          {},
 	},
 	RoleAdmin: {
 		PermissionTeamRead:            {},
-		PermissionTeamCreate:          {},
 		PermissionTeamUpdate:          {},
 		PermissionTeamMembersRead:     {},
 		PermissionTeamMemberLeave:     {},
@@ -81,10 +88,13 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 		PermissionEmailSend:           {},
 		PermissionWebhooksRead:        {},
 		PermissionWebhooksWrite:       {},
+		PermissionWorkloadsRead:       {},
+		PermissionAuditEventsRead:     {},
+		PermissionSSOManage:           {},
+		PermissionSCIMManage:          {},
 	},
 	RoleMember: {
 		PermissionTeamRead:          {},
-		PermissionTeamCreate:        {},
 		PermissionTeamMembersRead:   {},
 		PermissionTeamMemberLeave:   {},
 		PermissionSenderIDsRead:     {},
@@ -111,11 +121,4 @@ func HasPermission(permissions []Permission, permission Permission) bool {
 		}
 	}
 	return false
-}
-
-func ContextCan(tenantContext Context, permission Permission) bool {
-	if HasPermission(tenantContext.Permissions, permission) {
-		return true
-	}
-	return Can(tenantContext.Role, permission)
 }

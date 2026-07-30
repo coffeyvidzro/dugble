@@ -29,7 +29,7 @@ func (s *Service) List(ctx context.Context) ([]SenderID, error) {
 	if err != nil {
 		return nil, err
 	}
-	senderIDs, err := s.repository.List(ctx, tenantContext.TeamID)
+	senderIDs, err := s.repository.List(ctx, tenantContext.Scope.TeamID)
 	if err != nil {
 		return nil, apperrors.NewInternal("Unable to list sender IDs", err)
 	}
@@ -45,7 +45,7 @@ func (s *Service) Get(ctx context.Context, senderID string) (SenderID, error) {
 	if err != nil {
 		return SenderID{}, apperrors.NewBadRequest("Sender ID id must be a valid UUID")
 	}
-	value, err := s.repository.Get(ctx, parsedSenderID, tenantContext.TeamID)
+	value, err := s.repository.Get(ctx, parsedSenderID, tenantContext.Scope.TeamID)
 	if err != nil {
 		return SenderID{}, apperrors.NewNotFound("Sender ID not found")
 	}
@@ -63,12 +63,12 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (SenderID, erro
 	}
 	senderID, err := s.repository.Create(
 		ctx,
-		tenantContext.TeamID,
+		tenantContext.Scope.TeamID,
 		name,
 		countryCode,
 		purpose,
 		provider,
-		tenantContext.UserID,
+		tenantContext.Actor.UserID,
 	)
 	if err != nil {
 		if errors.Is(err, ErrSenderIDAlreadyExists) {
@@ -90,7 +90,7 @@ func (s *Service) Delete(ctx context.Context, senderID string) (SenderID, error)
 	if err != nil {
 		return SenderID{}, apperrors.NewBadRequest("Sender ID id must be a valid UUID")
 	}
-	value, err := s.repository.Delete(ctx, parsedSenderID, tenantContext.TeamID)
+	value, err := s.repository.Delete(ctx, parsedSenderID, tenantContext.Scope.TeamID)
 	if err != nil {
 		return SenderID{}, apperrors.NewNotFound("Sender ID not found")
 	}
@@ -135,13 +135,10 @@ func normalizeOptional(value *string) *string {
 	return &trimmed
 }
 
-func requireTenantPermission(ctx context.Context, permission tenant.Permission) (tenant.Context, error) {
-	tenantContext, ok := tenant.FromContext(ctx)
-	if !ok {
-		return tenant.Context{}, apperrors.NewUnauthorized("Tenant context is required")
-	}
-	if !tenant.ContextCan(tenantContext, permission) {
-		return tenant.Context{}, apperrors.NewForbidden("Sender ID permission is required")
+func requireTenantPermission(ctx context.Context, permission tenant.Permission) (tenant.AccessContext, error) {
+	tenantContext, decision := tenant.ResolveAccess(ctx, permission)
+	if !decision.Allowed {
+		return tenant.AccessContext{}, apperrors.NewForbidden(decision.Reason)
 	}
 	return tenantContext, nil
 }

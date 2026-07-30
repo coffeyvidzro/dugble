@@ -1,12 +1,17 @@
--- name: CreateTeam :one
-INSERT INTO teams (
-    name,
-    created_by
-) VALUES (
-    sqlc.arg(name),
-    sqlc.arg(created_by)
+-- name: CreateTeamWithOwner :one
+WITH created_team AS (
+    INSERT INTO teams (name, created_by)
+    VALUES (sqlc.arg(name), sqlc.arg(owner_id))
+    RETURNING *
+), created_owner AS (
+    INSERT INTO team_members (team_id, user_id, role, status)
+    SELECT id, sqlc.arg(owner_id), 'owner', 'active'
+    FROM created_team
+    RETURNING team_id
 )
-RETURNING *;
+SELECT created_team.*
+FROM created_team
+JOIN created_owner ON created_owner.team_id = created_team.id;
 
 -- name: GetTeam :one
 SELECT *

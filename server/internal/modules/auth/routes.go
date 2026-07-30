@@ -13,6 +13,8 @@ func RegisterRoutes(
 
 	auth.POST("/register", handler.Register)
 	auth.POST("/login", handler.Login)
+	auth.POST("/login/mfa/totp", handler.CompleteMFATOTP)
+	auth.POST("/login/mfa/recovery", handler.CompleteMFARecovery)
 	auth.POST("/email/verify", handler.VerifyEmail)
 	auth.POST("/email/resend", handler.ResendEmail)
 	auth.POST("/password/forgot", handler.ForgotPassword)

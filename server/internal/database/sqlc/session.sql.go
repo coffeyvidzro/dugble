@@ -18,23 +18,38 @@ INSERT INTO sessions (
     token_hash,
     user_agent,
     ip_address,
-    expires_at
+    expires_at,
+    credential_version,
+    authentication_method,
+    assurance_level,
+    authenticated_at,
+    mfa_completed_at
 ) VALUES (
     $1,
     $2,
     $3,
     $4,
-    $5
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10
 )
-RETURNING id, user_id, token_hash, user_agent, ip_address, expires_at, revoked_at, created_at, last_seen_at
+RETURNING id, user_id, token_hash, user_agent, ip_address, expires_at, revoked_at, created_at, last_seen_at, credential_version, authentication_method, assurance_level, authenticated_at, mfa_completed_at
 `
 
 type CreateSessionParams struct {
-	UserID    uuid.UUID          `db:"user_id" json:"user_id"`
-	TokenHash string             `db:"token_hash" json:"token_hash"`
-	UserAgent *string            `db:"user_agent" json:"user_agent"`
-	IpAddress *string            `db:"ip_address" json:"ip_address"`
-	ExpiresAt pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+	UserID               uuid.UUID          `db:"user_id" json:"user_id"`
+	TokenHash            string             `db:"token_hash" json:"token_hash"`
+	UserAgent            *string            `db:"user_agent" json:"user_agent"`
+	IpAddress            *string            `db:"ip_address" json:"ip_address"`
+	ExpiresAt            pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+	CredentialVersion    int64              `db:"credential_version" json:"credential_version"`
+	AuthenticationMethod string             `db:"authentication_method" json:"authentication_method"`
+	AssuranceLevel       string             `db:"assurance_level" json:"assurance_level"`
+	AuthenticatedAt      pgtype.Timestamptz `db:"authenticated_at" json:"authenticated_at"`
+	MfaCompletedAt       pgtype.Timestamptz `db:"mfa_completed_at" json:"mfa_completed_at"`
 }
 
 func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error) {
@@ -44,6 +59,11 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		arg.UserAgent,
 		arg.IpAddress,
 		arg.ExpiresAt,
+		arg.CredentialVersion,
+		arg.AuthenticationMethod,
+		arg.AssuranceLevel,
+		arg.AuthenticatedAt,
+		arg.MfaCompletedAt,
 	)
 	var i Session
 	err := row.Scan(
@@ -56,12 +76,17 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		&i.RevokedAt,
 		&i.CreatedAt,
 		&i.LastSeenAt,
+		&i.CredentialVersion,
+		&i.AuthenticationMethod,
+		&i.AssuranceLevel,
+		&i.AuthenticatedAt,
+		&i.MfaCompletedAt,
 	)
 	return i, err
 }
 
 const getSessionByID = `-- name: GetSessionByID :one
-SELECT id, user_id, token_hash, user_agent, ip_address, expires_at, revoked_at, created_at, last_seen_at
+SELECT id, user_id, token_hash, user_agent, ip_address, expires_at, revoked_at, created_at, last_seen_at, credential_version, authentication_method, assurance_level, authenticated_at, mfa_completed_at
 FROM sessions
 WHERE id = $1
 `
@@ -83,12 +108,17 @@ func (q *Queries) GetSessionByID(ctx context.Context, arg GetSessionByIDParams) 
 		&i.RevokedAt,
 		&i.CreatedAt,
 		&i.LastSeenAt,
+		&i.CredentialVersion,
+		&i.AuthenticationMethod,
+		&i.AssuranceLevel,
+		&i.AuthenticatedAt,
+		&i.MfaCompletedAt,
 	)
 	return i, err
 }
 
 const getSessionByTokenHash = `-- name: GetSessionByTokenHash :one
-SELECT id, user_id, token_hash, user_agent, ip_address, expires_at, revoked_at, created_at, last_seen_at
+SELECT id, user_id, token_hash, user_agent, ip_address, expires_at, revoked_at, created_at, last_seen_at, credential_version, authentication_method, assurance_level, authenticated_at, mfa_completed_at
 FROM sessions
 WHERE token_hash = $1
 `
@@ -110,12 +140,17 @@ func (q *Queries) GetSessionByTokenHash(ctx context.Context, arg GetSessionByTok
 		&i.RevokedAt,
 		&i.CreatedAt,
 		&i.LastSeenAt,
+		&i.CredentialVersion,
+		&i.AuthenticationMethod,
+		&i.AssuranceLevel,
+		&i.AuthenticatedAt,
+		&i.MfaCompletedAt,
 	)
 	return i, err
 }
 
 const listSessionsByUserID = `-- name: ListSessionsByUserID :many
-SELECT id, user_id, token_hash, user_agent, ip_address, expires_at, revoked_at, created_at, last_seen_at
+SELECT id, user_id, token_hash, user_agent, ip_address, expires_at, revoked_at, created_at, last_seen_at, credential_version, authentication_method, assurance_level, authenticated_at, mfa_completed_at
 FROM sessions
 WHERE user_id = $1
 ORDER BY last_seen_at DESC
@@ -144,6 +179,11 @@ func (q *Queries) ListSessionsByUserID(ctx context.Context, arg ListSessionsByUs
 			&i.RevokedAt,
 			&i.CreatedAt,
 			&i.LastSeenAt,
+			&i.CredentialVersion,
+			&i.AuthenticationMethod,
+			&i.AssuranceLevel,
+			&i.AuthenticatedAt,
+			&i.MfaCompletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -211,6 +251,7 @@ const touchSession = `-- name: TouchSession :exec
 UPDATE sessions
 SET last_seen_at = now()
 WHERE id = $1
+  AND last_seen_at < now() - interval '5 minutes'
 `
 
 type TouchSessionParams struct {
