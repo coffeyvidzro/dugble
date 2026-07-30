@@ -11,6 +11,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/modules/auth"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/domain"
 	emailmodule "github.com/coffeyvidzro/dugble/server/internal/modules/email"
+	"github.com/coffeyvidzro/dugble/server/internal/modules/mfa"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/senderid"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
 	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
@@ -19,6 +20,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/modules/user"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/webhooks"
 	"github.com/coffeyvidzro/dugble/server/internal/notifications"
+	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/idempotency"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
@@ -67,6 +69,12 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	csrfHandler := csrf.NewHandler()
 	router.GET("/csrf", csrfHandler.Token, csrfMiddleware)
 	auth.RegisterRoutes(router, auth.NewHandler(authService, cfg.IsDevelopment(), cfg.CookieDomain), authMiddleware, csrfMiddleware)
+	mfaCipher, err := authnz.NewSecretCipher(cfg.MFAEncryptionKey)
+	if err != nil {
+		return nil, err
+	}
+	mfaService := mfa.NewService(mfa.NewRepository(deps.DB), mfaCipher, "Dugble")
+	mfa.RegisterRoutes(router, mfa.NewHandler(mfaService), authMiddleware, csrfMiddleware)
 
 	userRepository := user.NewRepository(deps.DB)
 	user.RegisterRoutes(router, user.NewHandler(user.NewService(userRepository)), authMiddleware, csrfMiddleware)

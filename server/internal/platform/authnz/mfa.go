@@ -65,9 +65,14 @@ func TOTPURI(issuer, account, secret string) string {
 }
 
 func ValidateTOTP(secret, code string, now time.Time) (int64, bool) {
+	code = strings.TrimSpace(code)
+	if len(code) != 6 || strings.IndexFunc(code, func(r rune) bool { return r < '0' || r > '9' }) >= 0 {
+		return 0, false
+	}
 	step := now.Unix() / 30
 	for offset := int64(-1); offset <= 1; offset++ {
-		if hmac.Equal([]byte(totpCode(secret, step+offset)), []byte(strings.TrimSpace(code))) {
+		expected := totpCode(secret, step+offset)
+		if expected != "" && hmac.Equal([]byte(expected), []byte(code)) {
 			return step + offset, true
 		}
 	}

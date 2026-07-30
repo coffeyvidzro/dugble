@@ -1,0 +1,89 @@
+package mfa
+
+import (
+	"context"
+	"encoding/base64"
+	"fmt"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
+)
+
+type fakeStore struct {
+	credential Credential
+	confirmed  bool
+	step       int64
+	hashes     []string
+}
+
+func (f *fakeStore) PutUnverified(_ context.Context, _ uuid.UUID, ciphertext []byte) error {
+	f.credential = Credential{SecretCiphertext: ciphertext}
+	return nil
+}
+func (f *fakeStore) GetCredential(context.Context, uuid.UUID) (Credential, error) {
+	return f.credential, nil
+}
+func (f *fakeStore) Confirm(_ context.Context, _ uuid.UUID, _ string, step int64, hashes []string) error {
+	f.confirmed, f.step, f.hashes = true, step, hashes
+	return nil
+}
+func (f *fakeStore) Verify(context.Context, uuid.UUID, string, int64) error           { return nil }
+func (f *fakeStore) UseRecoveryCode(context.Context, uuid.UUID, string, string) error { return nil }
+func (f *fakeStore) Disable(context.Context, uuid.UUID, string) error                 { return nil }
+func (f *fakeStore) Enabled(context.Context, uuid.UUID) (bool, error) {
+	return f.credential.VerifiedAt != nil, nil
+}
+
+func TestEnrollAndConfirm(t *testing.T) {
+	key := make([]byte, 32)
+	cipher, err := authnz.NewSecretCipher(base64.StdEncoding.EncodeToString(key))
+	if err != nil {
+		t.Fatal(err)
+	}
+	repository := &fakeStore{}
+	service := NewService(repository, cipher, "Dugble")
+	now := time.Unix(1_700_000_000, 0).UTC()
+	service.now = func() time.Time { return now }
+	userID := uuid.New()
+	ctx := authnz.ContextWithPrincipal(context.Background(), authnz.Principal{UserID: userID, SessionID: "session", Email: "person@example.com"})
+
+	enrollment, err := service.Enroll(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if enrollment.Secret == "" || enrollment.URI == "" {
+		t.Fatal("expected enrollment secret and URI")
+	}
+	step, ok := authnz.ValidateTOTP(enrollment.Secret, totpAt(enrollment.Secret, now), now)
+	if !ok {
+		t.Fatal("test TOTP should be valid")
+	}
+	response, err := service.Confirm(ctx, totpAt(enrollment.Secret, now))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !repository.confirmed || repository.step != step {
+		t.Fatal("confirmation was not persisted")
+	}
+	if len(response.RecoveryCodes) != recoveryCodeCount || len(repository.hashes) != recoveryCodeCount {
+		t.Fatalf("got %d recovery codes", len(response.RecoveryCodes))
+	}
+	for i, code := range response.RecoveryCodes {
+		if authnz.HashRecoveryCode(code) != repository.hashes[i] {
+			t.Fatal("recovery code was not hashed before persistence")
+		}
+	}
+}
+
+func totpAt(secret string, now time.Time) string {
+	for i := 0; i < 1_000_000; i++ {
+		candidate := fmt.Sprintf("%06d", i)
+		if _, ok := authnz.ValidateTOTP(secret, candidate, now); ok {
+			return candidate
+		}
+	}
+	return ""
+}

@@ -20,6 +20,20 @@ func TestTOTPValidation(t *testing.T) {
 	}
 }
 
+func TestTOTPValidationRejectsMalformedInput(t *testing.T) {
+	tests := []struct{ secret, code string }{
+		{"not-base32!", ""},
+		{"not-base32!", "000000"},
+		{"JBSWY3DPEHPK3PXP", "12345"},
+		{"JBSWY3DPEHPK3PXP", "12345x"},
+	}
+	for _, test := range tests {
+		if _, ok := ValidateTOTP(test.secret, test.code, time.Now()); ok {
+			t.Fatalf("accepted malformed secret %q or code %q", test.secret, test.code)
+		}
+	}
+}
+
 func TestSecretCipher(t *testing.T) {
 	key := make([]byte, 32)
 	_, _ = rand.Read(key)
