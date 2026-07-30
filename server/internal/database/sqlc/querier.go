@@ -20,10 +20,13 @@ type Querier interface {
 	ConfirmTOTPCredential(ctx context.Context, arg ConfirmTOTPCredentialParams) (int64, error)
 	ConsumeMFALoginChallengeWithRecoveryCode(ctx context.Context, arg ConsumeMFALoginChallengeWithRecoveryCodeParams) (int64, error)
 	ConsumeMFALoginChallengeWithTOTP(ctx context.Context, arg ConsumeMFALoginChallengeWithTOTPParams) (int64, error)
+	ConsumeOIDCLoginState(ctx context.Context, arg ConsumeOIDCLoginStateParams) (OidcLoginState, error)
+	CreateAuditEvent(ctx context.Context, arg CreateAuditEventParams) (AuditEvent, error)
 	CreateEmailMessage(ctx context.Context, arg CreateEmailMessageParams) (EmailMessage, error)
 	CreateIdempotencyKey(ctx context.Context, arg CreateIdempotencyKeyParams) (IdempotencyKey, error)
 	CreateMFALoginChallenge(ctx context.Context, arg CreateMFALoginChallengeParams) error
 	CreateOAuthIdentity(ctx context.Context, arg CreateOAuthIdentityParams) (OauthIdentity, error)
+	CreateOIDCLoginState(ctx context.Context, arg CreateOIDCLoginStateParams) error
 	CreateRecoveryCode(ctx context.Context, arg CreateRecoveryCodeParams) error
 	CreateSMSMessage(ctx context.Context, arg CreateSMSMessageParams) (SmsMessage, error)
 	CreateSenderDomain(ctx context.Context, arg CreateSenderDomainParams) (SenderDomain, error)
@@ -45,6 +48,7 @@ type Querier interface {
 	DeclineTeamInvitation(ctx context.Context, arg DeclineTeamInvitationParams) (TeamInvitation, error)
 	DeleteExpiredVerificationTokens(ctx context.Context) error
 	DeleteIdempotencyKey(ctx context.Context, arg DeleteIdempotencyKeyParams) error
+	DeleteOIDCConnection(ctx context.Context, arg DeleteOIDCConnectionParams) error
 	DeleteRecoveryCodes(ctx context.Context, arg DeleteRecoveryCodesParams) error
 	DeleteSenderDomain(ctx context.Context, arg DeleteSenderDomainParams) (SenderDomain, error)
 	DeleteSenderID(ctx context.Context, arg DeleteSenderIDParams) (SenderID, error)
@@ -65,6 +69,8 @@ type Querier interface {
 	GetEmailMessage(ctx context.Context, arg GetEmailMessageParams) (EmailMessage, error)
 	GetIdempotencyKey(ctx context.Context, arg GetIdempotencyKeyParams) (IdempotencyKey, error)
 	GetOAuthIdentity(ctx context.Context, arg GetOAuthIdentityParams) (OauthIdentity, error)
+	GetOIDCConnection(ctx context.Context, arg GetOIDCConnectionParams) (OidcConnection, error)
+	GetOIDCConnectionByTeam(ctx context.Context, arg GetOIDCConnectionByTeamParams) (OidcConnection, error)
 	GetSMSMessage(ctx context.Context, arg GetSMSMessageParams) (SmsMessage, error)
 	GetSenderDomain(ctx context.Context, arg GetSenderDomainParams) (SenderDomain, error)
 	GetSenderDomainByDomain(ctx context.Context, arg GetSenderDomainByDomainParams) (SenderDomain, error)
@@ -92,6 +98,7 @@ type Querier interface {
 	ListSenderIDs(ctx context.Context, arg ListSenderIDsParams) ([]SenderID, error)
 	ListSessionsByUserID(ctx context.Context, arg ListSessionsByUserIDParams) ([]Session, error)
 	ListSubscribedWebhookEndpoints(ctx context.Context, arg ListSubscribedWebhookEndpointsParams) ([]WebhookEndpoint, error)
+	ListTeamAuditEvents(ctx context.Context, arg ListTeamAuditEventsParams) ([]AuditEvent, error)
 	ListTeamMembers(ctx context.Context, arg ListTeamMembersParams) ([]TeamMember, error)
 	ListTeamTokens(ctx context.Context, arg ListTeamTokensParams) ([]TeamToken, error)
 	ListTeamsForUser(ctx context.Context, arg ListTeamsForUserParams) ([]Team, error)
@@ -113,6 +120,7 @@ type Querier interface {
 	ReleaseWebhookDeliveryClaim(ctx context.Context, arg ReleaseWebhookDeliveryClaimParams) (int64, error)
 	RemoveTeamMember(ctx context.Context, arg RemoveTeamMemberParams) error
 	ResetPasswordWithToken(ctx context.Context, arg ResetPasswordWithTokenParams) (ResetPasswordWithTokenRow, error)
+	ResolveOIDCIdentity(ctx context.Context, arg ResolveOIDCIdentityParams) (User, error)
 	RetryWebhookDelivery(ctx context.Context, arg RetryWebhookDeliveryParams) (WebhookDelivery, error)
 	RevokeOtherSessionsAfterMFADisable(ctx context.Context, arg RevokeOtherSessionsAfterMFADisableParams) error
 	RevokeOtherUserSessions(ctx context.Context, arg RevokeOtherUserSessionsParams) error
@@ -137,6 +145,7 @@ type Querier interface {
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error)
 	UpdateWebhookEndpoint(ctx context.Context, arg UpdateWebhookEndpointParams) (WebhookEndpoint, error)
 	UpdateWorkloadIdentity(ctx context.Context, arg UpdateWorkloadIdentityParams) (WorkloadIdentity, error)
+	UpsertOIDCConnection(ctx context.Context, arg UpsertOIDCConnectionParams) (OidcConnection, error)
 	UpsertTeamIdentityPolicy(ctx context.Context, arg UpsertTeamIdentityPolicyParams) (TeamIdentityPolicy, error)
 	UseRecoveryCodeAndElevateSession(ctx context.Context, arg UseRecoveryCodeAndElevateSessionParams) (int64, error)
 	VerifyEmailWithToken(ctx context.Context, arg VerifyEmailWithTokenParams) (User, error)

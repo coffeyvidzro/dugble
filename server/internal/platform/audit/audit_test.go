@@ -45,3 +45,26 @@ func TestRecordIdentityIncludesUser(t *testing.T) {
 		}
 	}
 }
+
+type captureSink struct{ entries []Entry }
+
+func (s *captureSink) Record(_ context.Context, entry Entry) error {
+	s.entries = append(s.entries, entry)
+	return nil
+}
+
+func TestRecordPersistsStructuredEntry(t *testing.T) {
+	sink := &captureSink{}
+	SetSink(sink)
+	t.Cleanup(func() { SetSink(nil) })
+	teamID, userID := uuid.New(), uuid.New()
+	ctx := ContextWithRequestMetadata(context.Background(), RequestMetadata{RequestID: "request-1", IPAddress: "192.0.2.1", UserAgent: "test"})
+	Record(ctx, tenant.AccessContext{Actor: tenant.Actor{Type: tenant.ActorTypeUser, UserID: userID}, Scope: tenant.Scope{TeamID: teamID}}, Event{Action: "team.updated", ResourceType: "team", ResourceID: teamID.String(), Metadata: map[string]any{"field": "name"}})
+	if len(sink.entries) != 1 {
+		t.Fatalf("persisted %d entries", len(sink.entries))
+	}
+	entry := sink.entries[0]
+	if entry.TeamID != teamID || entry.ActorUserID != userID || entry.Request.RequestID != "request-1" || entry.Outcome != OutcomeSuccess {
+		t.Fatalf("unexpected entry: %+v", entry)
+	}
+}

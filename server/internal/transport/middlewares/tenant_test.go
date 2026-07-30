@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
 
+	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 )
@@ -62,6 +63,39 @@ func TestTenantEnforcesIdentityPolicy(t *testing.T) {
 				t.Fatalf("status = %d, want %d", response.Code, test.wantStatus)
 			}
 		})
+	}
+}
+
+func TestTenantAccessSessionEnforcesIdentityPolicy(t *testing.T) {
+	t.Parallel()
+
+	teamID := uuid.New()
+	userID := uuid.New()
+	request := httptest.NewRequest(http.MethodGet, "/messages", nil)
+	request.Header.Set(defaultTenantHeader, teamID.String())
+	request.AddCookie(&http.Cookie{Name: authnz.SessionCookieName, Value: "secret"})
+	response := httptest.NewRecorder()
+	ctx := echo.New().NewContext(request, response)
+	handler := TenantAccess(TenantAccessConfig{
+		Sessions: sessionStoreStub{record: session.Record{ID: "session-id", UserID: userID, ExpiresAt: time.Now().Add(time.Hour), Authentication: session.Authentication{Assurance: authnz.AssuranceLevelOne, AuthenticatedAt: time.Now(), CredentialVersion: 1}}},
+		Users:    principalRepositoryStub{principal: authnz.Principal{UserID: userID, CredentialVersion: 1}},
+		Memberships: tenantMembershipStoreFunc(func(context.Context, uuid.UUID, uuid.UUID) (tenant.Membership, error) {
+			return tenant.Membership{TeamID: teamID, UserID: userID, Role: tenant.RoleOwner, Status: tenant.StatusActive, TeamStatus: tenant.StatusActive}, nil
+		}),
+		Policies: tenantIdentityPolicyStoreFunc(func(context.Context, uuid.UUID) (tenant.IdentityPolicy, error) {
+			return tenant.IdentityPolicy{RequireMFA: true, SessionMaxAge: time.Hour}, nil
+		}),
+		Required: tenant.PermissionSMSRead,
+	})(func(c *echo.Context) error {
+		t.Fatal("next handler must not run when tenant policy requires MFA")
+		return nil
+	})
+
+	if err := handler(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusForbidden)
 	}
 }
 

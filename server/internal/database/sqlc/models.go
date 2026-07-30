@@ -9,6 +9,26 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AuditEvent struct {
+	ID                uuid.UUID          `db:"id" json:"id"`
+	TeamID            *uuid.UUID         `db:"team_id" json:"team_id"`
+	ActorType         string             `db:"actor_type" json:"actor_type"`
+	ActorUserID       *uuid.UUID         `db:"actor_user_id" json:"actor_user_id"`
+	ActorSessionID    *string            `db:"actor_session_id" json:"actor_session_id"`
+	ActorTokenID      *uuid.UUID         `db:"actor_token_id" json:"actor_token_id"`
+	ActorWorkloadID   *uuid.UUID         `db:"actor_workload_id" json:"actor_workload_id"`
+	ActorCredentialID *uuid.UUID         `db:"actor_credential_id" json:"actor_credential_id"`
+	Action            string             `db:"action" json:"action"`
+	ResourceType      string             `db:"resource_type" json:"resource_type"`
+	ResourceID        string             `db:"resource_id" json:"resource_id"`
+	Outcome           string             `db:"outcome" json:"outcome"`
+	Metadata          []byte             `db:"metadata" json:"metadata"`
+	RequestID         *string            `db:"request_id" json:"request_id"`
+	IpAddress         *string            `db:"ip_address" json:"ip_address"`
+	UserAgent         *string            `db:"user_agent" json:"user_agent"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
 type AuthenticationChallenge struct {
 	TokenHash  string             `db:"token_hash" json:"token_hash"`
 	UserID     *uuid.UUID         `db:"user_id" json:"user_id"`
@@ -54,6 +74,16 @@ type EmailMessage struct {
 	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
+type ExternalIdentity struct {
+	ID           uuid.UUID          `db:"id" json:"id"`
+	UserID       uuid.UUID          `db:"user_id" json:"user_id"`
+	ConnectionID uuid.UUID          `db:"connection_id" json:"connection_id"`
+	Subject      string             `db:"subject" json:"subject"`
+	Email        string             `db:"email" json:"email"`
+	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	LastLoginAt  pgtype.Timestamptz `db:"last_login_at" json:"last_login_at"`
+}
+
 type IdempotencyKey struct {
 	Scope               string             `db:"scope" json:"scope"`
 	IdempotencyKey      string             `db:"idempotency_key" json:"idempotency_key"`
@@ -78,6 +108,30 @@ type OauthIdentity struct {
 	Provider    string             `db:"provider" json:"provider"`
 	ProviderUid string             `db:"provider_uid" json:"provider_uid"`
 	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
+type OidcConnection struct {
+	ID                     uuid.UUID          `db:"id" json:"id"`
+	TeamID                 uuid.UUID          `db:"team_id" json:"team_id"`
+	Name                   string             `db:"name" json:"name"`
+	IssuerUrl              string             `db:"issuer_url" json:"issuer_url"`
+	ClientID               string             `db:"client_id" json:"client_id"`
+	ClientSecretCiphertext []byte             `db:"client_secret_ciphertext" json:"client_secret_ciphertext"`
+	AllowedDomains         []string           `db:"allowed_domains" json:"allowed_domains"`
+	Enabled                bool               `db:"enabled" json:"enabled"`
+	CreatedBy              *uuid.UUID         `db:"created_by" json:"created_by"`
+	CreatedAt              pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt              pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type OidcLoginState struct {
+	StateHash              string             `db:"state_hash" json:"state_hash"`
+	ConnectionID           uuid.UUID          `db:"connection_id" json:"connection_id"`
+	CodeVerifierCiphertext []byte             `db:"code_verifier_ciphertext" json:"code_verifier_ciphertext"`
+	Nonce                  string             `db:"nonce" json:"nonce"`
+	ExpiresAt              pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+	ConsumedAt             pgtype.Timestamptz `db:"consumed_at" json:"consumed_at"`
+	CreatedAt              pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
 type OutboxEvent struct {
