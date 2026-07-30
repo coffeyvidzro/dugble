@@ -137,3 +137,7 @@ func totpAt(secret string, now time.Time) string {
 	}
 	return ""
 }
+
+func (f *fakeStore) RotateSecretCiphertext(context.Context, uuid.UUID, []byte, []byte) error {
+	return nil
+}

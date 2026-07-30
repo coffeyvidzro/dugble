@@ -17,7 +17,7 @@ func TestTenantOwnedQueriesDeclareTenantScope(t *testing.T) {
 	exemptions := map[string]map[string]struct{}{
 		"audit_events.sql": querySet("CreateAuditEvent"),
 		"scim.sql":         querySet("GetActiveSCIMTokenByHash", "TouchSCIMToken"),
-		"oidc.sql":         querySet("GetOIDCConnection", "CreateOIDCLoginState", "ConsumeOIDCLoginState"),
+		"oidc.sql":         querySet("GetOIDCConnection", "CreateOIDCLoginState", "ConsumeOIDCLoginState", "ListOIDCSecretsForRotation", "RotateOIDCConnectionSecretCiphertext"),
 		"sender_domains.sql": querySet(
 			"ClaimSenderDomainsForReconciliation", "CompleteSenderDomainReconciliation",
 			"CompleteSenderDomainHealthCheck", "RecordSenderDomainHealthFailure",

@@ -53,7 +53,7 @@ func (r *Repository) TouchCredential(ctx context.Context, id uuid.UUID) error {
 	return r.queries.TouchWorkloadCredential(ctx, dbsqlc.TouchWorkloadCredentialParams{ID: id})
 }
 func (r *Repository) CreateAccessToken(ctx context.Context, workloadID, credentialID uuid.UUID, hash string, expires time.Time) error {
-	_, err := r.queries.CreateWorkloadAccessToken(ctx, dbsqlc.CreateWorkloadAccessTokenParams{WorkloadID: workloadID, CredentialID: credentialID, TokenHash: hash, ExpiresAt: pgtype.Timestamptz{Time: expires, Valid: true}})
+	_, err := r.queries.CreateWorkloadAccessToken(ctx, dbsqlc.CreateWorkloadAccessTokenParams{WorkloadID: workloadID, CredentialID: &credentialID, TokenHash: hash, ExpiresAt: pgtype.Timestamptz{Time: expires, Valid: true}})
 	return err
 }
 func (r *Repository) GetAccessToken(ctx context.Context, hash string) (TokenPrincipal, error) {

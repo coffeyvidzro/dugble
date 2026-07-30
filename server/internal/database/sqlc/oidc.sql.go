@@ -128,6 +128,35 @@ func (q *Queries) GetOIDCConnectionByTeam(ctx context.Context, arg GetOIDCConnec
 	return i, err
 }
 
+const listOIDCSecretsForRotation = `-- name: ListOIDCSecretsForRotation :many
+SELECT id,client_secret_ciphertext FROM oidc_connections ORDER BY id
+`
+
+type ListOIDCSecretsForRotationRow struct {
+	ID                     uuid.UUID `db:"id" json:"id"`
+	ClientSecretCiphertext []byte    `db:"client_secret_ciphertext" json:"client_secret_ciphertext"`
+}
+
+func (q *Queries) ListOIDCSecretsForRotation(ctx context.Context) ([]ListOIDCSecretsForRotationRow, error) {
+	rows, err := q.db.Query(ctx, listOIDCSecretsForRotation)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListOIDCSecretsForRotationRow{}
+	for rows.Next() {
+		var i ListOIDCSecretsForRotationRow
+		if err := rows.Scan(&i.ID, &i.ClientSecretCiphertext); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const resolveOIDCIdentity = `-- name: ResolveOIDCIdentity :one
 WITH existing_identity AS (
   SELECT user_id FROM external_identities WHERE external_identities.connection_id=$1 AND external_identities.subject=$2
@@ -183,6 +212,21 @@ func (q *Queries) ResolveOIDCIdentity(ctx context.Context, arg ResolveOIDCIdenti
 		&i.SecurityUpdatedAt,
 	)
 	return i, err
+}
+
+const rotateOIDCConnectionSecretCiphertext = `-- name: RotateOIDCConnectionSecretCiphertext :exec
+UPDATE oidc_connections SET client_secret_ciphertext=$1,updated_at=now() WHERE id=$2 AND client_secret_ciphertext=$3
+`
+
+type RotateOIDCConnectionSecretCiphertextParams struct {
+	NewCiphertext []byte    `db:"new_ciphertext" json:"new_ciphertext"`
+	ID            uuid.UUID `db:"id" json:"id"`
+	OldCiphertext []byte    `db:"old_ciphertext" json:"old_ciphertext"`
+}
+
+func (q *Queries) RotateOIDCConnectionSecretCiphertext(ctx context.Context, arg RotateOIDCConnectionSecretCiphertextParams) error {
+	_, err := q.db.Exec(ctx, rotateOIDCConnectionSecretCiphertext, arg.NewCiphertext, arg.ID, arg.OldCiphertext)
+	return err
 }
 
 const upsertOIDCConnection = `-- name: UpsertOIDCConnection :one

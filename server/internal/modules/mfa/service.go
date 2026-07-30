@@ -21,6 +21,7 @@ const loginChallengePrefix = "dgb_mfa_"
 type store interface {
 	PutUnverified(context.Context, uuid.UUID, []byte) error
 	GetCredential(context.Context, uuid.UUID) (Credential, error)
+	RotateSecretCiphertext(context.Context, uuid.UUID, []byte, []byte) error
 	Confirm(context.Context, uuid.UUID, string, int64, []string) error
 	Verify(context.Context, uuid.UUID, string, int64) error
 	UseRecoveryCode(context.Context, uuid.UUID, string, string) error
@@ -74,7 +75,7 @@ func (s *Service) Confirm(ctx context.Context, code string) (ConfirmResponse, er
 	if err != nil || credential.VerifiedAt != nil {
 		return ConfirmResponse{}, apperrors.NewBadRequest("MFA enrollment is not pending")
 	}
-	step, ok := s.validateCredential(credential, code)
+	step, ok := s.validateCredential(ctx, principal.UserID, credential, code)
 	if !ok {
 		return ConfirmResponse{}, apperrors.NewUnauthorized("Invalid authentication code")
 	}
@@ -98,7 +99,7 @@ func (s *Service) Verify(ctx context.Context, code string) error {
 	if err != nil || credential.VerifiedAt == nil {
 		return apperrors.NewBadRequest("MFA is not enabled")
 	}
-	step, ok := s.validateCredential(credential, code)
+	step, ok := s.validateCredential(ctx, principal.UserID, credential, code)
 	if !ok {
 		return apperrors.NewUnauthorized("Invalid authentication code")
 	}
@@ -158,10 +159,13 @@ func (s *Service) Status(ctx context.Context) (StatusResponse, error) {
 	return StatusResponse{Enabled: enabled}, nil
 }
 
-func (s *Service) validateCredential(credential Credential, code string) (int64, bool) {
-	secret, err := s.cipher.Decrypt(credential.SecretCiphertext)
+func (s *Service) validateCredential(ctx context.Context, userID uuid.UUID, credential Credential, code string) (int64, bool) {
+	secret, replacement, rotated, err := s.cipher.DecryptAndRotate(credential.SecretCiphertext)
 	if err != nil {
 		return 0, false
+	}
+	if rotated {
+		_ = s.repository.RotateSecretCiphertext(ctx, userID, credential.SecretCiphertext, replacement)
 	}
 	return authnz.ValidateTOTP(string(secret), strings.TrimSpace(code), s.now().UTC())
 }
@@ -213,7 +217,7 @@ func (s *Service) CompleteLoginTOTP(ctx context.Context, challengeToken, code st
 	if err != nil {
 		return uuid.Nil, pgx.ErrNoRows
 	}
-	step, ok := s.validateCredential(credential, code)
+	step, ok := s.validateCredential(ctx, userID, credential, code)
 	if !ok || (credential.LastUsedStep != nil && step <= *credential.LastUsedStep) {
 		return uuid.Nil, pgx.ErrNoRows
 	}

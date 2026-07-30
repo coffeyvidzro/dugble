@@ -118,6 +118,7 @@ type Querier interface {
 	IsTOTPEnabled(ctx context.Context, arg IsTOTPEnabledParams) (bool, error)
 	ListEmailMessages(ctx context.Context, arg ListEmailMessagesParams) ([]ListEmailMessagesRow, error)
 	ListOAuthIdentitiesByUserID(ctx context.Context, arg ListOAuthIdentitiesByUserIDParams) ([]OauthIdentity, error)
+	ListOIDCSecretsForRotation(ctx context.Context) ([]ListOIDCSecretsForRotationRow, error)
 	ListPendingTeamInvitations(ctx context.Context, arg ListPendingTeamInvitationsParams) ([]TeamInvitation, error)
 	ListSCIMTokens(ctx context.Context, arg ListSCIMTokensParams) ([]ScimToken, error)
 	ListSCIMUsers(ctx context.Context, arg ListSCIMUsersParams) ([]ListSCIMUsersRow, error)
@@ -126,7 +127,7 @@ type Querier interface {
 	ListSenderIDs(ctx context.Context, arg ListSenderIDsParams) ([]SenderID, error)
 	ListSessionsByUserID(ctx context.Context, arg ListSessionsByUserIDParams) ([]Session, error)
 	ListSubscribedWebhookEndpoints(ctx context.Context, arg ListSubscribedWebhookEndpointsParams) ([]WebhookEndpoint, error)
-	ListTeamAuditEvents(ctx context.Context, arg ListTeamAuditEventsParams) ([]AuditEvent, error)
+	ListTOTPSecretsForRotation(ctx context.Context) ([]ListTOTPSecretsForRotationRow, error)
 	ListTeamAuditEvents(ctx context.Context, arg ListTeamAuditEventsParams) ([]AuditEvent, error)
 	ListTeamMembers(ctx context.Context, arg ListTeamMembersParams) ([]TeamMember, error)
 	ListTeamTokens(ctx context.Context, arg ListTeamTokensParams) ([]TeamToken, error)
@@ -164,7 +165,8 @@ type Querier interface {
 	RevokeTeamToken(ctx context.Context, arg RevokeTeamTokenParams) (TeamToken, error)
 	RevokeUserSessions(ctx context.Context, arg RevokeUserSessionsParams) error
 	RevokeWorkloadCredential(ctx context.Context, arg RevokeWorkloadCredentialParams) (WorkloadCredential, error)
-	RevokeWorkloadCredential(ctx context.Context, arg RevokeWorkloadCredentialParams) (WorkloadCredential, error)
+	RotateOIDCConnectionSecretCiphertext(ctx context.Context, arg RotateOIDCConnectionSecretCiphertextParams) error
+	RotateTOTPSecretCiphertext(ctx context.Context, arg RotateTOTPSecretCiphertextParams) error
 	RotateWebhookEndpointSecret(ctx context.Context, arg RotateWebhookEndpointSecretParams) (WebhookEndpoint, error)
 	ScheduleWebhookDeliveryRetry(ctx context.Context, arg ScheduleWebhookDeliveryRetryParams) (WebhookDelivery, error)
 	TouchSCIMToken(ctx context.Context, arg TouchSCIMTokenParams) error

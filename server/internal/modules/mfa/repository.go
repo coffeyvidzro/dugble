@@ -52,6 +52,10 @@ func (r *Repository) GetCredential(ctx context.Context, userID uuid.UUID) (Crede
 	return Credential{SecretCiphertext: row.SecretCiphertext, VerifiedAt: verifiedAt, LastUsedStep: row.LastUsedStep}, nil
 }
 
+func (r *Repository) RotateSecretCiphertext(ctx context.Context, userID uuid.UUID, oldCiphertext, newCiphertext []byte) error {
+	return r.queries.RotateTOTPSecretCiphertext(ctx, dbsqlc.RotateTOTPSecretCiphertextParams{UserID: userID, OldCiphertext: oldCiphertext, NewCiphertext: newCiphertext})
+}
+
 func (r *Repository) Confirm(ctx context.Context, userID uuid.UUID, sessionID string, step int64, codeHashes []string) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
