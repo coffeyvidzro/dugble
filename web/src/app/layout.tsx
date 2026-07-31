@@ -1,54 +1,14 @@
-import type { Metadata } from "next";
-
 import { CommandPalette } from "@/components/command-palette/command-palette";
+import { JsonLd } from "@/components/json-ld";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { baseUrl } from "@/lib/site";
 import { fontHeading, fontMono, fontSans } from "@/utils/fonts";
-import { serializeDugbleSchemaGraph } from "@/utils/metagraph";
+import { constructMetadata } from "@/utils/metadata";
+import { getDugbleSchemaGraph } from "@/utils/metagraph";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(baseUrl),
-  title: {
-    default: "Dugble | Developer-first A2P email and SMS APIs",
-    template: "%s | Dugble",
-  },
-  description:
-    "Developer-first A2P email and SMS APIs for African startups and teams.",
-  keywords: [
-    "A2P messaging",
-    "SMS API",
-    "Email API",
-    "OTP delivery",
-    "developer infrastructure",
-  ],
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: baseUrl,
-    siteName: "Dugble",
-    images: [
-      {
-        url: "/og",
-        width: 1200,
-        height: 630,
-        alt: "Dugble Developer Infrastructure",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Dugble | Developer-first A2P email and SMS APIs",
-    description:
-      "Developer-first A2P email and SMS APIs for African startups and teams.",
-    images: ["/og"],
-  },
-  alternates: {
-    canonical: "/",
-  },
-};
+export const metadata = constructMetadata();
 
 export default function RootLayout({
   children,
@@ -62,12 +22,7 @@ export default function RootLayout({
       className={`${fontSans.variable} ${fontMono.variable} ${fontHeading.variable}`}
     >
       <body className="flex min-h-full flex-col bg-background text-foreground antialiased">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: serializeDugbleSchemaGraph(),
-          }}
-        />
+        <JsonLd id="dugble-schema-graph" schema={getDugbleSchemaGraph()} />
         <ThemeProvider>
           <TooltipProvider>
             {children}

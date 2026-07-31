@@ -1,5 +1,3 @@
-import type { Metadata } from "next";
-import Link from "next/link";
 import {
   ArrowRight,
   Gauge,
@@ -7,6 +5,7 @@ import {
   MessagesSquare,
   XCircle,
 } from "lucide-react";
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -15,12 +14,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { requireSession } from "@/lib/session";
+import { constructMetadata } from "@/utils/metadata";
 
-export const metadata: Metadata = {
+export const metadata = constructMetadata({
   title: "Overview",
   description:
     "Launch your messaging workspace, create API keys, and prepare your first customer notification flow.",
-};
+  path: "/dashboard",
+  preset: "dashboard",
+});
 
 const quickStart = [
   {

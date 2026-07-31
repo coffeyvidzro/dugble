@@ -1,11 +1,14 @@
-import type { Metadata } from "next";
-
-import { CreateWorkspaceHeader } from "@/components/dashboard/workspace/create-workspace-header";
 import { CreateWorkspaceForm } from "@/components/dashboard/workspace/create-workspace-form";
+import { CreateWorkspaceHeader } from "@/components/dashboard/workspace/create-workspace-header";
+import { constructMetadata } from "@/utils/metadata";
 
-export const metadata: Metadata = {
+export const metadata = constructMetadata({
   title: "Create workspace",
-};
+  description:
+    "Create a Dugble workspace for sending and monitoring A2P email and SMS messages.",
+  path: "/dashboard/create-workspace",
+  preset: "dashboard",
+});
 
 export default function Page() {
   return (

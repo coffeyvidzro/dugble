@@ -1,17 +1,13 @@
-import type { Metadata } from "next";
 import { LoginForm } from "@/components/auth/login-form";
+import { constructMetadata } from "@/utils/metadata";
 
-export const metadata: Metadata = {
+export const metadata = constructMetadata({
   title: "Log In",
   description:
     "Access your Dugble dashboard to manage your A2P messaging infrastructure, API keys, and developer logs.",
-  openGraph: {
-    title: "Log In",
-    description:
-      "Access your Dugble dashboard to manage your A2P messaging infrastructure, API keys, and developer logs.",
-    url: "/login",
-  },
-};
+  path: "/login",
+  preset: "auth",
+});
 
 export default function Page() {
   return <LoginForm />;

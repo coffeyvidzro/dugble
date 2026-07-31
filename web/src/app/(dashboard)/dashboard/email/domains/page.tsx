@@ -1,5 +1,12 @@
-import { PlaceholderPage } from "@/components/dashboard/placeholder-page";
 import { Globe } from "lucide-react";
+import { PlaceholderPage } from "@/components/dashboard/placeholder-page";
+import { constructMetadata } from "@/utils/metadata";
+export const metadata = constructMetadata({
+  title: "Email Domains",
+  description: "Manage sending domains for transactional email.",
+  path: "/dashboard/email/domains",
+  preset: "dashboard",
+});
 
 export default function Page() {
   return (

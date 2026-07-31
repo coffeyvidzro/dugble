@@ -1,7 +1,10 @@
 import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { JsonLd } from "@/components/json-ld";
 import { Separator } from "@/components/ui/separator";
+import { constructMetadata } from "@/utils/metadata";
+import { getBlogPostingSchemaGraph } from "@/utils/metagraph";
 import {
   formatBlogDate,
   getBlogPost,
@@ -34,25 +37,16 @@ export async function generateMetadata({
     post.metadata.title,
   )}&label=${encodeURIComponent("Dugble Blog")}`;
 
-  return {
+  return constructMetadata({
     title: post.metadata.title,
     description: post.metadata.summary,
+    image: ogUrl,
+    path: getBlogPostPath(post.slug),
     openGraph: {
-      title: post.metadata.title,
-      description: post.metadata.summary,
       type: "article",
       publishedTime: post.metadata.publishedAt,
-      url: getBlogPostPath(post.slug),
-      images: [
-        {
-          url: ogUrl,
-          width: 1200,
-          height: 630,
-          alt: post.metadata.title,
-        },
-      ],
     },
-  };
+  });
 }
 
 export default async function Page({
@@ -71,6 +65,19 @@ export default async function Page({
 
   return (
     <main className="min-h-svh bg-background text-foreground">
+      <JsonLd
+        id="blog-posting-schema"
+        schema={getBlogPostingSchemaGraph({
+          title: post.metadata.title,
+          description: post.metadata.summary,
+          path: getBlogPostPath(post.slug),
+          publishedAt: post.metadata.publishedAt,
+          category: post.metadata.category,
+          image: `/og?title=${encodeURIComponent(
+            post.metadata.title,
+          )}&label=${encodeURIComponent("Dugble Blog")}`,
+        })}
+      />
       <article className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-6 py-12 lg:px-8">
         <a
           href="/blog"
