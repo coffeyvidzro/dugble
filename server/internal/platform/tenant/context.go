@@ -15,6 +15,8 @@ const (
 	ActorTypeTeamToken ActorType = "team_token"
 	ActorTypeWorkload  ActorType = "workload"
 	ActorTypeSCIMToken ActorType = "scim_token"
+	ActorTypeWorkload  ActorType = "workload"
+	ActorTypeSCIMToken ActorType = "scim_token"
 )
 
 type Actor struct {
