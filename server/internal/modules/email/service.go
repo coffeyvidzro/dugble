@@ -49,7 +49,7 @@ func (s *Service) Update(ctx context.Context, value string, req UpdateRequest) (
 		return MutationResponse{}, apperrors.NewInternal("Unable to begin email update transaction", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if err := s.repository.RescheduleTx(ctx, tx, id, tc.TeamID, scheduledAt); err != nil {
+	if err := s.repository.RescheduleTx(ctx, tx, id, tc.Scope.TeamID, scheduledAt); err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return MutationResponse{}, apperrors.NewNotFound("Email message not found")
 		}
@@ -58,7 +58,7 @@ func (s *Service) Update(ctx context.Context, value string, req UpdateRequest) (
 		}
 		return MutationResponse{}, apperrors.NewInternal("Unable to update email message", err)
 	}
-	if err := queue.RescheduleEmailDeliveryTx(ctx, tx, id, tc.TeamID, scheduledAt); err != nil {
+	if err := queue.RescheduleEmailDeliveryTx(ctx, tx, id, tc.Scope.TeamID, scheduledAt); err != nil {
 		return MutationResponse{}, apperrors.NewInternal("Unable to reschedule email delivery", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -85,7 +85,7 @@ func (s *Service) Cancel(ctx context.Context, value string) (MutationResponse, e
 		return MutationResponse{}, apperrors.NewInternal("Unable to begin email cancellation transaction", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if err := s.repository.CancelTx(ctx, tx, id, tc.TeamID); err != nil {
+	if err := s.repository.CancelTx(ctx, tx, id, tc.Scope.TeamID); err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return MutationResponse{}, apperrors.NewNotFound("Email message not found")
 		}
@@ -94,7 +94,7 @@ func (s *Service) Cancel(ctx context.Context, value string) (MutationResponse, e
 		}
 		return MutationResponse{}, apperrors.NewInternal("Unable to cancel email message", err)
 	}
-	if err := queue.CancelEmailDeliveryTx(ctx, tx, id, tc.TeamID); err != nil {
+	if err := queue.CancelEmailDeliveryTx(ctx, tx, id, tc.Scope.TeamID); err != nil {
 		return MutationResponse{}, apperrors.NewInternal("Unable to cancel email delivery", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -129,13 +129,10 @@ func NewService(repository *Repository, delivery DeliveryQueue, config ServiceCo
 	return &Service{repository: repository, delivery: delivery, config: config, senderDomains: resolver}
 }
 
-func requireTenant(ctx context.Context, permission tenant.Permission) (tenant.Context, error) {
-	tc, ok := tenant.FromContext(ctx)
-	if !ok {
-		return tenant.Context{}, apperrors.NewUnauthorized("Team context is required")
-	}
-	if !tenant.ContextCan(tc, permission) {
-		return tenant.Context{}, apperrors.NewForbidden("You do not have permission to perform this action")
+func requireTenant(ctx context.Context, permission tenant.Permission) (tenant.AccessContext, error) {
+	tc, decision := tenant.ResolveAccess(ctx, permission)
+	if !decision.Allowed {
+		return tenant.AccessContext{}, apperrors.NewForbidden(decision.Reason)
 	}
 	return tc, nil
 }
@@ -149,7 +146,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	if err != nil {
 		return Message{}, err
 	}
-	if err := s.authorizeSender(ctx, tc.TeamID, &validated); err != nil {
+	if err := s.authorizeSender(ctx, tc.Scope.TeamID, &validated); err != nil {
 		return Message{}, err
 	}
 	if s.delivery == nil {
@@ -160,11 +157,11 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 		return Message{}, apperrors.NewInternal("Unable to begin email transaction", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	m, err := s.repository.CreateTx(ctx, tx, tc.TeamID, validated)
+	m, err := s.repository.CreateTx(ctx, tx, tc.Scope.TeamID, validated)
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to create email message", err)
 	}
-	if err := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(m.ID), tc.TeamID, validated.ScheduledAt); err != nil {
+	if err := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(m.ID), tc.Scope.TeamID, validated.ScheduledAt); err != nil {
 		return Message{}, apperrors.NewInternal("Unable to enqueue email delivery", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -182,7 +179,7 @@ func (s *Service) Get(ctx context.Context, value string) (Message, error) {
 	if err != nil {
 		return Message{}, apperrors.NewBadRequest("Email message id must be a valid UUID")
 	}
-	m, err := s.repository.Get(ctx, id, tc.TeamID)
+	m, err := s.repository.Get(ctx, id, tc.Scope.TeamID)
 	if errors.Is(err, ErrNotFound) {
 		return Message{}, apperrors.NewNotFound("Email message not found")
 	}
@@ -203,7 +200,7 @@ func (s *Service) List(ctx context.Context, req ListRequest) ([]MessageSummary, 
 	if req.Offset < 0 {
 		req.Offset = 0
 	}
-	m, err := s.repository.List(ctx, tc.TeamID, req.Limit, req.Offset)
+	m, err := s.repository.List(ctx, tc.Scope.TeamID, req.Limit, req.Offset)
 	if err != nil {
 		return nil, apperrors.NewInternal("Unable to list email messages", err)
 	}
@@ -232,7 +229,7 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 		if err != nil {
 			return nil, err
 		}
-		if err = s.authorizeSender(ctx, tc.TeamID, &validated[index]); err != nil {
+		if err = s.authorizeSender(ctx, tc.Scope.TeamID, &validated[index]); err != nil {
 			return nil, err
 		}
 		totalPayloadBytes += bodySize(validated[index].HTMLBody) + bodySize(validated[index].TextBody) + len(validated[index].Metadata)
@@ -249,11 +246,11 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 
 	result := make([]Message, 0, len(validated))
 	for _, item := range validated {
-		message, createErr := s.repository.CreateTx(ctx, tx, tc.TeamID, item)
+		message, createErr := s.repository.CreateTx(ctx, tx, tc.Scope.TeamID, item)
 		if createErr != nil {
 			return nil, apperrors.NewInternal("Unable to create email message", createErr)
 		}
-		if enqueueErr := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(message.ID), tc.TeamID, item.ScheduledAt); enqueueErr != nil {
+		if enqueueErr := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(message.ID), tc.Scope.TeamID, item.ScheduledAt); enqueueErr != nil {
 			return nil, apperrors.NewInternal("Unable to enqueue email delivery", enqueueErr)
 		}
 		result = append(result, message)

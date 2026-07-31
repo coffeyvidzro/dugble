@@ -44,3 +44,15 @@ type AuthenticatedUser struct {
 type AuthResponse struct {
 	User AuthenticatedUser `json:"user"`
 }
+
+type LoginResponse struct {
+	User           *AuthenticatedUser `json:"user,omitempty"`
+	MFARequired    bool               `json:"mfa_required"`
+	ChallengeToken string             `json:"challenge_token,omitempty"`
+	Methods        []string           `json:"methods,omitempty"`
+}
+
+type MFALoginRequest struct {
+	ChallengeToken string `json:"challenge_token"`
+	Code           string `json:"code"`
+}

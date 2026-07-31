@@ -56,4 +56,5 @@ RETURNING *;
 -- name: TouchTeamToken :exec
 UPDATE team_tokens
 SET last_used_at = now()
-WHERE id = sqlc.arg(id);
+WHERE id = sqlc.arg(id)
+  AND (last_used_at IS NULL OR last_used_at < now() - interval '5 minutes');

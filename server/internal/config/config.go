@@ -25,20 +25,22 @@ type BackofficeConfig struct {
 }
 
 type Config struct {
-	AppEnv       string           `env:"APP_ENV"   envDefault:"development"`
-	HTTPPort     string           `env:"HTTP_PORT" envDefault:"8080"`
-	DatabaseURL  string           `env:"DATABASE_URL,required,notEmpty"`
-	RedisURL     string           `env:"REDIS_URL" envDefault:"redis://localhost:6379/0"`
-	CORSOrigins  []string         `env:"CORS_ORIGINS" envSeparator:"," envDefault:"http://localhost:3000,http://127.0.0.1:3000"`
-	ArcjetKey    string           `env:"ARCJET_KEY,required,notEmpty"`
-	FrontendURL  string           `env:"FRONTEND_URL" envDefault:"http://localhost:3000"`
-	BackendURL   string           `env:"BACKEND_URL"  envDefault:"http://localhost:8080"`
-	CookieDomain string           `env:"COOKIE_DOMAIN"`
-	AWS          AWSConfig        `envPrefix:"AWS_"`
-	NATSURL      string           `env:"NATS_URL" envDefault:"nats://localhost:4222"`
-	Arkesel      ProviderConfig   `envPrefix:"ARKESEL_"`
-	MNotify      ProviderConfig   `envPrefix:"MNOTIFY_"`
-	Backoffice   BackofficeConfig `envPrefix:"BACKOFFICE_"`
+	AppEnv           string           `env:"APP_ENV"   envDefault:"development"`
+	HTTPPort         string           `env:"HTTP_PORT" envDefault:"8080"`
+	DatabaseURL      string           `env:"DATABASE_URL,required,notEmpty"`
+	RedisURL         string           `env:"REDIS_URL" envDefault:"redis://localhost:6379/0"`
+	CORSOrigins      []string         `env:"CORS_ORIGINS" envSeparator:"," envDefault:"http://localhost:3000,http://127.0.0.1:3000"`
+	ArcjetKey        string           `env:"ARCJET_KEY,required,notEmpty"`
+	FrontendURL      string           `env:"FRONTEND_URL" envDefault:"http://localhost:3000"`
+	BackendURL       string           `env:"BACKEND_URL"  envDefault:"http://localhost:8080"`
+	CookieDomain     string           `env:"COOKIE_DOMAIN"`
+	MFAEncryptionKey string           `env:"MFA_ENCRYPTION_KEY"`
+	EncryptionKeys   []string         `env:"ENCRYPTION_KEYS" envSeparator:","`
+	AWS              AWSConfig        `envPrefix:"AWS_"`
+	NATSURL          string           `env:"NATS_URL" envDefault:"nats://localhost:4222"`
+	Arkesel          ProviderConfig   `envPrefix:"ARKESEL_"`
+	MNotify          ProviderConfig   `envPrefix:"MNOTIFY_"`
+	Backoffice       BackofficeConfig `envPrefix:"BACKOFFICE_"`
 }
 
 func Load() (*Config, error) {
@@ -67,6 +69,14 @@ func (c *Config) normalize() {
 	c.FrontendURL = strings.TrimRight(strings.TrimSpace(c.FrontendURL), "/")
 	c.BackendURL = strings.TrimRight(strings.TrimSpace(c.BackendURL), "/")
 	c.CookieDomain = strings.TrimSpace(c.CookieDomain)
+	c.MFAEncryptionKey = strings.TrimSpace(c.MFAEncryptionKey)
+	keys := make([]string, 0, len(c.EncryptionKeys))
+	for _, key := range c.EncryptionKeys {
+		if key = strings.TrimSpace(key); key != "" {
+			keys = append(keys, key)
+		}
+	}
+	c.EncryptionKeys = keys
 	c.AWS.FromEmail = strings.TrimSpace(c.AWS.FromEmail)
 	c.AWS.Region = strings.TrimSpace(c.AWS.Region)
 	c.AWS.AccessKey = strings.TrimSpace(c.AWS.AccessKey)

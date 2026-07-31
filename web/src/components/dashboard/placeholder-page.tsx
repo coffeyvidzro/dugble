@@ -22,7 +22,7 @@ export function PlaceholderPage({
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                     <p className="text-muted-foreground text-sm">Dashboard</p>
-                    <h1 className="font-heading text-3xl font-semibold tracking-tight">
+                    <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
                         {title}
                     </h1>
                     <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
@@ -45,7 +45,7 @@ export function PlaceholderPage({
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="rounded-3xl border border-dashed p-12 text-center">
+                    <div className="rounded-3xl border border-dashed p-8 text-center sm:p-12">
                         <p className="text-sm text-muted-foreground">
                             Build the {title.toLowerCase()} workflow here.
                         </p>

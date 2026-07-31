@@ -9,37 +9,8 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
-
-const createTeam = `-- name: CreateTeam :one
-INSERT INTO teams (
-    name,
-    created_by
-) VALUES (
-    $1,
-    $2
-)
-RETURNING id, name, status, created_by, created_at, updated_at
-`
-
-type CreateTeamParams struct {
-	Name      string     `db:"name" json:"name"`
-	CreatedBy *uuid.UUID `db:"created_by" json:"created_by"`
-}
-
-func (q *Queries) CreateTeam(ctx context.Context, arg CreateTeamParams) (Team, error) {
-	row := q.db.QueryRow(ctx, createTeam, arg.Name, arg.CreatedBy)
-	var i Team
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Status,
-		&i.CreatedBy,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
 
 const createTeamMember = `-- name: CreateTeamMember :one
 INSERT INTO team_members (
@@ -76,6 +47,50 @@ func (q *Queries) CreateTeamMember(ctx context.Context, arg CreateTeamMemberPara
 		&i.UserID,
 		&i.Role,
 		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createTeamWithOwner = `-- name: CreateTeamWithOwner :one
+WITH created_team AS (
+    INSERT INTO teams (name, created_by)
+    VALUES ($1, $2)
+    RETURNING id, name, status, created_by, created_at, updated_at
+), created_owner AS (
+    INSERT INTO team_members (team_id, user_id, role, status)
+    SELECT id, $2, 'owner', 'active'
+    FROM created_team
+    RETURNING team_id
+)
+SELECT created_team.id, created_team.name, created_team.status, created_team.created_by, created_team.created_at, created_team.updated_at
+FROM created_team
+JOIN created_owner ON created_owner.team_id = created_team.id
+`
+
+type CreateTeamWithOwnerParams struct {
+	Name    string     `db:"name" json:"name"`
+	OwnerID *uuid.UUID `db:"owner_id" json:"owner_id"`
+}
+
+type CreateTeamWithOwnerRow struct {
+	ID        uuid.UUID          `db:"id" json:"id"`
+	Name      string             `db:"name" json:"name"`
+	Status    string             `db:"status" json:"status"`
+	CreatedBy *uuid.UUID         `db:"created_by" json:"created_by"`
+	CreatedAt pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+func (q *Queries) CreateTeamWithOwner(ctx context.Context, arg CreateTeamWithOwnerParams) (CreateTeamWithOwnerRow, error) {
+	row := q.db.QueryRow(ctx, createTeamWithOwner, arg.Name, arg.OwnerID)
+	var i CreateTeamWithOwnerRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Status,
+		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

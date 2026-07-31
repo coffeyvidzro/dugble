@@ -57,9 +57,9 @@ func TestEnqueueDeliveryDoesNotSilentlyIgnoreSchedule(t *testing.T) {
 
 func TestBatchSendValidatesEntireBatchBeforeStartingTransaction(t *testing.T) {
 	service := NewService(nil, configuredDeliveryQueue{}, testServiceConfig)
-	ctx := tenant.ContextWithTenant(context.Background(), tenant.Context{
-		TeamID:      uuid.New(),
-		Permissions: []tenant.Permission{tenant.PermissionEmailSend},
+	ctx := tenant.ContextWithAccess(context.Background(), tenant.AccessContext{
+		Actor: tenant.Actor{Type: tenant.ActorTypeTeamToken, TokenID: uuid.New()},
+		Scope: tenant.Scope{TeamID: uuid.New(), Status: tenant.StatusActive, Permissions: []tenant.Permission{tenant.PermissionEmailSend}},
 	})
 
 	_, err := service.BatchSend(ctx, BatchSendRequest{Messages: []SendRequest{
@@ -82,8 +82,9 @@ func TestBatchSendRejectsMoreThanOneHundredEmails(t *testing.T) {
 
 func TestBatchSendRejectsAttachmentsBeforeStartingTransaction(t *testing.T) {
 	service := NewService(nil, configuredDeliveryQueue{}, testServiceConfig)
-	ctx := tenant.ContextWithTenant(context.Background(), tenant.Context{
-		TeamID: uuid.New(), Permissions: []tenant.Permission{tenant.PermissionEmailSend},
+	ctx := tenant.ContextWithAccess(context.Background(), tenant.AccessContext{
+		Actor: tenant.Actor{Type: tenant.ActorTypeTeamToken, TokenID: uuid.New()},
+		Scope: tenant.Scope{TeamID: uuid.New(), Status: tenant.StatusActive, Permissions: []tenant.Permission{tenant.PermissionEmailSend}},
 	})
 	_, err := service.BatchSend(ctx, BatchSendRequest{Messages: []SendRequest{{
 		To: EmailAddressList{{Email: "recipient@example.com"}}, Subject: "Attachment", Text: "body",

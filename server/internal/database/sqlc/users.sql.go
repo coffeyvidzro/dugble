@@ -21,7 +21,7 @@ INSERT INTO users (
     $2,
     $3
 )
-RETURNING id, email, email_verified, name, password_hash, created_at, updated_at
+RETURNING id, email, email_verified, name, password_hash, created_at, updated_at, credential_version, security_updated_at
 `
 
 type CreateUserParams struct {
@@ -41,6 +41,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CredentialVersion,
+		&i.SecurityUpdatedAt,
 	)
 	return i, err
 }
@@ -60,7 +62,7 @@ func (q *Queries) DeleteUser(ctx context.Context, arg DeleteUserParams) error {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, email_verified, name, password_hash, created_at, updated_at
+SELECT id, email, email_verified, name, password_hash, created_at, updated_at, credential_version, security_updated_at
 FROM users
 WHERE email = $1
 `
@@ -80,12 +82,14 @@ func (q *Queries) GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) 
 		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CredentialVersion,
+		&i.SecurityUpdatedAt,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, email_verified, name, password_hash, created_at, updated_at
+SELECT id, email, email_verified, name, password_hash, created_at, updated_at, credential_version, security_updated_at
 FROM users
 WHERE id = $1
 `
@@ -105,6 +109,8 @@ func (q *Queries) GetUserByID(ctx context.Context, arg GetUserByIDParams) (User,
 		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CredentialVersion,
+		&i.SecurityUpdatedAt,
 	)
 	return i, err
 }
@@ -114,7 +120,7 @@ UPDATE users
 SET email_verified = true,
     updated_at = now()
 WHERE email = $1
-RETURNING id, email, email_verified, name, password_hash, created_at, updated_at
+RETURNING id, email, email_verified, name, password_hash, created_at, updated_at, credential_version, security_updated_at
 `
 
 type MarkUserEmailVerifiedByEmailParams struct {
@@ -132,6 +138,8 @@ func (q *Queries) MarkUserEmailVerifiedByEmail(ctx context.Context, arg MarkUser
 		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CredentialVersion,
+		&i.SecurityUpdatedAt,
 	)
 	return i, err
 }
@@ -142,7 +150,7 @@ SET email = $1,
     email_verified = false,
     updated_at = now()
 WHERE id = $2
-RETURNING id, email, email_verified, name, password_hash, created_at, updated_at
+RETURNING id, email, email_verified, name, password_hash, created_at, updated_at, credential_version, security_updated_at
 `
 
 type UpdateUserEmailParams struct {
@@ -161,6 +169,8 @@ func (q *Queries) UpdateUserEmail(ctx context.Context, arg UpdateUserEmailParams
 		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CredentialVersion,
+		&i.SecurityUpdatedAt,
 	)
 	return i, err
 }
@@ -170,7 +180,7 @@ UPDATE users
 SET password_hash = $1,
     updated_at = now()
 WHERE id = $2
-RETURNING id, email, email_verified, name, password_hash, created_at, updated_at
+RETURNING id, email, email_verified, name, password_hash, created_at, updated_at, credential_version, security_updated_at
 `
 
 type UpdateUserPasswordParams struct {
@@ -189,6 +199,8 @@ func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPassword
 		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CredentialVersion,
+		&i.SecurityUpdatedAt,
 	)
 	return i, err
 }
@@ -198,7 +210,7 @@ UPDATE users
 SET password_hash = $1,
     updated_at = now()
 WHERE email = $2
-RETURNING id, email, email_verified, name, password_hash, created_at, updated_at
+RETURNING id, email, email_verified, name, password_hash, created_at, updated_at, credential_version, security_updated_at
 `
 
 type UpdateUserPasswordByEmailParams struct {
@@ -217,6 +229,8 @@ func (q *Queries) UpdateUserPasswordByEmail(ctx context.Context, arg UpdateUserP
 		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CredentialVersion,
+		&i.SecurityUpdatedAt,
 	)
 	return i, err
 }
@@ -226,7 +240,7 @@ UPDATE users
 SET name = $1,
     updated_at = now()
 WHERE id = $2
-RETURNING id, email, email_verified, name, password_hash, created_at, updated_at
+RETURNING id, email, email_verified, name, password_hash, created_at, updated_at, credential_version, security_updated_at
 `
 
 type UpdateUserProfileParams struct {
@@ -245,6 +259,8 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CredentialVersion,
+		&i.SecurityUpdatedAt,
 	)
 	return i, err
 }

@@ -30,15 +30,18 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 	return &Repository{db: db, queries: dbsqlc.New(db)}
 }
 
-func (r *Repository) Create(ctx context.Context, name string, createdBy uuid.UUID) (Team, error) {
-	row, err := r.queries.CreateTeam(
+func (r *Repository) CreateWithOwner(ctx context.Context, name string, ownerID uuid.UUID) (Team, error) {
+	row, err := r.queries.CreateTeamWithOwner(
 		ctx,
-		dbsqlc.CreateTeamParams{Name: name, CreatedBy: &createdBy},
+		dbsqlc.CreateTeamWithOwnerParams{Name: name, OwnerID: &ownerID},
 	)
 	if err != nil {
-		return Team{}, fmt.Errorf("create team: %w", err)
+		return Team{}, fmt.Errorf("create team with owner: %w", err)
 	}
-	return teamFromSQLC(row), nil
+	return Team{
+		ID: row.ID.String(), Name: row.Name, Status: row.Status, CreatedBy: stringPointer(row.CreatedBy),
+		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
+	}, nil
 }
 
 func (r *Repository) Get(ctx context.Context, id uuid.UUID) (Team, error) {
@@ -75,23 +78,6 @@ func (r *Repository) Disable(ctx context.Context, id uuid.UUID) (Team, error) {
 		return Team{}, fmt.Errorf("disable team: %w", err)
 	}
 	return teamFromSQLC(row), nil
-}
-
-func (r *Repository) CreateMember(
-	ctx context.Context,
-	teamID uuid.UUID,
-	userID uuid.UUID,
-	role string,
-	status string,
-) (Member, error) {
-	row, err := r.queries.CreateTeamMember(
-		ctx,
-		dbsqlc.CreateTeamMemberParams{TeamID: teamID, UserID: userID, Role: role, Status: status},
-	)
-	if err != nil {
-		return Member{}, fmt.Errorf("create team member: %w", err)
-	}
-	return memberFromSQLC(row), nil
 }
 
 func (r *Repository) GetMember(
@@ -277,19 +263,22 @@ func isUniqueViolation(err error) bool {
 }
 
 func teamFromSQLC(row dbsqlc.Team) Team {
-	var createdBy *string
-	if row.CreatedBy != nil {
-		value := row.CreatedBy.String()
-		createdBy = &value
-	}
 	return Team{
 		ID:        row.ID.String(),
 		Name:      row.Name,
 		Status:    row.Status,
-		CreatedBy: createdBy,
+		CreatedBy: stringPointer(row.CreatedBy),
 		CreatedAt: row.CreatedAt.Time,
 		UpdatedAt: row.UpdatedAt.Time,
 	}
+}
+
+func stringPointer(value *uuid.UUID) *string {
+	if value == nil {
+		return nil
+	}
+	text := value.String()
+	return &text
 }
 
 func invitationFromSQLC(row dbsqlc.TeamInvitation) Invitation {

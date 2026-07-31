@@ -52,12 +52,9 @@ func TeamToken(config TeamTokenConfig) echo.MiddlewareFunc {
 					apperrors.NewUnauthorized("Team token is invalid or expired"),
 				)
 			}
-			permissions := tokenPermissions(token.Permissions)
-			if config.Required != "" && !tenant.HasPermission(permissions, config.Required) {
-				return httputil.Error(
-					c,
-					apperrors.NewForbidden("Team token permission is required"),
-				)
+			permissions, ok := tokenPermissions(token.Permissions)
+			if !ok {
+				return httputil.Error(c, apperrors.NewUnauthorized("Team token is invalid"))
 			}
 			tokenID, err := uuid.Parse(token.ID)
 			if err != nil {
@@ -68,17 +65,14 @@ func TeamToken(config TeamTokenConfig) echo.MiddlewareFunc {
 				return httputil.Error(c, apperrors.NewUnauthorized("Team token is invalid"))
 			}
 			_ = config.Tokens.Touch(c.Request().Context(), tokenID)
-			ctx := tenant.ContextWithTenant(
-				c.Request().Context(),
-				tenant.Context{
-					TeamID:      teamID,
-					ActorType:   tenant.ActorTypeTeamToken,
-					TokenID:     tokenID,
-					Role:        string(tenant.ActorTypeTeamToken),
-					Status:      tenant.StatusActive,
-					Permissions: permissions,
-				},
-			)
+			access := tenant.AccessContext{
+				Actor: tenant.Actor{Type: tenant.ActorTypeTeamToken, TokenID: tokenID},
+				Scope: tenant.Scope{TeamID: teamID, Status: tenant.StatusActive, Permissions: permissions},
+			}
+			if decision := tenant.Authorize(access, config.Required); !decision.Allowed {
+				return httputil.Error(c, apperrors.NewForbidden(decision.Reason))
+			}
+			ctx := tenant.ContextWithAccess(c.Request().Context(), access)
 			c.SetRequest(c.Request().WithContext(ctx))
 			return next(c)
 		}
@@ -93,13 +87,17 @@ func parseBearerToken(value string) (string, bool) {
 	return strings.TrimSpace(token), true
 }
 
-func tokenPermissions(values []string) []tenant.Permission {
+func tokenPermissions(values []string) ([]tenant.Permission, bool) {
 	permissions := make([]tenant.Permission, 0, len(values))
 	for _, value := range values {
 		permission := tenant.Permission(strings.TrimSpace(value))
-		if permission != "" {
-			permissions = append(permissions, permission)
+		if permission == "" || !teamtoken.IsAllowedPermission(permission) {
+			return nil, false
 		}
+		permissions = append(permissions, permission)
 	}
-	return permissions
+	if len(permissions) == 0 {
+		return nil, false
+	}
+	return permissions, true
 }

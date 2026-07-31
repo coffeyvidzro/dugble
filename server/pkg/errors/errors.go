@@ -65,6 +65,14 @@ func NewForbidden(message string) *AppError {
 	}
 }
 
+func NewStepUpRequired(message string) *AppError {
+	return &AppError{
+		Code:    "STEP_UP_REQUIRED",
+		Message: message,
+		Status:  http.StatusForbidden,
+	}
+}
+
 func NewConflict(message string) *AppError {
 	return &AppError{
 		Code:    "CONFLICT",

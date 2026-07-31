@@ -5,6 +5,13 @@ import (
 	"testing"
 )
 
+func TestStepUpRequiredError(t *testing.T) {
+	err := NewStepUpRequired("Recent authentication is required")
+	if err.Code != "STEP_UP_REQUIRED" || err.Status != http.StatusForbidden {
+		t.Fatalf("step-up error = %+v", err)
+	}
+}
+
 func TestNewPayloadTooLarge(t *testing.T) {
 	err := NewPayloadTooLarge("request is too large")
 	if err.Code != "PAYLOAD_TOO_LARGE" {
