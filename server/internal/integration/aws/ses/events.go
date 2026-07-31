@@ -134,7 +134,9 @@ func normalizeRecipients(values []string) []string {
 	return result
 }
 
-func delayedRecipients(values []struct{ EmailAddress string `json:"emailAddress"` }) []string {
+func delayedRecipients(values []struct {
+	EmailAddress string `json:"emailAddress"`
+}) []string {
 	recipients := make([]string, 0, len(values))
 	for _, value := range values {
 		recipients = append(recipients, value.EmailAddress)
@@ -142,7 +144,9 @@ func delayedRecipients(values []struct{ EmailAddress string `json:"emailAddress"
 	return normalizeRecipients(recipients)
 }
 
-func bouncedRecipients(values []struct{ EmailAddress string `json:"emailAddress"` }) []string {
+func bouncedRecipients(values []struct {
+	EmailAddress string `json:"emailAddress"`
+}) []string {
 	recipients := make([]string, 0, len(values))
 	for _, value := range values {
 		recipients = append(recipients, value.EmailAddress)
@@ -150,7 +154,9 @@ func bouncedRecipients(values []struct{ EmailAddress string `json:"emailAddress"
 	return normalizeRecipients(recipients)
 }
 
-func complainedRecipients(values []struct{ EmailAddress string `json:"emailAddress"` }) []string {
+func complainedRecipients(values []struct {
+	EmailAddress string `json:"emailAddress"`
+}) []string {
 	recipients := make([]string, 0, len(values))
 	for _, value := range values {
 		recipients = append(recipients, value.EmailAddress)
