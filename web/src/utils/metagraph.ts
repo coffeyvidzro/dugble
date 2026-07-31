@@ -9,6 +9,8 @@ const organizationId = `${baseUrl}/#organization`;
 const websiteId = `${baseUrl}/#website`;
 const webApplicationId = `${baseUrl}/#web-application`;
 const logoId = `${baseUrl}/#logo`;
+const coffeyVidzroId = `${baseUrl}/#coffey-vidzro`;
+const prosperKessieId = `${baseUrl}/#prosper-kessie`;
 
 type PageSchemaOptions = {
   title: string;
@@ -54,16 +56,8 @@ export function getDugbleSchemaGraph(): Graph {
         description:
           "Developer-first email and SMS API platform built for African startups and teams to send and track transactional messages like OTPs, receipts, and customer alerts.",
         founder: [
-          {
-            "@type": "Person",
-            name: "Coffey Vidzro",
-            url: `${baseUrl}/about#coffey-vidzro`,
-          },
-          {
-            "@type": "Person",
-            name: "Prosper Kessie",
-            url: `${baseUrl}/about#prosper-kessie`,
-          },
+          { "@id": coffeyVidzroId },
+          { "@id": prosperKessieId },
         ],
         areaServed: { "@type": "Continent", name: "Africa" },
         knowsAbout: [
@@ -79,6 +73,32 @@ export function getDugbleSchemaGraph(): Graph {
           "https://twitter.com/dugble",
           "https://linkedin.com/company/dugble",
           "https://github.com/dugble",
+        ],
+      },
+      {
+        "@type": "Person",
+        "@id": coffeyVidzroId,
+        name: "Coffey Vidzro",
+        jobTitle: "Founder",
+        worksFor: { "@id": organizationId },
+        url: `${baseUrl}/about#coffey-vidzro`,
+        sameAs: [
+          "https://linkedin.com/in/coffeyvidzro",
+          "https://twitter.com/coffeyvidzro",
+          "https://github.com/coffeyvidzro",
+        ],
+      },
+      {
+        "@type": "Person",
+        "@id": prosperKessieId,
+        name: "Prosper Kessie",
+        jobTitle: "Co-Founder",
+        worksFor: { "@id": organizationId },
+        url: `${baseUrl}/about#prosper-kessie`,
+        sameAs: [
+          "https://linkedin.com/in/prosperkessie",
+          "https://twitter.com/prosperkessie",
+          "https://github.com/prosperkessie",
         ],
       },
       {
