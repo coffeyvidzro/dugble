@@ -48,8 +48,8 @@ export function getDugbleSchemaGraph(): Graph {
           "@type": "ImageObject",
           "@id": logoId,
           url: `${baseUrl}/dugble-logo.svg`,
-          width: 512,
-          height: 512,
+          width: "512",
+          height: "512",
           caption: "Dugble logo",
         },
         image: { "@id": logoId },
@@ -184,8 +184,8 @@ export function getWebPageSchemaGraph({
     primaryImageOfPage: {
       "@type": "ImageObject",
       url: absoluteUrl("/og"),
-      width: 1200,
-      height: 630,
+      width: "1200",
+      height: "630",
     },
     breadcrumb: {
       "@type": "BreadcrumbList",
@@ -309,8 +309,8 @@ export function getBlogPostingSchemaGraph({
         primaryImageOfPage: {
           "@type": "ImageObject",
           url: imageUrl,
-          width: 1200,
-          height: 630,
+          width: "1200",
+          height: "630",
         },
         inLanguage: "en-US",
       },
