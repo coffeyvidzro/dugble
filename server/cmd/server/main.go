@@ -95,6 +95,7 @@ func run() error {
 		cfg.AWS.FromEmail,
 		cfg.AWS.AccessKey,
 		cfg.AWS.SecretKey,
+		cfg.AWS.SESConfigurationSet,
 	)
 	if err != nil {
 		return fmt.Errorf("initialize SES email client: %w", err)
