@@ -14,11 +14,11 @@ import (
 
 	"github.com/coffeyvidzro/dugble/server/internal/config"
 	"github.com/coffeyvidzro/dugble/server/internal/database"
-	emaildelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/email"
 	"github.com/coffeyvidzro/dugble/server/internal/delivery/email/feedback"
+	emaildelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/email/send"
 	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
+	awsses "github.com/coffeyvidzro/dugble/server/internal/integration/aws/ses"
 	awssns "github.com/coffeyvidzro/dugble/server/internal/integration/aws/sns"
-	emailintegration "github.com/coffeyvidzro/dugble/server/internal/integration/email"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/security"
 	smsintegration "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/arkesel"
@@ -90,7 +90,7 @@ func run() error {
 		return fmt.Errorf("initialize email renderer: %w", err)
 	}
 
-	emailClient, err := emailintegration.NewClient(
+	emailClient, err := awsses.NewClient(
 		cfg.AWS.Region,
 		cfg.AWS.FromEmail,
 		cfg.AWS.AccessKey,
