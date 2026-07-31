@@ -16,6 +16,8 @@ import (
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 )
 
+const maxSESRawMessageBytes = 10 << 20
+
 func buildMIME(message platformemail.Message) ([]byte, error) {
 	if strings.TrimSpace(message.From.Email) == "" || len(message.To)+len(message.CC)+len(message.BCC) == 0 {
 		return nil, errors.New("email requires a sender and at least one recipient")
@@ -23,6 +25,10 @@ func buildMIME(message platformemail.Message) ([]byte, error) {
 	if message.Text == "" && message.HTML == "" {
 		return nil, errors.New("email requires a text or HTML body")
 	}
+	if err := validateCustomHeaders(message.Headers); err != nil {
+		return nil, err
+	}
+
 	var output bytes.Buffer
 	writeHeader(&output, "From", formatAddress(message.From))
 	writeHeader(&output, "To", joinAddresses(message.To))
@@ -31,10 +37,7 @@ func buildMIME(message platformemail.Message) ([]byte, error) {
 	writeHeader(&output, "Subject", mime.QEncoding.Encode("UTF-8", message.Subject))
 	writeHeader(&output, "MIME-Version", "1.0")
 	for key, value := range message.Headers {
-		key = textproto.CanonicalMIMEHeaderKey(strings.TrimSpace(key))
-		if key != "" && !reservedHeader(key) {
-			writeHeader(&output, key, value)
-		}
+		writeHeader(&output, textproto.CanonicalMIMEHeaderKey(strings.TrimSpace(key)), value)
 	}
 	mixed := multipart.NewWriter(&output)
 	writeHeader(&output, "Content-Type", fmt.Sprintf("multipart/mixed; boundary=%q", mixed.Boundary()))
@@ -75,14 +78,17 @@ func buildMIME(message platformemail.Message) ([]byte, error) {
 		if filename == "" || filename == "." {
 			return nil, errors.New("attachment filename is required")
 		}
-		contentType := strings.TrimSpace(attachment.ContentType)
+		contentType := sanitizeHeaderValue(attachment.ContentType)
 		if contentType == "" {
 			contentType = "application/octet-stream"
+		}
+		if _, _, err := mime.ParseMediaType(contentType); err != nil {
+			return nil, fmt.Errorf("invalid attachment content type %q: %w", contentType, err)
 		}
 		header := textproto.MIMEHeader{}
 		header.Set("Content-Type", contentType)
 		header.Set("Content-Transfer-Encoding", "base64")
-		header.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+		header.Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": filename}))
 		if id := sanitizeHeaderValue(attachment.ContentID); id != "" {
 			header.Set("Content-ID", "<"+id+">")
 		}
@@ -90,18 +96,45 @@ func buildMIME(message platformemail.Message) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("create attachment %q: %w", filename, err)
 		}
-		encoder := base64.NewEncoder(base64.StdEncoding, part)
-		if _, err := encoder.Write(data); err != nil {
+		if err := writeBase64Lines(part, data); err != nil {
 			return nil, fmt.Errorf("write attachment %q: %w", filename, err)
-		}
-		if err := encoder.Close(); err != nil {
-			return nil, fmt.Errorf("close attachment %q: %w", filename, err)
 		}
 	}
 	if err := mixed.Close(); err != nil {
 		return nil, fmt.Errorf("close MIME message: %w", err)
 	}
+	if output.Len() > maxSESRawMessageBytes {
+		return nil, fmt.Errorf("%w: encoded message is %d bytes; maximum is %d bytes", ErrMessageTooLarge, output.Len(), maxSESRawMessageBytes)
+	}
 	return output.Bytes(), nil
+}
+
+func validateCustomHeaders(headers map[string]string) error {
+	for key, value := range headers {
+		key = textproto.CanonicalMIMEHeaderKey(strings.TrimSpace(key))
+		if key == "" || strings.ContainsAny(value, "\r\n") {
+			return errors.New("email headers must not be empty or contain newlines")
+		}
+		if reservedHeader(key) {
+			return fmt.Errorf("%w: %s", ErrReservedHeader, key)
+		}
+	}
+	return nil
+}
+
+func writeBase64Lines(part interface{ Write([]byte) (int, error) }, data []byte) error {
+	encoded := base64.StdEncoding.EncodeToString(data)
+	for len(encoded) > 76 {
+		if _, err := part.Write([]byte(encoded[:76] + "\r\n")); err != nil {
+			return err
+		}
+		encoded = encoded[76:]
+	}
+	if encoded != "" {
+		_, err := part.Write([]byte(encoded + "\r\n"))
+		return err
+	}
+	return nil
 }
 
 func writeBodyPart(writer *multipart.Writer, contentType, body string) error {
@@ -136,7 +169,7 @@ func joinAddresses(addresses []platformemail.Address) string {
 
 func writeHeader(output *bytes.Buffer, key, value string) {
 	value = sanitizeHeaderValue(value)
-	if value != "" {
+	if key != "" && value != "" {
 		fmt.Fprintf(output, "%s: %s\r\n", key, value)
 	}
 }
@@ -146,8 +179,13 @@ func sanitizeHeaderValue(value string) string {
 }
 
 func reservedHeader(key string) bool {
-	switch key {
-	case "From", "To", "Cc", "Bcc", "Reply-To", "Subject", "MIME-Version", "Content-Type", "Content-Transfer-Encoding":
+	canonical := textproto.CanonicalMIMEHeaderKey(strings.TrimSpace(key))
+	lower := strings.ToLower(canonical)
+	if strings.HasPrefix(lower, "x-ses-") || strings.HasPrefix(lower, "x-amazon-") {
+		return true
+	}
+	switch canonical {
+	case "From", "To", "Cc", "Bcc", "Reply-To", "Sender", "Subject", "Date", "Message-Id", "Return-Path", "MIME-Version", "Content-Type", "Content-Transfer-Encoding":
 		return true
 	default:
 		return false
