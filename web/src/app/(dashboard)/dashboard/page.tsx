@@ -20,8 +20,8 @@ export const metadata = constructMetadata({
   title: "Overview",
   description:
     "Launch your messaging workspace, create API keys, and prepare your first customer notification flow.",
-  url: "/dashboard",
-  noIndex: true,
+  path: "/dashboard",
+  preset: "dashboard",
 });
 
 const quickStart = [

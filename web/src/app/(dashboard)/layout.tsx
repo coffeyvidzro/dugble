@@ -7,8 +7,8 @@ export const metadata = constructMetadata({
   title: "Dashboard",
   description:
     "Private Dugble workspace dashboard for managing A2P email, SMS, API keys, billing, and settings.",
-  url: "/dashboard",
-  noIndex: true,
+  path: "/dashboard",
+  preset: "dashboard",
 });
 
 export default async function Layout({ children }: { children: ReactNode }) {

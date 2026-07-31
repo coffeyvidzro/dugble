@@ -4,8 +4,8 @@ import { constructMetadata } from "@/utils/metadata";
 export const metadata = constructMetadata({
   title: "Email Domains",
   description: "Manage sending domains for transactional email.",
-  url: "/dashboard/email/domains",
-  noIndex: true,
+  path: "/dashboard/email/domains",
+  preset: "dashboard",
 });
 
 export default function Page() {

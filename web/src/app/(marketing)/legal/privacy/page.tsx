@@ -4,7 +4,8 @@ export const metadata = constructMetadata({
   title: "Privacy Policy",
   description:
     "Learn how Dugble handles account, workspace, recipient, message, and webhook data.",
-  url: "/legal/privacy",
+  path: "/legal/privacy",
+  preset: "legal",
 });
 
 export default function Page() {

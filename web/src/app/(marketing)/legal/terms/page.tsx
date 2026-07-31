@@ -4,7 +4,8 @@ export const metadata = constructMetadata({
   title: "Terms of Service",
   description:
     "API and dashboard terms for using Dugble's A2P messaging infrastructure.",
-  url: "/legal/terms",
+  path: "/legal/terms",
+  preset: "legal",
 });
 
 export default function Page() {

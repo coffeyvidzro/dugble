@@ -10,7 +10,7 @@ export const metadata = constructMetadata({
   title: "Webhooks",
   description:
     "Trace your message lifecycle with real-time delivery events, automated retries, and secure cryptographic signatures.",
-  url: "/features/webhooks",
+  path: "/features/webhooks",
 });
 
 export default function Page() {

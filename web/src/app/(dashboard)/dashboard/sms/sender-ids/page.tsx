@@ -4,8 +4,8 @@ import { constructMetadata } from "@/utils/metadata";
 export const metadata = constructMetadata({
   title: "Sender IDs",
   description: "Manage approved sender IDs for A2P SMS delivery.",
-  url: "/dashboard/sms/sender-ids",
-  noIndex: true,
+  path: "/dashboard/sms/sender-ids",
+  preset: "dashboard",
 });
 
 export default function Page() {

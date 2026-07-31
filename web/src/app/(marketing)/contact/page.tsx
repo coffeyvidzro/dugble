@@ -11,7 +11,7 @@ export const metadata = constructMetadata({
   title: "Contact Us",
   description:
     "Reach out to Dugble for early access, product feedback, volume SMS, partnerships, or support.",
-  url: "/contact",
+  path: "/contact",
 });
 
 const reasons = [

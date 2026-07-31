@@ -4,8 +4,8 @@ import { constructMetadata } from "@/utils/metadata";
 export const metadata = constructMetadata({
   title: "Send SMS",
   description: "Send an A2P SMS message from your Dugble workspace.",
-  url: "/dashboard/sms/send",
-  noIndex: true,
+  path: "/dashboard/sms/send",
+  preset: "dashboard",
 });
 
 export default function Page() {

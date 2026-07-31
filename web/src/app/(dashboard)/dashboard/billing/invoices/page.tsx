@@ -4,8 +4,8 @@ import { constructMetadata } from "@/utils/metadata";
 export const metadata = constructMetadata({
   title: "Invoices",
   description: "Review Dugble invoices for your workspace.",
-  url: "/dashboard/billing/invoices",
-  noIndex: true,
+  path: "/dashboard/billing/invoices",
+  preset: "dashboard",
 });
 
 export default function Page() {

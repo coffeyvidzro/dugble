@@ -1,4 +1,5 @@
 import { Gauge } from "lucide-react";
+import { JsonLd } from "@/components/json-ld";
 import { Cta } from "@/components/marketing/cta";
 import { AnimatedGrid } from "@/components/marketing/hero/animated-grid";
 import { FloatingOrbs } from "@/components/marketing/hero/floating-orbs";
@@ -7,12 +8,13 @@ import { OtherChannels } from "@/components/marketing/pricing/other-channels";
 import { Reveal } from "@/components/marketing/reveal";
 import { Separator } from "@/components/ui/separator";
 import { constructMetadata } from "@/utils/metadata";
+import { getPricingPageSchemaGraph } from "@/utils/metagraph";
 
 export const metadata = constructMetadata({
   title: "Pricing & Plans",
   description:
     "Explore Dugble's transparent, usage-based pricing for transactional email and A2P SMS messaging. No setup fees or feature paywalls.",
-  url: "/pricing",
+  path: "/pricing",
 });
 
 const included = [
@@ -61,6 +63,7 @@ const faqs = [
 export default function Page() {
   return (
     <main className="min-h-svh bg-background text-foreground">
+      <JsonLd id="pricing-schema" schema={getPricingPageSchemaGraph()} />
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-16 px-6 py-8 lg:px-8">
         <section className="relative isolate overflow-hidden rounded-2xl px-6 py-12">
           <AnimatedGrid />

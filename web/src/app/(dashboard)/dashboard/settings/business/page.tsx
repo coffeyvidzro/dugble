@@ -4,8 +4,8 @@ import { constructMetadata } from "@/utils/metadata";
 export const metadata = constructMetadata({
   title: "Business Settings",
   description: "Manage business details for your Dugble workspace.",
-  url: "/dashboard/settings/business",
-  noIndex: true,
+  path: "/dashboard/settings/business",
+  preset: "dashboard",
 });
 
 export default function Page() {

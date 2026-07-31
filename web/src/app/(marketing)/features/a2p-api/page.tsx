@@ -13,7 +13,7 @@ export const metadata = constructMetadata({
   title: "A2P Messaging API",
   description:
     "Send SMS and transactional email through a unified, developer-first A2P messaging API with real-time delivery tracking and signed webhooks.",
-  url: "/features/a2p-api",
+  path: "/features/a2p-api",
 });
 
 export default function Page() {

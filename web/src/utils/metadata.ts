@@ -2,34 +2,76 @@ import type { Metadata } from "next";
 import { baseUrl } from "@/lib/site";
 
 const siteName = "Dugble";
-const defaultTitle = "Developer-first A2P email and SMS APIs for Africa";
+const defaultTitle = "Email & SMS APIs for Africa";
 const defaultDescription =
   "Developer-first A2P email and SMS APIs for African startups and teams.";
+const defaultKeywords = [
+  "A2P messaging",
+  "SMS API",
+  "Email API",
+  "OTP delivery",
+  "developer infrastructure",
+  "African startups",
+];
+
+type MetadataPreset = "marketing" | "auth" | "dashboard" | "legal";
+
+type MetadataImage =
+  | string
+  | {
+      title?: string;
+      label?: string;
+    };
+
+type ConstructMetadataOptions = {
+  title?: string;
+  description?: string;
+  image?: MetadataImage;
+  path?: string;
+  /** @deprecated Use path instead. */
+  url?: string;
+  preset?: MetadataPreset;
+  noIndex?: boolean;
+  openGraph?: Metadata["openGraph"];
+  keywords?: string[];
+};
 
 function getAbsoluteUrl(path = "/"): string {
   return new URL(path, baseUrl).toString();
+}
+
+function getImagePath(image: MetadataImage, title: string): string {
+  if (typeof image === "string") {
+    return image;
+  }
+
+  const params = new URLSearchParams();
+  params.set("title", image.title ?? title);
+
+  if (image.label) {
+    params.set("label", image.label);
+  }
+
+  return `/og?${params.toString()}`;
 }
 
 export function constructMetadata({
   title,
   description = defaultDescription,
   image = "/og",
+  path,
   url,
-  noIndex = false,
+  preset = "marketing",
+  noIndex,
   openGraph,
-}: {
-  title?: string;
-  description?: string;
-  image?: string;
-  url?: string;
-  noIndex?: boolean;
-  openGraph?: Metadata["openGraph"];
-} = {}): Metadata {
+  keywords,
+}: ConstructMetadataOptions = {}): Metadata {
   const pageTitle = title
     ? `${title} | ${siteName}`
     : `${siteName} | ${defaultTitle}`;
-  const canonicalUrl = getAbsoluteUrl(url);
-  const imageUrl = getAbsoluteUrl(image);
+  const canonicalUrl = getAbsoluteUrl(path ?? url);
+  const imageUrl = getAbsoluteUrl(getImagePath(image, pageTitle));
+  const shouldNoIndex = noIndex ?? ["auth", "dashboard"].includes(preset);
 
   return {
     metadataBase: new URL(baseUrl),
@@ -43,14 +85,7 @@ export function constructMetadata({
     publisher: siteName,
     category: "technology",
     referrer: "origin-when-cross-origin",
-    keywords: [
-      "A2P messaging",
-      "SMS API",
-      "Email API",
-      "OTP delivery",
-      "developer infrastructure",
-      "African startups",
-    ],
+    keywords: [...new Set([...defaultKeywords, ...(keywords ?? [])])],
     alternates: {
       canonical: canonicalUrl,
       languages: {
@@ -82,11 +117,11 @@ export function constructMetadata({
       creator: "@dugble",
     },
     robots: {
-      index: !noIndex,
-      follow: !noIndex,
+      index: !shouldNoIndex,
+      follow: !shouldNoIndex,
       googleBot: {
-        index: !noIndex,
-        follow: !noIndex,
+        index: !shouldNoIndex,
+        follow: !shouldNoIndex,
         "max-video-preview": -1,
         "max-image-preview": "large",
         "max-snippet": -1,

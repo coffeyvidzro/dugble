@@ -4,8 +4,8 @@ import { constructMetadata } from "@/utils/metadata";
 export const metadata = constructMetadata({
   title: "Send Email",
   description: "Send a transactional email from your Dugble workspace.",
-  url: "/dashboard/email/emails",
-  noIndex: true,
+  path: "/dashboard/email/emails",
+  preset: "dashboard",
 });
 
 export default function Page() {

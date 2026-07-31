@@ -4,8 +4,8 @@ import { constructMetadata } from "@/utils/metadata";
 export const metadata = constructMetadata({
   title: "Email Templates",
   description: "Create and manage reusable transactional email templates.",
-  url: "/dashboard/email/templates",
-  noIndex: true,
+  path: "/dashboard/email/templates",
+  preset: "dashboard",
 });
 
 export default function Page() {

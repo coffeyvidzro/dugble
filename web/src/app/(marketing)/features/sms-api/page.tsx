@@ -10,7 +10,7 @@ export const metadata = constructMetadata({
   title: "SMS API",
   description:
     "Reliable API for OTPs, alerts, and transactional A2P SMS. Get stable message IDs and real-time delivery tracking.",
-  url: "/features/sms-api",
+  path: "/features/sms-api",
 });
 
 export default function Page() {

@@ -6,8 +6,8 @@ export const metadata = constructMetadata({
   title: "Verify Email",
   description:
     "Verify your email address to finish setting up your Dugble account.",
-  url: "/verify-email",
-  noIndex: true,
+  path: "/verify-email",
+  preset: "auth",
 });
 
 function VerifyEmailFallback() {

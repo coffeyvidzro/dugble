@@ -14,7 +14,7 @@ export const metadata = constructMetadata({
   title: "Security Infrastructure",
   description:
     "Learn how Dugble protects A2P messaging workflows with server-side keys, signed webhooks, CSRF tokens, and session checks.",
-  url: "/security",
+  path: "/security",
 });
 
 export default function Page() {

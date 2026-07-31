@@ -9,7 +9,7 @@ export const metadata = constructMetadata({
   title: "Changelog",
   description:
     "Follow the latest product updates, new features, and improvements to Dugble's A2P messaging platform.",
-  url: "/changelog",
+  path: "/changelog",
 });
 
 export default function Page() {

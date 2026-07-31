@@ -13,7 +13,7 @@ export const metadata = constructMetadata({
   title: "Brand Guidelines",
   description:
     "Explore Dugble's official brand guidelines. Download logos, typography, color palettes, and other brand assets.",
-  url: "/brand",
+  path: "/brand",
 });
 
 export default function Page() {

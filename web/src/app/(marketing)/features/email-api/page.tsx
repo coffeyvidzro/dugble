@@ -10,7 +10,7 @@ export const metadata = constructMetadata({
   title: "Email API",
   description:
     "Send receipts, password resets, and lifecycle emails reliably with Dugble's developer-first API.",
-  url: "/features/email-api",
+  path: "/features/email-api",
 });
 
 export default function Page() {

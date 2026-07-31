@@ -5,8 +5,8 @@ export const metadata = constructMetadata({
   title: "SMS",
   description:
     "Manage A2P SMS sending, sender IDs, campaigns, delivery history, and reports.",
-  url: "/dashboard/sms",
-  noIndex: true,
+  path: "/dashboard/sms",
+  preset: "dashboard",
 });
 
 export default function Page() {

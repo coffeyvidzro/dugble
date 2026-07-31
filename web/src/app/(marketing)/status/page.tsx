@@ -4,7 +4,7 @@ export const metadata = constructMetadata({
   title: "System Status",
   description:
     "Check the platform health and system status for Dugble's API, dashboard, and delivery networks.",
-  url: "/status",
+  path: "/status",
 });
 
 const systems = [

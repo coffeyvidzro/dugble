@@ -4,8 +4,8 @@ import { constructMetadata } from "@/utils/metadata";
 export const metadata = constructMetadata({
   title: "SMS Campaigns",
   description: "Create and monitor SMS campaigns from your Dugble workspace.",
-  url: "/dashboard/sms/campaigns",
-  noIndex: true,
+  path: "/dashboard/sms/campaigns",
+  preset: "dashboard",
 });
 
 export default function Page() {

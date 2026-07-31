@@ -4,8 +4,8 @@ import { constructMetadata } from "@/utils/metadata";
 export const metadata = constructMetadata({
   title: "Team Settings",
   description: "Manage team access for your Dugble workspace.",
-  url: "/dashboard/settings/team",
-  noIndex: true,
+  path: "/dashboard/settings/team",
+  preset: "dashboard",
 });
 
 export default function Page() {

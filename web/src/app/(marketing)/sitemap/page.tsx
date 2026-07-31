@@ -10,7 +10,7 @@ import { getBlogPostPath, getBlogPosts } from "../blog/utils";
 export const metadata = constructMetadata({
   title: "Sitemap",
   description: "Every page on Dugble, in one place.",
-  url: "/sitemap",
+  path: "/sitemap",
 });
 
 export default async function Page() {

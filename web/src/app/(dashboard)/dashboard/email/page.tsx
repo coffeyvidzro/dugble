@@ -5,8 +5,8 @@ export const metadata = constructMetadata({
   title: "Email",
   description:
     "Manage transactional email sending, domains, templates, logs, and metrics.",
-  url: "/dashboard/email",
-  noIndex: true,
+  path: "/dashboard/email",
+  preset: "dashboard",
 });
 
 export default function Page() {

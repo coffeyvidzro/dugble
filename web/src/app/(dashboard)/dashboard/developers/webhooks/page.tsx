@@ -4,8 +4,8 @@ import { constructMetadata } from "@/utils/metadata";
 export const metadata = constructMetadata({
   title: "Webhooks",
   description: "Configure webhook endpoints for real-time delivery events.",
-  url: "/dashboard/developers/webhooks",
-  noIndex: true,
+  path: "/dashboard/developers/webhooks",
+  preset: "dashboard",
 });
 
 export default function Page() {

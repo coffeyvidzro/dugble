@@ -11,7 +11,7 @@ export const metadata = constructMetadata({
   title: "Quickstart Guide",
   description:
     "Get started with Dugble in under 5 minutes. Learn how to create a workspace, generate an API key, send a test SMS, and configure webhooks.",
-  url: "/quickstart",
+  path: "/quickstart",
 });
 
 const successChecklist = [

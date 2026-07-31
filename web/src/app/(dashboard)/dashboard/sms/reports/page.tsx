@@ -4,8 +4,8 @@ import { constructMetadata } from "@/utils/metadata";
 export const metadata = constructMetadata({
   title: "SMS Reports",
   description: "Analyze A2P SMS performance and delivery reports.",
-  url: "/dashboard/sms/reports",
-  noIndex: true,
+  path: "/dashboard/sms/reports",
+  preset: "dashboard",
 });
 
 export default function Page() {

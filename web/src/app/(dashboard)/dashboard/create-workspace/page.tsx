@@ -6,8 +6,8 @@ export const metadata = constructMetadata({
   title: "Create workspace",
   description:
     "Create a Dugble workspace for sending and monitoring A2P email and SMS messages.",
-  url: "/dashboard/create-workspace",
-  noIndex: true,
+  path: "/dashboard/create-workspace",
+  preset: "dashboard",
 });
 
 export default function Page() {

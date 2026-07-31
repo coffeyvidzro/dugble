@@ -11,7 +11,7 @@ export const metadata = constructMetadata({
   title: "About",
   description:
     "Dugble is being built for teams that send customer-critical messages and need to know exactly what happened after every API call.",
-  url: "/about",
+  path: "/about",
 });
 
 export default function Page() {

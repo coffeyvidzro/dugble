@@ -4,8 +4,8 @@ import { constructMetadata } from "@/utils/metadata";
 export const metadata = constructMetadata({
   title: "Profile Settings",
   description: "Manage your Dugble profile settings.",
-  url: "/dashboard/settings/profile",
-  noIndex: true,
+  path: "/dashboard/settings/profile",
+  preset: "dashboard",
 });
 
 export default function Page() {

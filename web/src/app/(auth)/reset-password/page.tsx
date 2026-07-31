@@ -4,8 +4,8 @@ import { constructMetadata } from "@/utils/metadata";
 export const metadata = constructMetadata({
   title: "Reset Password",
   description: "Set a new password for your Dugble account.",
-  url: "/reset-password",
-  noIndex: true,
+  path: "/reset-password",
+  preset: "auth",
 });
 
 export default async function Page() {

@@ -4,8 +4,8 @@ import { constructMetadata } from "@/utils/metadata";
 export const metadata = constructMetadata({
   title: "Security Settings",
   description: "Manage security settings for your Dugble account.",
-  url: "/dashboard/settings/security",
-  noIndex: true,
+  path: "/dashboard/settings/security",
+  preset: "dashboard",
 });
 
 export default function Page() {

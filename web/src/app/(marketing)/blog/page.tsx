@@ -1,15 +1,17 @@
 import { ArrowRight } from "lucide-react";
+import { JsonLd } from "@/components/json-ld";
 import { AnimatedGrid } from "@/components/marketing/hero/animated-grid";
 import { FloatingOrbs } from "@/components/marketing/hero/floating-orbs";
 import { Reveal } from "@/components/marketing/reveal";
 import { constructMetadata } from "@/utils/metadata";
+import { getBlogIndexSchemaGraph } from "@/utils/metagraph";
 import { formatBlogDate, getBlogPostPath, getBlogPosts } from "./utils";
 
 export const metadata = constructMetadata({
   title: "Blog & Engineering Notes",
   description:
     "Product thinking, developer guides, and architectural notes for teams building with Dugble A2P messaging infrastructure.",
-  url: "/blog",
+  path: "/blog",
 });
 
 export default async function Page() {
@@ -17,6 +19,15 @@ export default async function Page() {
 
   return (
     <main className="min-h-svh bg-background text-foreground">
+      <JsonLd
+        id="blog-index-schema"
+        schema={getBlogIndexSchemaGraph({
+          title: "Blog & Engineering Notes",
+          description:
+            "Product thinking, developer guides, and architectural notes for teams building with Dugble A2P messaging infrastructure.",
+          path: "/blog",
+        })}
+      />
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-14 px-6 py-8 lg:px-8">
         <section className="relative isolate overflow-hidden py-12 rounded-2xl px-6">
           <AnimatedGrid />

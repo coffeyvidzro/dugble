@@ -15,6 +15,15 @@ type PageSchemaOptions = {
   description: string;
   path?: string;
   id?: string;
+  breadcrumbs?: Array<{ name: string; path: string }>;
+};
+
+type BlogPostingSchemaOptions = PageSchemaOptions & {
+  publishedAt: string;
+  modifiedAt?: string;
+  category?: string;
+  keywords?: string[];
+  image?: string;
 };
 
 function absoluteUrl(path = "/"): string {
@@ -159,11 +168,35 @@ export function getHomePageSchemaGraph(): WithContext<Thing> {
   });
 }
 
+function getBreadcrumbItems(
+  title: string,
+  path: string,
+  breadcrumbs?: PageSchemaOptions["breadcrumbs"],
+) {
+  const items = breadcrumbs ?? (path === "/" ? [] : [{ name: title, path }]);
+
+  return [
+    {
+      "@type": "ListItem" as const,
+      position: 1,
+      name: "Home",
+      item: baseUrl,
+    },
+    ...items.map((item, index) => ({
+      "@type": "ListItem" as const,
+      position: index + 2,
+      name: item.name,
+      item: absoluteUrl(item.path),
+    })),
+  ];
+}
+
 export function getWebPageSchemaGraph({
   title,
   description,
   path = "/",
   id,
+  breadcrumbs,
 }: PageSchemaOptions): WithContext<Thing> {
   const url = absoluteUrl(path);
 
@@ -188,26 +221,78 @@ export function getWebPageSchemaGraph({
     },
     breadcrumb: {
       "@type": "BreadcrumbList",
-      itemListElement: [
-        {
-          "@type": "ListItem",
-          position: 1,
-          name: "Home",
-          item: baseUrl,
-        },
-        ...(path === "/"
-          ? []
-          : [
-              {
-                "@type": "ListItem" as const,
-                position: 2,
-                name: title,
-                item: url,
-              },
-            ]),
-      ],
+      itemListElement: getBreadcrumbItems(title, path, breadcrumbs),
     },
     inLanguage: "en-US",
+  };
+}
+
+export function getBlogIndexSchemaGraph({
+  title,
+  description,
+  path = "/blog",
+}: PageSchemaOptions): WithContext<Thing> {
+  const url = absoluteUrl(path);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Blog",
+    "@id": `${url}#blog`,
+    url,
+    name: title,
+    description,
+    publisher: {
+      "@id": organizationId,
+    },
+    isPartOf: {
+      "@id": websiteId,
+    },
+    inLanguage: "en-US",
+  };
+}
+
+export function getPricingPageSchemaGraph(): WithContext<Thing> {
+  const path = "/pricing";
+  const url = absoluteUrl(path);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "OfferCatalog",
+    "@id": `${url}#pricing`,
+    name: "Dugble Pricing",
+    description:
+      "Usage-based pricing for Dugble transactional email and A2P SMS messaging.",
+    url,
+    itemListElement: [
+      {
+        "@type": "Offer",
+        name: "Transactional Email API",
+        category: "Email API",
+        priceCurrency: "USD",
+        availability: "https://schema.org/InStock",
+        itemOffered: {
+          "@type": "Service",
+          name: "Dugble Email API",
+          provider: {
+            "@id": organizationId,
+          },
+        },
+      },
+      {
+        "@type": "Offer",
+        name: "A2P SMS API",
+        category: "SMS API",
+        priceCurrency: "USD",
+        availability: "https://schema.org/InStock",
+        itemOffered: {
+          "@type": "Service",
+          name: "Dugble SMS API",
+          provider: {
+            "@id": organizationId,
+          },
+        },
+      },
+    ],
   };
 }
 
@@ -216,7 +301,11 @@ export function getBlogPostingSchemaGraph({
   description,
   path,
   publishedAt,
-}: PageSchemaOptions & { publishedAt: string }): WithContext<Thing> {
+  modifiedAt,
+  category,
+  keywords,
+  image,
+}: BlogPostingSchemaOptions): WithContext<Thing> {
   const url = absoluteUrl(path);
 
   return {
@@ -227,8 +316,10 @@ export function getBlogPostingSchemaGraph({
     description,
     url,
     datePublished: publishedAt,
-    dateModified: publishedAt,
-    image: absoluteUrl(`/og?title=${encodeURIComponent(title)}`),
+    dateModified: modifiedAt ?? publishedAt,
+    image: absoluteUrl(image ?? `/og?title=${encodeURIComponent(title)}`),
+    articleSection: category,
+    keywords,
     author: {
       "@id": organizationId,
     },

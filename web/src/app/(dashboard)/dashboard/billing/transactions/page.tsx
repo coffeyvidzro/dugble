@@ -4,8 +4,8 @@ import { constructMetadata } from "@/utils/metadata";
 export const metadata = constructMetadata({
   title: "Transactions",
   description: "Review billing transactions for your Dugble workspace.",
-  url: "/dashboard/billing/transactions",
-  noIndex: true,
+  path: "/dashboard/billing/transactions",
+  preset: "dashboard",
 });
 
 export default function Page() {
