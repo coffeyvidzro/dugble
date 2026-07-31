@@ -1,0 +1,167 @@
+export const metadata = {
+  title: "Stop Fighting AWS. Stop Overpaying Resend.",
+  summary: "Compare AWS SES, Resend, and Dugble for transactional email pricing, setup effort, delivery visibility, and African business needs.",
+  publishedAt: "2026-07-31",
+  category: "Comparisons",
+};
+
+Your product is growing. New users need verification emails, customers expect payment receipts, and password resets must arrive when requested. What began as a few hundred messages can quickly become tens of thousands of transactional emails every month.
+
+AWS SES offers low raw sending costs, but your team must manage more of the surrounding infrastructure. Resend delivers a polished developer experience, but subscriptions and overage charges can become expensive as volume grows.
+
+African developers should not have to choose between affordable infrastructure that takes time to operate and a simple platform that becomes costly at scale. Dugble offers a practical middle ground with a clean email API, delivery visibility, usage based pricing, and communication tools designed around African businesses.
+
+## The transactional email dilemma
+
+Transactional email supports important customer actions:
+
+- Account verification
+- Password recovery
+- Payment receipts
+- Invoices
+- Security alerts
+- Order confirmations
+- Delivery updates
+- Account statements
+
+These messages directly affect conversion and trust. A delayed verification email can cost a signup. A missing receipt can create doubt about a successful payment. A failed password reset can become a support ticket.
+
+The provider you choose affects more than your monthly bill. It also affects engineering time, delivery visibility, customer experience, and how easily your finance team can keep the service funded.
+
+## AWS SES: low cost, more operational ownership
+
+Amazon Simple Email Service is attractive because its usage pricing can be very low. AWS still lists an à la carte outbound rate of $0.10 per 1,000 emails, excluding other applicable charges such as attachment data transfer.
+
+AWS also introduced SES pricing plans in July 2026. The Essentials plan starts at $0.16 per 1,000 emails for the first 10 million monthly emails. Pro and Enterprise include additional deliverability and infrastructure capabilities at higher rates and may include monthly account charges.
+
+You can review the current details on the [official Amazon SES pricing page](https://aws.amazon.com/ses/pricing/).
+
+The sending rate is only one part of the decision. A team using SES may still need to configure and operate:
+
+- AWS identities and permissions
+- Domain authentication records
+- Production access and sending limits
+- Bounce and complaint events
+- Suppression policies
+- Delivery monitoring
+- Retry rules
+- Message logs
+- Reputation controls
+- Several connected AWS services
+
+SES can be an excellent fit for teams with AWS expertise and the capacity to manage email operations. The hidden cost is the engineering time required to build and maintain the experience around the sending service.
+
+## Resend: excellent developer experience, premium scaling costs
+
+Resend approaches the problem from the opposite direction. It offers a clean API, SMTP relay, webhooks, message activity, official SDKs, and a dashboard designed for developers.
+
+That simplicity can help a team launch quickly.
+
+As of July 31, 2026, Resend lists a free plan with 3,000 monthly emails and a limit of 100 emails per day. Its Pro plan starts at $20 per month for 50,000 emails. Additional emails on that plan cost $0.90 per 1,000.
+
+Resend also offers larger Scale plans with lower overage rates at higher included volumes. Current pricing is available on the [official Resend pricing page](https://resend.com/pricing/).
+
+Resend is not expensive for every business. At the right volume, its plans can offer strong value. The concern appears when a growing product regularly exceeds its included allowance or needs a lower unit cost across both email and SMS.
+
+## Dugble: the middle ground for African teams
+
+Dugble is designed for businesses that want a straightforward transactional email experience without operating raw cloud infrastructure.
+
+A Dugble send request is accepted asynchronously and returns a message identifier. Your application can use that identifier to track the email through states such as queued, processing, submitted, delivered, delayed, bounced, complained, rejected, failed, or canceled.
+
+This gives developers a clear answer when a customer says, “I did not receive the email.”
+
+Dugble also keeps email and SMS inside one communication workspace. A fintech application can send a verification code by SMS and a receipt by email without managing unrelated providers for each channel.
+
+## How the rates compare
+
+The following table compares the publicly listed base or overage rates with Dugble’s current tiers.
+
+| Provider or plan | Email rate per 1,000 | Monthly commitment |
+|---|---:|---:|
+| AWS SES à la carte | $0.10 | None |
+| AWS SES Essentials | $0.16 | None |
+| Resend Pro overage | $0.90 | Paid plan required |
+| Dugble Growth | $0.50 | None |
+| Dugble Scale | $0.30 | $100 |
+| Dugble Enterprise | $0.20 | $300 |
+
+Every Dugble tier includes 1,000 free emails each month.
+
+Dugble does not attempt to beat the lowest raw SES rate. Its value is providing a managed developer experience at a lower rate than common premium overage pricing.
+
+Compared with Resend’s $0.90 Pro overage rate:
+
+- Dugble Growth is about 44 percent cheaper.
+- Dugble Scale is about 67 percent cheaper.
+- Dugble Enterprise is about 78 percent cheaper.
+
+Rates and product terms can change, so verify each provider’s current pricing before making a purchasing decision.
+
+## What 500,000 emails can cost
+
+Consider a product sending 500,000 emails in one month. This simple comparison excludes free allowances, subscriptions, data transfer, taxes, and optional add-ons.
+
+| Provider or tier | Estimated usage cost |
+|---|---:|
+| AWS SES à la carte | $50 |
+| AWS SES Essentials | $80 |
+| Resend Pro overage rate | $450 |
+| Dugble Growth | $250 |
+| Dugble Scale | $150 |
+| Dugble Enterprise | $100 |
+
+AWS SES remains the least expensive raw sending option in this example. The business must decide whether the engineering and operational responsibility fits its team.
+
+Dugble Scale costs more than raw SES, but it offers managed delivery tracking at one third of the example Resend overage rate.
+
+## Start without a commitment, then reduce your rate
+
+Dugble uses usage based pricing with optional monthly commitments.
+
+| Plan | Monthly commitment | Email rate | Ghana SMS | Kenya SMS |
+|---|---:|---:|---:|---:|
+| Growth | None | $0.50 per 1,000 | $0.0120 | $0.0180 |
+| Scale | $100 | $0.30 per 1,000 | $0.0110 | $0.0165 |
+| Enterprise | $300 | $0.20 per 1,000 | $0.0100 | $0.0150 |
+
+Growth lets a startup launch without predicting future volume. Scale and Enterprise provide better rates when monthly communication spend becomes consistent.
+
+The commitment represents communication usage, not a separate fee for platform access.
+
+## Send your first email
+
+A basic Dugble request looks like this:
+
+```bash
+curl --request POST \
+  --url https://api.dugble.com/emails \
+  --header "Authorization: Bearer $DUGBLE_TOKEN" \
+  --header "Content-Type: application/json" \
+  --header "Idempotency-Key: welcome-user-48291" \
+  --data '{
+    "from": "Dugble <notifications@example.com>",
+    "to": "Ama Mensah <ama@example.com>",
+    "subject": "Welcome to Dugble",
+    "html": "<h1>Welcome!</h1><p>Your account is ready.</p>",
+    "text": "Welcome! Your account is ready."
+  }'
+```
+
+A successful request returns `202 Accepted` with an email identifier and a queued status. The idempotency key helps prevent duplicate messages when your application retries a request.
+
+## Which option should you choose?
+
+Choose AWS SES when your team already has strong AWS expertise, the lowest infrastructure rate is the main priority, and you are comfortable owning more email operations.
+
+Choose Resend when you want a mature, email focused developer platform and its included volumes and pricing fit your business.
+
+Choose Dugble when you want managed transactional email, lower premium style unit rates, SMS and email in one workspace, and a platform focused on African business requirements.
+
+## Stop fighting infrastructure. Start sending.
+
+Your engineers should spend more time building customer features and less time assembling routine email operations.
+
+Dugble gives growing African teams a clear API, message tracking, transparent rates, and a path from no commitment to lower volume pricing.
+
+[Create your Dugble account](/sign-up), generate your API key, and send your first transactional email.
