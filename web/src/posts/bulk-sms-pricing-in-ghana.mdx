@@ -1,0 +1,172 @@
+export const metadata = {
+  title: "Bulk SMS Pricing in Ghana: What Businesses Should Know",
+  summary: "Understand Ghana bulk SMS costs, message segments, committed-use discounts, and how to estimate your monthly communication budget.",
+  publishedAt: "2026-07-31",
+  category: "Pricing",
+};
+
+Bulk SMS pricing can look simple until a campaign reaches real volume.
+
+A rate that appears small per message can become a major monthly expense when your business sends OTPs, payment alerts, delivery updates, reminders, and promotions to thousands of customers.
+
+To budget accurately, you need to understand more than the advertised unit price. Message length, destination, sender requirements, delivery attempts, and monthly commitments can all affect the final cost.
+
+This guide explains how Ghanaian businesses should evaluate SMS pricing before selecting a provider.
+
+## How SMS pricing is usually calculated
+
+Most providers charge for outbound SMS based on the destination and the number of message segments sent.
+
+The basic formula is:
+
+> Number of billable segments × price per segment = estimated messaging cost
+
+This means 10,000 customer notifications do not always equal 10,000 billable SMS segments. A long message may be split into two or more segments.
+
+For accurate forecasting, estimate both message count and average segments per message.
+
+## Dugble Ghana SMS pricing
+
+Dugble uses a committed-use and volume-based discount model.
+
+| Plan | Monthly commitment | Ghana SMS rate | Kenya SMS rate | Email rate |
+|---|---:|---:|---:|---:|
+| Growth | None | $0.0120 | $0.0180 | $0.00050 |
+| Scale | $100 | $0.0110 | $0.0165 | $0.00030 |
+| Enterprise | $300 | $0.0100 | $0.0150 | $0.00020 |
+
+Every plan includes 1,000 free emails each month.
+
+Growth is designed for businesses that want to begin without a monthly commitment. Scale and Enterprise provide lower rates for customers with predictable communication usage.
+
+The commitment represents monthly communication spend. It should not be treated as a separate platform access fee.
+
+## Example Ghana SMS costs
+
+The following examples assume each message fits within one billable SMS segment.
+
+| Monthly Ghana SMS volume | Growth rate | Estimated Growth cost |
+|---:|---:|---:|
+| 1,000 | $0.0120 | $12 |
+| 10,000 | $0.0120 | $120 |
+| 50,000 | $0.0120 | $600 |
+| 100,000 | $0.0120 | $1,200 |
+| 500,000 | $0.0120 | $6,000 |
+
+At larger volumes, the lower Scale and Enterprise rates can reduce the unit cost.
+
+For 100,000 Ghana SMS segments:
+
+- Growth usage value is $1,200 at $0.0120 each.
+- Scale usage value is $1,100 at $0.0110 each.
+- Enterprise usage value is $1,000 at $0.0100 each.
+
+The best plan depends on how the monthly commitment is applied, the customer's total usage across channels, and whether traffic remains consistent each month.
+
+## When does a committed plan make sense?
+
+A lower unit price is valuable only when your usage is high enough to support the commitment.
+
+For Ghana-only SMS traffic, the difference between Growth and Scale is $0.001 per segment. A business needs approximately 100,000 Ghana SMS segments per month for that rate difference to equal the $100 Scale commitment.
+
+The difference between Scale and Enterprise is also $0.001 per segment. Approximately 200,000 Ghana SMS segments create $200 in additional savings, which matches the difference between the $100 and $300 commitments.
+
+These examples provide a simple reference point. A customer using both SMS and email may reach the commitment through combined communication usage sooner.
+
+## Message length can increase the cost
+
+SMS messages have character limits. When a message exceeds the available characters for one segment, it is divided into several connected segments.
+
+The exact limit depends on the characters used. Certain symbols, emojis, and non-standard characters can change the encoding and reduce the available characters per segment.
+
+Consider these two campaign styles:
+
+Short version:
+
+> Save 20% at Akwaaba Home this weekend. Show code HOME20 at checkout. Terms apply.
+
+Long version:
+
+> Akwaaba Home is excited to announce our special weekend promotion where customers can receive 20% off selected home and office furniture. Visit our showroom and present promotional code HOME20 at checkout. Terms and conditions apply.
+
+The longer version may require several segments and can multiply the campaign cost.
+
+Keep SMS copy concise and move detailed terms to a trusted web page when appropriate.
+
+## Destination matters
+
+SMS rates vary by country because delivery involves different networks, commercial agreements, sender rules, and routing conditions.
+
+A company serving Ghana and Kenya should not assume both destinations have the same cost. Under Dugble's current pricing, Growth is $0.0120 for Ghana and $0.0180 for Kenya.
+
+When forecasting regional expansion, estimate traffic country by country. A blended average can hide expensive routes and make product margins difficult to understand.
+
+## Compare local pricing with global providers
+
+As of July 31, 2026, Twilio publicly lists outbound SMS to Ghana at $0.3741 per segment. Twilio states that pricing may change and additional carrier fees may apply. The current amount is available on the [official Twilio Ghana SMS pricing page](https://www.twilio.com/en-us/sms/pricing/gh).
+
+At 10,000 single-segment messages to Ghana:
+
+| Provider or plan | Listed unit rate | Estimated base cost |
+|---|---:|---:|
+| Twilio | $0.3741 | $3,741 |
+| Dugble Growth | $0.0120 | $120 |
+| Dugble Scale usage rate | $0.0110 | $110 |
+| Dugble Enterprise usage rate | $0.0100 | $100 |
+
+Customers should compare the complete commercial terms, not only one published rate. Consider sender setup, support, delivery reporting, payment methods, commitments, and any additional applicable charges.
+
+## Failed messages and retries can affect your budget
+
+A failed message may still create processing costs depending on the provider and failure stage. Automated retries can also create additional sends.
+
+Your application should distinguish between failures that may succeed after retry and failures that require customer data to be corrected.
+
+For example:
+
+- A temporary network issue may justify a controlled retry.
+- An invalid phone number should not be retried repeatedly.
+- An expired OTP should not be delivered as though it is still useful.
+- A rejected sender identity should be fixed before more traffic is sent.
+
+Blind retries increase cost without improving the customer experience.
+
+## Delivery quality matters alongside price
+
+The cheapest message is not valuable if it does not help the customer complete the intended action.
+
+Evaluate providers using:
+
+- Delivery reporting
+- Message logs
+- Webhook events
+- Sender onboarding
+- Support responsiveness
+- Destination coverage
+- API reliability
+- Billing clarity
+
+Run tests across the networks your customers actually use. Measure not only whether the API accepted the request, but whether customers received the message in time and completed the intended action.
+
+## How to reduce your SMS costs
+
+Businesses can control spend by following a few practical rules:
+
+1. Keep messages within one segment when possible.
+2. Clean phone numbers before sending.
+3. Remove duplicate contacts.
+4. Send only to relevant and permitted audiences.
+5. Stop retries after a final failure.
+6. Cancel reminders when the customer has already acted.
+7. Select a committed tier only when usage supports it.
+8. Use email for detailed, non-urgent communication.
+9. Monitor cost by destination and campaign.
+10. Review delivery performance regularly.
+
+## Plan your communication budget with Dugble
+
+Dugble lets businesses start with no monthly commitment on Growth, then access lower SMS and email rates through Scale and Enterprise as usage becomes predictable.
+
+This gives startups room to test their product while giving larger businesses a clear path to better unit economics.
+
+[Create your Dugble account](/sign-up) and estimate your messaging costs using the destinations and volumes your business actually expects to send.
