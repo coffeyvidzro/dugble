@@ -75,6 +75,20 @@ func TestReceiveSESRejectsInvalidJSON(t *testing.T) {
 	}
 }
 
+func TestReceiveSESRejectsMismatchedMessageTypeHeader(t *testing.T) {
+	handler := NewHandler(fakeVerifier{}, &fakeConfirmer{}, &fakeIngestor{})
+	e := echo.New()
+	RegisterRoutes(e, handler)
+	request := httptest.NewRequest(http.MethodPost, "/integrations/aws/sns/ses", strings.NewReader(notificationBody()))
+	request.Header.Set("Content-Type", "text/plain")
+	request.Header.Set("x-amz-sns-message-type", "SubscriptionConfirmation")
+	response := httptest.NewRecorder()
+	e.ServeHTTP(response, request)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusBadRequest)
+	}
+}
+
 func TestReceiveSESMapsInvalidSignature(t *testing.T) {
 	handler := NewHandler(fakeVerifier{err: awssns.ErrInvalidSignature}, &fakeConfirmer{}, &fakeIngestor{})
 	response := performRequest(t, handler, notificationBody())
@@ -97,7 +111,12 @@ func performRequest(t *testing.T, handler *Handler, body string) *httptest.Respo
 	e := echo.New()
 	RegisterRoutes(e, handler)
 	request := httptest.NewRequest(http.MethodPost, "/integrations/aws/sns/ses", strings.NewReader(body))
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", "text/plain; charset=UTF-8")
+	if strings.Contains(body, `"Type":"SubscriptionConfirmation"`) {
+		request.Header.Set("x-amz-sns-message-type", "SubscriptionConfirmation")
+	} else {
+		request.Header.Set("x-amz-sns-message-type", "Notification")
+	}
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
 	return response

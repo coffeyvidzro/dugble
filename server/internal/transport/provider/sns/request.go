@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 
 	"github.com/labstack/echo/v5"
 
@@ -14,6 +15,12 @@ import (
 const maxRequestBodyBytes = 256 * 1024
 
 func parseEnvelopeRequest(c *echo.Context) (awssns.Envelope, error) {
+	if contentType := c.Request().Header.Get("Content-Type"); contentType != "" {
+		mediaType, _, err := mime.ParseMediaType(contentType)
+		if err != nil || mediaType != "text/plain" {
+			return awssns.Envelope{}, apperrors.NewBadRequest("SNS requests must use text/plain content type")
+		}
+	}
 	body, err := io.ReadAll(io.LimitReader(c.Request().Body, maxRequestBodyBytes+1))
 	if err != nil {
 		return awssns.Envelope{}, apperrors.NewBadRequest("Unable to read SNS request body")
@@ -24,6 +31,9 @@ func parseEnvelopeRequest(c *echo.Context) (awssns.Envelope, error) {
 	envelope, err := awssns.ParseEnvelope(body)
 	if err != nil {
 		return awssns.Envelope{}, apperrors.NewBadRequest("Invalid SNS request body")
+	}
+	if headerType := c.Request().Header.Get("x-amz-sns-message-type"); headerType != "" && headerType != string(envelope.Type) {
+		return awssns.Envelope{}, apperrors.NewBadRequest("SNS message type header does not match body")
 	}
 	return envelope, nil
 }
