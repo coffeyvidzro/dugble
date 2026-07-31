@@ -1,0 +1,133 @@
+ALTER TABLE email_messages
+    DROP CONSTRAINT IF EXISTS chk_email_status;
+
+ALTER TABLE email_messages
+    ADD CONSTRAINT chk_email_status CHECK (status IN (
+        'queued', 'processing', 'submission_unknown', 'submitted',
+        'delivered', 'partially_delivered', 'delayed',
+        'bounced', 'complained', 'rejected', 'failed',
+        'partially_failed', 'canceled'
+    ));
+
+CREATE TABLE IF NOT EXISTS email_recipients (
+    id UUID PRIMARY KEY,
+    email_message_id UUID NOT NULL REFERENCES email_messages(id) ON DELETE CASCADE,
+    recipient_email TEXT NOT NULL,
+    recipient_type TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    last_event_type TEXT,
+    last_event_at TIMESTAMPTZ,
+    delivered_at TIMESTAMPTZ,
+    failed_at TIMESTAMPTZ,
+    error_code TEXT,
+    error_message TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT uq_email_recipients_message_email
+        UNIQUE (email_message_id, recipient_email),
+    CONSTRAINT chk_email_recipients_email
+        CHECK (length(trim(recipient_email)) > 0 AND recipient_email = lower(recipient_email)),
+    CONSTRAINT chk_email_recipients_type
+        CHECK (recipient_type IN ('to', 'cc', 'bcc', 'unknown')),
+    CONSTRAINT chk_email_recipients_status
+        CHECK (status IN (
+            'pending', 'submitted', 'delayed', 'delivered',
+            'bounced', 'complained', 'rejected', 'failed'
+        )),
+    CONSTRAINT chk_email_recipients_event_type
+        CHECK (last_event_type IS NULL OR last_event_type IN (
+            'send', 'delivery', 'delivery_delay', 'bounce',
+            'complaint', 'reject', 'rendering_failure'
+        ))
+);
+
+WITH recipient_addresses AS (
+    SELECT
+        message.id AS email_message_id,
+        lower(trim(recipient.address ->> 'email')) AS recipient_email,
+        recipient.recipient_type,
+        recipient.priority,
+        message.status AS message_status
+    FROM email_messages AS message
+    CROSS JOIN LATERAL (
+        SELECT value AS address, 'to'::text AS recipient_type, 1 AS priority
+        FROM jsonb_array_elements(COALESCE(message.recipients -> 'to', '[]'::jsonb))
+        UNION ALL
+        SELECT value AS address, 'cc'::text AS recipient_type, 2 AS priority
+        FROM jsonb_array_elements(COALESCE(message.recipients -> 'cc', '[]'::jsonb))
+        UNION ALL
+        SELECT value AS address, 'bcc'::text AS recipient_type, 3 AS priority
+        FROM jsonb_array_elements(COALESCE(message.recipients -> 'bcc', '[]'::jsonb))
+    ) AS recipient
+    WHERE length(trim(recipient.address ->> 'email')) > 0
+), deduplicated AS (
+    SELECT DISTINCT ON (email_message_id, recipient_email)
+        email_message_id,
+        recipient_email,
+        recipient_type,
+        message_status
+    FROM recipient_addresses
+    ORDER BY email_message_id, recipient_email, priority
+)
+INSERT INTO email_recipients (
+    id,
+    email_message_id,
+    recipient_email,
+    recipient_type,
+    status
+)
+SELECT
+    gen_random_uuid(),
+    email_message_id,
+    recipient_email,
+    recipient_type,
+    CASE message_status
+        WHEN 'submitted' THEN 'submitted'
+        WHEN 'delayed' THEN 'delayed'
+        WHEN 'delivered' THEN 'delivered'
+        WHEN 'partially_delivered' THEN 'delivered'
+        WHEN 'bounced' THEN 'bounced'
+        WHEN 'complained' THEN 'complained'
+        WHEN 'rejected' THEN 'rejected'
+        WHEN 'failed' THEN 'failed'
+        WHEN 'partially_failed' THEN 'failed'
+        ELSE 'pending'
+    END
+FROM deduplicated
+ON CONFLICT (email_message_id, recipient_email) DO NOTHING;
+
+WITH latest_events AS (
+    SELECT DISTINCT ON (email_message_id, recipient_email)
+        email_message_id,
+        lower(trim(recipient_email)) AS recipient_email,
+        event_type,
+        occurred_at
+    FROM email_recipient_events
+    ORDER BY email_message_id, recipient_email, occurred_at DESC, created_at DESC
+)
+UPDATE email_recipients AS recipient
+SET status = CASE latest.event_type
+        WHEN 'send' THEN 'submitted'
+        WHEN 'delivery_delay' THEN 'delayed'
+        WHEN 'delivery' THEN 'delivered'
+        WHEN 'bounce' THEN 'bounced'
+        WHEN 'complaint' THEN 'complained'
+        WHEN 'reject' THEN 'rejected'
+        WHEN 'rendering_failure' THEN 'failed'
+        ELSE recipient.status
+    END,
+    last_event_type = latest.event_type,
+    last_event_at = latest.occurred_at,
+    delivered_at = CASE WHEN latest.event_type = 'delivery' THEN latest.occurred_at ELSE recipient.delivered_at END,
+    failed_at = CASE WHEN latest.event_type IN ('bounce', 'complaint', 'reject', 'rendering_failure') THEN latest.occurred_at ELSE recipient.failed_at END,
+    updated_at = now()
+FROM latest_events AS latest
+WHERE recipient.email_message_id = latest.email_message_id
+  AND recipient.recipient_email = latest.recipient_email;
+
+CREATE INDEX IF NOT EXISTS idx_email_recipients_message_status
+    ON email_recipients (email_message_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_email_recipients_email_updated
+    ON email_recipients (recipient_email, updated_at DESC);
