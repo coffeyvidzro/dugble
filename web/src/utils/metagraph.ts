@@ -50,9 +50,7 @@ export function getDugbleSchemaGraph(): Graph {
           height: 512,
           caption: "Dugble logo",
         },
-        image: {
-          "@id": logoId,
-        },
+        image: { "@id": logoId },
         description:
           "Developer-first email and SMS API platform built for African startups and teams to send and track transactional messages like OTPs, receipts, and customer alerts.",
         founder: [
@@ -67,10 +65,7 @@ export function getDugbleSchemaGraph(): Graph {
             url: `${baseUrl}/about#prosper-kessie`,
           },
         ],
-        areaServed: {
-          "@type": "Continent",
-          name: "Africa",
-        },
+        areaServed: { "@type": "Continent", name: "Africa" },
         knowsAbout: [
           "Transactional SMS",
           "Transactional Email",
@@ -92,9 +87,7 @@ export function getDugbleSchemaGraph(): Graph {
         url: baseUrl,
         name: siteName,
         description: defaultDescription,
-        publisher: {
-          "@id": organizationId,
-        },
+        publisher: { "@id": organizationId },
         inLanguage: "en-US",
       },
       {
@@ -107,9 +100,7 @@ export function getDugbleSchemaGraph(): Graph {
         url: baseUrl,
         browserRequirements: "Requires JavaScript and a modern web browser.",
         description: defaultDescription,
-        publisher: {
-          "@id": organizationId,
-        },
+        publisher: { "@id": organizationId },
         offers: {
           "@type": "Offer",
           price: "0",
@@ -171,12 +162,8 @@ export function getWebPageSchemaGraph({
     url,
     name: title,
     description,
-    isPartOf: {
-      "@id": websiteId,
-    },
-    about: {
-      "@id": webApplicationId,
-    },
+    isPartOf: { "@id": websiteId },
+    about: { "@id": webApplicationId },
     primaryImageOfPage: {
       "@type": "ImageObject",
       url: absoluteUrl("/og"),
@@ -205,12 +192,8 @@ export function getBlogIndexSchemaGraph({
     url,
     name: title,
     description,
-    publisher: {
-      "@id": organizationId,
-    },
-    isPartOf: {
-      "@id": websiteId,
-    },
+    publisher: { "@id": organizationId },
+    isPartOf: { "@id": websiteId },
     inLanguage: "en-US",
   };
 }
@@ -218,6 +201,7 @@ export function getBlogIndexSchemaGraph({
 export function getPricingPageSchemaGraph(): Graph {
   const path = "/pricing";
   const url = absoluteUrl(path);
+  const webpageId = `${url}#webpage`;
   const plans = [
     { name: "Free", price: "0", included: "1,000 emails per month" },
     { name: "Developer", price: "29", included: "50,000 emails per month" },
@@ -228,12 +212,21 @@ export function getPricingPageSchemaGraph(): Graph {
   return {
     "@context": "https://schema.org",
     "@graph": [
-      getWebPageSchemaGraph({
-        title: "Pricing & Plans",
+      {
+        "@type": "WebPage",
+        "@id": webpageId,
+        url,
+        name: "Pricing & Plans",
         description:
           "Transparent, usage-based pricing for transactional email and A2P SMS messaging.",
-        path,
-      }),
+        isPartOf: { "@id": websiteId },
+        about: { "@id": `${url}#pricing` },
+        breadcrumb: {
+          "@type": "BreadcrumbList",
+          itemListElement: getBreadcrumbItems("Pricing & Plans", path),
+        },
+        inLanguage: "en-US",
+      },
       {
         "@type": "OfferCatalog",
         "@id": `${url}#pricing`,
@@ -241,6 +234,7 @@ export function getPricingPageSchemaGraph(): Graph {
         description:
           "Usage-based pricing for Dugble transactional email and A2P SMS messaging.",
         url,
+        mainEntityOfPage: { "@id": webpageId },
         itemListElement: plans.map((plan) => ({
           "@type": "Offer",
           name: `${plan.name} Email API plan`,
@@ -252,9 +246,7 @@ export function getPricingPageSchemaGraph(): Graph {
           itemOffered: {
             "@type": "Service",
             name: "Dugble Transactional Email API",
-            provider: {
-              "@id": organizationId,
-            },
+            provider: { "@id": organizationId },
           },
         })),
       },
@@ -287,9 +279,7 @@ export function getBlogPostingSchemaGraph({
         url,
         name: title,
         description,
-        isPartOf: {
-          "@id": websiteId,
-        },
+        isPartOf: { "@id": websiteId },
         breadcrumb: {
           "@type": "BreadcrumbList",
           itemListElement: getBreadcrumbItems(title, path ?? "/blog", [
@@ -321,24 +311,15 @@ export function getBlogPostingSchemaGraph({
           name: authorName,
           url: authorUrl,
         },
-        publisher: {
-          "@id": organizationId,
-        },
-        mainEntityOfPage: {
-          "@id": webpageId,
-        },
+        publisher: { "@id": organizationId },
+        mainEntityOfPage: { "@id": webpageId },
         inLanguage: "en-US",
       },
     ],
   };
 }
 
-/**
- * Serializes schema for use in an application/ld+json script.
- *
- * Escaping `<` prevents serialized data from accidentally terminating
- * the surrounding script element.
- */
+/** Escapes serialized schema so it cannot terminate the script element. */
 export function serializeSchema(schema: Graph | WithContext<Thing>): string {
   return JSON.stringify(schema).replace(/</g, "\\u003c");
 }
