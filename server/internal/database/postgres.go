@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/newrelic/go-agent/v3/integrations/nrpgx5"
 )
 
 func NewPostgres(
@@ -17,6 +18,9 @@ func NewPostgres(
 		return nil, fmt.Errorf("parse DATABASE_URL: %w", err)
 	}
 
+	poolConfig.ConnConfig.Tracer = nrpgx5.NewTracer(
+		nrpgx5.WithQueryParameters(false),
+	)
 	poolConfig.MaxConns = 20
 	poolConfig.MinConns = 2
 	poolConfig.MaxConnLifetime = time.Hour
