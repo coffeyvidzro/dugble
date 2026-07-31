@@ -1,22 +1,16 @@
 import { ArrowRight } from "lucide-react";
-import type { Metadata } from "next";
 import { AnimatedGrid } from "@/components/marketing/hero/animated-grid";
 import { FloatingOrbs } from "@/components/marketing/hero/floating-orbs";
 import { Reveal } from "@/components/marketing/reveal";
+import { constructMetadata } from "@/utils/metadata";
 import { formatBlogDate, getBlogPostPath, getBlogPosts } from "./utils";
 
-export const metadata: Metadata = {
+export const metadata = constructMetadata({
   title: "Blog & Engineering Notes",
   description:
     "Product thinking, developer guides, and architectural notes for teams building with Dugble A2P messaging infrastructure.",
-  openGraph: {
-    title: "Blog & Engineering Notes",
-    description:
-      "Product thinking, developer guides, and architectural notes for teams building with Dugble A2P messaging infrastructure.",
-    url: "/blog",
-    type: "website",
-  },
-};
+  url: "/blog",
+});
 
 export default async function Page() {
   const posts = await getBlogPosts();

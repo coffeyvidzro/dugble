@@ -1,18 +1,15 @@
-import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { requireSession } from "@/lib/session";
+import { constructMetadata } from "@/utils/metadata";
 
-export const metadata: Metadata = {
-  title: {
-    default: "Dashboard",
-    template: "%s | Dashboard | Dugble",
-  },
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
+export const metadata = constructMetadata({
+  title: "Dashboard",
+  description:
+    "Private Dugble workspace dashboard for managing A2P email, SMS, API keys, billing, and settings.",
+  url: "/dashboard",
+  noIndex: true,
+});
 
 export default async function Layout({ children }: { children: ReactNode }) {
   const session = await requireSession();

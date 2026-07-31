@@ -1,5 +1,14 @@
 import { Suspense } from "react";
 import { VerifyEmailForm } from "@/components/auth/verify-email-form";
+import { constructMetadata } from "@/utils/metadata";
+
+export const metadata = constructMetadata({
+  title: "Verify Email",
+  description:
+    "Verify your email address to finish setting up your Dugble account.",
+  url: "/verify-email",
+  noIndex: true,
+});
 
 function VerifyEmailFallback() {
   return (

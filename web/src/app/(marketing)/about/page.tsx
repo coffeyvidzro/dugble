@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { AboutHero } from "@/components/marketing/about/about-hero";
 import { ArchitectureLayers } from "@/components/marketing/about/architecture-layers";
 import { OriginTimeline } from "@/components/marketing/about/origin-timeline";
@@ -6,19 +5,14 @@ import { Principles } from "@/components/marketing/about/principles";
 import { UnderTheHood } from "@/components/marketing/about/under-the-hood";
 import { Cta } from "@/components/marketing/cta";
 import { Separator } from "@/components/ui/separator";
+import { constructMetadata } from "@/utils/metadata";
 
-export const metadata: Metadata = {
+export const metadata = constructMetadata({
   title: "About",
   description:
     "Dugble is being built for teams that send customer-critical messages and need to know exactly what happened after every API call.",
-  openGraph: {
-    title: "About Dugble",
-    description:
-      "Dugble is being built for teams that send customer-critical messages and need to know exactly what happened after every API call.",
-    url: "/about",
-    type: "website",
-  },
-};
+  url: "/about",
+});
 
 export default function Page() {
   return (

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { AssetDownloads } from "@/components/marketing/brand/asset-downloads";
 import { BrandContact } from "@/components/marketing/brand/brand-contact";
 import { BrandHero } from "@/components/marketing/brand/brand-hero";
@@ -8,18 +7,14 @@ import { LogoShowcase } from "@/components/marketing/brand/logo-showcase";
 import { TypographyShowcase } from "@/components/marketing/brand/typography-showcase";
 import { VoiceTone } from "@/components/marketing/brand/voice-tone";
 import { Separator } from "@/components/ui/separator";
+import { constructMetadata } from "@/utils/metadata";
 
-export const metadata: Metadata = {
+export const metadata = constructMetadata({
   title: "Brand Guidelines",
   description:
     "Explore Dugble's official brand guidelines. Download logos, typography, color palettes, and other brand assets.",
-  openGraph: {
-    title: "Brand Guidelines",
-    description:
-      "Explore Dugble's official brand guidelines. Download logos, typography, color palettes, and other brand assets.",
-    url: "/brand",
-  },
-};
+  url: "/brand",
+});
 
 export default function Page() {
   return (

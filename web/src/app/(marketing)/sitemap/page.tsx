@@ -1,22 +1,17 @@
-import type { Metadata } from "next";
 import { getCommandItems } from "@/components/command-palette/command-palette-data";
 import {
   type SiteLink,
   SitemapExplorer,
 } from "@/components/marketing/sitemap/sitemap-explorer";
 import { SitemapHero } from "@/components/marketing/sitemap/sitemap-hero";
+import { constructMetadata } from "@/utils/metadata";
 import { getBlogPostPath, getBlogPosts } from "../blog/utils";
 
-export const metadata: Metadata = {
+export const metadata = constructMetadata({
   title: "Sitemap",
   description: "Every page on Dugble, in one place.",
-  openGraph: {
-    title: "Sitemap",
-    description: "Every page on Dugble, in one place.",
-    url: "/sitemap",
-    type: "website",
-  },
-};
+  url: "/sitemap",
+});
 
 export default async function Page() {
   const commandItems = getCommandItems("marketing");

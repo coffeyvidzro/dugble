@@ -1,16 +1,11 @@
-import type { Metadata } from "next";
+import { constructMetadata } from "@/utils/metadata";
 
-export const metadata: Metadata = {
+export const metadata = constructMetadata({
   title: "Privacy Policy",
   description:
     "Learn how Dugble handles account, workspace, recipient, message, and webhook data.",
-  openGraph: {
-    title: "Privacy Policy",
-    description:
-      "Learn how Dugble handles account, workspace, recipient, message, and webhook data.",
-    url: "/legal/privacy",
-  },
-};
+  url: "/legal/privacy",
+});
 
 export default function Page() {
   return (

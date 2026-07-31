@@ -10,6 +10,17 @@ const websiteId = `${baseUrl}/#website`;
 const webApplicationId = `${baseUrl}/#web-application`;
 const logoId = `${baseUrl}/#logo`;
 
+type PageSchemaOptions = {
+  title: string;
+  description: string;
+  path?: string;
+  id?: string;
+};
+
+function absoluteUrl(path = "/"): string {
+  return new URL(path, baseUrl).toString();
+}
+
 export function getDugbleSchemaGraph(): Graph {
   return {
     "@context": "https://schema.org",
@@ -110,7 +121,6 @@ export function getDugbleSchemaGraph(): Graph {
         potentialAction: {
           "@type": "SearchAction",
           target: `${baseUrl}/sitemap?query={search_term_string}`,
-          "query-input": "required name=search_term_string",
         },
         inLanguage: "en-US",
       },
@@ -140,14 +150,30 @@ export function getDugbleSchemaGraph(): Graph {
 }
 
 export function getHomePageSchemaGraph(): WithContext<Thing> {
+  return getWebPageSchemaGraph({
+    id: `${baseUrl}/#homepage`,
+    path: "/",
+    title: "Reliable A2P Messaging & Developer Infrastructure",
+    description:
+      "Send OTPs, receipts, alerts, and customer notifications with complete delivery transparency, signed webhooks, and developer-first logs.",
+  });
+}
+
+export function getWebPageSchemaGraph({
+  title,
+  description,
+  path = "/",
+  id,
+}: PageSchemaOptions): WithContext<Thing> {
+  const url = absoluteUrl(path);
+
   return {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    "@id": `${baseUrl}/#homepage`,
-    url: baseUrl,
-    name: "Reliable A2P Messaging & Developer Infrastructure",
-    description:
-      "Send OTPs, receipts, alerts, and customer notifications with complete delivery transparency, signed webhooks, and developer-first logs.",
+    "@id": id ?? `${url}#webpage`,
+    url,
+    name: title,
+    description,
     isPartOf: {
       "@id": websiteId,
     },
@@ -156,7 +182,7 @@ export function getHomePageSchemaGraph(): WithContext<Thing> {
     },
     primaryImageOfPage: {
       "@type": "ImageObject",
-      url: `${baseUrl}/og`,
+      url: absoluteUrl("/og"),
       width: "1200",
       height: "630",
     },
@@ -169,7 +195,48 @@ export function getHomePageSchemaGraph(): WithContext<Thing> {
           name: "Home",
           item: baseUrl,
         },
+        ...(path === "/"
+          ? []
+          : [
+              {
+                "@type": "ListItem" as const,
+                position: 2,
+                name: title,
+                item: url,
+              },
+            ]),
       ],
+    },
+    inLanguage: "en-US",
+  };
+}
+
+export function getBlogPostingSchemaGraph({
+  title,
+  description,
+  path,
+  publishedAt,
+}: PageSchemaOptions & { publishedAt: string }): WithContext<Thing> {
+  const url = absoluteUrl(path);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "@id": `${url}#blogposting`,
+    headline: title,
+    description,
+    url,
+    datePublished: publishedAt,
+    dateModified: publishedAt,
+    image: absoluteUrl(`/og?title=${encodeURIComponent(title)}`),
+    author: {
+      "@id": organizationId,
+    },
+    publisher: {
+      "@id": organizationId,
+    },
+    mainEntityOfPage: {
+      "@id": `${url}#webpage`,
     },
     inLanguage: "en-US",
   };

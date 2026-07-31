@@ -1,23 +1,17 @@
-import type { Metadata } from "next";
 import { Cta } from "@/components/marketing/cta";
 import { EmailContract } from "@/components/marketing/email/email-contract";
 import { EmailEvents } from "@/components/marketing/email/email-events";
 import { EmailFeatures } from "@/components/marketing/email/email-features";
 import { EmailHero } from "@/components/marketing/email/email-hero";
 import { Separator } from "@/components/ui/separator";
+import { constructMetadata } from "@/utils/metadata";
 
-export const metadata: Metadata = {
+export const metadata = constructMetadata({
   title: "Email API",
   description:
     "Send receipts, password resets, and lifecycle emails reliably with Dugble's developer-first API.",
-  openGraph: {
-    title: "Email API",
-    description:
-      "Send receipts, password resets, and lifecycle emails reliably with Dugble's developer-first API.",
-    url: "/features/email-api",
-    type: "website",
-  },
-};
+  url: "/features/email-api",
+});
 
 export default function Page() {
   return (

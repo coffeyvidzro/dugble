@@ -1,5 +1,12 @@
-import { PlaceholderPage } from "@/components/dashboard/placeholder-page";
 import { Megaphone } from "lucide-react";
+import { PlaceholderPage } from "@/components/dashboard/placeholder-page";
+import { constructMetadata } from "@/utils/metadata";
+export const metadata = constructMetadata({
+  title: "SMS Campaigns",
+  description: "Create and monitor SMS campaigns from your Dugble workspace.",
+  url: "/dashboard/sms/campaigns",
+  noIndex: true,
+});
 
 export default function Page() {
   return (

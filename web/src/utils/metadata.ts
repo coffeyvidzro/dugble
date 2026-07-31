@@ -1,22 +1,35 @@
 import type { Metadata } from "next";
 import { baseUrl } from "@/lib/site";
 
+const siteName = "Dugble";
+const defaultTitle = "Developer-first A2P email and SMS APIs for Africa";
+const defaultDescription =
+  "Developer-first A2P email and SMS APIs for African startups and teams.";
+
+function getAbsoluteUrl(path = "/"): string {
+  return new URL(path, baseUrl).toString();
+}
+
 export function constructMetadata({
   title,
-  description = "Developer-first A2P email and SMS APIs for African startups and teams.",
+  description = defaultDescription,
   image = "/og",
   url,
   noIndex = false,
+  openGraph,
 }: {
   title?: string;
   description?: string;
   image?: string;
   url?: string;
   noIndex?: boolean;
+  openGraph?: Metadata["openGraph"];
 } = {}): Metadata {
   const pageTitle = title
-    ? `${title} | Dugble`
-    : "Dugble | Developer-first A2P email and SMS APIs for Africa";
+    ? `${title} | ${siteName}`
+    : `${siteName} | ${defaultTitle}`;
+  const canonicalUrl = getAbsoluteUrl(url);
+  const imageUrl = getAbsoluteUrl(image);
 
   return {
     metadataBase: new URL(baseUrl),
@@ -24,10 +37,10 @@ export function constructMetadata({
       absolute: pageTitle,
     },
     description,
-    applicationName: "Dugble",
-    authors: [{ name: "Dugble", url: baseUrl }],
-    creator: "Dugble",
-    publisher: "Dugble",
+    applicationName: siteName,
+    authors: [{ name: siteName, url: baseUrl }],
+    creator: siteName,
+    publisher: siteName,
     category: "technology",
     referrer: "origin-when-cross-origin",
     keywords: [
@@ -39,19 +52,19 @@ export function constructMetadata({
       "African startups",
     ],
     alternates: {
-      canonical: url,
+      canonical: canonicalUrl,
       languages: {
-        "en-US": url ?? "/",
+        "en-US": canonicalUrl,
       },
     },
     openGraph: {
       title: pageTitle,
       description,
-      url,
-      siteName: "Dugble",
+      url: canonicalUrl,
+      siteName,
       images: [
         {
-          url: image,
+          url: imageUrl,
           width: 1200,
           height: 630,
           alt: pageTitle,
@@ -59,12 +72,13 @@ export function constructMetadata({
       ],
       locale: "en_US",
       type: "website",
+      ...openGraph,
     },
     twitter: {
       card: "summary_large_image",
       title: pageTitle,
       description,
-      images: [image],
+      images: [imageUrl],
       creator: "@dugble",
     },
     robots: {

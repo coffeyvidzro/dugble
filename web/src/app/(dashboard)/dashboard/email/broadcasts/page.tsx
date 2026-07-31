@@ -1,5 +1,13 @@
-import { PlaceholderPage } from "@/components/dashboard/placeholder-page";
 import { Megaphone } from "lucide-react";
+import { PlaceholderPage } from "@/components/dashboard/placeholder-page";
+import { constructMetadata } from "@/utils/metadata";
+export const metadata = constructMetadata({
+  title: "Email Broadcasts",
+  description:
+    "Create and monitor email broadcasts from your Dugble workspace.",
+  url: "/dashboard/email/broadcasts",
+  noIndex: true,
+});
 
 export default function Page() {
   return (

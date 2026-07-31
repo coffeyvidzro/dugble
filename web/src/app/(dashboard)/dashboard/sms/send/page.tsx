@@ -1,5 +1,12 @@
-import { PlaceholderPage } from "@/components/dashboard/placeholder-page";
 import { Send } from "lucide-react";
+import { PlaceholderPage } from "@/components/dashboard/placeholder-page";
+import { constructMetadata } from "@/utils/metadata";
+export const metadata = constructMetadata({
+  title: "Send SMS",
+  description: "Send an A2P SMS message from your Dugble workspace.",
+  url: "/dashboard/sms/send",
+  noIndex: true,
+});
 
 export default function Page() {
   return (

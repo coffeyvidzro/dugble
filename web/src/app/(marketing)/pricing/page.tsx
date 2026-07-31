@@ -1,5 +1,4 @@
 import { Gauge } from "lucide-react";
-import type { Metadata } from "next";
 import { Cta } from "@/components/marketing/cta";
 import { AnimatedGrid } from "@/components/marketing/hero/animated-grid";
 import { FloatingOrbs } from "@/components/marketing/hero/floating-orbs";
@@ -7,19 +6,14 @@ import { EmailPricing } from "@/components/marketing/pricing/email-pricing";
 import { OtherChannels } from "@/components/marketing/pricing/other-channels";
 import { Reveal } from "@/components/marketing/reveal";
 import { Separator } from "@/components/ui/separator";
+import { constructMetadata } from "@/utils/metadata";
 
-export const metadata: Metadata = {
+export const metadata = constructMetadata({
   title: "Pricing & Plans",
   description:
     "Explore Dugble's transparent, usage-based pricing for transactional email and A2P SMS messaging. No setup fees or feature paywalls.",
-  openGraph: {
-    title: "Pricing & Plans",
-    description:
-      "Explore Dugble's transparent, usage-based pricing for transactional email and A2P SMS messaging. No setup fees or feature paywalls.",
-    url: "/pricing",
-    type: "website",
-  },
-};
+  url: "/pricing",
+});
 
 const included = [
   {
