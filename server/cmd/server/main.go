@@ -15,6 +15,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/config"
 	"github.com/coffeyvidzro/dugble/server/internal/database"
 	emaildelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/email"
+	"github.com/coffeyvidzro/dugble/server/internal/delivery/email/feedback"
 	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
 	awssns "github.com/coffeyvidzro/dugble/server/internal/integration/aws/sns"
 	emailintegration "github.com/coffeyvidzro/dugble/server/internal/integration/email"
@@ -99,12 +100,15 @@ func run() error {
 		return fmt.Errorf("initialize SES email client: %w", err)
 	}
 
+	outboxRepository := outbox.NewRepository(db)
+
 	var snsHandler *providersns.Handler
 	if len(cfg.AWS.SNSTopicARNs) > 0 {
 		certificateLoader := awssns.NewHTTPCertificateLoader(nil)
 		verifier := awssns.NewVerifier(cfg.AWS.SNSTopicARNs, certificateLoader)
 		confirmer := awssns.NewConfirmer(awssns.NewHTTPConfirmSubscriptionClient(nil))
-		snsHandler = providersns.NewHandler(verifier, confirmer, nil)
+		ingestor := feedback.NewRepository(db, outboxRepository)
+		snsHandler = providersns.NewHandler(verifier, confirmer, ingestor)
 	}
 
 	smsRouter, err := routing.NewService(
@@ -122,7 +126,6 @@ func run() error {
 		return fmt.Errorf("initialize SMS sender: %w", err)
 	}
 
-	outboxRepository := outbox.NewRepository(db)
 	router, err := transport.NewRouter(
 		cfg,
 		transport.Dependencies{
