@@ -2,10 +2,12 @@ package sns
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/labstack/echo/v5"
 
+	awsses "github.com/coffeyvidzro/dugble/server/internal/integration/aws/ses"
 	awssns "github.com/coffeyvidzro/dugble/server/internal/integration/aws/sns"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 	"github.com/coffeyvidzro/dugble/server/pkg/httputil"
@@ -56,6 +58,9 @@ func (h *Handler) ReceiveSES(c *echo.Context) error {
 			return httputil.Error(c, apperrors.NewServiceUnavailable("SNS notification ingestion is not configured", nil))
 		}
 		if err := h.ingestor.Ingest(c.Request().Context(), envelope); err != nil {
+			if errors.Is(err, awsses.ErrInvalidEvent) {
+				return httputil.Error(c, apperrors.NewBadRequest("SNS notification does not contain a valid SES event"))
+			}
 			return httputil.Error(c, apperrors.NewServiceUnavailable("Unable to accept SNS notification", err))
 		}
 		return c.NoContent(http.StatusNoContent)
