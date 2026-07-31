@@ -34,6 +34,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/transport/csrf"
 	"github.com/coffeyvidzro/dugble/server/internal/transport/health"
 	"github.com/coffeyvidzro/dugble/server/internal/transport/middlewares"
+	providersns "github.com/coffeyvidzro/dugble/server/internal/transport/provider/sns"
 )
 
 type Dependencies struct {
@@ -47,6 +48,7 @@ type Dependencies struct {
 	SMSSender      smsmodule.Sender
 	SMSDelivery    smsmodule.DeliveryQueue
 	EmailDelivery  emailmodule.DeliveryQueue
+	SNSHandler     *providersns.Handler
 }
 
 func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
@@ -65,6 +67,9 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	healthHandler := health.NewHandler(deps.DB, deps.Redis)
 	router.GET("/health", healthHandler.Live)
 	router.GET("/ready", healthHandler.Ready)
+	if deps.SNSHandler != nil {
+		providersns.RegisterRoutes(router, deps.SNSHandler)
+	}
 
 	emailService := notifications.NewEmailService(deps.Sender, deps.Renderer, cfg.FrontendURL, cfg.AWS.FromEmail)
 	auditRepository := audit.NewRepository(deps.DB)

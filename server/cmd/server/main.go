@@ -16,6 +16,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/database"
 	emaildelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/email"
 	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
+	awssns "github.com/coffeyvidzro/dugble/server/internal/integration/aws/sns"
 	emailintegration "github.com/coffeyvidzro/dugble/server/internal/integration/email"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/security"
 	smsintegration "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
@@ -27,6 +28,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/platform/cache"
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 	"github.com/coffeyvidzro/dugble/server/internal/transport"
+	providersns "github.com/coffeyvidzro/dugble/server/internal/transport/provider/sns"
 )
 
 func main() {
@@ -97,6 +99,14 @@ func run() error {
 		return fmt.Errorf("initialize SES email client: %w", err)
 	}
 
+	var snsHandler *providersns.Handler
+	if len(cfg.AWS.SNSTopicARNs) > 0 {
+		certificateLoader := awssns.NewHTTPCertificateLoader(nil)
+		verifier := awssns.NewVerifier(cfg.AWS.SNSTopicARNs, certificateLoader)
+		confirmer := awssns.NewConfirmer(awssns.NewHTTPConfirmSubscriptionClient(nil))
+		snsHandler = providersns.NewHandler(verifier, confirmer, nil)
+	}
+
 	smsRouter, err := routing.NewService(
 		routing.DefaultConfig(),
 		routing.NewPriorityStrategy(),
@@ -126,6 +136,7 @@ func run() error {
 			SMSSender:      smsSender,
 			SMSDelivery:    smsdelivery.NewQueue(outboxRepository),
 			EmailDelivery:  emaildelivery.NewQueue(outboxRepository),
+			SNSHandler:     snsHandler,
 		},
 	)
 	if err != nil {
