@@ -7,34 +7,30 @@ export const metadata = {
 
 Bulk SMS remains one of the most practical ways for Ghanaian businesses to reach customers quickly.
 
-It does not require a smartphone, a mobile application, or an active data bundle. A well-timed message can confirm a payment, remind a patient about an appointment, notify a customer about a delivery, or promote a limited offer.
+It does not require a smartphone, a mobile application, or an active data bundle. A well timed message can confirm a payment, remind a patient about an appointment, notify a customer about a delivery, or promote a limited offer.
 
-The technology is simple to use, but successful bulk messaging still requires planning. You need the right audience, a clear message, a suitable sender identity, and a way to measure results.
-
-This guide explains how to approach bulk SMS in Ghana from both a business and technical perspective.
+The technology is straightforward, but successful campaigns still require planning. You need the right audience, a clear message, a recognizable sender identity, and a way to measure whether the campaign achieved its goal.
 
 ## What is bulk SMS?
 
-Bulk SMS is the process of sending text messages to many recipients from a dashboard, uploaded contact list, or software integration.
+Bulk SMS is the process of sending text messages to many recipients from a dashboard, an uploaded contact list, or a software integration.
 
 Businesses commonly use it for:
 
 - Promotional campaigns
-- Payment reminders
-- Appointment reminders
-- School announcements
+- Payment and appointment reminders
+- School and event announcements
 - Delivery notifications
 - Transaction alerts
-- Event updates
 - Emergency communication
 
-Bulk SMS can refer to a campaign sent to thousands of customers at once. It can also describe automated messages triggered individually by an application.
+Bulk SMS can describe one campaign sent to thousands of customers. It can also describe messages triggered individually by an application, such as receipts or order updates.
 
-The important distinction is between promotional and transactional communication. Promotional messages advertise or encourage a purchase. Transactional messages provide information related to an existing customer action or service.
+The important distinction is between promotional and transactional communication. Promotional messages encourage a purchase or response. Transactional messages provide information related to an existing customer action or service.
 
-## Step 1: Define the purpose of the message
+## Step 1: Define one clear goal
 
-Every campaign should have one primary goal.
+Every campaign should have one primary purpose.
 
 Do you want customers to make a purchase, attend an appointment, pay an invoice, visit a location, or confirm an action?
 
@@ -46,51 +42,49 @@ Weak message:
 
 Stronger message:
 
-> Get 15% off all office chairs at Akwaaba Furnishings this Friday. Visit our Osu showroom or call 0302000000. Terms apply.
+> Get 15% off office chairs at Akwaaba Furnishings this Friday. Visit our Osu showroom or call 0302000000. Terms apply.
 
 The stronger version includes the offer, deadline, business identity, and next action.
 
-## Step 2: Build a permission-based contact list
+## Step 2: Use a permission based contact list
 
-A large contact list is not automatically a valuable contact list.
+A large contact list is not automatically valuable.
 
-Send promotional SMS only to people who have given your business appropriate permission to contact them. Keep records of how contacts joined the list and make it possible for recipients to opt out.
+Send promotional SMS only to people who have given your business appropriate permission to contact them. Keep records of how contacts joined the list and provide a clear way to opt out.
 
-Good list sources include:
+Useful list sources include:
 
-- Customers who selected an SMS marketing option
 - Website forms with clear consent language
 - Loyalty programme registrations
 - Event registrations
-- In-store signups
+- In store signups
+- Existing customers who selected SMS updates
 
-Avoid buying random phone number lists. They often contain outdated contacts, uninterested recipients, and numbers collected without clear consent. This can waste money and harm trust in your brand.
+Avoid buying random phone number lists. They often contain outdated contacts, uninterested recipients, and numbers collected without clear consent. This wastes money and can damage trust in your brand.
 
 ## Step 3: Clean and format phone numbers
 
-Ghanaian mobile numbers may be stored in local or international formats.
-
-Examples include:
+Ghanaian mobile numbers may be stored in several formats:
 
 - `0241234567`
 - `233241234567`
 - `+233241234567`
 
-Before sending, normalize numbers into a consistent international format. Remove unnecessary spaces, brackets, and punctuation. Detect duplicate entries and exclude obviously invalid numbers.
+Before sending, normalize numbers into a consistent international format. Remove unnecessary spaces, brackets, and punctuation. Detect duplicates and exclude obviously invalid numbers.
 
 A clean contact list reduces failed sends and makes campaign reporting more accurate.
 
-## Step 4: Choose a sender identity
+## Step 4: Choose a recognizable sender identity
 
 The sender identity is the name or number displayed on the recipient's phone.
 
-A branded sender ID can help customers recognize the message. For example, a customer may see `DUGBLE` instead of an unfamiliar phone number.
+A branded sender ID can help customers recognize the message. For example, a customer may see `DUGBLE` instead of an unfamiliar number.
 
-Sender requirements can vary by market and message type. Confirm whether the identity needs registration, what characters are permitted, and whether recipients can reply.
+Sender requirements can vary by destination and message type. Confirm whether registration is required, which characters are allowed, and whether recipients can reply.
 
-Use a name customers already associate with your business. Avoid changing sender identities unnecessarily because consistency builds recognition.
+Use a name customers already associate with your business. Consistency improves recognition and reduces suspicion.
 
-## Step 5: Write a clear SMS
+## Step 5: Write a clear, concise message
 
 A useful business SMS should answer four questions:
 
@@ -99,38 +93,32 @@ A useful business SMS should answer four questions:
 3. What do I need to know?
 4. What should I do next?
 
-Keep the wording direct. Put the most important information early in the message. Include a deadline when the offer or action is time-sensitive.
+Put the most important information early. Include a deadline when the action is time sensitive. Avoid excessive capital letters, vague links, and misleading urgency.
 
-Avoid excessive capital letters, vague links, and misleading urgency. Customers should feel informed, not pressured or confused.
+Message length also affects cost. Long messages can be split into multiple billable segments. Emojis and certain special characters may reduce the number of characters available in one segment.
 
-Also pay attention to message length. SMS messages can be split into several billable segments when they exceed character limits. Some special characters can reduce the number of characters available in one segment.
+For most campaigns, concise copy is clearer and more economical.
 
-## Step 6: Choose the right sending method
-
-There are two common ways to send bulk SMS.
-
-### Use a dashboard
+## Step 6: Choose a dashboard or API
 
 A dashboard is suitable when a staff member wants to upload contacts, write a campaign, schedule it, and review results without writing code.
 
-This works well for marketing teams, schools, churches, clinics, and other organizations that send occasional campaigns.
+This works well for marketing teams, schools, churches, clinics, and organizations that send occasional campaigns.
 
-### Use an API
+An API is better when messages should be triggered automatically by software.
 
-An API is better when messages should be triggered automatically from your software.
+Common API use cases include:
 
-Examples include:
+- Sending an OTP after a signup request
+- Sending a receipt after payment
+- Sending a delivery update after an order status changes
+- Sending a reminder before an appointment
 
-- Send an OTP after a signup request
-- Send a receipt after payment
-- Send a delivery update after an order status changes
-- Send a reminder before an appointment
-
-An API removes manual work and connects messaging directly to business events.
+The dashboard supports manual campaigns. The API connects messaging directly to business events.
 
 ## Step 7: Understand Dugble pricing
 
-Dugble uses pay-as-you-go pricing with optional monthly commitments.
+Dugble uses pay as you go pricing with optional monthly commitments.
 
 | Plan | Monthly commitment | Ghana SMS rate |
 |---|---:|---:|
@@ -138,53 +126,52 @@ Dugble uses pay-as-you-go pricing with optional monthly commitments.
 | Scale | $100 | $0.0110 per SMS |
 | Enterprise | $300 | $0.0100 per SMS |
 
-The Growth plan is appropriate for businesses that are starting or have unpredictable volume. Scale and Enterprise offer lower rates for teams with consistent monthly communication needs.
+Growth is suitable for businesses with low or unpredictable volume. Scale and Enterprise offer lower rates for teams with consistent monthly communication needs.
 
-At the listed Growth rate:
+At the Growth rate:
 
 - 1,000 Ghana SMS messages cost $12
 - 10,000 Ghana SMS messages cost $120
 - 50,000 Ghana SMS messages cost $600
 
-Actual billing can depend on message segments and destination details. Review the final estimate before launching a large campaign.
+These examples assume one billable segment per message. Longer messages may cost more.
 
-## Step 8: Schedule messages thoughtfully
+## Step 8: Schedule campaigns thoughtfully
 
-Timing affects both attention and customer perception.
+Timing affects attention and customer perception.
 
-A restaurant promotion may perform well shortly before lunch. An appointment reminder may be useful the day before the appointment. A payment reminder should arrive early enough for the customer to act.
+A restaurant promotion may perform well shortly before lunch. An appointment reminder may be most useful the day before the appointment. A payment reminder should arrive early enough for the customer to act.
 
-Avoid sending non-urgent campaigns very early in the morning or late at night. Consider the recipient's location when your list includes customers in several time zones.
+Avoid sending non urgent campaigns very early in the morning or late at night. Consider the recipient's location when a contact list includes several time zones.
 
-## Step 9: Measure more than the number sent
+## Step 9: Measure business results
 
 A campaign is not successful simply because the platform accepted every message.
 
-Track metrics related to the goal:
+Track metrics connected to the original goal:
 
-- Delivery rate
-- Failed message rate
+- Delivery and failure rates
 - Link clicks
 - Coupon redemptions
 - Purchases
 - Appointment attendance
 - Payment completion
-- Opt-out rate
+- Opt out rate
 
 Use a unique link, code, or campaign identifier when possible. This helps connect customer actions to the SMS campaign.
 
-## Step 10: Improve each campaign
+## Step 10: Improve the next campaign
 
 Compare performance across message wording, audience segments, timing, and offers.
 
-For example, a retailer could test whether a specific product discount performs better than a general storewide promotion. A clinic could compare reminders sent 24 hours before an appointment with reminders sent on the morning of the appointment.
+A retailer could test a specific product discount against a general storewide promotion. A clinic could compare reminders sent 24 hours before an appointment with reminders sent on the morning of the appointment.
 
 Change one major variable at a time so the result remains understandable.
 
 ## Start sending bulk SMS with Dugble
 
-Dugble gives African businesses a focused platform for SMS and transactional email, with transparent usage rates and lower pricing for committed monthly volume.
+Dugble gives African businesses one platform for SMS and transactional email, with transparent usage rates and lower pricing for committed monthly volume.
 
-Start on Growth without a monthly commitment. Move to Scale or Enterprise when your communication volume becomes predictable and the discounted rates create meaningful savings.
+Start on Growth without a monthly commitment. Move to Scale or Enterprise when your volume becomes predictable and the discounted rates create meaningful savings.
 
 [Create your Dugble account](/sign-up), add your contacts or connect the API, and prepare your first Ghana SMS campaign.
