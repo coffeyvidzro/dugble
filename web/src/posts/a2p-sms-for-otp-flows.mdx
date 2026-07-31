@@ -1,12 +1,162 @@
 export const metadata = {
-  title: "Designing A2P SMS APIs for OTP flows",
-  summary: "A practical look at OTP messaging requirements, delivery feedback, and the developer workflows behind verification flows.",
-  publishedAt: "2026-07-21",
+  title: "Why Your Customers Are Not Receiving OTP Messages",
+  summary: "Learn why OTP messages arrive late or fail, how those failures hurt conversion, and what African product teams can do about them.",
+  publishedAt: "2026-07-31",
   category: "Guides",
 };
 
-OTP traffic is one of the most trust-sensitive A2P use cases. When a verification code is delayed or silently fails, customers cannot finish sign-up, checkout, or account recovery.
+A customer enters a phone number, requests a verification code, and waits. Nothing arrives.
 
-A strong OTP API should make it easy to send the message, track the request, inspect provider responses, and react to delivery events through webhooks.
+They tap resend. Two codes appear later, but the first one has expired. After another attempt, the customer closes the app and abandons registration.
 
-Dugble's product surface is being scaffolded around those jobs: API keys, message logs, sender setup, delivery status, and team access from one dashboard.
+For the customer, this is a frustrating experience. For your business, it can mean a lost signup, an incomplete transaction, or a support ticket.
+
+OTP delivery is not only a technical concern. It directly affects conversion, trust, and revenue.
+
+## Why OTP delivery matters
+
+One-time passwords are commonly used for:
+
+- New account verification
+- Login authentication
+- Password recovery
+- Payment confirmation
+- High-risk account changes
+- Device verification
+
+These are critical moments in a customer journey. A promotional message that arrives late may still be useful. An OTP that arrives after it expires is not.
+
+When teams measure only successful API requests, they can miss the real customer experience. An API may accept a message even when the message is delayed, rejected later, or never delivered to the recipient.
+
+## 1. The phone number is formatted incorrectly
+
+African phone numbers are often entered in several formats. A Ghanaian customer may type `0241234567`, `+233241234567`, or `233241234567`.
+
+Your application should normalize the number before sending it to the messaging provider. A reliable process should:
+
+1. Remove unnecessary spaces and punctuation.
+2. identify the expected country.
+3. Convert local formats to an international format.
+4. Validate the country code and number length.
+5. Store the normalized version consistently.
+
+Sending unvalidated input creates avoidable failures and makes delivery problems harder to investigate.
+
+## 2. The message is longer than one SMS segment
+
+SMS pricing and delivery are commonly based on segments, not only messages.
+
+A standard message using basic GSM characters can usually fit more text than a message containing certain Unicode characters. Emojis, curly quotation marks, and some accented characters can reduce the number of characters available in one segment.
+
+An OTP message should be concise. For example:
+
+> Your Dugble verification code is 482913. It expires in 5 minutes. Do not share this code.
+
+Avoid unnecessary marketing language in authentication messages. Shorter messages are easier to understand, less likely to split into several segments, and often cheaper to send.
+
+## 3. The sender identity is not approved
+
+Some destinations require sender IDs to be registered or approved before messages can be delivered consistently.
+
+A sender ID is the name or number customers see when they receive an SMS. Using an unsupported or unapproved identity can result in filtering, replacement, or delivery failure.
+
+Before launching OTP traffic, confirm:
+
+- Which sender types are supported in the destination country
+- Whether registration is required
+- How long approval normally takes
+- Whether the sender can receive replies
+- Whether authentication traffic has specific requirements
+
+Dugble aims to make regional sender setup easier to understand from one workspace.
+
+## 4. Your application sends duplicate codes
+
+A customer may request another OTP because the first one appears delayed. If every tap generates a new code, several valid or invalid codes can reach the customer in the wrong order.
+
+A better resend flow should include:
+
+- A short cooldown before another request
+- Rate limits per phone number, account, device, and IP address
+- Clear expiration rules
+- A decision on whether to reuse or rotate the current code
+- Idempotency protection against accidental duplicate requests
+
+Your interface should also tell the customer when a new code can be requested. A disabled button with a visible countdown is better than allowing repeated taps with no feedback.
+
+## 5. The expiry window is too short
+
+A very short expiry period may appear more secure, but it can make legitimate verification difficult when networks are congested or users have weak reception.
+
+The correct expiration window depends on the risk of the action. Account login, password recovery, and payment approval may need different policies.
+
+Teams should balance security with realistic delivery conditions. They should also begin the expiry period at a clearly defined point, such as when the OTP is created, rather than using inconsistent timing across services.
+
+## 6. You are treating an accepted request as a delivered message
+
+A successful API response usually means the provider accepted the request. It does not always mean the customer's phone received the message.
+
+Your application should store the message ID returned by the provider and listen for delivery events through webhooks. Useful states may include:
+
+- Accepted
+- Queued
+- Sent
+- Delivered
+- Failed
+- Rejected
+- Expired
+
+These events let your team distinguish between an application error and a downstream delivery problem.
+
+## 7. You do not have a fallback policy
+
+Fallback does not mean sending the same message repeatedly across every channel.
+
+A good fallback policy defines:
+
+- How long to wait before another attempt
+- Which failures are safe to retry
+- The maximum number of retries
+- Whether email or another channel is available
+- How to prevent duplicate codes and notifications
+- What the customer should see during the process
+
+For some products, an email code may be a useful alternative. For others, the user may need to contact support or try another phone number.
+
+## 8. Fraud controls are blocking legitimate traffic
+
+OTP systems are targets for abuse. Attackers may trigger large volumes of messages to create costs, test stolen credentials, or exploit incentive systems.
+
+Rate limits and fraud controls are essential, but poor rules can also block real users.
+
+Monitor unusual patterns such as:
+
+- Repeated requests to one number
+- Many numbers requested from one device
+- Sudden traffic from a new country
+- High request volume with low verification success
+- Repeated requests immediately after failure
+
+The best controls reduce abuse without making normal customers fight the authentication system.
+
+## How to improve OTP conversion
+
+Start by measuring the complete verification funnel:
+
+1. OTP requested
+2. Message accepted
+3. Message delivered
+4. Code submitted
+5. Verification completed
+
+Then segment the data by destination country, mobile network, application version, and failure reason.
+
+This helps your team answer practical questions. Are messages failing before they leave your application? Is one destination performing poorly? Are customers receiving codes but entering them after expiry? Are resend requests creating confusion?
+
+## Build a more reliable OTP experience with Dugble
+
+Dugble gives African product teams a focused platform for sending SMS, tracking message activity, and connecting delivery events to their applications.
+
+With destination-based rates starting at $0.0120 for Ghana and $0.0180 for Kenya on the Growth plan, teams can launch without a monthly commitment and access lower unit rates as usage grows.
+
+[Create a Dugble account](/sign-up), generate your sandbox keys, and test your OTP workflow before sending production traffic.
