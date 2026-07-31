@@ -27,14 +27,6 @@ type Repository struct {
 	now     func() time.Time
 }
 
-type emailTransition struct {
-	status       string
-	errorCode    *string
-	errorMessage *string
-	deliveredAt  *time.Time
-	failedAt     *time.Time
-}
-
 func NewRepository(db *pgxpool.Pool, outboxRepository *outbox.Repository) *Repository {
 	return &Repository{db: db, outbox: outboxRepository, now: time.Now}
 }
@@ -64,17 +56,9 @@ func (r *Repository) Ingest(ctx context.Context, envelope awssns.Envelope) error
 
 	commandTag, err := tx.Exec(ctx, `
 		INSERT INTO email_provider_events (
-			id,
-			email_message_id,
-			provider,
-			transport,
-			provider_notification_id,
-			provider_message_id,
-			event_type,
-			occurred_at,
-			received_at,
-			normalized_payload,
-			provider_payload
+			id, email_message_id, provider, transport, provider_notification_id,
+			provider_message_id, event_type, occurred_at, received_at,
+			normalized_payload, provider_payload
 		)
 		VALUES (
 			$1,
@@ -84,15 +68,7 @@ func (r *Repository) Ingest(ctx context.Context, envelope awssns.Envelope) error
 				WHERE provider = $2
 				  AND provider_message_id = $3
 			),
-			$2,
-			$4,
-			$5,
-			$3,
-			$6,
-			$7,
-			$8,
-			$9,
-			$10
+			$2, $4, $5, $3, $6, $7, $8, $9, $10
 		)
 		ON CONFLICT (provider, transport, provider_notification_id) DO NOTHING
 	`,
@@ -210,31 +186,32 @@ func (r *Repository) Process(ctx context.Context, eventID uuid.UUID) error {
 	if err := persistRecipientEvents(ctx, tx, eventID, messageID, providerEvent); err != nil {
 		return err
 	}
+	if err := applyRecipientCurrentState(ctx, tx, messageID, providerEvent); err != nil {
+		return err
+	}
 
-	transition, apply, err := emailStatusTransition(currentStatus, eventType, occurredAt)
+	aggregate, err := aggregateRecipientMessageStatus(ctx, tx, messageID, currentStatus)
 	if err != nil {
 		return err
 	}
-	if apply {
-		if _, err := tx.Exec(ctx, `
-			UPDATE email_messages
-			SET status = $2,
-				delivered_at = COALESCE($3, delivered_at),
-				failed_at = COALESCE($4, failed_at),
-				error_code = $5,
-				error_message = $6,
-				updated_at = now()
-			WHERE id = $1
-		`,
-			messageID,
-			transition.status,
-			transition.deliveredAt,
-			transition.failedAt,
-			transition.errorCode,
-			transition.errorMessage,
-		); err != nil {
-			return fmt.Errorf("apply SES %s status to email %s: %w", eventType, messageID, err)
-		}
+	if _, err := tx.Exec(ctx, `
+		UPDATE email_messages
+		SET status = $2,
+			delivered_at = $3,
+			failed_at = $4,
+			error_code = $5,
+			error_message = $6,
+			updated_at = now()
+		WHERE id = $1
+	`,
+		messageID,
+		aggregate.status,
+		aggregate.deliveredAt,
+		aggregate.failedAt,
+		aggregate.errorCode,
+		aggregate.errorMessage,
+	); err != nil {
+		return fmt.Errorf("apply recipient aggregate status to email %s: %w", messageID, err)
 	}
 
 	if err := r.emitLifecycleWebhook(ctx, tx, eventID, messageID, teamID, providerEvent); err != nil {
@@ -300,78 +277,6 @@ func linkAndLockMessage(
 		return uuid.Nil, "", fmt.Errorf("link email provider event %s: %w", eventID, err)
 	}
 	return messageID, currentStatus, nil
-}
-
-func emailStatusTransition(currentStatus string, eventType string, occurredAt time.Time) (emailTransition, bool, error) {
-	currentStatus = strings.TrimSpace(currentStatus)
-	eventType = strings.TrimSpace(eventType)
-	occurredAt = occurredAt.UTC()
-
-	transition := emailTransition{}
-	providerError := func(code string, message string) {
-		transition.errorCode = &code
-		transition.errorMessage = &message
-	}
-
-	switch eventType {
-	case "send":
-		if !statusIn(currentStatus, "queued", "processing", "submitted") {
-			return emailTransition{}, false, nil
-		}
-		transition.status = "submitted"
-	case "delivery_delay":
-		if !statusIn(currentStatus, "submitted", "delayed") {
-			return emailTransition{}, false, nil
-		}
-		transition.status = "delayed"
-		providerError("ses_delivery_delay", "SES reported a delivery delay")
-	case "delivery":
-		if !statusIn(currentStatus, "submitted", "delayed", "delivered") {
-			return emailTransition{}, false, nil
-		}
-		transition.status = "delivered"
-		transition.deliveredAt = &occurredAt
-	case "bounce":
-		if !statusIn(currentStatus, "submitted", "delayed", "delivered", "bounced") {
-			return emailTransition{}, false, nil
-		}
-		transition.status = "bounced"
-		transition.failedAt = &occurredAt
-		providerError("ses_bounce", "SES reported a bounce")
-	case "complaint":
-		if !statusIn(currentStatus, "submitted", "delayed", "delivered", "bounced", "complained") {
-			return emailTransition{}, false, nil
-		}
-		transition.status = "complained"
-		transition.failedAt = &occurredAt
-		providerError("ses_complaint", "SES reported a complaint")
-	case "reject":
-		if !statusIn(currentStatus, "processing", "submitted", "delayed", "rejected") {
-			return emailTransition{}, false, nil
-		}
-		transition.status = "rejected"
-		transition.failedAt = &occurredAt
-		providerError("ses_reject", "SES rejected the message")
-	case "rendering_failure":
-		if !statusIn(currentStatus, "processing", "submitted", "delayed", "failed") {
-			return emailTransition{}, false, nil
-		}
-		transition.status = "failed"
-		transition.failedAt = &occurredAt
-		providerError("ses_rendering_failure", "SES could not render the message")
-	default:
-		return emailTransition{}, false, fmt.Errorf("unsupported persisted SES event type %q", eventType)
-	}
-	return transition, true, nil
-}
-
-func statusIn(current string, allowed ...string) bool {
-	for _, status := range allowed {
-		if current == status {
-			return true
-		}
-	}
-	return false
 }
 
 func (r *Repository) currentTime() time.Time {
