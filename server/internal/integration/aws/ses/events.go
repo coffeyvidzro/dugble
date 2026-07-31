@@ -15,6 +15,11 @@ type FeedbackEvent struct {
 	ProviderMessageID string          `json:"provider_message_id"`
 	OccurredAt        time.Time       `json:"occurred_at"`
 	Recipients        []string        `json:"recipients"`
+	BounceType        string          `json:"bounce_type,omitempty"`
+	BounceSubType     string          `json:"bounce_sub_type,omitempty"`
+	ComplaintType     string          `json:"complaint_type,omitempty"`
+	RejectReason      string          `json:"reject_reason,omitempty"`
+	FailureReason     string          `json:"failure_reason,omitempty"`
 	Payload           json.RawMessage `json:"-"`
 }
 
@@ -40,21 +45,26 @@ type feedbackEnvelope struct {
 	} `json:"deliveryDelay"`
 	Bounce struct {
 		Timestamp         time.Time `json:"timestamp"`
+		BounceType        string    `json:"bounceType"`
+		BounceSubType     string    `json:"bounceSubType"`
 		BouncedRecipients []struct {
 			EmailAddress string `json:"emailAddress"`
 		} `json:"bouncedRecipients"`
 	} `json:"bounce"`
 	Complaint struct {
-		Timestamp            time.Time `json:"timestamp"`
-		ComplainedRecipients []struct {
+		Timestamp             time.Time `json:"timestamp"`
+		ComplaintFeedbackType string    `json:"complaintFeedbackType"`
+		ComplainedRecipients  []struct {
 			EmailAddress string `json:"emailAddress"`
 		} `json:"complainedRecipients"`
 	} `json:"complaint"`
 	Reject struct {
 		Timestamp time.Time `json:"timestamp"`
+		Reason    string    `json:"reason"`
 	} `json:"reject"`
 	Failure struct {
-		Timestamp time.Time `json:"timestamp"`
+		Timestamp    time.Time `json:"timestamp"`
+		ErrorMessage string    `json:"errorMessage"`
 	} `json:"failure"`
 }
 
@@ -92,6 +102,11 @@ func ParseFeedbackEvent(message string) (FeedbackEvent, error) {
 		ProviderMessageID: messageID,
 		OccurredAt:        occurredAt.UTC(),
 		Recipients:        recipients,
+		BounceType:        strings.TrimSpace(envelope.Bounce.BounceType),
+		BounceSubType:     strings.TrimSpace(envelope.Bounce.BounceSubType),
+		ComplaintType:     strings.TrimSpace(envelope.Complaint.ComplaintFeedbackType),
+		RejectReason:      strings.TrimSpace(envelope.Reject.Reason),
+		FailureReason:     strings.TrimSpace(envelope.Failure.ErrorMessage),
 		Payload:           append(json.RawMessage(nil), raw...),
 	}, nil
 }

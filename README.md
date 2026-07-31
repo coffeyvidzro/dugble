@@ -62,6 +62,13 @@ cp .env.example .env
 
 Replace all placeholder secrets before starting the stack. The Compose environment expects PostgreSQL, Redis, NATS, Arcjet, and AWS SES credentials.
 
+
+### AWS SES and SNS feedback
+
+Dugble sends outbound email through AWS SES and accepts SES lifecycle feedback through an HTTPS SNS subscription at `POST /integrations/aws/sns/ses`. Configure SES to publish `send`, `delivery`, `deliveryDelay`, `bounce`, `complaint`, `reject`, and `renderingFailure` events to an SNS topic, then set `AWS_SNS_TOPIC_ARNS` to the exact comma-separated topic ARN allowlist. The webhook verifies the SNS signature, restricts signing certificates to AWS SNS endpoints, rejects mismatched `x-amz-sns-message-type` headers, auto-confirms allowed subscription confirmations, and stores a durable normalized provider event before JetStream processing updates message and recipient lifecycle state.
+
+Required AWS environment variables are `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_FROM_EMAIL`. Set `AWS_SES_CONFIGURATION_SET` when SES events are attached to a configuration set; set `AWS_SNS_TOPIC_ARNS` in API deployments so unsigned or unexpected topics cannot ingest feedback.
+
 ### Run the full stack
 
 ```sh

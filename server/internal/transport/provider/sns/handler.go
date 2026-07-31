@@ -3,6 +3,7 @@ package sns
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/labstack/echo/v5"
@@ -34,12 +35,24 @@ func NewHandler(verifier envelopeVerifier, confirmer awssns.SubscriptionConfirme
 func (h *Handler) ReceiveSES(c *echo.Context) error {
 	envelope, err := parseEnvelopeRequest(c)
 	if err != nil {
+		slog.WarnContext(c.Request().Context(), "rejected AWS SNS request", "error", err)
 		return httputil.Error(c, err)
 	}
+	slog.InfoContext(c.Request().Context(), "accepted AWS SNS request for verification",
+		"sns_message_type", envelope.Type,
+		"sns_message_id", envelope.MessageID,
+		"sns_topic_arn", envelope.TopicARN,
+	)
 	if h == nil || h.verifier == nil {
 		return httputil.Error(c, apperrors.NewServiceUnavailable("SNS verification is not configured", nil))
 	}
 	if err := h.verifier.Verify(c.Request().Context(), envelope); err != nil {
+		slog.WarnContext(c.Request().Context(), "AWS SNS request failed verification",
+			"sns_message_type", envelope.Type,
+			"sns_message_id", envelope.MessageID,
+			"sns_topic_arn", envelope.TopicARN,
+			"error", err,
+		)
 		return httputil.Error(c, mapIntegrationError(err))
 	}
 
@@ -58,6 +71,11 @@ func (h *Handler) ReceiveSES(c *echo.Context) error {
 			return httputil.Error(c, apperrors.NewServiceUnavailable("SNS notification ingestion is not configured", nil))
 		}
 		if err := h.ingestor.Ingest(c.Request().Context(), envelope); err != nil {
+			slog.WarnContext(c.Request().Context(), "AWS SNS SES notification ingestion failed",
+				"sns_message_id", envelope.MessageID,
+				"sns_topic_arn", envelope.TopicARN,
+				"error", err,
+			)
 			if errors.Is(err, awsses.ErrInvalidEvent) {
 				return httputil.Error(c, apperrors.NewBadRequest("SNS notification does not contain a valid SES event"))
 			}

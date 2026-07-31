@@ -75,6 +75,26 @@ func TestReceiveSESRejectsInvalidJSON(t *testing.T) {
 	}
 }
 
+func TestReceiveSESRejectsMismatchedMessageTypeHeader(t *testing.T) {
+	handler := NewHandler(fakeVerifier{}, &fakeConfirmer{}, &fakeIngestor{})
+	request := snsRequest(notificationBody())
+	request.Header.Set("x-amz-sns-message-type", "SubscriptionConfirmation")
+	response := serveSNSRequest(handler, request)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusBadRequest)
+	}
+}
+
+func TestReceiveSESRejectsMissingContentType(t *testing.T) {
+	handler := NewHandler(fakeVerifier{}, &fakeConfirmer{}, &fakeIngestor{})
+	request := snsRequest(notificationBody())
+	request.Header.Del("Content-Type")
+	response := serveSNSRequest(handler, request)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusBadRequest)
+	}
+}
+
 func TestReceiveSESMapsInvalidSignature(t *testing.T) {
 	handler := NewHandler(fakeVerifier{err: awssns.ErrInvalidSignature}, &fakeConfirmer{}, &fakeIngestor{})
 	response := performRequest(t, handler, notificationBody())
@@ -94,10 +114,23 @@ func TestReceiveSESReturnsUnavailableWhenIngestionFails(t *testing.T) {
 
 func performRequest(t *testing.T, handler *Handler, body string) *httptest.ResponseRecorder {
 	t.Helper()
+	return serveSNSRequest(handler, snsRequest(body))
+}
+
+func snsRequest(body string) *http.Request {
+	request := httptest.NewRequest(http.MethodPost, "/integrations/aws/sns/ses", strings.NewReader(body))
+	request.Header.Set("Content-Type", "text/plain; charset=UTF-8")
+	if strings.Contains(body, `"Type":"SubscriptionConfirmation"`) {
+		request.Header.Set("x-amz-sns-message-type", "SubscriptionConfirmation")
+	} else {
+		request.Header.Set("x-amz-sns-message-type", "Notification")
+	}
+	return request
+}
+
+func serveSNSRequest(handler *Handler, request *http.Request) *httptest.ResponseRecorder {
 	e := echo.New()
 	RegisterRoutes(e, handler)
-	request := httptest.NewRequest(http.MethodPost, "/integrations/aws/sns/ses", strings.NewReader(body))
-	request.Header.Set("Content-Type", "application/json")
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
 	return response
