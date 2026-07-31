@@ -10,6 +10,26 @@ const websiteId = `${baseUrl}/#website`;
 const webApplicationId = `${baseUrl}/#web-application`;
 const logoId = `${baseUrl}/#logo`;
 
+type PageSchemaOptions = {
+  title: string;
+  description: string;
+  path?: string;
+  id?: string;
+  breadcrumbs?: Array<{ name: string; path: string }>;
+};
+
+type BlogPostingSchemaOptions = PageSchemaOptions & {
+  publishedAt: string;
+  modifiedAt?: string;
+  category?: string;
+  keywords?: string[];
+  image?: string;
+};
+
+function absoluteUrl(path = "/"): string {
+  return new URL(path, baseUrl).toString();
+}
+
 export function getDugbleSchemaGraph(): Graph {
   return {
     "@context": "https://schema.org",
@@ -110,7 +130,6 @@ export function getDugbleSchemaGraph(): Graph {
         potentialAction: {
           "@type": "SearchAction",
           target: `${baseUrl}/sitemap?query={search_term_string}`,
-          "query-input": "required name=search_term_string",
         },
         inLanguage: "en-US",
       },
@@ -140,14 +159,54 @@ export function getDugbleSchemaGraph(): Graph {
 }
 
 export function getHomePageSchemaGraph(): WithContext<Thing> {
+  return getWebPageSchemaGraph({
+    id: `${baseUrl}/#homepage`,
+    path: "/",
+    title: "Reliable A2P Messaging & Developer Infrastructure",
+    description:
+      "Send OTPs, receipts, alerts, and customer notifications with complete delivery transparency, signed webhooks, and developer-first logs.",
+  });
+}
+
+function getBreadcrumbItems(
+  title: string,
+  path: string,
+  breadcrumbs?: PageSchemaOptions["breadcrumbs"],
+) {
+  const items = breadcrumbs ?? (path === "/" ? [] : [{ name: title, path }]);
+
+  return [
+    {
+      "@type": "ListItem" as const,
+      position: 1,
+      name: "Home",
+      item: baseUrl,
+    },
+    ...items.map((item, index) => ({
+      "@type": "ListItem" as const,
+      position: index + 2,
+      name: item.name,
+      item: absoluteUrl(item.path),
+    })),
+  ];
+}
+
+export function getWebPageSchemaGraph({
+  title,
+  description,
+  path = "/",
+  id,
+  breadcrumbs,
+}: PageSchemaOptions): WithContext<Thing> {
+  const url = absoluteUrl(path);
+
   return {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    "@id": `${baseUrl}/#homepage`,
-    url: baseUrl,
-    name: "Reliable A2P Messaging & Developer Infrastructure",
-    description:
-      "Send OTPs, receipts, alerts, and customer notifications with complete delivery transparency, signed webhooks, and developer-first logs.",
+    "@id": id ?? `${url}#webpage`,
+    url,
+    name: title,
+    description,
     isPartOf: {
       "@id": websiteId,
     },
@@ -156,20 +215,119 @@ export function getHomePageSchemaGraph(): WithContext<Thing> {
     },
     primaryImageOfPage: {
       "@type": "ImageObject",
-      url: `${baseUrl}/og`,
+      url: absoluteUrl("/og"),
       width: "1200",
       height: "630",
     },
     breadcrumb: {
       "@type": "BreadcrumbList",
-      itemListElement: [
-        {
-          "@type": "ListItem",
-          position: 1,
-          name: "Home",
-          item: baseUrl,
+      itemListElement: getBreadcrumbItems(title, path, breadcrumbs),
+    },
+    inLanguage: "en-US",
+  };
+}
+
+export function getBlogIndexSchemaGraph({
+  title,
+  description,
+  path = "/blog",
+}: PageSchemaOptions): WithContext<Thing> {
+  const url = absoluteUrl(path);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Blog",
+    "@id": `${url}#blog`,
+    url,
+    name: title,
+    description,
+    publisher: {
+      "@id": organizationId,
+    },
+    isPartOf: {
+      "@id": websiteId,
+    },
+    inLanguage: "en-US",
+  };
+}
+
+export function getPricingPageSchemaGraph(): WithContext<Thing> {
+  const path = "/pricing";
+  const url = absoluteUrl(path);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "OfferCatalog",
+    "@id": `${url}#pricing`,
+    name: "Dugble Pricing",
+    description:
+      "Usage-based pricing for Dugble transactional email and A2P SMS messaging.",
+    url,
+    itemListElement: [
+      {
+        "@type": "Offer",
+        name: "Transactional Email API",
+        category: "Email API",
+        priceCurrency: "USD",
+        availability: "https://schema.org/InStock",
+        itemOffered: {
+          "@type": "Service",
+          name: "Dugble Email API",
+          provider: {
+            "@id": organizationId,
+          },
         },
-      ],
+      },
+      {
+        "@type": "Offer",
+        name: "A2P SMS API",
+        category: "SMS API",
+        priceCurrency: "USD",
+        availability: "https://schema.org/InStock",
+        itemOffered: {
+          "@type": "Service",
+          name: "Dugble SMS API",
+          provider: {
+            "@id": organizationId,
+          },
+        },
+      },
+    ],
+  };
+}
+
+export function getBlogPostingSchemaGraph({
+  title,
+  description,
+  path,
+  publishedAt,
+  modifiedAt,
+  category,
+  keywords,
+  image,
+}: BlogPostingSchemaOptions): WithContext<Thing> {
+  const url = absoluteUrl(path);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "@id": `${url}#blogposting`,
+    headline: title,
+    description,
+    url,
+    datePublished: publishedAt,
+    dateModified: modifiedAt ?? publishedAt,
+    image: absoluteUrl(image ?? `/og?title=${encodeURIComponent(title)}`),
+    articleSection: category,
+    keywords,
+    author: {
+      "@id": organizationId,
+    },
+    publisher: {
+      "@id": organizationId,
+    },
+    mainEntityOfPage: {
+      "@id": `${url}#webpage`,
     },
     inLanguage: "en-US",
   };

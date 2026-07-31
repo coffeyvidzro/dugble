@@ -1,17 +1,11 @@
-import type { Metadata } from "next";
+import { constructMetadata } from "@/utils/metadata";
 
-export const metadata: Metadata = {
+export const metadata = constructMetadata({
   title: "System Status",
   description:
     "Check the platform health and system status for Dugble's API, dashboard, and delivery networks.",
-  openGraph: {
-    title: "System Status",
-    description:
-      "Check the platform health and system status for Dugble's API, dashboard, and delivery networks.",
-    url: "/status",
-    type: "website",
-  },
-};
+  path: "/status",
+});
 
 const systems = [
   "API",
