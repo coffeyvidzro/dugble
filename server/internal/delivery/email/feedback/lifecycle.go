@@ -1,0 +1,163 @@
+package feedback
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	awsses "github.com/coffeyvidzro/dugble/server/internal/integration/aws/ses"
+	platformwebhook "github.com/coffeyvidzro/dugble/server/internal/platform/webhook"
+)
+
+var (
+	recipientEventNamespace = uuid.MustParse("480d4153-58c3-5f6a-a66d-e4ab7bb168d2")
+	webhookEventNamespace   = uuid.MustParse("d90f621c-937d-5fd2-9c85-cd8f55cacaa2")
+)
+
+type webhookEmitter interface {
+	EmitTx(context.Context, pgx.Tx, platformwebhook.Event) (uuid.UUID, int64, error)
+}
+
+type emailLifecyclePayload struct {
+	Object            string   `json:"object"`
+	ID                string   `json:"id"`
+	Provider          string   `json:"provider"`
+	ProviderMessageID string   `json:"provider_message_id"`
+	LastEvent         string   `json:"last_event"`
+	Recipients        []string `json:"recipients"`
+}
+
+func NewRepositoryWithWebhookEmitter(db *pgxpool.Pool, emitter webhookEmitter) *Repository {
+	repository := NewRepository(db, nil)
+	repository.emitter = emitter
+	return repository
+}
+
+func persistRecipientEvents(
+	ctx context.Context,
+	tx pgx.Tx,
+	providerEventID uuid.UUID,
+	messageID uuid.UUID,
+	event awsses.FeedbackEvent,
+) error {
+	for _, recipient := range normalizedRecipients(event.Recipients) {
+		recipientEventID := uuid.NewSHA1(
+			recipientEventNamespace,
+			[]byte(providerEventID.String()+":"+recipient),
+		)
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO email_recipient_events (
+				id,
+				email_provider_event_id,
+				email_message_id,
+				recipient_email,
+				event_type,
+				occurred_at
+			)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			ON CONFLICT (email_provider_event_id, recipient_email) DO NOTHING
+		`, recipientEventID, providerEventID, messageID, recipient, event.EventType, event.OccurredAt); err != nil {
+			return fmt.Errorf("insert %s recipient event for %q: %w", event.EventType, recipient, err)
+		}
+	}
+	return nil
+}
+
+func (r *Repository) emitLifecycleWebhook(
+	ctx context.Context,
+	tx pgx.Tx,
+	providerEventID uuid.UUID,
+	messageID uuid.UUID,
+	teamID uuid.UUID,
+	event awsses.FeedbackEvent,
+) error {
+	if r == nil || r.emitter == nil {
+		return nil
+	}
+	webhookEvent, ok, err := emailLifecycleWebhookEvent(providerEventID, messageID, teamID, event)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return nil
+	}
+	if _, _, err := r.emitter.EmitTx(ctx, tx, webhookEvent); err != nil {
+		return fmt.Errorf("emit %s email lifecycle webhook: %w", event.EventType, err)
+	}
+	return nil
+}
+
+func emailLifecycleWebhookEvent(
+	providerEventID uuid.UUID,
+	messageID uuid.UUID,
+	teamID uuid.UUID,
+	event awsses.FeedbackEvent,
+) (platformwebhook.Event, bool, error) {
+	eventType, ok := emailWebhookEventType(event.EventType)
+	if !ok {
+		return platformwebhook.Event{}, false, nil
+	}
+	payload, err := json.Marshal(emailLifecyclePayload{
+		Object:            "email",
+		ID:                messageID.String(),
+		Provider:          ProviderSES,
+		ProviderMessageID: strings.TrimSpace(event.ProviderMessageID),
+		LastEvent:         strings.TrimSpace(event.EventType),
+		Recipients:        normalizedRecipients(event.Recipients),
+	})
+	if err != nil {
+		return platformwebhook.Event{}, false, fmt.Errorf("encode email lifecycle webhook payload: %w", err)
+	}
+	return platformwebhook.Event{
+		ID:         uuid.NewSHA1(webhookEventNamespace, []byte(providerEventID.String())),
+		TeamID:     teamID,
+		Type:       eventType,
+		ObjectType: "email",
+		ObjectID:   &messageID,
+		Payload:    payload,
+		OccurredAt: event.OccurredAt,
+	}, true, nil
+}
+
+func emailWebhookEventType(eventType string) (string, bool) {
+	switch strings.TrimSpace(eventType) {
+	case "send":
+		return platformwebhook.EventEmailSubmitted, true
+	case "delivery":
+		return platformwebhook.EventEmailDelivered, true
+	case "delivery_delay":
+		return platformwebhook.EventEmailDelayed, true
+	case "bounce":
+		return platformwebhook.EventEmailBounced, true
+	case "complaint":
+		return platformwebhook.EventEmailComplained, true
+	case "reject":
+		return platformwebhook.EventEmailRejected, true
+	case "rendering_failure":
+		return platformwebhook.EventEmailFailed, true
+	default:
+		return "", false
+	}
+}
+
+func normalizedRecipients(values []string) []string {
+	result := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		value = strings.ToLower(strings.TrimSpace(value))
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	return result
+}

@@ -1,6 +1,6 @@
 ---
 title: "Webhook events"
-description: "Understand the outgoing SMS lifecycle event catalog"
+description: "Understand the outgoing email and SMS lifecycle event catalog"
 ---
 
 <Warning>
@@ -8,22 +8,26 @@ description: "Understand the outgoing SMS lifecycle event catalog"
     complete set of events that endpoints can subscribe to during the preview.
 </Warning>
 
-Event types use a resource and lifecycle name, such as `sms.delivered` or `sms.failed`.
+Event types use a resource and lifecycle name, such as `email.delivered`,
+`sms.delivered`, or `sms.failed`.
 
 ## Common envelope
 
 The envelope includes a UUID event ID, an event type, the time the lifecycle
-transition occurred, and a snapshot of the SMS resource:
+transition occurred, and a snapshot of the affected resource:
 
 ```json
 {
     "id": "7fccf29e-d21e-4bc9-85a3-a4ec9c35a8dd",
-    "type": "sms.delivered",
-    "occurred_at": "2026-07-26T12:01:10Z",
+    "type": "email.delivered",
+    "occurred_at": "2026-07-31T12:01:10Z",
     "data": {
-        "object": "sms",
+        "object": "email",
         "id": "49a3999c-0ce1-4ea6-ab68-afcd6dc2e794",
-        "last_event": "delivered"
+        "provider": "ses",
+        "provider_message_id": "0100018f-example",
+        "last_event": "delivery",
+        "recipients": ["recipient@example.com"]
     }
 }
 ```
@@ -38,11 +42,22 @@ Treat unknown fields and event types as forward-compatible additions. Do not fai
 | `sms.sent`        | The provider reported that the SMS was sent. | Continue waiting for final delivery when supported.         |
 | `sms.delivered`   | The provider reported delivery.              | Mark the notification delivered.                            |
 | `sms.undelivered` | The provider could not deliver the SMS.      | Verify the destination number before retrying.              |
-| `sms.failed`      | Dugble could not complete delivery.          | Record the failure for operational review.             |
+| `sms.failed`      | Dugble could not complete delivery.          | Record the failure for operational review.                  |
 
-Email lifecycle webhooks and additional intermediate SMS states are not emitted
-during the preview. New event types will be documented before they become
-subscribable.
+## Email events
+
+| Event                | Meaning                                             | Suggested action                                      |
+| -------------------- | --------------------------------------------------- | ----------------------------------------------------- |
+| `email.submitted`    | SES accepted the email for delivery.                | Mark the message submitted and await final outcomes.  |
+| `email.delivered`    | SES delivered the email to the listed recipients.   | Mark those recipients delivered.                      |
+| `email.delayed`      | SES reported a temporary delivery delay.            | Keep waiting or surface a delayed state.              |
+| `email.bounced`      | SES reported a bounce for the listed recipients.    | Suppress permanent failures before retrying.          |
+| `email.complained`   | A recipient reported the email as spam.             | Suppress the recipient and investigate the campaign.  |
+| `email.rejected`     | SES rejected the email before delivery.             | Correct the message or sender configuration.          |
+| `email.failed`       | SES could not render or otherwise send the email.   | Record the failure for operational review.            |
+
+Email events include the affected recipient list from the provider event. A single
+email can therefore produce different lifecycle events for different recipients.
 
 ## Test events
 

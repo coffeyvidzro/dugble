@@ -14,6 +14,13 @@ var subscribableEventTypes = []string{
 	EventSMSDelivered,
 	EventSMSUndelivered,
 	EventSMSFailed,
+	EventEmailSubmitted,
+	EventEmailDelivered,
+	EventEmailDelayed,
+	EventEmailBounced,
+	EventEmailComplained,
+	EventEmailRejected,
+	EventEmailFailed,
 }
 
 func SubscribableEventTypes() []string {
@@ -30,7 +37,16 @@ const (
 	EventSMSDelivered   = "sms.delivered"
 	EventSMSUndelivered = "sms.undelivered"
 	EventSMSFailed      = "sms.failed"
-	EventTest           = "webhook.test"
+
+	EventEmailSubmitted  = "email.submitted"
+	EventEmailDelivered  = "email.delivered"
+	EventEmailDelayed    = "email.delayed"
+	EventEmailBounced    = "email.bounced"
+	EventEmailComplained = "email.complained"
+	EventEmailRejected   = "email.rejected"
+	EventEmailFailed     = "email.failed"
+
+	EventTest = "webhook.test"
 )
 
 type Event struct {

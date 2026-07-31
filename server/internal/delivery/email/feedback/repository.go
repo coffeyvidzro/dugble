@@ -21,9 +21,10 @@ import (
 var ErrProviderEventUnlinked = errors.New("email provider event is not linked to a message")
 
 type Repository struct {
-	db     *pgxpool.Pool
-	outbox *outbox.Repository
-	now    func() time.Time
+	db      *pgxpool.Pool
+	outbox  *outbox.Repository
+	emitter webhookEmitter
+	now     func() time.Time
 }
 
 type emailTransition struct {
@@ -160,9 +161,10 @@ func (r *Repository) Process(ctx context.Context, eventID uuid.UUID) error {
 	var providerMessageID string
 	var eventType string
 	var occurredAt time.Time
+	var normalizedPayload []byte
 	var processedAt pgtype.Timestamptz
 	if err := tx.QueryRow(ctx, `
-		SELECT email_message_id, provider_message_id, event_type, occurred_at, processed_at
+		SELECT email_message_id, provider_message_id, event_type, occurred_at, normalized_payload, processed_at
 		FROM email_provider_events
 		WHERE id = $1
 		  AND provider = $2
@@ -173,6 +175,7 @@ func (r *Repository) Process(ctx context.Context, eventID uuid.UUID) error {
 		&providerMessageID,
 		&eventType,
 		&occurredAt,
+		&normalizedPayload,
 		&processedAt,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -184,10 +187,30 @@ func (r *Repository) Process(ctx context.Context, eventID uuid.UUID) error {
 		return tx.Commit(ctx)
 	}
 
+	providerEvent := awsses.FeedbackEvent{
+		EventType:         eventType,
+		ProviderMessageID: providerMessageID,
+		OccurredAt:        occurredAt,
+	}
+	if err := json.Unmarshal(normalizedPayload, &providerEvent); err != nil {
+		return fmt.Errorf("decode normalized email provider event %s: %w", eventID, err)
+	}
+	providerEvent.EventType = eventType
+	providerEvent.ProviderMessageID = providerMessageID
+	providerEvent.OccurredAt = occurredAt
+
 	messageID, currentStatus, err := linkAndLockMessage(ctx, tx, eventID, emailMessageID, providerMessageID)
 	if err != nil {
 		return err
 	}
+	var teamID uuid.UUID
+	if err := tx.QueryRow(ctx, `SELECT team_id FROM email_messages WHERE id = $1`, messageID).Scan(&teamID); err != nil {
+		return fmt.Errorf("load team for email message %s: %w", messageID, err)
+	}
+	if err := persistRecipientEvents(ctx, tx, eventID, messageID, providerEvent); err != nil {
+		return err
+	}
+
 	transition, apply, err := emailStatusTransition(currentStatus, eventType, occurredAt)
 	if err != nil {
 		return err
@@ -214,6 +237,9 @@ func (r *Repository) Process(ctx context.Context, eventID uuid.UUID) error {
 		}
 	}
 
+	if err := r.emitLifecycleWebhook(ctx, tx, eventID, messageID, teamID, providerEvent); err != nil {
+		return err
+	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE email_provider_events
 		SET processed_at = COALESCE(processed_at, now())

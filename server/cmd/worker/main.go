@@ -71,6 +71,8 @@ func run() error {
 	}
 
 	processedEvents := inbox.NewRepository(db)
+	webhookModuleRepository := webhookmodule.NewRepository(db)
+	webhookEmitter := platformwebhook.NewEmitter(webhookModuleRepository)
 	emailSender, err := awsses.NewSESSender(
 		startupCtx,
 		cfg.AWS.Region,
@@ -85,7 +87,7 @@ func run() error {
 	emailConsumer := emaildelivery.NewConsumer(messagingClient, processedEvents, emaildelivery.NewHandler(emaildelivery.NewRepository(db), emailSender), emaildelivery.ConsumerConfig{
 		Concurrency: 5, AckWait: 2 * time.Minute, HandlerTimeout: 45 * time.Second, MaxDeliver: 6, RetryPolicy: emaildelivery.DefaultRetryPolicy(),
 	})
-	emailFeedbackConsumer := emailfeedback.NewConsumer(messagingClient, processedEvents, emailfeedback.NewHandler(emailfeedback.NewRepository(db, nil)), emailfeedback.ConsumerConfig{
+	emailFeedbackConsumer := emailfeedback.NewConsumer(messagingClient, processedEvents, emailfeedback.NewHandler(emailfeedback.NewRepositoryWithWebhookEmitter(db, webhookEmitter)), emailfeedback.ConsumerConfig{
 		Concurrency: 5, AckWait: time.Minute, HandlerTimeout: 30 * time.Second, MaxDeliver: 6, RetryPolicy: emailfeedback.DefaultRetryPolicy(),
 	})
 	domainRepository := domainmodule.NewRepository(db)
@@ -104,8 +106,6 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("initialize SMS sender: %w", err)
 	}
-	webhookModuleRepository := webhookmodule.NewRepository(db)
-	webhookEmitter := platformwebhook.NewEmitter(webhookModuleRepository)
 	smsHandler := smsdelivery.NewHandler(smsmodule.NewRepositoryWithWebhookEmitter(db, webhookEmitter), smsSender)
 	smsConsumer := smsdelivery.NewConsumer(messagingClient, processedEvents, smsHandler, smsdelivery.ConsumerConfig{Concurrency: 10, AckWait: 2 * time.Minute, HandlerTimeout: 45 * time.Second, MaxDeliver: 6})
 	outboxRelay := outbox.NewRelay(outbox.NewRepository(db), messagingClient, outbox.Config{PollInterval: 500 * time.Millisecond, BatchSize: 100, LockTimeout: 30 * time.Second})
