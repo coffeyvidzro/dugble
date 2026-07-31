@@ -90,6 +90,16 @@ type EmailProviderEvent struct {
 	CreatedAt              pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
+type EmailRecipientEvent struct {
+	ID                   uuid.UUID          `db:"id" json:"id"`
+	EmailProviderEventID uuid.UUID          `db:"email_provider_event_id" json:"email_provider_event_id"`
+	EmailMessageID       uuid.UUID          `db:"email_message_id" json:"email_message_id"`
+	RecipientEmail       string             `db:"recipient_email" json:"recipient_email"`
+	EventType            string             `db:"event_type" json:"event_type"`
+	OccurredAt           pgtype.Timestamptz `db:"occurred_at" json:"occurred_at"`
+	CreatedAt            pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
 type ExternalIdentity struct {
 	ID           uuid.UUID          `db:"id" json:"id"`
 	UserID       uuid.UUID          `db:"user_id" json:"user_id"`
