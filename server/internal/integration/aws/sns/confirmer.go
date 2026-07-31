@@ -82,11 +82,25 @@ func (c *HTTPConfirmSubscriptionClient) ConfirmSubscription(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
+	topicARN := strings.TrimSpace(input.TopicARN)
+	token := strings.TrimSpace(input.Token)
+	form := url.Values{}
+	form.Set("Action", "ConfirmSubscription")
+	form.Set("TopicArn", topicARN)
+	form.Set("Token", token)
+	form.Set("Version", "2010-03-31")
+
+	request, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		endpoint,
+		strings.NewReader(form.Encode()),
+	)
 	if err != nil {
 		return fmt.Errorf("%w: create request: %w", ErrConfirmationUnavailable, err)
 	}
 	request.Header.Set("Accept", "application/xml")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	response, err := c.client.Do(request)
 	if err != nil {
@@ -126,16 +140,10 @@ func confirmationEndpoint(input ConfirmSubscriptionInput) (string, error) {
 		return "", fmt.Errorf("%w: unsupported AWS partition %q", ErrInvalidEnvelope, parts[1])
 	}
 
-	endpoint := url.URL{
-		Scheme: "https",
-		Host:   "sns." + parts[3] + "." + hostSuffix,
-		Path:   "/",
+	hostname := "sns." + parts[3] + "." + hostSuffix
+	endpoint, ok := trustedSNSEndpoint(hostname)
+	if !ok {
+		return "", fmt.Errorf("%w: SNS endpoint %q is not allowed", ErrTopicNotAllowed, hostname)
 	}
-	query := endpoint.Query()
-	query.Set("Action", "ConfirmSubscription")
-	query.Set("TopicArn", topicARN)
-	query.Set("Token", token)
-	query.Set("Version", "2010-03-31")
-	endpoint.RawQuery = query.Encode()
-	return endpoint.String(), nil
+	return endpoint, nil
 }

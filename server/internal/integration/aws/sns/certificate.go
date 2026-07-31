@@ -7,7 +7,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -28,6 +27,11 @@ type CertificateLoader interface {
 type cachedCertificate struct {
 	certificate *x509.Certificate
 	expiresAt   time.Time
+}
+
+type signingCertificateLocation struct {
+	hostname string
+	filename string
 }
 
 type HTTPCertificateLoader struct {
@@ -56,25 +60,27 @@ func NewHTTPCertificateLoader(client *http.Client) *HTTPCertificateLoader {
 }
 
 func (l *HTTPCertificateLoader) Load(ctx context.Context, rawURL string) (*x509.Certificate, error) {
-	if err := validateSigningCertificateURL(rawURL); err != nil {
-		return nil, err
-	}
 	if l == nil || l.client == nil {
 		return nil, fmt.Errorf("%w: HTTP client is not configured", ErrCertificateUnavailable)
+	}
+	baseURL, filename, cacheKey, err := l.resolveCertificateTarget(rawURL)
+	if err != nil {
+		return nil, err
 	}
 
 	now := l.currentTime()
 	l.mu.RLock()
-	cached, ok := l.cache[rawURL]
+	cached, ok := l.cache[cacheKey]
 	l.mu.RUnlock()
 	if ok && cached.expiresAt.After(now.Add(time.Minute)) {
 		return cached.certificate, nil
 	}
 
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, http.NoBody)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("%w: create request: %v", ErrCertificateUnavailable, err)
 	}
+	request.URL.Path = "/" + filename
 	response, err := l.client.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("%w: download certificate: %v", ErrCertificateUnavailable, err)
@@ -107,9 +113,25 @@ func (l *HTTPCertificateLoader) Load(ctx context.Context, rawURL string) (*x509.
 	}
 
 	l.mu.Lock()
-	l.cache[rawURL] = cachedCertificate{certificate: certificate, expiresAt: certificate.NotAfter}
+	l.cache[cacheKey] = cachedCertificate{certificate: certificate, expiresAt: certificate.NotAfter}
 	l.mu.Unlock()
 	return certificate, nil
+}
+
+func (l *HTTPCertificateLoader) resolveCertificateTarget(rawURL string) (string, string, string, error) {
+	location, err := parseSigningCertificateURL(rawURL)
+	if err != nil {
+		return "", "", "", err
+	}
+	baseURL, ok := trustedSNSEndpoint(location.hostname)
+	if !ok {
+		return "", "", "", fmt.Errorf(
+			"%w: hostname %q is not configured for this endpoint",
+			ErrUntrustedCertificateURL,
+			location.hostname,
+		)
+	}
+	return baseURL, location.filename, baseURL + location.filename, nil
 }
 
 func (l *HTTPCertificateLoader) currentTime() time.Time {
@@ -120,43 +142,39 @@ func (l *HTTPCertificateLoader) currentTime() time.Time {
 }
 
 func validateSigningCertificateURL(rawURL string) error {
+	_, err := parseSigningCertificateURL(rawURL)
+	return err
+}
+
+func parseSigningCertificateURL(rawURL string) (signingCertificateLocation, error) {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
-		return fmt.Errorf("%w: parse URL: %v", ErrUntrustedCertificateURL, err)
+		return signingCertificateLocation{}, fmt.Errorf("%w: parse URL: %v", ErrUntrustedCertificateURL, err)
 	}
-	if parsed.Scheme != "https" || parsed.User != nil || parsed.Port() != "" || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.RawPath != "" {
-		return fmt.Errorf("%w: URL must be a direct HTTPS AWS SNS certificate URL", ErrUntrustedCertificateURL)
+	if parsed.Scheme != "https" || parsed.User != nil || parsed.Port() != "" || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.RawPath != "" || parsed.Opaque != "" || parsed.ForceQuery {
+		return signingCertificateLocation{}, fmt.Errorf("%w: URL must be a direct HTTPS AWS SNS certificate URL", ErrUntrustedCertificateURL)
 	}
 	hostname := strings.ToLower(strings.TrimSuffix(parsed.Hostname(), "."))
-	if net.ParseIP(hostname) != nil || !isTrustedSNSHostname(hostname) {
-		return fmt.Errorf("%w: hostname %q is not an AWS SNS endpoint", ErrUntrustedCertificateURL, hostname)
+	if !isTrustedSNSHostname(hostname) {
+		return signingCertificateLocation{}, fmt.Errorf("%w: hostname %q is not an AWS SNS endpoint", ErrUntrustedCertificateURL, hostname)
 	}
 	if path.Dir(parsed.Path) != "/" {
-		return fmt.Errorf("%w: certificate must be located at the endpoint root", ErrUntrustedCertificateURL)
+		return signingCertificateLocation{}, fmt.Errorf("%w: certificate must be located at the endpoint root", ErrUntrustedCertificateURL)
 	}
 	filename := path.Base(parsed.Path)
 	if !strings.HasPrefix(filename, "SimpleNotificationService-") || !strings.HasSuffix(filename, ".pem") {
-		return fmt.Errorf("%w: unexpected certificate filename", ErrUntrustedCertificateURL)
+		return signingCertificateLocation{}, fmt.Errorf("%w: unexpected certificate filename", ErrUntrustedCertificateURL)
 	}
 	identifier := strings.TrimSuffix(strings.TrimPrefix(filename, "SimpleNotificationService-"), ".pem")
 	if identifier == "" || !isSafeCertificateIdentifier(identifier) {
-		return fmt.Errorf("%w: invalid certificate identifier", ErrUntrustedCertificateURL)
+		return signingCertificateLocation{}, fmt.Errorf("%w: invalid certificate identifier", ErrUntrustedCertificateURL)
 	}
-	return nil
+	return signingCertificateLocation{hostname: hostname, filename: filename}, nil
 }
 
 func isTrustedSNSHostname(hostname string) bool {
-	parts := strings.Split(hostname, ".")
-	switch {
-	case len(parts) == 3 && parts[0] == "sns" && parts[1] == "amazonaws" && parts[2] == "com":
-		return true
-	case len(parts) == 4 && parts[0] == "sns" && parts[2] == "amazonaws" && parts[3] == "com":
-		return isDNSLabel(parts[1])
-	case len(parts) == 5 && parts[0] == "sns" && parts[2] == "amazonaws" && parts[3] == "com" && parts[4] == "cn":
-		return isDNSLabel(parts[1])
-	default:
-		return false
-	}
+	_, ok := trustedSNSEndpoint(hostname)
+	return ok
 }
 
 func isDNSLabel(value string) bool {
