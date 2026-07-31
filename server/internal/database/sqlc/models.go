@@ -109,19 +109,19 @@ type EmailProviderEvent struct {
 }
 
 type EmailRecipient struct {
-	ID              uuid.UUID          `db:"id" json:"id"`
-	EmailMessageID  uuid.UUID          `db:"email_message_id" json:"email_message_id"`
-	RecipientEmail  string             `db:"recipient_email" json:"recipient_email"`
-	RecipientType   string             `db:"recipient_type" json:"recipient_type"`
-	Status          string             `db:"status" json:"status"`
-	LastEventType   *string            `db:"last_event_type" json:"last_event_type"`
-	LastEventAt     pgtype.Timestamptz `db:"last_event_at" json:"last_event_at"`
-	DeliveredAt     pgtype.Timestamptz `db:"delivered_at" json:"delivered_at"`
-	FailedAt        pgtype.Timestamptz `db:"failed_at" json:"failed_at"`
-	ErrorCode       *string            `db:"error_code" json:"error_code"`
-	ErrorMessage    *string            `db:"error_message" json:"error_message"`
-	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ID             uuid.UUID          `db:"id" json:"id"`
+	EmailMessageID uuid.UUID          `db:"email_message_id" json:"email_message_id"`
+	RecipientEmail string             `db:"recipient_email" json:"recipient_email"`
+	RecipientType  string             `db:"recipient_type" json:"recipient_type"`
+	Status         string             `db:"status" json:"status"`
+	LastEventType  *string            `db:"last_event_type" json:"last_event_type"`
+	LastEventAt    pgtype.Timestamptz `db:"last_event_at" json:"last_event_at"`
+	DeliveredAt    pgtype.Timestamptz `db:"delivered_at" json:"delivered_at"`
+	FailedAt       pgtype.Timestamptz `db:"failed_at" json:"failed_at"`
+	ErrorCode      *string            `db:"error_code" json:"error_code"`
+	ErrorMessage   *string            `db:"error_message" json:"error_message"`
+	CreatedAt      pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
 type EmailRecipientEvent struct {
@@ -470,4 +470,54 @@ type WebhookEvent struct {
 	Payload    []byte             `db:"payload" json:"payload"`
 	OccurredAt pgtype.Timestamptz `db:"occurred_at" json:"occurred_at"`
 	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
+type WorkloadAccessToken struct {
+	ID           uuid.UUID          `db:"id" json:"id"`
+	WorkloadID   uuid.UUID          `db:"workload_id" json:"workload_id"`
+	CredentialID *uuid.UUID         `db:"credential_id" json:"credential_id"`
+	TokenHash    string             `db:"token_hash" json:"token_hash"`
+	ExpiresAt    pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+	LastUsedAt   pgtype.Timestamptz `db:"last_used_at" json:"last_used_at"`
+	RevokedAt    pgtype.Timestamptz `db:"revoked_at" json:"revoked_at"`
+	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	FederationID *uuid.UUID         `db:"federation_id" json:"federation_id"`
+}
+
+type WorkloadCredential struct {
+	ID           uuid.UUID          `db:"id" json:"id"`
+	WorkloadID   uuid.UUID          `db:"workload_id" json:"workload_id"`
+	SecretHash   string             `db:"secret_hash" json:"secret_hash"`
+	SecretPrefix string             `db:"secret_prefix" json:"secret_prefix"`
+	ExpiresAt    pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+	LastUsedAt   pgtype.Timestamptz `db:"last_used_at" json:"last_used_at"`
+	RevokedAt    pgtype.Timestamptz `db:"revoked_at" json:"revoked_at"`
+	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
+type WorkloadIdentity struct {
+	ID          uuid.UUID          `db:"id" json:"id"`
+	TeamID      uuid.UUID          `db:"team_id" json:"team_id"`
+	Name        string             `db:"name" json:"name"`
+	Description string             `db:"description" json:"description"`
+	Status      string             `db:"status" json:"status"`
+	Permissions []string           `db:"permissions" json:"permissions"`
+	CreatedBy   *uuid.UUID         `db:"created_by" json:"created_by"`
+	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	DisabledAt  pgtype.Timestamptz `db:"disabled_at" json:"disabled_at"`
+}
+
+type WorkloadOidcFederation struct {
+	ID             uuid.UUID          `db:"id" json:"id"`
+	WorkloadID     uuid.UUID          `db:"workload_id" json:"workload_id"`
+	Name           string             `db:"name" json:"name"`
+	IssuerUrl      string             `db:"issuer_url" json:"issuer_url"`
+	Audiences      []string           `db:"audiences" json:"audiences"`
+	Subject        string             `db:"subject" json:"subject"`
+	RequiredClaims []byte             `db:"required_claims" json:"required_claims"`
+	Enabled        bool               `db:"enabled" json:"enabled"`
+	CreatedBy      *uuid.UUID         `db:"created_by" json:"created_by"`
+	CreatedAt      pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
