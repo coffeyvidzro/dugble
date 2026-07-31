@@ -3,83 +3,119 @@ package sns
 import (
 	"context"
 	"errors"
-	"io"
-	"net/http"
-	"strings"
 	"testing"
 )
 
-func TestHTTPConfirmerConfirmsSubscription(t *testing.T) {
-	envelope := confirmationEnvelope()
-	requests := 0
-	client := &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
-		requests++
-		if request.Method != http.MethodGet {
-			t.Fatalf("request method = %s, want GET", request.Method)
-		}
-		return &http.Response{
-			StatusCode: http.StatusOK,
-			Header:     make(http.Header),
-			Body:       io.NopCloser(strings.NewReader("confirmed")),
-			Request:    request,
-		}, nil
-	})}
+type confirmSubscriptionClientStub struct {
+	called bool
+	input  ConfirmSubscriptionInput
+	err    error
+}
 
-	if err := NewHTTPConfirmer(client).Confirm(context.Background(), envelope); err != nil {
+func (s *confirmSubscriptionClientStub) ConfirmSubscription(
+	_ context.Context,
+	input ConfirmSubscriptionInput,
+) error {
+	s.called = true
+	s.input = input
+	return s.err
+}
+
+func TestConfirmerConfirmsSubscription(t *testing.T) {
+	envelope := confirmationEnvelope()
+	client := &confirmSubscriptionClientStub{}
+
+	err := NewConfirmer(client).Confirm(context.Background(), envelope)
+	if err != nil {
 		t.Fatalf("Confirm() error = %v", err)
 	}
-	if requests != 1 {
-		t.Fatalf("HTTP requests = %d, want 1", requests)
+
+	if !client.called {
+		t.Fatal("confirmation client was not called")
+	}
+
+	if client.input.TopicARN != envelope.TopicARN {
+		t.Fatalf(
+			"TopicARN = %q, want %q",
+			client.input.TopicARN,
+			envelope.TopicARN,
+		)
+	}
+
+	if envelope.Token == nil {
+		t.Fatal("confirmation envelope token is nil")
+	}
+
+	if client.input.Token != *envelope.Token {
+		t.Fatalf(
+			"Token = %q, want %q",
+			client.input.Token,
+			*envelope.Token,
+		)
 	}
 }
 
-func TestHTTPConfirmerRejectsMismatchedTopic(t *testing.T) {
+func TestConfirmerRejectsNonConfirmationEnvelope(t *testing.T) {
 	envelope := confirmationEnvelope()
-	value := strings.Replace(*envelope.SubscribeURL, envelope.TopicARN, "arn:aws:sns:us-east-1:123456789012:other", 1)
-	envelope.SubscribeURL = &value
-	client := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
-		t.Fatal("HTTP request should not be sent")
-		return nil, nil
-	})}
+	envelope.Type = TypeNotification
 
-	err := NewHTTPConfirmer(client).Confirm(context.Background(), envelope)
-	if !errors.Is(err, ErrInvalidConfirmationURL) {
-		t.Fatalf("Confirm() error = %v, want ErrInvalidConfirmationURL", err)
+	client := &confirmSubscriptionClientStub{}
+
+	err := NewConfirmer(client).Confirm(context.Background(), envelope)
+	if !errors.Is(err, ErrInvalidEnvelope) {
+		t.Fatalf("Confirm() error = %v, want ErrInvalidEnvelope", err)
+	}
+
+	if client.called {
+		t.Fatal("confirmation client should not be called")
 	}
 }
 
-func TestHTTPConfirmerRejectsUntrustedHost(t *testing.T) {
-	envelope := confirmationEnvelope()
-	value := strings.Replace(*envelope.SubscribeURL, "sns.us-east-1.amazonaws.com", "example.com", 1)
-	envelope.SubscribeURL = &value
+func TestConfirmerRequiresClient(t *testing.T) {
+	err := NewConfirmer(nil).Confirm(
+		context.Background(),
+		confirmationEnvelope(),
+	)
 
-	err := NewHTTPConfirmer(nil).Confirm(context.Background(), envelope)
-	if !errors.Is(err, ErrInvalidConfirmationURL) {
-		t.Fatalf("Confirm() error = %v, want ErrInvalidConfirmationURL", err)
-	}
-}
-
-func TestHTTPConfirmerReturnsUnavailableForNonSuccess(t *testing.T) {
-	envelope := confirmationEnvelope()
-	client := &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
-		return &http.Response{
-			StatusCode: http.StatusServiceUnavailable,
-			Header:     make(http.Header),
-			Body:       io.NopCloser(strings.NewReader("unavailable")),
-			Request:    request,
-		}, nil
-	})}
-
-	err := NewHTTPConfirmer(client).Confirm(context.Background(), envelope)
 	if !errors.Is(err, ErrConfirmationUnavailable) {
-		t.Fatalf("Confirm() error = %v, want ErrConfirmationUnavailable", err)
+		t.Fatalf(
+			"Confirm() error = %v, want ErrConfirmationUnavailable",
+			err,
+		)
+	}
+}
+
+func TestConfirmerWrapsClientFailure(t *testing.T) {
+	client := &confirmSubscriptionClientStub{
+		err: errors.New("AWS SNS unavailable"),
+	}
+
+	err := NewConfirmer(client).Confirm(
+		context.Background(),
+		confirmationEnvelope(),
+	)
+
+	if !errors.Is(err, ErrConfirmationUnavailable) {
+		t.Fatalf(
+			"Confirm() error = %v, want ErrConfirmationUnavailable",
+			err,
+		)
+	}
+
+	if !client.called {
+		t.Fatal("confirmation client was not called")
 	}
 }
 
 func confirmationEnvelope() Envelope {
 	topicARN := "arn:aws:sns:us-east-1:123456789012:ses-events"
 	token := "confirmation-token"
-	subscribeURL := "https://sns.us-east-1.amazonaws.com/?Action=ConfirmSubscription&TopicArn=" + topicARN + "&Token=" + token + "&Version=2010-03-31"
+	subscribeURL := "https://sns.us-east-1.amazonaws.com/" +
+		"?Action=ConfirmSubscription" +
+		"&TopicArn=" + topicARN +
+		"&Token=" + token +
+		"&Version=2010-03-31"
+
 	return Envelope{
 		Type:             TypeSubscriptionConfirmation,
 		MessageID:        "message-id",
