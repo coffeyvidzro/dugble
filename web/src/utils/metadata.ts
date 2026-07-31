@@ -24,6 +24,12 @@ export function constructMetadata({
       absolute: pageTitle,
     },
     description,
+    applicationName: "Dugble",
+    authors: [{ name: "Dugble", url: baseUrl }],
+    creator: "Dugble",
+    publisher: "Dugble",
+    category: "technology",
+    referrer: "origin-when-cross-origin",
     keywords: [
       "A2P messaging",
       "SMS API",
@@ -34,6 +40,9 @@ export function constructMetadata({
     ],
     alternates: {
       canonical: url,
+      languages: {
+        "en-US": url ?? "/",
+      },
     },
     openGraph: {
       title: pageTitle,
@@ -56,6 +65,7 @@ export function constructMetadata({
       title: pageTitle,
       description,
       images: [image],
+      creator: "@dugble",
     },
     robots: {
       index: !noIndex,
