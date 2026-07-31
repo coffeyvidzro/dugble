@@ -17,6 +17,12 @@ export const metadata: Metadata = {
   },
   description:
     "Developer-first A2P email and SMS APIs for African startups and teams.",
+  applicationName: "Dugble",
+  authors: [{ name: "Dugble", url: baseUrl }],
+  creator: "Dugble",
+  publisher: "Dugble",
+  category: "technology",
+  referrer: "origin-when-cross-origin",
   keywords: [
     "A2P messaging",
     "SMS API",
@@ -44,9 +50,24 @@ export const metadata: Metadata = {
     description:
       "Developer-first A2P email and SMS APIs for African startups and teams.",
     images: ["/og"],
+    creator: "@dugble",
   },
   alternates: {
     canonical: "/",
+    languages: {
+      "en-US": "/",
+    },
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 };
 
@@ -63,6 +84,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col bg-background text-foreground antialiased">
         <script
+          id="dugble-schema-graph"
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: serializeDugbleSchemaGraph(),

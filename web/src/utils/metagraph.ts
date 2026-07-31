@@ -1,4 +1,14 @@
-import type { Graph } from "schema-dts";
+import type { Graph, Thing, WithContext } from "schema-dts";
+
+import { baseUrl } from "@/lib/site";
+
+const siteName = "Dugble";
+const defaultDescription =
+  "Developer-first A2P email and SMS APIs for African startups and teams.";
+const organizationId = `${baseUrl}/#organization`;
+const websiteId = `${baseUrl}/#website`;
+const webApplicationId = `${baseUrl}/#web-application`;
+const logoId = `${baseUrl}/#logo`;
 
 export function getDugbleSchemaGraph(): Graph {
   return {
@@ -6,20 +16,24 @@ export function getDugbleSchemaGraph(): Graph {
     "@graph": [
       {
         "@type": "Organization",
-        "@id": "https://dugble.com/#organization",
-        name: "Dugble",
-        url: "https://dugble.com",
+        "@id": organizationId,
+        name: siteName,
+        legalName: "Dugble",
+        url: baseUrl,
         logo: {
           "@type": "ImageObject",
-          "@id": "https://dugble.com/#logo",
-          url: "https://dugble.com/icon.png",
-          caption: "Dugble Logo",
+          "@id": logoId,
+          url: `${baseUrl}/icon.png`,
+          caption: "Dugble logo",
+        },
+        image: {
+          "@id": logoId,
         },
         description:
-          "Developer-first email and SMS API platform built for African startups and teams to send and track transactional messages like OTPs and alerts.",
+          "Developer-first email and SMS API platform built for African startups and teams to send and track transactional messages like OTPs, receipts, and customer alerts.",
         founders: [
-          { "@id": "https://dugble.com/#coffey-vidzro" },
-          { "@id": "https://dugble.com/#prosper-kessie" },
+          { "@id": `${baseUrl}/#coffey-vidzro` },
+          { "@id": `${baseUrl}/#prosper-kessie` },
         ],
         areaServed: [
           {
@@ -34,6 +48,7 @@ export function getDugbleSchemaGraph(): Graph {
           "Developer APIs",
           "Communications Platform as a Service (CPaaS)",
           "Carrier Dynamic Routing",
+          "Webhook Delivery",
         ],
         sameAs: [
           "https://twitter.com/dugble",
@@ -43,13 +58,13 @@ export function getDugbleSchemaGraph(): Graph {
       },
       {
         "@type": "Person",
-        "@id": "https://dugble.com/#coffey-vidzro",
+        "@id": `${baseUrl}/#coffey-vidzro`,
         name: "Coffey Vidzro",
         jobTitle: "Founder",
         worksFor: {
-          "@id": "https://dugble.com/#organization",
+          "@id": organizationId,
         },
-        url: "https://dugble.com/about#coffey-vidzro",
+        url: `${baseUrl}/about#coffey-vidzro`,
         sameAs: [
           "https://linkedin.com/in/coffeyvidzro",
           "https://twitter.com/coffeyvidzro",
@@ -64,13 +79,13 @@ export function getDugbleSchemaGraph(): Graph {
       },
       {
         "@type": "Person",
-        "@id": "https://dugble.com/#prosper-kessie",
+        "@id": `${baseUrl}/#prosper-kessie`,
         name: "Prosper Kessie",
         jobTitle: "Co-Founder",
         worksFor: {
-          "@id": "https://dugble.com/#organization",
+          "@id": organizationId,
         },
-        url: "https://dugble.com/about#prosper-kessie",
+        url: `${baseUrl}/about#prosper-kessie`,
         sameAs: [
           "https://linkedin.com/in/prosperkessie",
           "https://twitter.com/prosperkessie",
@@ -85,25 +100,91 @@ export function getDugbleSchemaGraph(): Graph {
       },
       {
         "@type": "WebSite",
-        "@id": "https://dugble.com/#website",
-        url: "https://dugble.com",
-        name: "Dugble",
-        description: "Developer-first transactional messaging API for Africa.",
+        "@id": websiteId,
+        url: baseUrl,
+        name: siteName,
+        description: defaultDescription,
         publisher: {
-          "@id": "https://dugble.com/#organization",
+          "@id": organizationId,
+        },
+        potentialAction: {
+          "@type": "SearchAction",
+          target: `${baseUrl}/sitemap?query={search_term_string}`,
+          "query-input": "required name=search_term_string",
         },
         inLanguage: "en-US",
+      },
+      {
+        "@type": "WebApplication",
+        "@id": webApplicationId,
+        name: siteName,
+        applicationCategory: "DeveloperApplication",
+        applicationSubCategory: "Communications Platform as a Service",
+        operatingSystem: "Any",
+        url: baseUrl,
+        browserRequirements: "Requires JavaScript and a modern web browser.",
+        description: defaultDescription,
+        publisher: {
+          "@id": organizationId,
+        },
+        offers: {
+          "@type": "Offer",
+          price: "0",
+          priceCurrency: "USD",
+          availability: "https://schema.org/InStock",
+          url: `${baseUrl}/pricing`,
+        },
       },
     ],
   };
 }
 
+export function getHomePageSchemaGraph(): WithContext<Thing> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "@id": `${baseUrl}/#homepage`,
+    url: baseUrl,
+    name: "Reliable A2P Messaging & Developer Infrastructure",
+    description:
+      "Send OTPs, receipts, alerts, and customer notifications with complete delivery transparency, signed webhooks, and developer-first logs.",
+    isPartOf: {
+      "@id": websiteId,
+    },
+    about: {
+      "@id": webApplicationId,
+    },
+    primaryImageOfPage: {
+      "@type": "ImageObject",
+      url: `${baseUrl}/og`,
+      width: "1200",
+      height: "630",
+    },
+    breadcrumb: {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Home",
+          item: baseUrl,
+        },
+      ],
+    },
+    inLanguage: "en-US",
+  };
+}
+
 /**
- * Serializes the schema graph for use in an application/ld+json script.
+ * Serializes schema for use in an application/ld+json script.
  *
  * Escaping `<` prevents serialized data from accidentally terminating
  * the surrounding script element.
  */
+export function serializeSchema(schema: Graph | WithContext<Thing>): string {
+  return JSON.stringify(schema).replace(/</g, "\\u003c");
+}
+
 export function serializeDugbleSchemaGraph(): string {
-  return JSON.stringify(getDugbleSchemaGraph()).replace(/</g, "\\u003c");
+  return serializeSchema(getDugbleSchemaGraph());
 }
