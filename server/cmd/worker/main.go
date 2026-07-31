@@ -15,11 +15,11 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/config"
 	"github.com/coffeyvidzro/dugble/server/internal/database"
 	domainreconciliation "github.com/coffeyvidzro/dugble/server/internal/delivery/domain"
-	emaildelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/email"
 	emailfeedback "github.com/coffeyvidzro/dugble/server/internal/delivery/email/feedback"
+	emaildelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/email/send"
 	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
 	webhookdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/webhooks"
-	emailintegration "github.com/coffeyvidzro/dugble/server/internal/integration/email"
+	awsses "github.com/coffeyvidzro/dugble/server/internal/integration/aws/ses"
 	smsintegration "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/arkesel"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/mnotify"
@@ -71,7 +71,7 @@ func run() error {
 	}
 
 	processedEvents := inbox.NewRepository(db)
-	emailSender, err := emailintegration.NewSESSender(
+	emailSender, err := awsses.NewSESSender(
 		startupCtx,
 		cfg.AWS.Region,
 		cfg.AWS.FromEmail,
