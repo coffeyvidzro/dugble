@@ -36,6 +36,12 @@ type Attachment struct {
 
 // Message is the canonical message accepted by email integrations.
 type Message struct {
+	// MessageID and AttemptID are provider-neutral correlation identifiers. An
+	// integration may attach them as provider metadata so asynchronous feedback
+	// can reconcile a submission whose synchronous result could not be stored.
+	MessageID string
+	AttemptID string
+
 	// Provider and Region select the immutable delivery route resolved when the
 	// Email API accepted the message. Empty values use the sender's defaults.
 	Provider    string
@@ -96,9 +102,10 @@ type DomainProvider interface {
 
 // SendError exposes provider-neutral failure metadata to delivery workers.
 type SendError struct {
-	Code      string
-	Retryable bool
-	Err       error
+	Code              string
+	Retryable         bool
+	SubmissionUnknown bool
+	Err               error
 }
 
 func (e *SendError) Error() string {
@@ -123,19 +130,43 @@ func NewSendError(code string, retryable bool, err error) error {
 	}
 }
 
-func IsRetryable(err error) bool {
-	if err == nil || errors.Is(err, context.Canceled) {
+// NewSubmissionUnknownError reports that the provider may have accepted the
+// message, but the caller did not receive a definitive submission result.
+func NewSubmissionUnknownError(code string, err error) error {
+	return &SendError{
+		Code:              normalizeCode(code),
+		SubmissionUnknown: true,
+		Err:               err,
+	}
+}
+
+// IsSubmissionUnknown reports whether retrying could duplicate a provider
+// submission. Bare cancellations, deadlines, and network errors are treated
+// conservatively because they may happen after the request crossed the network.
+func IsSubmissionUnknown(err error) bool {
+	if err == nil {
 		return false
 	}
-	if errors.Is(err, context.DeadlineExceeded) {
+	var sendError *SendError
+	if errors.As(err, &sendError) {
+		return sendError.SubmissionUnknown
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return true
+	}
+	var networkError net.Error
+	return errors.As(err, &networkError)
+}
+
+func IsRetryable(err error) bool {
+	if err == nil || IsSubmissionUnknown(err) {
+		return false
 	}
 	var sendError *SendError
 	if errors.As(err, &sendError) {
 		return sendError.Retryable
 	}
-	var networkError net.Error
-	return errors.As(err, &networkError)
+	return false
 }
 
 func FailureCode(err error) string {
