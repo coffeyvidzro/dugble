@@ -5,7 +5,7 @@ export const metadata = constructMetadata({
   title: "Sign Up",
   description:
     "Create your Dugble account to start sending reliable OTPs, alerts, and customer notifications.",
-  path: "/signup",
+  path: "/sign-up",
   preset: "auth",
 });
 
