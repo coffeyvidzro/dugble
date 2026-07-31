@@ -39,39 +39,57 @@ type AuthenticationChallenge struct {
 	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
-type EmailMessage struct {
+type EmailDeliveryAttempt struct {
 	ID                uuid.UUID          `db:"id" json:"id"`
+	EmailMessageID    uuid.UUID          `db:"email_message_id" json:"email_message_id"`
 	TeamID            uuid.UUID          `db:"team_id" json:"team_id"`
-	SenderDomainID    *uuid.UUID         `db:"sender_domain_id" json:"sender_domain_id"`
-	DeliveryProvider  string             `db:"delivery_provider" json:"delivery_provider"`
-	ProviderRegion    string             `db:"provider_region" json:"provider_region"`
-	MessageType       string             `db:"message_type" json:"message_type"`
-	FromEmail         string             `db:"from_email" json:"from_email"`
-	FromName          *string            `db:"from_name" json:"from_name"`
-	ReplyToEmail      *string            `db:"reply_to_email" json:"reply_to_email"`
-	ToEmail           string             `db:"to_email" json:"to_email"`
-	ToName            *string            `db:"to_name" json:"to_name"`
-	Subject           string             `db:"subject" json:"subject"`
-	HtmlBody          *string            `db:"html_body" json:"html_body"`
-	TextBody          *string            `db:"text_body" json:"text_body"`
+	AttemptNumber     int32              `db:"attempt_number" json:"attempt_number"`
 	Status            string             `db:"status" json:"status"`
-	Provider          *string            `db:"provider" json:"provider"`
+	Provider          string             `db:"provider" json:"provider"`
 	ProviderMessageID *string            `db:"provider_message_id" json:"provider_message_id"`
 	ErrorCode         *string            `db:"error_code" json:"error_code"`
 	ErrorMessage      *string            `db:"error_message" json:"error_message"`
-	Metadata          []byte             `db:"metadata" json:"metadata"`
-	Recipients        []byte             `db:"recipients" json:"recipients"`
-	Headers           []byte             `db:"headers" json:"headers"`
-	Attachments       []byte             `db:"attachments" json:"attachments"`
-	Tags              []byte             `db:"tags" json:"tags"`
-	ScheduledAt       pgtype.Timestamptz `db:"scheduled_at" json:"scheduled_at"`
-	QueuedAt          pgtype.Timestamptz `db:"queued_at" json:"queued_at"`
-	ProcessingAt      pgtype.Timestamptz `db:"processing_at" json:"processing_at"`
-	SubmittedAt       pgtype.Timestamptz `db:"submitted_at" json:"submitted_at"`
-	DeliveredAt       pgtype.Timestamptz `db:"delivered_at" json:"delivered_at"`
-	FailedAt          pgtype.Timestamptz `db:"failed_at" json:"failed_at"`
+	ClaimedAt         pgtype.Timestamptz `db:"claimed_at" json:"claimed_at"`
+	RequestStartedAt  pgtype.Timestamptz `db:"request_started_at" json:"request_started_at"`
+	CompletedAt       pgtype.Timestamptz `db:"completed_at" json:"completed_at"`
 	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type EmailMessage struct {
+	ID                       uuid.UUID          `db:"id" json:"id"`
+	TeamID                   uuid.UUID          `db:"team_id" json:"team_id"`
+	SenderDomainID           *uuid.UUID         `db:"sender_domain_id" json:"sender_domain_id"`
+	DeliveryProvider         string             `db:"delivery_provider" json:"delivery_provider"`
+	ProviderRegion           string             `db:"provider_region" json:"provider_region"`
+	MessageType              string             `db:"message_type" json:"message_type"`
+	FromEmail                string             `db:"from_email" json:"from_email"`
+	FromName                 *string            `db:"from_name" json:"from_name"`
+	ReplyToEmail             *string            `db:"reply_to_email" json:"reply_to_email"`
+	ToEmail                  string             `db:"to_email" json:"to_email"`
+	ToName                   *string            `db:"to_name" json:"to_name"`
+	Subject                  string             `db:"subject" json:"subject"`
+	HtmlBody                 *string            `db:"html_body" json:"html_body"`
+	TextBody                 *string            `db:"text_body" json:"text_body"`
+	Status                   string             `db:"status" json:"status"`
+	Provider                 *string            `db:"provider" json:"provider"`
+	ProviderMessageID        *string            `db:"provider_message_id" json:"provider_message_id"`
+	ErrorCode                *string            `db:"error_code" json:"error_code"`
+	ErrorMessage             *string            `db:"error_message" json:"error_message"`
+	Metadata                 []byte             `db:"metadata" json:"metadata"`
+	Recipients               []byte             `db:"recipients" json:"recipients"`
+	Headers                  []byte             `db:"headers" json:"headers"`
+	Attachments              []byte             `db:"attachments" json:"attachments"`
+	Tags                     []byte             `db:"tags" json:"tags"`
+	ScheduledAt              pgtype.Timestamptz `db:"scheduled_at" json:"scheduled_at"`
+	QueuedAt                 pgtype.Timestamptz `db:"queued_at" json:"queued_at"`
+	ProcessingAt             pgtype.Timestamptz `db:"processing_at" json:"processing_at"`
+	SubmittedAt              pgtype.Timestamptz `db:"submitted_at" json:"submitted_at"`
+	DeliveredAt              pgtype.Timestamptz `db:"delivered_at" json:"delivered_at"`
+	FailedAt                 pgtype.Timestamptz `db:"failed_at" json:"failed_at"`
+	CreatedAt                pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt                pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	CurrentDeliveryAttemptID *uuid.UUID         `db:"current_delivery_attempt_id" json:"current_delivery_attempt_id"`
 }
 
 type EmailProviderEvent struct {
@@ -88,6 +106,22 @@ type EmailProviderEvent struct {
 	ProviderPayload        []byte             `db:"provider_payload" json:"provider_payload"`
 	ProcessedAt            pgtype.Timestamptz `db:"processed_at" json:"processed_at"`
 	CreatedAt              pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
+type EmailRecipient struct {
+	ID              uuid.UUID          `db:"id" json:"id"`
+	EmailMessageID  uuid.UUID          `db:"email_message_id" json:"email_message_id"`
+	RecipientEmail  string             `db:"recipient_email" json:"recipient_email"`
+	RecipientType   string             `db:"recipient_type" json:"recipient_type"`
+	Status          string             `db:"status" json:"status"`
+	LastEventType   *string            `db:"last_event_type" json:"last_event_type"`
+	LastEventAt     pgtype.Timestamptz `db:"last_event_at" json:"last_event_at"`
+	DeliveredAt     pgtype.Timestamptz `db:"delivered_at" json:"delivered_at"`
+	FailedAt        pgtype.Timestamptz `db:"failed_at" json:"failed_at"`
+	ErrorCode       *string            `db:"error_code" json:"error_code"`
+	ErrorMessage    *string            `db:"error_message" json:"error_message"`
+	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
 type EmailRecipientEvent struct {
@@ -436,54 +470,4 @@ type WebhookEvent struct {
 	Payload    []byte             `db:"payload" json:"payload"`
 	OccurredAt pgtype.Timestamptz `db:"occurred_at" json:"occurred_at"`
 	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
-}
-
-type WorkloadAccessToken struct {
-	ID           uuid.UUID          `db:"id" json:"id"`
-	WorkloadID   uuid.UUID          `db:"workload_id" json:"workload_id"`
-	CredentialID *uuid.UUID         `db:"credential_id" json:"credential_id"`
-	TokenHash    string             `db:"token_hash" json:"token_hash"`
-	ExpiresAt    pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
-	LastUsedAt   pgtype.Timestamptz `db:"last_used_at" json:"last_used_at"`
-	RevokedAt    pgtype.Timestamptz `db:"revoked_at" json:"revoked_at"`
-	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	FederationID *uuid.UUID         `db:"federation_id" json:"federation_id"`
-}
-
-type WorkloadCredential struct {
-	ID           uuid.UUID          `db:"id" json:"id"`
-	WorkloadID   uuid.UUID          `db:"workload_id" json:"workload_id"`
-	SecretHash   string             `db:"secret_hash" json:"secret_hash"`
-	SecretPrefix string             `db:"secret_prefix" json:"secret_prefix"`
-	ExpiresAt    pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
-	LastUsedAt   pgtype.Timestamptz `db:"last_used_at" json:"last_used_at"`
-	RevokedAt    pgtype.Timestamptz `db:"revoked_at" json:"revoked_at"`
-	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
-}
-
-type WorkloadIdentity struct {
-	ID          uuid.UUID          `db:"id" json:"id"`
-	TeamID      uuid.UUID          `db:"team_id" json:"team_id"`
-	Name        string             `db:"name" json:"name"`
-	Description string             `db:"description" json:"description"`
-	Status      string             `db:"status" json:"status"`
-	Permissions []string           `db:"permissions" json:"permissions"`
-	CreatedBy   *uuid.UUID         `db:"created_by" json:"created_by"`
-	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	DisabledAt  pgtype.Timestamptz `db:"disabled_at" json:"disabled_at"`
-}
-
-type WorkloadOidcFederation struct {
-	ID             uuid.UUID          `db:"id" json:"id"`
-	WorkloadID     uuid.UUID          `db:"workload_id" json:"workload_id"`
-	Name           string             `db:"name" json:"name"`
-	IssuerUrl      string             `db:"issuer_url" json:"issuer_url"`
-	Audiences      []string           `db:"audiences" json:"audiences"`
-	Subject        string             `db:"subject" json:"subject"`
-	RequiredClaims []byte             `db:"required_claims" json:"required_claims"`
-	Enabled        bool               `db:"enabled" json:"enabled"`
-	CreatedBy      *uuid.UUID         `db:"created_by" json:"created_by"`
-	CreatedAt      pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt      pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
