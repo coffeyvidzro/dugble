@@ -24,6 +24,8 @@ type BlogPostingSchemaOptions = PageSchemaOptions & {
   category?: string;
   keywords?: string[];
   image?: string;
+  authorName?: string;
+  authorUrl?: string;
 };
 
 function absoluteUrl(path = "/"): string {
@@ -43,7 +45,9 @@ export function getDugbleSchemaGraph(): Graph {
         logo: {
           "@type": "ImageObject",
           "@id": logoId,
-          url: `${baseUrl}/icon.png`,
+          url: `${baseUrl}/dugble-logo.svg`,
+          width: 512,
+          height: 512,
           caption: "Dugble logo",
         },
         image: {
@@ -51,16 +55,22 @@ export function getDugbleSchemaGraph(): Graph {
         },
         description:
           "Developer-first email and SMS API platform built for African startups and teams to send and track transactional messages like OTPs, receipts, and customer alerts.",
-        founders: [
-          { "@id": `${baseUrl}/#coffey-vidzro` },
-          { "@id": `${baseUrl}/#prosper-kessie` },
-        ],
-        areaServed: [
+        founder: [
           {
-            "@type": "Continent",
-            name: "Africa",
+            "@type": "Person",
+            name: "Coffey Vidzro",
+            url: `${baseUrl}/about#coffey-vidzro`,
+          },
+          {
+            "@type": "Person",
+            name: "Prosper Kessie",
+            url: `${baseUrl}/about#prosper-kessie`,
           },
         ],
+        areaServed: {
+          "@type": "Continent",
+          name: "Africa",
+        },
         knowsAbout: [
           "Transactional SMS",
           "Transactional Email",
@@ -77,48 +87,6 @@ export function getDugbleSchemaGraph(): Graph {
         ],
       },
       {
-        "@type": "Person",
-        "@id": `${baseUrl}/#coffey-vidzro`,
-        name: "Coffey Vidzro",
-        jobTitle: "Founder",
-        worksFor: {
-          "@id": organizationId,
-        },
-        url: `${baseUrl}/about#coffey-vidzro`,
-        sameAs: [
-          "https://linkedin.com/in/coffeyvidzro",
-          "https://twitter.com/coffeyvidzro",
-          "https://github.com/coffeyvidzro",
-        ],
-        knowsAbout: [
-          "Backend Architecture",
-          "Telecommunications Infrastructure",
-          "Messaging Gateways",
-          "Go (Programming Language)",
-        ],
-      },
-      {
-        "@type": "Person",
-        "@id": `${baseUrl}/#prosper-kessie`,
-        name: "Prosper Kessie",
-        jobTitle: "Co-Founder",
-        worksFor: {
-          "@id": organizationId,
-        },
-        url: `${baseUrl}/about#prosper-kessie`,
-        sameAs: [
-          "https://linkedin.com/in/prosperkessie",
-          "https://twitter.com/prosperkessie",
-          "https://github.com/prosperkessie",
-        ],
-        knowsAbout: [
-          "Developer Experience (DX)",
-          "REST API & Webhooks Architecture",
-          "Software SDK Engineering",
-          "Product Design",
-        ],
-      },
-      {
         "@type": "WebSite",
         "@id": websiteId,
         url: baseUrl,
@@ -126,10 +94,6 @@ export function getDugbleSchemaGraph(): Graph {
         description: defaultDescription,
         publisher: {
           "@id": organizationId,
-        },
-        potentialAction: {
-          "@type": "SearchAction",
-          target: `${baseUrl}/sitemap?query={search_term_string}`,
         },
         inLanguage: "en-US",
       },
@@ -216,8 +180,8 @@ export function getWebPageSchemaGraph({
     primaryImageOfPage: {
       "@type": "ImageObject",
       url: absoluteUrl("/og"),
-      width: "1200",
-      height: "630",
+      width: 1200,
+      height: 630,
     },
     breadcrumb: {
       "@type": "BreadcrumbList",
@@ -251,46 +215,48 @@ export function getBlogIndexSchemaGraph({
   };
 }
 
-export function getPricingPageSchemaGraph(): WithContext<Thing> {
+export function getPricingPageSchemaGraph(): Graph {
   const path = "/pricing";
   const url = absoluteUrl(path);
+  const plans = [
+    { name: "Free", price: "0", included: "1,000 emails per month" },
+    { name: "Developer", price: "29", included: "50,000 emails per month" },
+    { name: "Pro", price: "59", included: "100,000 emails per month" },
+    { name: "Scale", price: "349", included: "500,000 emails per month" },
+  ];
 
   return {
     "@context": "https://schema.org",
-    "@type": "OfferCatalog",
-    "@id": `${url}#pricing`,
-    name: "Dugble Pricing",
-    description:
-      "Usage-based pricing for Dugble transactional email and A2P SMS messaging.",
-    url,
-    itemListElement: [
+    "@graph": [
+      getWebPageSchemaGraph({
+        title: "Pricing & Plans",
+        description:
+          "Transparent, usage-based pricing for transactional email and A2P SMS messaging.",
+        path,
+      }),
       {
-        "@type": "Offer",
-        name: "Transactional Email API",
-        category: "Email API",
-        priceCurrency: "USD",
-        availability: "https://schema.org/InStock",
-        itemOffered: {
-          "@type": "Service",
-          name: "Dugble Email API",
-          provider: {
-            "@id": organizationId,
+        "@type": "OfferCatalog",
+        "@id": `${url}#pricing`,
+        name: "Dugble Pricing",
+        description:
+          "Usage-based pricing for Dugble transactional email and A2P SMS messaging.",
+        url,
+        itemListElement: plans.map((plan) => ({
+          "@type": "Offer",
+          name: `${plan.name} Email API plan`,
+          description: plan.included,
+          price: plan.price,
+          priceCurrency: "USD",
+          availability: "https://schema.org/InStock",
+          url,
+          itemOffered: {
+            "@type": "Service",
+            name: "Dugble Transactional Email API",
+            provider: {
+              "@id": organizationId,
+            },
           },
-        },
-      },
-      {
-        "@type": "Offer",
-        name: "A2P SMS API",
-        category: "SMS API",
-        priceCurrency: "USD",
-        availability: "https://schema.org/InStock",
-        itemOffered: {
-          "@type": "Service",
-          name: "Dugble SMS API",
-          provider: {
-            "@id": organizationId,
-          },
-        },
+        })),
       },
     ],
   };
@@ -305,31 +271,65 @@ export function getBlogPostingSchemaGraph({
   category,
   keywords,
   image,
-}: BlogPostingSchemaOptions): WithContext<Thing> {
+  authorName = "Dugble",
+  authorUrl = baseUrl,
+}: BlogPostingSchemaOptions): Graph {
   const url = absoluteUrl(path);
+  const imageUrl = absoluteUrl(image ?? `/og?title=${encodeURIComponent(title)}`);
+  const webpageId = `${url}#webpage`;
 
   return {
     "@context": "https://schema.org",
-    "@type": "BlogPosting",
-    "@id": `${url}#blogposting`,
-    headline: title,
-    description,
-    url,
-    datePublished: publishedAt,
-    dateModified: modifiedAt ?? publishedAt,
-    image: absoluteUrl(image ?? `/og?title=${encodeURIComponent(title)}`),
-    articleSection: category,
-    keywords,
-    author: {
-      "@id": organizationId,
-    },
-    publisher: {
-      "@id": organizationId,
-    },
-    mainEntityOfPage: {
-      "@id": `${url}#webpage`,
-    },
-    inLanguage: "en-US",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": webpageId,
+        url,
+        name: title,
+        description,
+        isPartOf: {
+          "@id": websiteId,
+        },
+        breadcrumb: {
+          "@type": "BreadcrumbList",
+          itemListElement: getBreadcrumbItems(title, path ?? "/blog", [
+            { name: "Blog", path: "/blog" },
+            { name: title, path: path ?? "/blog" },
+          ]),
+        },
+        primaryImageOfPage: {
+          "@type": "ImageObject",
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+        },
+        inLanguage: "en-US",
+      },
+      {
+        "@type": "BlogPosting",
+        "@id": `${url}#blogposting`,
+        headline: title,
+        description,
+        url,
+        datePublished: publishedAt,
+        dateModified: modifiedAt ?? publishedAt,
+        image: imageUrl,
+        articleSection: category,
+        keywords,
+        author: {
+          "@type": authorName === "Dugble" ? "Organization" : "Person",
+          name: authorName,
+          url: authorUrl,
+        },
+        publisher: {
+          "@id": organizationId,
+        },
+        mainEntityOfPage: {
+          "@id": webpageId,
+        },
+        inLanguage: "en-US",
+      },
+    ],
   };
 }
 
