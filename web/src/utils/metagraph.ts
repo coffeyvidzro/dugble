@@ -55,10 +55,7 @@ export function getDugbleSchemaGraph(): Graph {
         image: { "@id": logoId },
         description:
           "Developer-first email and SMS API platform built for African startups and teams to send and track transactional messages like OTPs, receipts, and customer alerts.",
-        founder: [
-          { "@id": coffeyVidzroId },
-          { "@id": prosperKessieId },
-        ],
+        founder: [{ "@id": coffeyVidzroId }, { "@id": prosperKessieId }],
         areaServed: { "@type": "Continent", name: "Africa" },
         knowsAbout: [
           "Transactional SMS",
@@ -287,7 +284,9 @@ export function getBlogPostingSchemaGraph({
   authorUrl = baseUrl,
 }: BlogPostingSchemaOptions): Graph {
   const url = absoluteUrl(path);
-  const imageUrl = absoluteUrl(image ?? `/og?title=${encodeURIComponent(title)}`);
+  const imageUrl = absoluteUrl(
+    image ?? `/og?title=${encodeURIComponent(title)}`,
+  );
   const webpageId = `${url}#webpage`;
 
   return {
