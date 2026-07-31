@@ -1,24 +1,18 @@
 import { CheckCircle2, LifeBuoy } from "lucide-react";
-import type { Metadata } from "next";
 import Link from "next/link";
 import { Cta } from "@/components/marketing/cta";
 import { QuickstartHero } from "@/components/marketing/quickstart/quickstart-hero";
 import { QuickstartSteps } from "@/components/marketing/quickstart/quickstart-steps";
 import { Reveal } from "@/components/marketing/reveal";
 import { Separator } from "@/components/ui/separator";
+import { constructMetadata } from "@/utils/metadata";
 
-export const metadata: Metadata = {
+export const metadata = constructMetadata({
   title: "Quickstart Guide",
   description:
     "Get started with Dugble in under 5 minutes. Learn how to create a workspace, generate an API key, send a test SMS, and configure webhooks.",
-  openGraph: {
-    title: "Quickstart Guide",
-    description:
-      "Get started with Dugble in under 5 minutes. Learn how to create a workspace, generate an API key, send a test SMS, and configure webhooks.",
-    url: "/quickstart",
-    type: "website",
-  },
-};
+  path: "/quickstart",
+});
 
 const successChecklist = [
   "message_id returned on accept",

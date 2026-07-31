@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import {
   A2pHero,
   ChannelComparison,
@@ -8,19 +7,14 @@ import {
 } from "@/components/marketing/a2p";
 import { Cta } from "@/components/marketing/cta";
 import { Separator } from "@/components/ui/separator";
+import { constructMetadata } from "@/utils/metadata";
 
-export const metadata: Metadata = {
+export const metadata = constructMetadata({
   title: "A2P Messaging API",
   description:
     "Send SMS and transactional email through a unified, developer-first A2P messaging API with real-time delivery tracking and signed webhooks.",
-  openGraph: {
-    title: "A2P Messaging API",
-    description:
-      "Send SMS and transactional email through a unified, developer-first A2P messaging API with real-time delivery tracking and signed webhooks.",
-    url: "/features/a2p-api",
-    type: "website",
-  },
-};
+  path: "/features/a2p-api",
+});
 
 export default function Page() {
   return (
