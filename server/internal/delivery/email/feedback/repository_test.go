@@ -27,9 +27,15 @@ func TestEmailStatusTransition(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			transition, apply, err := emailStatusTransition(tt.current, tt.eventType, occurredAt)
-			if (err != nil) != tt.wantError { t.Fatalf("emailStatusTransition() error = %v, wantError %v", err, tt.wantError) }
-			if apply != tt.wantApply { t.Fatalf("emailStatusTransition() apply = %v, want %v", apply, tt.wantApply) }
-			if transition.status != tt.wantStatus { t.Fatalf("emailStatusTransition() status = %q, want %q", transition.status, tt.wantStatus) }
+			if (err != nil) != tt.wantError {
+				t.Fatalf("emailStatusTransition() error = %v, wantError %v", err, tt.wantError)
+			}
+			if apply != tt.wantApply {
+				t.Fatalf("emailStatusTransition() apply = %v, want %v", apply, tt.wantApply)
+			}
+			if transition.status != tt.wantStatus {
+				t.Fatalf("emailStatusTransition() status = %q, want %q", transition.status, tt.wantStatus)
+			}
 		})
 	}
 }
