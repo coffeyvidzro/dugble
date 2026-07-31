@@ -11,19 +11,19 @@ import (
 )
 
 type recordingDeliveryRepository struct {
-	message            DeliveryMessage
-	claimErr           error
-	requestStarted     uuid.UUID
-	submitted          platformemail.Result
-	markSubmittedErr   error
-	retryableErr       error
-	unknownCode        string
-	unknownErr         error
-	failedCode         string
-	failedErr          error
-	exhaustedErr       error
-	markUnknownErr     error
-	markFailedErr      error
+	message          DeliveryMessage
+	claimErr         error
+	requestStarted   uuid.UUID
+	submitted        platformemail.Result
+	markSubmittedErr error
+	retryableErr     error
+	unknownCode      string
+	unknownErr       error
+	failedCode       string
+	failedErr        error
+	exhaustedErr     error
+	markUnknownErr   error
+	markFailedErr    error
 }
 
 func (r *recordingDeliveryRepository) Claim(context.Context, uuid.UUID, uuid.UUID) (DeliveryMessage, error) {
@@ -77,16 +77,16 @@ func (s *stubSender) Send(_ context.Context, message platformemail.Message) (pla
 
 func deliveryTestMessage() DeliveryMessage {
 	return DeliveryMessage{
-		ID:          uuid.New(),
-		AttemptID:   uuid.New(),
-		Provider:    "aws_ses",
-		Region:      "eu-west-1",
-		FromEmail:   "sender@example.com",
-		FromName:    "Sender",
-		To:          []platformemail.Address{{Email: "recipient@example.com"}},
-		Subject:     "Hello",
-		Text:        "Body",
-		Headers:     map[string]string{"X-Test": "true"},
+		ID:        uuid.New(),
+		AttemptID: uuid.New(),
+		Provider:  "aws_ses",
+		Region:    "eu-west-1",
+		FromEmail: "sender@example.com",
+		FromName:  "Sender",
+		To:        []platformemail.Address{{Email: "recipient@example.com"}},
+		Subject:   "Hello",
+		Text:      "Body",
+		Headers:   map[string]string{"X-Test": "true"},
 	}
 }
 
