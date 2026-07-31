@@ -103,7 +103,7 @@ func (s *Service) Begin(ctx context.Context, teamID uuid.UUID) (string, error) {
 	if e != nil {
 		return "", app.NewInternal("Unable to discover OIDC provider", e)
 	}
-	secret, e := s.cipher.Decrypt(r.ClientSecretCiphertext)
+	secret, e := s.decryptConnectionSecret(ctx, r)
 	if e != nil {
 		return "", app.NewInternal("Unable to decrypt OIDC client secret", e)
 	}
@@ -148,7 +148,7 @@ func (s *Service) Complete(ctx context.Context, state, code string, userAgent, i
 	if e != nil {
 		return LoginResult{}, app.NewInternal("Unable to discover OIDC provider", e)
 	}
-	secret, e := s.cipher.Decrypt(r.ClientSecretCiphertext)
+	secret, e := s.decryptConnectionSecret(ctx, r)
 	if e != nil {
 		return LoginResult{}, app.NewInternal("Unable to decrypt OIDC client secret", e)
 	}
@@ -218,4 +218,15 @@ func domainAllowed(email string, allowed []string) bool {
 }
 func fromRow(r db.OidcConnection) Connection {
 	return Connection{ID: r.ID.String(), TeamID: r.TeamID.String(), Name: r.Name, IssuerURL: r.IssuerUrl, ClientID: r.ClientID, AllowedDomains: r.AllowedDomains, Enabled: r.Enabled, CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time}
+}
+
+func (s *Service) decryptConnectionSecret(ctx context.Context, connection db.OidcConnection) ([]byte, error) {
+	plain, replacement, rotated, err := s.cipher.DecryptAndRotate(connection.ClientSecretCiphertext)
+	if err != nil {
+		return nil, err
+	}
+	if rotated {
+		_ = s.repo.RotateSecretCiphertext(ctx, connection.ID, connection.ClientSecretCiphertext, replacement)
+	}
+	return plain, nil
 }

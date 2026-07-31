@@ -53,12 +53,12 @@ func (r *Repository) TouchCredential(ctx context.Context, id uuid.UUID) error {
 	return r.queries.TouchWorkloadCredential(ctx, dbsqlc.TouchWorkloadCredentialParams{ID: id})
 }
 func (r *Repository) CreateAccessToken(ctx context.Context, workloadID, credentialID uuid.UUID, hash string, expires time.Time) error {
-	_, err := r.queries.CreateWorkloadAccessToken(ctx, dbsqlc.CreateWorkloadAccessTokenParams{WorkloadID: workloadID, CredentialID: credentialID, TokenHash: hash, ExpiresAt: pgtype.Timestamptz{Time: expires, Valid: true}})
+	_, err := r.queries.CreateWorkloadAccessToken(ctx, dbsqlc.CreateWorkloadAccessTokenParams{WorkloadID: workloadID, CredentialID: &credentialID, TokenHash: hash, ExpiresAt: pgtype.Timestamptz{Time: expires, Valid: true}})
 	return err
 }
 func (r *Repository) GetAccessToken(ctx context.Context, hash string) (TokenPrincipal, error) {
 	row, err := r.queries.GetActiveWorkloadAccessTokenByHash(ctx, dbsqlc.GetActiveWorkloadAccessTokenByHashParams{TokenHash: hash})
-	return TokenPrincipal{TokenID: row.TokenID.String(), CredentialID: row.CredentialID.String(), WorkloadID: row.WorkloadID.String(), TeamID: row.TeamID.String(), Name: row.Name, Permissions: row.Permissions, ExpiresAt: row.ExpiresAt.Time}, err
+	return TokenPrincipal{TokenID: row.TokenID.String(), CredentialID: optionalID(row.CredentialID), WorkloadID: row.WorkloadID.String(), TeamID: row.TeamID.String(), Name: row.Name, Permissions: row.Permissions, ExpiresAt: row.ExpiresAt.Time}, err
 }
 func (r *Repository) TouchAccessToken(ctx context.Context, id uuid.UUID) error {
 	return r.queries.TouchWorkloadAccessToken(ctx, dbsqlc.TouchWorkloadAccessTokenParams{ID: id})
@@ -80,4 +80,29 @@ func timeValue(value pgtype.Timestamptz) *time.Time {
 	}
 	v := value.Time
 	return &v
+}
+
+func (r *Repository) CreateOIDCFederation(ctx context.Context, workloadID, teamID, actorID uuid.UUID, request OIDCFederationRequest, claims []byte) (dbsqlc.WorkloadOidcFederation, error) {
+	enabled := request.Enabled == nil || *request.Enabled
+	return r.queries.CreateWorkloadOIDCFederation(ctx, dbsqlc.CreateWorkloadOIDCFederationParams{WorkloadID: workloadID, TeamID: teamID, Name: request.Name, IssuerUrl: request.IssuerURL, Audiences: request.Audiences, Subject: request.Subject, RequiredClaims: claims, Enabled: enabled, CreatedBy: &actorID})
+}
+func (r *Repository) ListOIDCFederations(ctx context.Context, workloadID, teamID uuid.UUID) ([]dbsqlc.WorkloadOidcFederation, error) {
+	return r.queries.ListWorkloadOIDCFederations(ctx, dbsqlc.ListWorkloadOIDCFederationsParams{WorkloadID: workloadID, TeamID: teamID})
+}
+func (r *Repository) DeleteOIDCFederation(ctx context.Context, id, workloadID, teamID uuid.UUID) error {
+	return r.queries.DeleteWorkloadOIDCFederation(ctx, dbsqlc.DeleteWorkloadOIDCFederationParams{ID: id, WorkloadID: workloadID, TeamID: teamID})
+}
+func (r *Repository) GetOIDCFederation(ctx context.Context, id uuid.UUID) (dbsqlc.GetActiveWorkloadOIDCFederationRow, error) {
+	return r.queries.GetActiveWorkloadOIDCFederation(ctx, dbsqlc.GetActiveWorkloadOIDCFederationParams{ID: id})
+}
+func (r *Repository) CreateFederatedAccessToken(ctx context.Context, workloadID, federationID uuid.UUID, hash string, expires time.Time) error {
+	_, err := r.queries.CreateFederatedWorkloadAccessToken(ctx, dbsqlc.CreateFederatedWorkloadAccessTokenParams{WorkloadID: workloadID, FederationID: &federationID, TokenHash: hash, ExpiresAt: pgtype.Timestamptz{Time: expires, Valid: true}})
+	return err
+}
+
+func optionalID(id *uuid.UUID) string {
+	if id == nil {
+		return ""
+	}
+	return id.String()
 }

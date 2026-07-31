@@ -14,6 +14,7 @@ import (
 	emailmodule "github.com/coffeyvidzro/dugble/server/internal/modules/email"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/identitypolicy"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/mfa"
+	"github.com/coffeyvidzro/dugble/server/internal/modules/scim"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/senderid"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
 	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
@@ -70,10 +71,11 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	audit.SetSink(auditRepository)
 	sessionRepository := session.NewRepository(deps.DB)
 	authRepository := auth.NewRepository(deps.DB)
-	mfaCipher, err := authnz.NewSecretCipher(cfg.MFAEncryptionKey)
+	mfaCipher, err := authnz.NewSecretCipherKeyring(cfg.EncryptionKeys, cfg.MFAEncryptionKey)
 	if err != nil {
 		return nil, err
 	}
+	scimService := scim.NewService(scim.NewRepository(deps.DB))
 	ssoRepository := sso.NewRepository(deps.DB)
 	ssoService := sso.NewService(ssoRepository, sessionRepository, mfaCipher, cfg.BackendURL)
 	mfaService := mfa.NewService(mfa.NewRepository(deps.DB), mfaCipher, "Dugble")
@@ -103,9 +105,10 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		return middlewares.Tenant(middlewares.TenantConfig{Memberships: teamRepository, Policies: identityPolicyRepository, Required: permission})
 	}
 	tenantAccess := func(permission tenant.Permission) echo.MiddlewareFunc {
-		return middlewares.TenantAccess(middlewares.TenantAccessConfig{Sessions: sessionRepository, Users: authRepository, Memberships: teamRepository, Policies: identityPolicyRepository, Tokens: teamTokenRepository, Workloads: workloadRepository, CSRF: csrfConfig, Required: permission})
+		return middlewares.TenantAccess(middlewares.TenantAccessConfig{Sessions: sessionRepository, Users: authRepository, Memberships: teamRepository, Tokens: teamTokenRepository, Workloads: workloadRepository, CSRF: csrfConfig, Required: permission})
 	}
 	team.RegisterRoutes(router, team.NewHandler(teamService), authMiddleware, csrfMiddleware, tenantMiddleware)
+	scim.RegisterRoutes(router, scim.NewHandler(scimService), authMiddleware, csrfMiddleware, tenantMiddleware)
 	sso.RegisterRoutes(router, sso.NewHandler(ssoService, cfg.IsDevelopment(), cfg.CookieDomain), authMiddleware, csrfMiddleware, tenantMiddleware)
 	auditevent.RegisterRoutes(router, auditevent.NewHandler(auditevent.NewService(auditRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	identitypolicy.RegisterRoutes(router, identitypolicy.NewHandler(identitypolicy.NewService(identityPolicyRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)

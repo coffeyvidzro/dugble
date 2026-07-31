@@ -16,7 +16,8 @@ func TestTenantOwnedQueriesDeclareTenantScope(t *testing.T) {
 	// immutable parent records, or worker ownership rather than caller input.
 	exemptions := map[string]map[string]struct{}{
 		"audit_events.sql": querySet("CreateAuditEvent"),
-		"oidc.sql":         querySet("GetOIDCConnection", "CreateOIDCLoginState", "ConsumeOIDCLoginState"),
+		"scim.sql":         querySet("GetActiveSCIMTokenByHash", "TouchSCIMToken"),
+		"oidc.sql":         querySet("GetOIDCConnection", "CreateOIDCLoginState", "ConsumeOIDCLoginState", "ListOIDCSecretsForRotation", "RotateOIDCConnectionSecretCiphertext"),
 		"sender_domains.sql": querySet(
 			"ClaimSenderDomainsForReconciliation", "CompleteSenderDomainReconciliation",
 			"CompleteSenderDomainHealthCheck", "RecordSenderDomainHealthFailure",
@@ -36,10 +37,11 @@ func TestTenantOwnedQueriesDeclareTenantScope(t *testing.T) {
 		"workloads.sql": querySet(
 			"GetActiveWorkloadCredentialByHash", "TouchWorkloadCredential",
 			"CreateWorkloadAccessToken", "GetActiveWorkloadAccessTokenByHash", "TouchWorkloadAccessToken",
+			"GetActiveWorkloadOIDCFederation", "CreateFederatedWorkloadAccessToken",
 		),
 	}
 	files := []string{
-		"audit_events.sql", "email_messages.sql", "oidc.sql", "sender_domains.sql", "sender_ids.sql", "sms_messages.sql",
+		"audit_events.sql", "email_messages.sql", "oidc.sql", "scim.sql", "sender_domains.sql", "sender_ids.sql", "sms_messages.sql",
 		"team_invitations.sql", "team_tokens.sql", "teams.sql", "webhook_deliveries.sql",
 		"webhook_endpoints.sql", "webhook_events.sql", "workloads.sql",
 	}

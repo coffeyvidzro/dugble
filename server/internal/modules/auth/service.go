@@ -158,14 +158,17 @@ func (s *Service) CompleteMFALogin(ctx context.Context, request MFALoginRequest,
 		userID, err = s.mfa.CompleteLoginTOTP(ctx, request.ChallengeToken, request.Code)
 	}
 	if err != nil {
-		return LoginResponse{}, "", time.Time{}, apperrors.NewUnauthorized("MFA challenge is invalid or expired")
+		if errors.Is(err, pgx.ErrNoRows) {
+			return LoginResponse{}, "", time.Time{}, apperrors.NewUnauthorized("MFA challenge is invalid or expired")
+		}
+		return LoginResponse{}, "", time.Time{}, apperrors.NewInternal("Unable to complete MFA login", err)
 	}
 	user, err := s.repository.GetUserByID(ctx, userID)
 	if err != nil {
 		return LoginResponse{}, "", time.Time{}, apperrors.NewUnauthorized("MFA challenge is invalid or expired")
 	}
 	completedAt := time.Now().UTC()
-	method := authnz.AuthenticationMethodPassword
+	method := authnz.AuthenticationMethodTOTP
 	if recovery {
 		method = authnz.AuthenticationMethodRecoveryCode
 	}

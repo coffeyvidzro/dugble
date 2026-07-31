@@ -81,3 +81,39 @@ func decode(c *echo.Context, destination any) error {
 	}
 	return nil
 }
+
+func (h *Handler) CreateOIDCFederation(c *echo.Context) error {
+	var request OIDCFederationRequest
+	if err := decode(c, &request); err != nil {
+		return err
+	}
+	row, err := h.service.CreateOIDCFederation(c.Request().Context(), c.Param("workload_id"), request)
+	if err != nil {
+		return httputil.Error(c, err)
+	}
+	return httputil.Created(c, row)
+}
+func (h *Handler) ListOIDCFederations(c *echo.Context) error {
+	rows, err := h.service.ListOIDCFederations(c.Request().Context(), c.Param("workload_id"))
+	if err != nil {
+		return httputil.Error(c, err)
+	}
+	return httputil.OK(c, rows)
+}
+func (h *Handler) DeleteOIDCFederation(c *echo.Context) error {
+	if err := h.service.DeleteOIDCFederation(c.Request().Context(), c.Param("workload_id"), c.Param("federation_id")); err != nil {
+		return httputil.Error(c, err)
+	}
+	return httputil.OK(c, map[string]bool{"deleted": true})
+}
+func (h *Handler) ExchangeOIDC(c *echo.Context) error {
+	var request OIDCExchangeRequest
+	if err := decode(c, &request); err != nil {
+		return err
+	}
+	token, err := h.service.ExchangeOIDC(c.Request().Context(), request)
+	if err != nil {
+		return httputil.Error(c, err)
+	}
+	return httputil.OK(c, token)
+}
