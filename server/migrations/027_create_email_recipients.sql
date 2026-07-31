@@ -126,6 +126,55 @@ FROM latest_events AS latest
 WHERE recipient.email_message_id = latest.email_message_id
   AND recipient.recipient_email = latest.recipient_email;
 
+CREATE OR REPLACE FUNCTION create_email_recipient_states()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    INSERT INTO email_recipients (
+        id,
+        email_message_id,
+        recipient_email,
+        recipient_type,
+        status
+    )
+    SELECT
+        gen_random_uuid(),
+        NEW.id,
+        address.recipient_email,
+        address.recipient_type,
+        'pending'
+    FROM (
+        SELECT DISTINCT ON (recipient_email)
+            recipient_email,
+            recipient_type,
+            priority
+        FROM (
+            SELECT lower(trim(value ->> 'email')) AS recipient_email, 'to'::text AS recipient_type, 1 AS priority
+            FROM jsonb_array_elements(COALESCE(NEW.recipients -> 'to', '[]'::jsonb))
+            UNION ALL
+            SELECT lower(trim(value ->> 'email')) AS recipient_email, 'cc'::text AS recipient_type, 2 AS priority
+            FROM jsonb_array_elements(COALESCE(NEW.recipients -> 'cc', '[]'::jsonb))
+            UNION ALL
+            SELECT lower(trim(value ->> 'email')) AS recipient_email, 'bcc'::text AS recipient_type, 3 AS priority
+            FROM jsonb_array_elements(COALESCE(NEW.recipients -> 'bcc', '[]'::jsonb))
+        ) AS candidates
+        WHERE length(recipient_email) > 0
+        ORDER BY recipient_email, priority
+    ) AS address
+    ON CONFLICT (email_message_id, recipient_email) DO NOTHING;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_create_email_recipient_states ON email_messages;
+
+CREATE TRIGGER trg_create_email_recipient_states
+AFTER INSERT ON email_messages
+FOR EACH ROW
+EXECUTE FUNCTION create_email_recipient_states();
+
 CREATE INDEX IF NOT EXISTS idx_email_recipients_message_status
     ON email_recipients (email_message_id, status);
 
