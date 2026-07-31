@@ -16,7 +16,10 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo/v5 v5.3.1
 	github.com/nats-io/nats.go v1.52.0
-	github.com/newrelic/go-agent/v3 v3.43.3
+	github.com/newrelic/go-agent/v3 v3.44.1
+	github.com/newrelic/go-agent/v3/integrations/nrnats v1.1.7
+	github.com/newrelic/go-agent/v3/integrations/nrpgx5 v1.3.4
+	github.com/newrelic/go-agent/v3/integrations/nrredis-v9 v1.1.2
 	github.com/redis/go-redis/v9 v9.21.0
 	golang.org/x/crypto v0.54.0
 	golang.org/x/oauth2 v0.36.0
@@ -45,6 +48,9 @@ require (
 	golang.org/x/text v0.40.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260120221211-b8f7ae30c516 // indirect
+<<<<<<< HEAD
 	google.golang.org/grpc v1.80.0 // indirect
+=======
+>>>>>>> 6b8aa973906cc113afab3e2788c54ba5f8a99ad4
 	google.golang.org/protobuf v1.36.11 // indirect
 )
