@@ -23,10 +23,12 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/mnotify"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/routing"
 	"github.com/coffeyvidzro/dugble/server/internal/messaging/outbox"
+	"github.com/coffeyvidzro/dugble/server/internal/monitoring"
 	"github.com/coffeyvidzro/dugble/server/internal/notifications"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/cache"
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 	"github.com/coffeyvidzro/dugble/server/internal/transport"
+	"github.com/coffeyvidzro/dugble/server/internal/transport/middlewares"
 )
 
 func main() {
@@ -48,6 +50,12 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("load configuration: %w", err)
 	}
+
+	newRelic, err := monitoring.NewRelic("dugble-api")
+	if err != nil {
+		return fmt.Errorf("initialize New Relic: %w", err)
+	}
+	defer monitoring.Shutdown(newRelic, 5*time.Second)
 
 	startupCtx, cancelStartup := context.WithTimeout(
 		ctx,
@@ -131,6 +139,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("create HTTP router: %w", err)
 	}
+	router.Use(middlewares.NewRelic())
 
 	server := echo.StartConfig{
 		Address:         ":" + cfg.HTTPPort,
@@ -160,7 +169,7 @@ func run() error {
 		"address", server.Address,
 	)
 
-	if err := server.Start(ctx, router); err != nil {
+	if err := server.Start(ctx, monitoring.WrapHTTP(newRelic, router)); err != nil {
 		return fmt.Errorf("run HTTP server: %w", err)
 	}
 
