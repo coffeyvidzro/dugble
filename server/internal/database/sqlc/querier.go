@@ -23,22 +23,11 @@ type Querier interface {
 	ConsumeOIDCLoginState(ctx context.Context, arg ConsumeOIDCLoginStateParams) (OidcLoginState, error)
 	CountSCIMUsers(ctx context.Context, arg CountSCIMUsersParams) (int64, error)
 	CreateAuditEvent(ctx context.Context, arg CreateAuditEventParams) (AuditEvent, error)
-	ConfirmTOTPCredential(ctx context.Context, arg ConfirmTOTPCredentialParams) (int64, error)
-	ConsumeMFALoginChallengeWithRecoveryCode(ctx context.Context, arg ConsumeMFALoginChallengeWithRecoveryCodeParams) (int64, error)
-	ConsumeMFALoginChallengeWithTOTP(ctx context.Context, arg ConsumeMFALoginChallengeWithTOTPParams) (int64, error)
-	ConsumeOIDCLoginState(ctx context.Context, arg ConsumeOIDCLoginStateParams) (OidcLoginState, error)
-	CountSCIMUsers(ctx context.Context, arg CountSCIMUsersParams) (int64, error)
-	CreateAuditEvent(ctx context.Context, arg CreateAuditEventParams) (AuditEvent, error)
 	CreateEmailMessage(ctx context.Context, arg CreateEmailMessageParams) (EmailMessage, error)
-	CreateFederatedWorkloadAccessToken(ctx context.Context, arg CreateFederatedWorkloadAccessTokenParams) (WorkloadAccessToken, error)
 	CreateFederatedWorkloadAccessToken(ctx context.Context, arg CreateFederatedWorkloadAccessTokenParams) (WorkloadAccessToken, error)
 	CreateIdempotencyKey(ctx context.Context, arg CreateIdempotencyKeyParams) (IdempotencyKey, error)
 	CreateMFALoginChallenge(ctx context.Context, arg CreateMFALoginChallengeParams) error
-	CreateMFALoginChallenge(ctx context.Context, arg CreateMFALoginChallengeParams) error
 	CreateOAuthIdentity(ctx context.Context, arg CreateOAuthIdentityParams) (OauthIdentity, error)
-	CreateOIDCLoginState(ctx context.Context, arg CreateOIDCLoginStateParams) error
-	CreateRecoveryCode(ctx context.Context, arg CreateRecoveryCodeParams) error
-	CreateSCIMToken(ctx context.Context, arg CreateSCIMTokenParams) (ScimToken, error)
 	CreateOIDCLoginState(ctx context.Context, arg CreateOIDCLoginStateParams) error
 	CreateRecoveryCode(ctx context.Context, arg CreateRecoveryCodeParams) error
 	CreateSCIMToken(ctx context.Context, arg CreateSCIMTokenParams) (ScimToken, error)
@@ -50,7 +39,6 @@ type Querier interface {
 	CreateTeamMember(ctx context.Context, arg CreateTeamMemberParams) (TeamMember, error)
 	CreateTeamToken(ctx context.Context, arg CreateTeamTokenParams) (TeamToken, error)
 	CreateTeamWithOwner(ctx context.Context, arg CreateTeamWithOwnerParams) (CreateTeamWithOwnerRow, error)
-	CreateTeamWithOwner(ctx context.Context, arg CreateTeamWithOwnerParams) (CreateTeamWithOwnerRow, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateVerificationToken(ctx context.Context, arg CreateVerificationTokenParams) (VerificationToken, error)
 	CreateWebhookDeliveriesForEvent(ctx context.Context, arg CreateWebhookDeliveriesForEventParams) (int64, error)
@@ -60,26 +48,18 @@ type Querier interface {
 	CreateWorkloadAccessToken(ctx context.Context, arg CreateWorkloadAccessTokenParams) (WorkloadAccessToken, error)
 	CreateWorkloadCredential(ctx context.Context, arg CreateWorkloadCredentialParams) (WorkloadCredential, error)
 	CreateWorkloadIdentity(ctx context.Context, arg CreateWorkloadIdentityParams) (WorkloadIdentity, error)
-	CreateWorkloadAccessToken(ctx context.Context, arg CreateWorkloadAccessTokenParams) (WorkloadAccessToken, error)
-	CreateWorkloadCredential(ctx context.Context, arg CreateWorkloadCredentialParams) (WorkloadCredential, error)
-	CreateWorkloadIdentity(ctx context.Context, arg CreateWorkloadIdentityParams) (WorkloadIdentity, error)
 	CreateWorkloadOIDCFederation(ctx context.Context, arg CreateWorkloadOIDCFederationParams) (WorkloadOidcFederation, error)
 	DeclineTeamInvitation(ctx context.Context, arg DeclineTeamInvitationParams) (TeamInvitation, error)
 	DeleteExpiredVerificationTokens(ctx context.Context) error
 	DeleteIdempotencyKey(ctx context.Context, arg DeleteIdempotencyKeyParams) error
 	DeleteOIDCConnection(ctx context.Context, arg DeleteOIDCConnectionParams) error
 	DeleteRecoveryCodes(ctx context.Context, arg DeleteRecoveryCodesParams) error
-	DeleteOIDCConnection(ctx context.Context, arg DeleteOIDCConnectionParams) error
-	DeleteRecoveryCodes(ctx context.Context, arg DeleteRecoveryCodesParams) error
 	DeleteSenderDomain(ctx context.Context, arg DeleteSenderDomainParams) (SenderDomain, error)
 	DeleteSenderID(ctx context.Context, arg DeleteSenderIDParams) (SenderID, error)
-	DeleteTOTPCredential(ctx context.Context, arg DeleteTOTPCredentialParams) error
 	DeleteTOTPCredential(ctx context.Context, arg DeleteTOTPCredentialParams) error
 	DeleteUser(ctx context.Context, arg DeleteUserParams) error
 	DeleteVerificationToken(ctx context.Context, arg DeleteVerificationTokenParams) error
 	DeleteVerificationTokensByIdentifier(ctx context.Context, arg DeleteVerificationTokensByIdentifierParams) error
-	DeleteWorkloadOIDCFederation(ctx context.Context, arg DeleteWorkloadOIDCFederationParams) error
-	DeprovisionSCIMUser(ctx context.Context, arg DeprovisionSCIMUserParams) error
 	DeleteWorkloadOIDCFederation(ctx context.Context, arg DeleteWorkloadOIDCFederationParams) error
 	DeprovisionSCIMUser(ctx context.Context, arg DeprovisionSCIMUserParams) error
 	DisableTeam(ctx context.Context, arg DisableTeamParams) (Team, error)
@@ -87,26 +67,16 @@ type Querier interface {
 	DisableWorkloadIdentity(ctx context.Context, arg DisableWorkloadIdentityParams) (WorkloadIdentity, error)
 	DowngradeSessionAfterMFADisable(ctx context.Context, arg DowngradeSessionAfterMFADisableParams) error
 	ElevateSessionAfterMFAEnrollment(ctx context.Context, arg ElevateSessionAfterMFAEnrollmentParams) (int64, error)
-	DisableWorkloadIdentity(ctx context.Context, arg DisableWorkloadIdentityParams) (WorkloadIdentity, error)
-	DowngradeSessionAfterMFADisable(ctx context.Context, arg DowngradeSessionAfterMFADisableParams) error
-	ElevateSessionAfterMFAEnrollment(ctx context.Context, arg ElevateSessionAfterMFAEnrollmentParams) (int64, error)
 	FindApprovedSMSSender(ctx context.Context, arg FindApprovedSMSSenderParams) (uuid.UUID, error)
 	GetActiveMFALoginChallenge(ctx context.Context, arg GetActiveMFALoginChallengeParams) (GetActiveMFALoginChallengeRow, error)
 	GetActiveSCIMTokenByHash(ctx context.Context, arg GetActiveSCIMTokenByHashParams) (ScimToken, error)
-	GetActiveMFALoginChallenge(ctx context.Context, arg GetActiveMFALoginChallengeParams) (GetActiveMFALoginChallengeRow, error)
-	GetActiveSCIMTokenByHash(ctx context.Context, arg GetActiveSCIMTokenByHashParams) (ScimToken, error)
 	GetActiveTeamTokenByHash(ctx context.Context, arg GetActiveTeamTokenByHashParams) (TeamToken, error)
-	GetActiveWorkloadAccessTokenByHash(ctx context.Context, arg GetActiveWorkloadAccessTokenByHashParams) (GetActiveWorkloadAccessTokenByHashRow, error)
-	GetActiveWorkloadCredentialByHash(ctx context.Context, arg GetActiveWorkloadCredentialByHashParams) (GetActiveWorkloadCredentialByHashRow, error)
 	GetActiveWorkloadAccessTokenByHash(ctx context.Context, arg GetActiveWorkloadAccessTokenByHashParams) (GetActiveWorkloadAccessTokenByHashRow, error)
 	GetActiveWorkloadCredentialByHash(ctx context.Context, arg GetActiveWorkloadCredentialByHashParams) (GetActiveWorkloadCredentialByHashRow, error)
 	GetActiveWorkloadOIDCFederation(ctx context.Context, arg GetActiveWorkloadOIDCFederationParams) (GetActiveWorkloadOIDCFederationRow, error)
 	GetEmailMessage(ctx context.Context, arg GetEmailMessageParams) (EmailMessage, error)
 	GetIdempotencyKey(ctx context.Context, arg GetIdempotencyKeyParams) (IdempotencyKey, error)
 	GetOAuthIdentity(ctx context.Context, arg GetOAuthIdentityParams) (OauthIdentity, error)
-	GetOIDCConnection(ctx context.Context, arg GetOIDCConnectionParams) (OidcConnection, error)
-	GetOIDCConnectionByTeam(ctx context.Context, arg GetOIDCConnectionByTeamParams) (OidcConnection, error)
-	GetSCIMUser(ctx context.Context, arg GetSCIMUserParams) (GetSCIMUserRow, error)
 	GetOIDCConnection(ctx context.Context, arg GetOIDCConnectionParams) (OidcConnection, error)
 	GetOIDCConnectionByTeam(ctx context.Context, arg GetOIDCConnectionByTeamParams) (OidcConnection, error)
 	GetSCIMUser(ctx context.Context, arg GetSCIMUserParams) (GetSCIMUserRow, error)
@@ -117,9 +87,7 @@ type Querier interface {
 	GetSessionByID(ctx context.Context, arg GetSessionByIDParams) (Session, error)
 	GetSessionByTokenHash(ctx context.Context, arg GetSessionByTokenHashParams) (Session, error)
 	GetTOTPCredential(ctx context.Context, arg GetTOTPCredentialParams) (GetTOTPCredentialRow, error)
-	GetTOTPCredential(ctx context.Context, arg GetTOTPCredentialParams) (GetTOTPCredentialRow, error)
 	GetTeam(ctx context.Context, arg GetTeamParams) (Team, error)
-	GetTeamIdentityPolicy(ctx context.Context, arg GetTeamIdentityPolicyParams) (GetTeamIdentityPolicyRow, error)
 	GetTeamIdentityPolicy(ctx context.Context, arg GetTeamIdentityPolicyParams) (GetTeamIdentityPolicyRow, error)
 	GetTeamInvitationByTokenHash(ctx context.Context, arg GetTeamInvitationByTokenHashParams) (TeamInvitation, error)
 	GetTeamMember(ctx context.Context, arg GetTeamMemberParams) (TeamMember, error)
@@ -131,15 +99,10 @@ type Querier interface {
 	GetWebhookEvent(ctx context.Context, arg GetWebhookEventParams) (WebhookEvent, error)
 	GetWorkloadIdentity(ctx context.Context, arg GetWorkloadIdentityParams) (WorkloadIdentity, error)
 	IsTOTPEnabled(ctx context.Context, arg IsTOTPEnabledParams) (bool, error)
-	GetWorkloadIdentity(ctx context.Context, arg GetWorkloadIdentityParams) (WorkloadIdentity, error)
-	IsTOTPEnabled(ctx context.Context, arg IsTOTPEnabledParams) (bool, error)
 	ListEmailMessages(ctx context.Context, arg ListEmailMessagesParams) ([]ListEmailMessagesRow, error)
 	ListOAuthIdentitiesByUserID(ctx context.Context, arg ListOAuthIdentitiesByUserIDParams) ([]OauthIdentity, error)
 	ListOIDCSecretsForRotation(ctx context.Context) ([]ListOIDCSecretsForRotationRow, error)
-	ListOIDCSecretsForRotation(ctx context.Context) ([]ListOIDCSecretsForRotationRow, error)
 	ListPendingTeamInvitations(ctx context.Context, arg ListPendingTeamInvitationsParams) ([]TeamInvitation, error)
-	ListSCIMTokens(ctx context.Context, arg ListSCIMTokensParams) ([]ScimToken, error)
-	ListSCIMUsers(ctx context.Context, arg ListSCIMUsersParams) ([]ListSCIMUsersRow, error)
 	ListSCIMTokens(ctx context.Context, arg ListSCIMTokensParams) ([]ScimToken, error)
 	ListSCIMUsers(ctx context.Context, arg ListSCIMUsersParams) ([]ListSCIMUsersRow, error)
 	ListSMSMessages(ctx context.Context, arg ListSMSMessagesParams) ([]SmsMessage, error)
@@ -149,8 +112,6 @@ type Querier interface {
 	ListSubscribedWebhookEndpoints(ctx context.Context, arg ListSubscribedWebhookEndpointsParams) ([]WebhookEndpoint, error)
 	ListTOTPSecretsForRotation(ctx context.Context) ([]ListTOTPSecretsForRotationRow, error)
 	ListTeamAuditEvents(ctx context.Context, arg ListTeamAuditEventsParams) ([]AuditEvent, error)
-	ListTOTPSecretsForRotation(ctx context.Context) ([]ListTOTPSecretsForRotationRow, error)
-	ListTeamAuditEvents(ctx context.Context, arg ListTeamAuditEventsParams) ([]AuditEvent, error)
 	ListTeamMembers(ctx context.Context, arg ListTeamMembersParams) ([]TeamMember, error)
 	ListTeamTokens(ctx context.Context, arg ListTeamTokensParams) ([]TeamToken, error)
 	ListTeamsForUser(ctx context.Context, arg ListTeamsForUserParams) ([]Team, error)
@@ -158,7 +119,6 @@ type Querier interface {
 	ListWebhookEndpoints(ctx context.Context, arg ListWebhookEndpointsParams) ([]WebhookEndpoint, error)
 	ListWebhookEvents(ctx context.Context, arg ListWebhookEventsParams) ([]WebhookEvent, error)
 	ListWebhookEventsForObject(ctx context.Context, arg ListWebhookEventsForObjectParams) ([]WebhookEvent, error)
-	ListWorkloadIdentities(ctx context.Context, arg ListWorkloadIdentitiesParams) ([]WorkloadIdentity, error)
 	ListWorkloadIdentities(ctx context.Context, arg ListWorkloadIdentitiesParams) ([]WorkloadIdentity, error)
 	ListWorkloadOIDCFederations(ctx context.Context, arg ListWorkloadOIDCFederationsParams) ([]WorkloadOidcFederation, error)
 	MarkSMSMessageDeliveryUnknown(ctx context.Context, arg MarkSMSMessageDeliveryUnknownParams) (SmsMessage, error)
@@ -170,21 +130,15 @@ type Querier interface {
 	MarkWebhookDeliverySucceeded(ctx context.Context, arg MarkWebhookDeliverySucceededParams) (MarkWebhookDeliverySucceededRow, error)
 	ProvisionSCIMUser(ctx context.Context, arg ProvisionSCIMUserParams) (User, error)
 	PutUnverifiedTOTPCredential(ctx context.Context, arg PutUnverifiedTOTPCredentialParams) (int64, error)
-	ProvisionSCIMUser(ctx context.Context, arg ProvisionSCIMUserParams) (User, error)
-	PutUnverifiedTOTPCredential(ctx context.Context, arg PutUnverifiedTOTPCredentialParams) (int64, error)
 	RecordSenderDomainHealthFailure(ctx context.Context, arg RecordSenderDomainHealthFailureParams) (SenderDomain, error)
 	RecordSenderDomainReconciliationFailure(ctx context.Context, arg RecordSenderDomainReconciliationFailureParams) (SenderDomain, error)
 	ReleaseWebhookDeliveryClaim(ctx context.Context, arg ReleaseWebhookDeliveryClaimParams) (int64, error)
 	RemoveTeamMember(ctx context.Context, arg RemoveTeamMemberParams) error
 	ResetPasswordWithToken(ctx context.Context, arg ResetPasswordWithTokenParams) (ResetPasswordWithTokenRow, error)
 	ResolveOIDCIdentity(ctx context.Context, arg ResolveOIDCIdentityParams) (User, error)
-	ResetPasswordWithToken(ctx context.Context, arg ResetPasswordWithTokenParams) (ResetPasswordWithTokenRow, error)
-	ResolveOIDCIdentity(ctx context.Context, arg ResolveOIDCIdentityParams) (User, error)
 	RetryWebhookDelivery(ctx context.Context, arg RetryWebhookDeliveryParams) (WebhookDelivery, error)
 	RevokeOtherSessionsAfterMFADisable(ctx context.Context, arg RevokeOtherSessionsAfterMFADisableParams) error
-	RevokeOtherSessionsAfterMFADisable(ctx context.Context, arg RevokeOtherSessionsAfterMFADisableParams) error
 	RevokeOtherUserSessions(ctx context.Context, arg RevokeOtherUserSessionsParams) error
-	RevokeSCIMToken(ctx context.Context, arg RevokeSCIMTokenParams) error
 	RevokeSCIMToken(ctx context.Context, arg RevokeSCIMTokenParams) error
 	RevokeSession(ctx context.Context, arg RevokeSessionParams) error
 	RevokeTeamToken(ctx context.Context, arg RevokeTeamTokenParams) (TeamToken, error)
@@ -192,18 +146,11 @@ type Querier interface {
 	RevokeWorkloadCredential(ctx context.Context, arg RevokeWorkloadCredentialParams) (WorkloadCredential, error)
 	RotateOIDCConnectionSecretCiphertext(ctx context.Context, arg RotateOIDCConnectionSecretCiphertextParams) error
 	RotateTOTPSecretCiphertext(ctx context.Context, arg RotateTOTPSecretCiphertextParams) error
-	RevokeWorkloadCredential(ctx context.Context, arg RevokeWorkloadCredentialParams) (WorkloadCredential, error)
-	RotateOIDCConnectionSecretCiphertext(ctx context.Context, arg RotateOIDCConnectionSecretCiphertextParams) error
-	RotateTOTPSecretCiphertext(ctx context.Context, arg RotateTOTPSecretCiphertextParams) error
 	RotateWebhookEndpointSecret(ctx context.Context, arg RotateWebhookEndpointSecretParams) (WebhookEndpoint, error)
 	ScheduleWebhookDeliveryRetry(ctx context.Context, arg ScheduleWebhookDeliveryRetryParams) (WebhookDelivery, error)
 	TouchSCIMToken(ctx context.Context, arg TouchSCIMTokenParams) error
-	TouchSCIMToken(ctx context.Context, arg TouchSCIMTokenParams) error
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
 	TouchTeamToken(ctx context.Context, arg TouchTeamTokenParams) error
-	TouchWorkloadAccessToken(ctx context.Context, arg TouchWorkloadAccessTokenParams) error
-	TouchWorkloadCredential(ctx context.Context, arg TouchWorkloadCredentialParams) error
-	UpdateSCIMUser(ctx context.Context, arg UpdateSCIMUserParams) error
 	TouchWorkloadAccessToken(ctx context.Context, arg TouchWorkloadAccessTokenParams) error
 	TouchWorkloadCredential(ctx context.Context, arg TouchWorkloadCredentialParams) error
 	UpdateSCIMUser(ctx context.Context, arg UpdateSCIMUserParams) error
@@ -217,12 +164,6 @@ type Querier interface {
 	UpdateUserPasswordByEmail(ctx context.Context, arg UpdateUserPasswordByEmailParams) (User, error)
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error)
 	UpdateWebhookEndpoint(ctx context.Context, arg UpdateWebhookEndpointParams) (WebhookEndpoint, error)
-	UpdateWorkloadIdentity(ctx context.Context, arg UpdateWorkloadIdentityParams) (WorkloadIdentity, error)
-	UpsertOIDCConnection(ctx context.Context, arg UpsertOIDCConnectionParams) (OidcConnection, error)
-	UpsertTeamIdentityPolicy(ctx context.Context, arg UpsertTeamIdentityPolicyParams) (TeamIdentityPolicy, error)
-	UseRecoveryCodeAndElevateSession(ctx context.Context, arg UseRecoveryCodeAndElevateSessionParams) (int64, error)
-	VerifyEmailWithToken(ctx context.Context, arg VerifyEmailWithTokenParams) (User, error)
-	VerifyTOTPAndElevateSession(ctx context.Context, arg VerifyTOTPAndElevateSessionParams) (int64, error)
 	UpdateWorkloadIdentity(ctx context.Context, arg UpdateWorkloadIdentityParams) (WorkloadIdentity, error)
 	UpsertOIDCConnection(ctx context.Context, arg UpsertOIDCConnectionParams) (OidcConnection, error)
 	UpsertTeamIdentityPolicy(ctx context.Context, arg UpsertTeamIdentityPolicyParams) (TeamIdentityPolicy, error)
