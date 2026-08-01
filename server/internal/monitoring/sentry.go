@@ -24,7 +24,7 @@ func InitSentry(cfg config.SentryConfig, environment string) error {
 		Debug:            cfg.Debug,
 		AttachStacktrace: true,
 		EnableTracing:    false,
-		SendDefaultPii:   false,
+		SendDefaultPII:   false,
 	})
 }
 
