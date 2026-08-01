@@ -1,12 +1,17 @@
-import { PlaceholderPage } from "@/components/dashboard/placeholder-page";
-import { Group } from "lucide-react";
+import { TeamSettings } from "@/components/dashboard/team/team-settings";
+import { requireSession } from "@/lib/session";
 
-export default function Page() {
+export default async function Page() {
+    const session = await requireSession();
+
     return (
-        <PlaceholderPage
-            title="Team"
-            description="Create and manage your team."
-            icon={Group}
-        />
+        <div className="flex-1 w-full bg-background min-h-screen pt-8 pb-16 px-4 md:px-8">
+            <TeamSettings
+                currentUser={{
+                    email: session.user.email,
+                    name: session.user.name,
+                }}
+            />
+        </div>
     );
 }
