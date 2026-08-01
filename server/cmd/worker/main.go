@@ -87,8 +87,12 @@ func run() error {
 	emailConsumer := emaildelivery.NewConsumer(messagingClient, processedEvents, emaildelivery.NewHandler(emaildelivery.NewRepository(db), emailSender), emaildelivery.ConsumerConfig{
 		Concurrency: 5, AckWait: 2 * time.Minute, HandlerTimeout: 45 * time.Second, MaxDeliver: 6, RetryPolicy: emaildelivery.DefaultRetryPolicy(),
 	})
-	emailFeedbackConsumer := emailfeedback.NewConsumer(messagingClient, processedEvents, emailfeedback.NewHandler(emailfeedback.NewRepositoryWithWebhookEmitter(db, webhookEmitter)), emailfeedback.ConsumerConfig{
+	emailFeedbackRepository := emailfeedback.NewRepositoryWithWebhookEmitter(db, webhookEmitter)
+	emailFeedbackConsumer := emailfeedback.NewConsumer(messagingClient, processedEvents, emailfeedback.NewHandler(emailFeedbackRepository), emailfeedback.ConsumerConfig{
 		Concurrency: 5, AckWait: time.Minute, HandlerTimeout: 30 * time.Second, MaxDeliver: 6, RetryPolicy: emailfeedback.DefaultRetryPolicy(),
+	})
+	emailFeedbackReconciler := emailfeedback.NewReconciler(emailFeedbackRepository, emailfeedback.ReconcilerConfig{
+		PollInterval: 5 * time.Second, BatchSize: 25, Concurrency: 5, LeaseDuration: 2 * time.Minute, HandleTimeout: 30 * time.Second,
 	})
 	domainRepository := domainmodule.NewRepository(db)
 	domainService := domainmodule.NewService(domainRepository, emailSender, platformemail.NewNetDNSVerifier())
@@ -136,6 +140,7 @@ func run() error {
 		{Name: "outbox relay", Run: outboxRelay.Run},
 		{Name: "email JetStream consumer", Run: emailConsumer.Run},
 		{Name: "email feedback JetStream consumer", Run: emailFeedbackConsumer.Run},
+		{Name: "email feedback database reconciler", Run: emailFeedbackReconciler.Run},
 		{Name: "SMS JetStream consumer", Run: smsConsumer.Run},
 		{Name: "webhook delivery consumer", Run: webhookConsumer.Run},
 		{Name: "sender domain reconciliation consumer", Run: domainConsumer.Run},
