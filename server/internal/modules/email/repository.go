@@ -30,27 +30,13 @@ type SenderDomainRoute struct {
 	Disabled     bool
 }
 
-type RouteConfig struct {
-	TransactionalConfigurationSet string
-	MarketingConfigurationSet     string
-	SESTenantName                 string
-}
-
 type Repository struct {
 	db      *pgxpool.Pool
 	queries *dbsqlc.Queries
-	routes  RouteConfig
 }
 
-func NewRepository(db *pgxpool.Pool, routeConfigs ...RouteConfig) *Repository {
-	var routes RouteConfig
-	if len(routeConfigs) > 0 {
-		routes = routeConfigs[0]
-	}
-	routes.TransactionalConfigurationSet = strings.TrimSpace(routes.TransactionalConfigurationSet)
-	routes.MarketingConfigurationSet = strings.TrimSpace(routes.MarketingConfigurationSet)
-	routes.SESTenantName = strings.TrimSpace(routes.SESTenantName)
-	return &Repository{db: db, queries: dbsqlc.New(db), routes: routes}
+func NewRepository(db *pgxpool.Pool) *Repository {
+	return &Repository{db: db, queries: dbsqlc.New(db)}
 }
 
 func (r *Repository) BeginTx(ctx context.Context) (pgx.Tx, error) {
@@ -62,11 +48,7 @@ func (r *Repository) CreateTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, 
 	if err != nil {
 		return Message{}, fmt.Errorf("encode email recipients: %w", err)
 	}
-	route := platformemail.DeliveryRoute{
-		Stream:           req.MessageType,
-		ConfigurationSet: r.configurationSet(req.MessageType),
-		SESTenantName:    r.routes.SESTenantName,
-	}
+	route := platformemail.BuiltInDeliveryRoute(req.MessageType)
 	headers, err := json.Marshal(platformemail.PersistDeliveryRoute(req.Headers, route))
 	if err != nil {
 		return Message{}, fmt.Errorf("encode email headers: %w", err)
@@ -104,15 +86,6 @@ func (r *Repository) CreateTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, 
 		return Message{}, fmt.Errorf("create email message: %w", err)
 	}
 	return messageFromSQLC(row), nil
-}
-
-func (r *Repository) configurationSet(stream string) string {
-	switch strings.ToLower(strings.TrimSpace(stream)) {
-	case "marketing":
-		return r.routes.MarketingConfigurationSet
-	default:
-		return r.routes.TransactionalConfigurationSet
-	}
 }
 
 func (r *Repository) ResolveSenderDomain(ctx context.Context, teamID uuid.UUID, domainName string) (SenderDomainRoute, error) {
