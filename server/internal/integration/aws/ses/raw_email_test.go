@@ -20,7 +20,10 @@ func TestSendUsesEnvelopeDestinationsForBCC(t *testing.T) {
 		t.Fatalf("create client: %v", err)
 	}
 	client.v2SendingClients["us-east-1"] = recordingClient
-	route := platformemail.CustomerDeliveryRoute("transactional", "dugble-t-customer")
+	route, err := platformemail.CustomerDeliveryRoute("transactional", "dugble-t-customer")
+	if err != nil {
+		t.Fatalf("create customer route: %v", err)
+	}
 
 	_, err = client.Send(context.Background(), platformemail.Message{
 		Stream:           route.Stream,
@@ -59,7 +62,10 @@ func TestSendAddsDeliveryCorrelationTags(t *testing.T) {
 		t.Fatalf("create client: %v", err)
 	}
 	client.v2SendingClients["us-east-1"] = recordingClient
-	route := platformemail.CustomerDeliveryRoute("transactional", "dugble-t-customer")
+	route, err := platformemail.CustomerDeliveryRoute("transactional", "dugble-t-customer")
+	if err != nil {
+		t.Fatalf("create customer route: %v", err)
+	}
 
 	_, err = client.Send(context.Background(), platformemail.Message{
 		MessageID:        "message-123",
