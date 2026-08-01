@@ -89,6 +89,7 @@ func (r *Reconciler) runBatch(ctx context.Context) error {
 		claim := claim
 		select {
 		case <-ctx.Done():
+			waitGroup.Wait()
 			return nil
 		case semaphore <- struct{}{}:
 		}
@@ -139,11 +140,11 @@ func (r *Repository) ClaimDue(ctx context.Context, batchSize int, leaseDuration 
 		UPDATE email_provider_events AS event
 		SET attempt_count = event.attempt_count + 1,
 			last_attempt_at = now(),
-			next_attempt_at = now() + $2::interval
+			next_attempt_at = now() + ($2 * interval '1 second')
 		FROM due
 		WHERE event.id = due.id
 		RETURNING event.id, event.attempt_count
-	`, batchSize, leaseDuration.String())
+	`, batchSize, durationSeconds(leaseDuration))
 	if err != nil {
 		return nil, fmt.Errorf("claim due email provider events: %w", err)
 	}
@@ -172,13 +173,13 @@ func (r *Repository) claimSpecific(ctx context.Context, eventID uuid.UUID, lease
 		UPDATE email_provider_events
 		SET attempt_count = attempt_count + 1,
 			last_attempt_at = now(),
-			next_attempt_at = now() + $2::interval
+			next_attempt_at = now() + ($2 * interval '1 second')
 		WHERE id = $1
 		  AND processed_at IS NULL
 		  AND dead_lettered_at IS NULL
 		  AND (next_attempt_at IS NULL OR next_attempt_at <= now())
 		RETURNING id, attempt_count
-	`, eventID, leaseDuration.String()).Scan(&claim.EventID, &claim.AttemptCount)
+	`, eventID, durationSeconds(leaseDuration)).Scan(&claim.EventID, &claim.AttemptCount)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ReconcileClaim{}, false, nil
 	}
@@ -209,12 +210,12 @@ func (r *Repository) RecordReconcileFailure(ctx context.Context, claim Reconcile
 	}
 	_, err := r.db.Exec(ctx, `
 		UPDATE email_provider_events
-		SET next_attempt_at = now() + $2::interval,
+		SET next_attempt_at = now() + ($2 * interval '1 second'),
 			last_error = $3
 		WHERE id = $1
 		  AND processed_at IS NULL
 		  AND dead_lettered_at IS NULL
-	`, claim.EventID, reconciliationDelay(claim.AttemptCount).String(), reason)
+	`, claim.EventID, durationSeconds(reconciliationDelay(claim.AttemptCount)), reason)
 	if err != nil {
 		return fmt.Errorf("reschedule email provider event %s: %w", claim.EventID, err)
 	}
@@ -244,6 +245,14 @@ func reconciliationDelay(attempt int) time.Duration {
 		index = len(delays) - 1
 	}
 	return delays[index]
+}
+
+func durationSeconds(value time.Duration) int64 {
+	seconds := int64(value / time.Second)
+	if seconds < 1 {
+		return 1
+	}
+	return seconds
 }
 
 func truncateReconciliationError(err error) string {
