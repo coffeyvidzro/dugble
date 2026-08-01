@@ -1,0 +1,52 @@
+name: Temporary email sqlc generation
+
+on:
+  push:
+    branches:
+      - feat/sns-integration
+    paths:
+      - ".github/workflows/temporary-email-sqlc.yml"
+      - "server/internal/database/queries/email_provider_events.sql"
+      - "server/internal/database/queries/email_delivery_attempts.sql"
+      - "server/internal/database/queries/email_recipients.sql"
+      - "server/migrations/024_create_email_provider_events.sql"
+      - "server/migrations/026_create_email_delivery_attempts.sql"
+      - "server/migrations/027_create_email_recipients.sql"
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/sns-integration
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      - name: Generate sqlc code
+        run: go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
+
+      - name: Regenerate Atlas checksum
+        run: go run ariga.io/atlas/cmd/atlas@latest migrate hash --dir file://migrations
+
+      - name: Commit generated files
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add internal/database/sqlc migrations/atlas.sum
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "generate email sqlc queries"
+          git push origin HEAD:feat/sns-integration
