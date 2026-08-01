@@ -6,17 +6,15 @@ import (
 
 	"github.com/google/uuid"
 
+	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
 const maxDomainLength = 253
 
 var (
-	domainPattern    = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$`)
-	labelPattern     = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
-	supportedRegions = map[string]struct{}{
-		"eu-north-1": {}, "us-east-1": {}, "eu-west-1": {}, "sa-east-1": {}, "ap-northeast-1": {},
-	}
+	domainPattern = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$`)
+	labelPattern  = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
 )
 
 func validateCreate(req CreateRequest) (string, string, string, error) {
@@ -35,13 +33,20 @@ func validateCreate(req CreateRequest) (string, string, string, error) {
 	if len(domainName) > maxDomainLength || !domainPattern.MatchString(domainName) {
 		return "", "", "", apperrors.NewBadRequest("Sender domain must be a valid domain name")
 	}
-	if _, ok := supportedRegions[region]; !ok {
-		return "", "", "", apperrors.NewBadRequest("Sender domain region is not supported")
+	if err := validateRegion(region); err != nil {
+		return "", "", "", err
 	}
 	if !labelPattern.MatchString(returnPath) {
 		return "", "", "", apperrors.NewBadRequest("Custom return path must be a valid DNS label")
 	}
 	return domainName, region, returnPath, nil
+}
+
+func validateRegion(region string) error {
+	if _, ok := platformemail.NormalizeSESRegion(region); !ok {
+		return apperrors.NewBadRequest("Sender domain region is not supported")
+	}
+	return nil
 }
 
 func normalizeDomain(value string) string {

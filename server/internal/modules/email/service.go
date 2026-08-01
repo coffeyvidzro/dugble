@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
@@ -108,10 +109,15 @@ type Service struct {
 	delivery      DeliveryQueue
 	config        ServiceConfig
 	senderDomains senderDomainResolver
+	routes        customerRouteResolver
 }
 
 type senderDomainResolver interface {
 	ResolveSenderDomain(context.Context, uuid.UUID, string) (SenderDomainRoute, error)
+}
+
+type customerRouteResolver interface {
+	ResolveActiveCustomerRouteTx(context.Context, pgx.Tx, uuid.UUID, string, string, string) (platformemail.DeliveryRoute, error)
 }
 
 type ServiceConfig struct {
@@ -121,12 +127,17 @@ type ServiceConfig struct {
 	DefaultRegion    string
 }
 
-func NewService(repository *Repository, delivery DeliveryQueue, config ServiceConfig, resolvers ...senderDomainResolver) *Service {
-	var resolver senderDomainResolver = repository
-	if len(resolvers) > 0 {
-		resolver = resolvers[0]
+func NewService(repository *Repository, delivery DeliveryQueue, config ServiceConfig, dependencies ...any) *Service {
+	service := &Service{repository: repository, delivery: delivery, config: config, senderDomains: repository, routes: repository}
+	for _, dependency := range dependencies {
+		if resolver, ok := dependency.(senderDomainResolver); ok {
+			service.senderDomains = resolver
+		}
+		if resolver, ok := dependency.(customerRouteResolver); ok {
+			service.routes = resolver
+		}
 	}
-	return &Service{repository: repository, delivery: delivery, config: config, senderDomains: resolver}
+	return service
 }
 
 func requireTenant(ctx context.Context, permission tenant.Permission) (tenant.AccessContext, error) {
@@ -152,11 +163,21 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	if s.delivery == nil {
 		return Message{}, apperrors.NewInternal("Email delivery queue is not configured", nil)
 	}
+	if s.repository == nil || s.routes == nil {
+		return Message{}, apperrors.NewInternal("Customer email routing is not configured", nil)
+	}
 	tx, err := s.repository.BeginTx(ctx)
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to begin email transaction", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	validated.DeliveryRoute, err = s.routes.ResolveActiveCustomerRouteTx(ctx, tx, tc.Scope.TeamID, validated.Provider, validated.ProviderRegion, validated.MessageType)
+	if errors.Is(err, ErrActiveEmailTenantNotFound) {
+		return Message{}, apperrors.NewConflict("Customer email tenant is not active")
+	}
+	if err != nil {
+		return Message{}, apperrors.NewInternal("Unable to resolve customer email route", err)
+	}
 	m, err := s.repository.CreateTx(ctx, tx, tc.Scope.TeamID, validated)
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to create email message", err)
@@ -218,6 +239,9 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 	if s.delivery == nil {
 		return nil, apperrors.NewInternal("Email delivery queue is not configured", nil)
 	}
+	if s.repository == nil || s.routes == nil {
+		return nil, apperrors.NewInternal("Customer email routing is not configured", nil)
+	}
 
 	validated := make([]validatedSend, len(req.Messages))
 	totalPayloadBytes := 0
@@ -245,12 +269,19 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	result := make([]Message, 0, len(validated))
-	for _, item := range validated {
-		message, createErr := s.repository.CreateTx(ctx, tx, tc.Scope.TeamID, item)
+	for index := range validated {
+		validated[index].DeliveryRoute, err = s.routes.ResolveActiveCustomerRouteTx(ctx, tx, tc.Scope.TeamID, validated[index].Provider, validated[index].ProviderRegion, validated[index].MessageType)
+		if errors.Is(err, ErrActiveEmailTenantNotFound) {
+			return nil, apperrors.NewConflict("Customer email tenant is not active")
+		}
+		if err != nil {
+			return nil, apperrors.NewInternal("Unable to resolve customer email route", err)
+		}
+		message, createErr := s.repository.CreateTx(ctx, tx, tc.Scope.TeamID, validated[index])
 		if createErr != nil {
 			return nil, apperrors.NewInternal("Unable to create email message", createErr)
 		}
-		if enqueueErr := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(message.ID), tc.Scope.TeamID, item.ScheduledAt); enqueueErr != nil {
+		if enqueueErr := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(message.ID), tc.Scope.TeamID, validated[index].ScheduledAt); enqueueErr != nil {
 			return nil, apperrors.NewInternal("Unable to enqueue email delivery", enqueueErr)
 		}
 		result = append(result, message)
@@ -267,9 +298,13 @@ func (s *Service) authorizeSender(ctx context.Context, teamID uuid.UUID, message
 	if provider == "" || region == "" {
 		return apperrors.NewInternal("Email delivery route is not configured", nil)
 	}
-	if strings.EqualFold(message.FromEmail, strings.TrimSpace(s.config.DefaultFromEmail)) {
+	if strings.EqualFold(message.FromEmail, platformemail.CustomerOnboardingIdentity) {
+		if message.MessageType != MessageTypeTransactional {
+			return apperrors.NewBadRequest("The onboarding identity supports transactional email only")
+		}
 		message.Provider = provider
 		message.ProviderRegion = region
+		message.SenderDomainID = nil
 		return nil
 	}
 

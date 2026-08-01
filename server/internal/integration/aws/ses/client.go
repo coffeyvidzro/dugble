@@ -13,10 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 )
 
-// NewClient creates an SES client using the AWS SDK default credential chain.
-// Deployments outside AWS may pass a tightly scoped access-key pair from their
-// secret manager. Any extra argument is ignored for source compatibility; SES
-// routing is persisted per message and never configured on the client.
 func NewClient(region, defaultFrom, accessKey, secretKey string, _ ...string) (*Client, error) {
 	return newClient(context.Background(), region, defaultFrom, accessKey, secretKey)
 }
@@ -47,11 +43,13 @@ func newClient(ctx context.Context, region, defaultFrom, accessKey, secretKey st
 		return nil, fmt.Errorf("load AWS configuration: %w", err)
 	}
 	return &Client{
-		defaultRegion:   region,
-		defaultFrom:     strings.TrimSpace(defaultFrom),
-		awsConfig:       resolved,
-		sendingClients:  make(map[string]sesAPI),
-		identityClients: make(map[string]sesIdentityAPI),
+		defaultRegion:    region,
+		defaultFrom:      strings.TrimSpace(defaultFrom),
+		awsConfig:        resolved,
+		sendingClients:   make(map[string]sesAPI),
+		v2SendingClients: make(map[string]sesV2SendAPI),
+		identityClients:  make(map[string]sesIdentityAPI),
+		tenantClients:    make(map[string]sesTenantAPI),
 	}, nil
 }
 
@@ -79,6 +77,24 @@ func (c *Client) sendingClient(region string) (sesAPI, error) {
 	return client, nil
 }
 
+func (c *Client) v2SendingClient(region string) (sesV2SendAPI, error) {
+	if c == nil {
+		return nil, errors.New("SES client is not configured")
+	}
+	region = strings.TrimSpace(region)
+	if region == "" {
+		region = c.defaultRegion
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if client, ok := c.v2SendingClients[region]; ok {
+		return client, nil
+	}
+	client := sesv2.NewFromConfig(c.regionalConfig(region))
+	c.v2SendingClients[region] = client
+	return client, nil
+}
+
 func (c *Client) identityClient(region string) (sesIdentityAPI, error) {
 	if c == nil {
 		return nil, errors.New("SES client is not configured")
@@ -94,5 +110,23 @@ func (c *Client) identityClient(region string) (sesIdentityAPI, error) {
 	}
 	client := sesv2.NewFromConfig(c.regionalConfig(region))
 	c.identityClients[region] = client
+	return client, nil
+}
+
+func (c *Client) tenantClient(region string) (sesTenantAPI, error) {
+	if c == nil {
+		return nil, errors.New("SES client is not configured")
+	}
+	region = strings.TrimSpace(region)
+	if region == "" {
+		region = c.defaultRegion
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if client, ok := c.tenantClients[region]; ok {
+		return client, nil
+	}
+	client := sesv2.NewFromConfig(c.regionalConfig(region))
+	c.tenantClients[region] = client
 	return client, nil
 }

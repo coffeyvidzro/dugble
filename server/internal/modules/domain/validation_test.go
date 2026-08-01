@@ -32,6 +32,28 @@ func TestValidateCreateUsesDefaults(t *testing.T) {
 	}
 }
 
+func TestValidateCreateAcceptsSupportedRegions(t *testing.T) {
+	regions := []string{
+		"us-east-1",
+		"eu-north-1",
+	}
+
+	for _, region := range regions {
+		t.Run(region, func(t *testing.T) {
+			_, gotRegion, _, err := validateCreate(CreateRequest{
+				Domain: "example.com",
+				Region: region,
+			})
+			if err != nil {
+				t.Fatalf("validateCreate returned error: %v", err)
+			}
+			if gotRegion != region {
+				t.Fatalf("region = %q, want %q", gotRegion, region)
+			}
+		})
+	}
+}
+
 func TestValidateCreateRejectsInvalidDomain(t *testing.T) {
 	_, _, _, err := validateCreate(CreateRequest{Domain: "not a domain"})
 	if err == nil {
@@ -40,9 +62,13 @@ func TestValidateCreateRejectsInvalidDomain(t *testing.T) {
 }
 
 func TestValidateCreateRejectsUnsupportedRegion(t *testing.T) {
-	_, _, _, err := validateCreate(CreateRequest{Domain: "example.com", Region: "us-west-2"})
-	if err == nil {
-		t.Fatal("validateCreate returned nil error for unsupported region")
+	for _, region := range []string{"eu-west-1", "ap-northeast-1", "sa-east-1", "af-south-1"} {
+		t.Run(region, func(t *testing.T) {
+			_, _, _, err := validateCreate(CreateRequest{Domain: "example.com", Region: region})
+			if err == nil {
+				t.Fatal("validateCreate returned nil error for unsupported region")
+			}
+		})
 	}
 }
 

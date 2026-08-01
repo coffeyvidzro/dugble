@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,6 +20,7 @@ import (
 var ErrNotFound = errors.New("email message not found")
 var ErrNotCancelable = errors.New("email message is not a pending scheduled email")
 var ErrSenderDomainNotFound = errors.New("sender domain not found")
+var ErrActiveEmailTenantNotFound = errors.New("active email tenant not found")
 
 type SenderDomainRoute struct {
 	ID           uuid.UUID
@@ -42,13 +44,39 @@ func (r *Repository) BeginTx(ctx context.Context) (pgx.Tx, error) {
 	return r.db.BeginTx(ctx, pgx.TxOptions{})
 }
 
+func (r *Repository) ResolveActiveCustomerRouteTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, provider, region, stream string) (platformemail.DeliveryRoute, error) {
+	if tx == nil {
+		return platformemail.DeliveryRoute{}, errors.New("email route transaction is required")
+	}
+	var tenantName string
+	err := tx.QueryRow(ctx, `
+		SELECT external_name
+		FROM email_tenants
+		WHERE team_id = $1
+		  AND provider = $2
+		  AND region = $3
+		  AND status = 'active'
+		FOR SHARE
+	`, teamID, strings.ToLower(strings.TrimSpace(provider)), strings.ToLower(strings.TrimSpace(region))).Scan(&tenantName)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return platformemail.DeliveryRoute{}, ErrActiveEmailTenantNotFound
+	}
+	if err != nil {
+		return platformemail.DeliveryRoute{}, fmt.Errorf("resolve active customer email tenant: %w", err)
+	}
+	route, err := platformemail.CustomerDeliveryRoute(stream, tenantName)
+	if err != nil {
+		return platformemail.DeliveryRoute{}, fmt.Errorf("build customer email route: %w", err)
+	}
+	return route, nil
+}
+
 func (r *Repository) CreateTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, req validatedSend) (Message, error) {
 	recipients, err := json.Marshal(map[string][]EmailAddress{"to": req.To, "cc": req.CC, "bcc": req.BCC, "reply_to": req.ReplyTo})
 	if err != nil {
 		return Message{}, fmt.Errorf("encode email recipients: %w", err)
 	}
-	route := platformemail.BuiltInDeliveryRoute(req.MessageType)
-	headers, err := json.Marshal(platformemail.PersistDeliveryRoute(req.Headers, route))
+	headers, err := json.Marshal(platformemail.PersistDeliveryRoute(req.Headers, req.DeliveryRoute))
 	if err != nil {
 		return Message{}, fmt.Errorf("encode email headers: %w", err)
 	}

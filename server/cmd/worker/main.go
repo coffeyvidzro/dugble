@@ -18,6 +18,7 @@ import (
 	emailfeedback "github.com/coffeyvidzro/dugble/server/internal/delivery/email/feedback"
 	emaildelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/email/send"
 	systememail "github.com/coffeyvidzro/dugble/server/internal/delivery/email/system"
+	tenantprovision "github.com/coffeyvidzro/dugble/server/internal/delivery/email/tenant"
 	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
 	webhookdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/webhooks"
 	awsses "github.com/coffeyvidzro/dugble/server/internal/integration/aws/ses"
@@ -29,6 +30,7 @@ import (
 	jetstreammessaging "github.com/coffeyvidzro/dugble/server/internal/messaging/jetstream"
 	"github.com/coffeyvidzro/dugble/server/internal/messaging/outbox"
 	domainmodule "github.com/coffeyvidzro/dugble/server/internal/modules/domain"
+	"github.com/coffeyvidzro/dugble/server/internal/modules/emailtenant"
 	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
 	webhookmodule "github.com/coffeyvidzro/dugble/server/internal/modules/webhooks"
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
@@ -84,6 +86,13 @@ func run() error {
 	systemEmailConsumer := systememail.NewConsumer(messagingClient, processedEvents, emailSender, systememail.ConsumerConfig{
 		Concurrency: 3, AckWait: time.Minute, HandlerTimeout: 30 * time.Second, MaxDeliver: 6,
 	})
+	emailTenantRepository := emailtenant.NewRepository(db)
+	emailTenantConsumer := tenantprovision.NewConsumer(
+		messagingClient,
+		processedEvents,
+		tenantprovision.NewHandler(emailTenantRepository, emailSender),
+		tenantprovision.Config{Concurrency: 3, AckWait: 2 * time.Minute, HandlerTimeout: 60 * time.Second, RetryBackOff: tenantprovision.DefaultRetryBackOff()},
+	)
 	feedbackMetrics := emailfeedback.DefaultMetrics
 	emailFeedbackRepository := emailfeedback.NewRepositoryWithWebhookEmitter(db, webhookEmitter)
 	emailFeedbackConsumer := emailfeedback.NewConsumer(messagingClient, processedEvents, emailfeedback.NewHandlerWithMetrics(emailFeedbackRepository, feedbackMetrics), emailfeedback.ConsumerConfig{
@@ -139,6 +148,7 @@ func run() error {
 		{Name: "outbox relay", Run: outboxRelay.Run},
 		{Name: "email JetStream consumer", Run: emailConsumer.Run},
 		{Name: "system email JetStream consumer", Run: systemEmailConsumer.Run},
+		{Name: "email tenant provisioning consumer", Run: emailTenantConsumer.Run},
 		{Name: "email feedback JetStream consumer", Run: emailFeedbackConsumer.Run},
 		{Name: "email feedback database reconciler", Run: emailFeedbackReconciler.Run},
 		{Name: "email feedback metrics collector", Run: emailFeedbackMetricsCollector.Run},

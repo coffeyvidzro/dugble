@@ -30,6 +30,7 @@ type Querier interface {
 	CreateEmailMessage(ctx context.Context, arg CreateEmailMessageParams) (EmailMessage, error)
 	CreateEmailProviderEvent(ctx context.Context, arg CreateEmailProviderEventParams) (EmailProviderEvent, error)
 	CreateEmailRecipient(ctx context.Context, arg CreateEmailRecipientParams) (EmailRecipient, error)
+	CreateEmailTenant(ctx context.Context, arg CreateEmailTenantParams) (EmailTenant, error)
 	CreateFederatedWorkloadAccessToken(ctx context.Context, arg CreateFederatedWorkloadAccessTokenParams) (WorkloadAccessToken, error)
 	CreateIdempotencyKey(ctx context.Context, arg CreateIdempotencyKeyParams) (IdempotencyKey, error)
 	CreateMFALoginChallenge(ctx context.Context, arg CreateMFALoginChallengeParams) error
@@ -57,6 +58,7 @@ type Querier interface {
 	CreateWorkloadOIDCFederation(ctx context.Context, arg CreateWorkloadOIDCFederationParams) (WorkloadOidcFederation, error)
 	DeadLetterEmailProviderEvent(ctx context.Context, arg DeadLetterEmailProviderEventParams) (int64, error)
 	DeclineTeamInvitation(ctx context.Context, arg DeclineTeamInvitationParams) (TeamInvitation, error)
+	DeleteEmailTenant(ctx context.Context, arg DeleteEmailTenantParams) (int64, error)
 	DeleteExpiredVerificationTokens(ctx context.Context) error
 	DeleteIdempotencyKey(ctx context.Context, arg DeleteIdempotencyKeyParams) error
 	DeleteOIDCConnection(ctx context.Context, arg DeleteOIDCConnectionParams) error
@@ -86,6 +88,8 @@ type Querier interface {
 	GetEmailMessage(ctx context.Context, arg GetEmailMessageParams) (EmailMessage, error)
 	GetEmailProviderEventForUpdate(ctx context.Context, arg GetEmailProviderEventForUpdateParams) (EmailProviderEvent, error)
 	GetEmailRecipientForUpdate(ctx context.Context, arg GetEmailRecipientForUpdateParams) (EmailRecipient, error)
+	GetEmailTenant(ctx context.Context, arg GetEmailTenantParams) (EmailTenant, error)
+	GetEmailTenantByTeamProviderRegion(ctx context.Context, arg GetEmailTenantByTeamProviderRegionParams) (EmailTenant, error)
 	GetIdempotencyKey(ctx context.Context, arg GetIdempotencyKeyParams) (IdempotencyKey, error)
 	GetNextEmailDeliveryAttemptNumber(ctx context.Context, arg GetNextEmailDeliveryAttemptNumberParams) (int32, error)
 	GetOAuthIdentity(ctx context.Context, arg GetOAuthIdentityParams) (OauthIdentity, error)
@@ -141,6 +145,11 @@ type Querier interface {
 	MarkEmailDeliveryAttemptRequestStarted(ctx context.Context, arg MarkEmailDeliveryAttemptRequestStartedParams) (int64, error)
 	MarkEmailDeliveryAttemptSubmitted(ctx context.Context, arg MarkEmailDeliveryAttemptSubmittedParams) (int64, error)
 	MarkEmailProviderEventProcessed(ctx context.Context, arg MarkEmailProviderEventProcessedParams) (int64, error)
+	MarkEmailTenantActive(ctx context.Context, arg MarkEmailTenantActiveParams) (EmailTenant, error)
+	MarkEmailTenantDeleting(ctx context.Context, arg MarkEmailTenantDeletingParams) (EmailTenant, error)
+	MarkEmailTenantFailed(ctx context.Context, arg MarkEmailTenantFailedParams) (EmailTenant, error)
+	MarkEmailTenantPaused(ctx context.Context, arg MarkEmailTenantPausedParams) (EmailTenant, error)
+	MarkEmailTenantProvisioning(ctx context.Context, arg MarkEmailTenantProvisioningParams) (EmailTenant, error)
 	MarkSMSMessageDeliveryUnknown(ctx context.Context, arg MarkSMSMessageDeliveryUnknownParams) (SmsMessage, error)
 	MarkSMSMessageFailed(ctx context.Context, arg MarkSMSMessageFailedParams) (SmsMessage, error)
 	MarkSMSMessageProcessing(ctx context.Context, arg MarkSMSMessageProcessingParams) (SmsMessage, error)

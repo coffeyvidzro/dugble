@@ -8,10 +8,12 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/coffeyvidzro/dugble/server/internal/config"
+	"github.com/coffeyvidzro/dugble/server/internal/messaging/outbox"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/auditevent"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/auth"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/domain"
 	emailmodule "github.com/coffeyvidzro/dugble/server/internal/modules/email"
+	"github.com/coffeyvidzro/dugble/server/internal/modules/emailtenant"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/identitypolicy"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/mfa"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/scim"
@@ -102,6 +104,11 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	workloadRepository := workload.NewRepository(deps.DB)
 	workloadService := workload.NewService(workloadRepository)
 	domainRepository := domain.NewRepository(deps.DB)
+	emailTenantRepository := emailtenant.NewRepository(deps.DB)
+	emailTenantService := emailtenant.NewService(
+		emailTenantRepository,
+		emailtenant.NewProvisionQueue(outbox.NewRepository(deps.DB)),
+	)
 	senderIDRepository := senderid.NewRepository(deps.DB)
 	webhookRepository := webhooks.NewRepository(deps.DB)
 	webhookEmitter := platformwebhook.NewEmitter(webhookRepository)
@@ -120,12 +127,12 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	teamtoken.RegisterRoutes(router, teamtoken.NewHandler(teamtoken.NewService(teamTokenRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	workload.RegisterRoutes(router, workload.NewHandler(workloadService), authMiddleware, csrfMiddleware, tenantMiddleware)
 	senderid.RegisterRoutes(router, senderid.NewHandler(senderid.NewService(senderIDRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
-	domain.RegisterRoutes(router, domain.NewHandler(domain.NewService(domainRepository, deps.DomainProvider, deps.DNSVerifier)), authMiddleware, csrfMiddleware, tenantMiddleware)
+	domain.RegisterRoutes(router, domain.NewHandler(domain.NewService(domainRepository, deps.DomainProvider, deps.DNSVerifier, emailTenantService)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	smsService := smsmodule.NewService(smsRepository, deps.SMSSender, deps.SMSDelivery)
 	smsmodule.RegisterRoutes(router, smsmodule.NewHandler(smsService), tenantAccess)
 	emailRepository := emailmodule.NewRepository(deps.DB)
 	emailServiceAPI := emailmodule.NewService(emailRepository, deps.EmailDelivery, emailmodule.ServiceConfig{
-		DefaultFromEmail: cfg.AWS.FromEmail,
+		DefaultFromEmail: platformemail.CustomerOnboardingIdentity,
 		DefaultProvider:  domain.DefaultProvider,
 		DefaultRegion:    cfg.AWS.Region,
 	})

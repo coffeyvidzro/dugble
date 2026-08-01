@@ -32,6 +32,7 @@ type validatedSend struct {
 	SenderDomainID *uuid.UUID
 	Provider       string
 	ProviderRegion string
+	DeliveryRoute  platformemail.DeliveryRoute
 	MessageType    string
 	FromEmail      string
 	FromName       *string

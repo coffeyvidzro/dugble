@@ -5,7 +5,13 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/google/uuid"
+
+	"github.com/coffeyvidzro/dugble/server/internal/modules/emailtenant"
+
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
+	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
+	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
 type checkProvider struct {
@@ -132,5 +138,41 @@ func TestVerificationStatusRequiresAllChecks(t *testing.T) {
 				t.Fatalf("verificationStatus() = %q, want %q", got, test.want)
 			}
 		})
+	}
+}
+
+type provisioningStub struct {
+	tenant   emailtenant.Tenant
+	err      error
+	requests int
+}
+
+func (s *provisioningStub) RequestProvisioning(context.Context, uuid.UUID, string) (emailtenant.Tenant, error) {
+	s.requests++
+	return s.tenant, s.err
+}
+
+func domainAccessContext(teamID uuid.UUID) context.Context {
+	return tenant.ContextWithAccess(context.Background(), tenant.AccessContext{
+		Actor: tenant.Actor{Type: tenant.ActorTypeUser, UserID: uuid.New()},
+		Scope: tenant.Scope{TeamID: teamID, Role: tenant.RoleOwner, Status: tenant.StatusActive},
+	})
+}
+
+func TestCreateReturnsConflictWhileTenantIsProvisioning(t *testing.T) {
+	teamID := uuid.New()
+	provisioner := &provisioningStub{tenant: emailtenant.Tenant{ID: uuid.New(), TeamID: teamID, Region: "eu-north-1", Status: emailtenant.StatusProvisioning}}
+	service := NewService(nil, checkProvider{}, checkDNS(true), provisioner)
+
+	_, err := service.Create(domainAccessContext(teamID), CreateRequest{Domain: "example.com", Region: "eu-north-1"})
+	if err == nil {
+		t.Fatal("Create() error = nil, want tenant preparation conflict")
+	}
+	var appErr *apperrors.AppError
+	if !errors.As(err, &appErr) || appErr.Code != "CONFLICT" {
+		t.Fatalf("Create() error = %v, want conflict", err)
+	}
+	if provisioner.requests != 1 {
+		t.Fatalf("provisioning requests = %d, want 1", provisioner.requests)
 	}
 }

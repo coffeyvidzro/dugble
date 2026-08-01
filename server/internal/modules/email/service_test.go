@@ -9,13 +9,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 )
 
 type configuredDeliveryQueue struct{}
 
 var testServiceConfig = ServiceConfig{
-	DefaultFromEmail: "sender@example.com",
+	DefaultFromEmail: platformemail.CustomerOnboardingIdentity,
 	DefaultProvider:  "aws_ses",
 	DefaultRegion:    "us-east-1",
 }
@@ -36,6 +37,20 @@ type stubSenderDomainResolver struct {
 func (r *stubSenderDomainResolver) ResolveSenderDomain(_ context.Context, teamID uuid.UUID, domainName string) (SenderDomainRoute, error) {
 	r.teamID, r.domainName = teamID, domainName
 	return r.route, r.err
+}
+
+type stubCustomerRouteResolver struct {
+	routes map[uuid.UUID]platformemail.DeliveryRoute
+	teamID uuid.UUID
+}
+
+func (r *stubCustomerRouteResolver) ResolveActiveCustomerRouteTx(_ context.Context, _ pgx.Tx, teamID uuid.UUID, _, _, _ string) (platformemail.DeliveryRoute, error) {
+	r.teamID = teamID
+	route, ok := r.routes[teamID]
+	if !ok {
+		return platformemail.DeliveryRoute{}, ErrActiveEmailTenantNotFound
+	}
+	return route, nil
 }
 
 func (q *immediateOnlyDeliveryQueue) EnqueueEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error {
@@ -101,7 +116,7 @@ func TestAuthorizeSenderUsesVerifiedTeamDomainRoute(t *testing.T) {
 		ID: domainID, Provider: "aws_ses", Region: "eu-west-1", Status: "verified", HealthStatus: "healthy",
 	}}
 	service := NewService(nil, nil, testServiceConfig, resolver)
-	message := validatedSend{FromEmail: "Billing@Example.COM"}
+	message := validatedSend{FromEmail: "Billing@Example.COM", MessageType: MessageTypeTransactional}
 
 	if err := service.authorizeSender(context.Background(), teamID, &message); err != nil {
 		t.Fatalf("authorize sender: %v", err)
@@ -117,7 +132,7 @@ func TestAuthorizeSenderUsesVerifiedTeamDomainRoute(t *testing.T) {
 func TestAuthorizeSenderRejectsUnauthorizedDomain(t *testing.T) {
 	resolver := &stubSenderDomainResolver{err: ErrSenderDomainNotFound}
 	service := NewService(nil, nil, testServiceConfig, resolver)
-	err := service.authorizeSender(context.Background(), uuid.New(), &validatedSend{FromEmail: "sender@other.example"})
+	err := service.authorizeSender(context.Background(), uuid.New(), &validatedSend{FromEmail: "sender@other.example", MessageType: MessageTypeTransactional})
 	if err == nil || !strings.Contains(err.Error(), "not authorized") {
 		t.Fatalf("expected unauthorized sender error, got %v", err)
 	}
@@ -131,20 +146,58 @@ func TestAuthorizeSenderRejectsUnverifiedDisabledOrDegradedDomain(t *testing.T) 
 	} {
 		t.Run(name, func(t *testing.T) {
 			service := NewService(nil, nil, testServiceConfig, &stubSenderDomainResolver{route: route})
-			if err := service.authorizeSender(context.Background(), uuid.New(), &validatedSend{FromEmail: "sender@example.com.invalid"}); err == nil {
+			if err := service.authorizeSender(context.Background(), uuid.New(), &validatedSend{FromEmail: "sender@example.com.invalid", MessageType: MessageTypeTransactional}); err == nil {
 				t.Fatal("expected unusable sender domain to be rejected")
 			}
 		})
 	}
 }
 
-func TestAuthorizeSenderKeepsDefaultPlatformRoute(t *testing.T) {
+func TestAuthorizeSenderUsesOnboardingIdentityWithoutSystemFallback(t *testing.T) {
 	service := NewService(nil, nil, testServiceConfig)
-	message := validatedSend{FromEmail: "SENDER@example.com"}
+	message := validatedSend{FromEmail: platformemail.CustomerOnboardingIdentity, MessageType: MessageTypeTransactional}
 	if err := service.authorizeSender(context.Background(), uuid.New(), &message); err != nil {
-		t.Fatalf("authorize default sender: %v", err)
+		t.Fatalf("authorize onboarding sender: %v", err)
 	}
 	if message.SenderDomainID != nil || message.Provider != "aws_ses" || message.ProviderRegion != "us-east-1" {
-		t.Fatalf("unexpected default route: %+v", message)
+		t.Fatalf("unexpected onboarding sender route: %+v", message)
+	}
+	if message.DeliveryRoute.SESTenantName == platformemail.SystemSESTenantName {
+		t.Fatal("onboarding sender fell back to dugble-system")
+	}
+}
+
+func TestAuthorizeSenderRejectsOnboardingMarketing(t *testing.T) {
+	service := NewService(nil, nil, testServiceConfig)
+	err := service.authorizeSender(context.Background(), uuid.New(), &validatedSend{
+		FromEmail: platformemail.CustomerOnboardingIdentity,
+		MessageType: MessageTypeMarketing,
+	})
+	if err == nil {
+		t.Fatal("expected onboarding identity marketing send to be rejected")
+	}
+}
+
+func TestTeamScopedRouteResolverCannotReturnTeamBTenantForTeamA(t *testing.T) {
+	teamA, teamB := uuid.New(), uuid.New()
+	routeA, err := platformemail.CustomerDeliveryRoute("transactional", "dugble-t-team-a")
+	if err != nil {
+		t.Fatalf("team A route: %v", err)
+	}
+	routeB, err := platformemail.CustomerDeliveryRoute("transactional", "dugble-t-team-b")
+	if err != nil {
+		t.Fatalf("team B route: %v", err)
+	}
+	resolver := &stubCustomerRouteResolver{routes: map[uuid.UUID]platformemail.DeliveryRoute{teamA: routeA, teamB: routeB}}
+
+	resolved, err := resolver.ResolveActiveCustomerRouteTx(context.Background(), nil, teamA, "aws_ses", "us-east-1", "transactional")
+	if err != nil {
+		t.Fatalf("resolve team A route: %v", err)
+	}
+	if resolver.teamID != teamA || resolved.SESTenantName != "dugble-t-team-a" {
+		t.Fatalf("team A resolved foreign route: %+v", resolved)
+	}
+	if resolved.SESTenantName == routeB.SESTenantName {
+		t.Fatal("team A resolved team B SES tenant")
 	}
 }

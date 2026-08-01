@@ -19,13 +19,11 @@ const (
 	RecordStatusFailed   = "failed"
 )
 
-// Address is a provider-neutral email address.
 type Address struct {
 	Email string `json:"email"`
 	Name  string `json:"name,omitempty"`
 }
 
-// Attachment is a provider-neutral email attachment. Content is base64 encoded.
 type Attachment struct {
 	Content     string `json:"content,omitempty"`
 	Filename    string `json:"filename,omitempty"`
@@ -34,18 +32,10 @@ type Attachment struct {
 	ContentID   string `json:"content_id,omitempty"`
 }
 
-// Message is the canonical message accepted by email integrations.
 type Message struct {
-	// MessageID and AttemptID are provider-neutral correlation identifiers. An
-	// integration may attach them as provider metadata so asynchronous feedback
-	// can reconcile a submission whose synchronous result could not be stored.
 	MessageID string `json:"message_id,omitempty"`
 	AttemptID string `json:"attempt_id,omitempty"`
 
-	// Provider, Region, Stream, ConfigurationSet, and SESTenantName form the
-	// immutable delivery route resolved when the application accepts a message.
-	// Empty values are supported only for legacy and system messages, where the
-	// sender's configured defaults are used.
 	Provider         string `json:"provider,omitempty"`
 	Region           string `json:"region,omitempty"`
 	Stream           string `json:"stream,omitempty"`
@@ -64,18 +54,15 @@ type Message struct {
 	Attachments []Attachment      `json:"attachments,omitempty"`
 }
 
-// Result identifies a message accepted by an email provider.
 type Result struct {
 	Provider  string
 	MessageID string
 }
 
-// Sender is implemented by email integrations such as AWS SES.
 type Sender interface {
 	Send(context.Context, Message) (Result, error)
 }
 
-// VerificationRecord is a provider-neutral DNS record required to authenticate a sender domain.
 type VerificationRecord struct {
 	Record   string `json:"record"`
 	Name     string `json:"name"`
@@ -86,29 +73,25 @@ type VerificationRecord struct {
 	Priority *int   `json:"priority,omitempty"`
 }
 
-// DomainProvisionRequest describes a sender domain that an email integration should provision.
 type DomainProvisionRequest struct {
 	Domain           string
 	Region           string
 	CustomReturnPath string
+	SESTenantName    string
 }
 
-// DomainStatus contains provider-side sender-domain verification state.
 type DomainStatus struct {
 	IdentityVerified bool
 	DKIMVerified     bool
 	MailFromVerified bool
 }
 
-// DomainProvider is implemented by integrations that provision, inspect, and
-// deprovision sender identities.
 type DomainProvider interface {
 	ProvisionDomain(context.Context, DomainProvisionRequest) ([]VerificationRecord, error)
 	GetDomainStatus(context.Context, string, string) (DomainStatus, error)
 	DeleteDomain(context.Context, string, string) error
 }
 
-// SendError exposes provider-neutral failure metadata to delivery workers.
 type SendError struct {
 	Code              string
 	Retryable         bool
@@ -131,26 +114,13 @@ func (e *SendError) Unwrap() error {
 }
 
 func NewSendError(code string, retryable bool, err error) error {
-	return &SendError{
-		Code:      normalizeCode(code),
-		Retryable: retryable,
-		Err:       err,
-	}
+	return &SendError{Code: normalizeCode(code), Retryable: retryable, Err: err}
 }
 
-// NewSubmissionUnknownError reports that the provider may have accepted the
-// message, but the caller did not receive a definitive submission result.
 func NewSubmissionUnknownError(code string, err error) error {
-	return &SendError{
-		Code:              normalizeCode(code),
-		SubmissionUnknown: true,
-		Err:               err,
-	}
+	return &SendError{Code: normalizeCode(code), SubmissionUnknown: true, Err: err}
 }
 
-// IsSubmissionUnknown reports whether retrying could duplicate a provider
-// submission. Bare cancellations, deadlines, and network errors are treated
-// conservatively because they may happen after the request crossed the network.
 func IsSubmissionUnknown(err error) bool {
 	if err == nil {
 		return false

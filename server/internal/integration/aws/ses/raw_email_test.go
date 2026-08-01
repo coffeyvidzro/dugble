@@ -14,13 +14,16 @@ import (
 )
 
 func TestSendUsesEnvelopeDestinationsForBCC(t *testing.T) {
-	recordingClient := &recordingSESClient{}
+	recordingClient := &recordingSESV2Client{}
 	client, err := NewClient("us-east-1", "default@example.com", "access-key", "secret-key")
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	client.sendingClients["us-east-1"] = recordingClient
-	route := platformemail.BuiltInDeliveryRoute("transactional")
+	client.v2SendingClients["us-east-1"] = recordingClient
+	route, err := platformemail.CustomerDeliveryRoute("transactional", "dugble-t-customer")
+	if err != nil {
+		t.Fatalf("create customer route: %v", err)
+	}
 
 	_, err = client.Send(context.Background(), platformemail.Message{
 		Stream:           route.Stream,
@@ -37,24 +40,32 @@ func TestSendUsesEnvelopeDestinationsForBCC(t *testing.T) {
 		t.Fatalf("send email: %v", err)
 	}
 
-	wantDestinations := []string{"to@example.com", "cc@example.com", "hidden@example.com"}
-	if !reflect.DeepEqual(recordingClient.input.Destinations, wantDestinations) {
-		t.Fatalf("Destinations = %#v, want %#v", recordingClient.input.Destinations, wantDestinations)
+	if !reflect.DeepEqual(recordingClient.input.Destination.ToAddresses, []string{"to@example.com"}) {
+		t.Fatalf("ToAddresses = %#v", recordingClient.input.Destination.ToAddresses)
 	}
-	raw := string(recordingClient.input.RawMessage.Data)
+	if !reflect.DeepEqual(recordingClient.input.Destination.CcAddresses, []string{"cc@example.com"}) {
+		t.Fatalf("CcAddresses = %#v", recordingClient.input.Destination.CcAddresses)
+	}
+	if !reflect.DeepEqual(recordingClient.input.Destination.BccAddresses, []string{"hidden@example.com", "TO@example.com"}) {
+		t.Fatalf("BccAddresses = %#v", recordingClient.input.Destination.BccAddresses)
+	}
+	raw := string(recordingClient.input.Content.Raw.Data)
 	if strings.Contains(strings.ToLower(raw), "\r\nbcc:") || strings.HasPrefix(strings.ToLower(raw), "bcc:") {
 		t.Fatalf("raw MIME exposed a Bcc header:\n%s", raw)
 	}
 }
 
 func TestSendAddsDeliveryCorrelationTags(t *testing.T) {
-	recordingClient := &recordingSESClient{}
+	recordingClient := &recordingSESV2Client{}
 	client, err := NewClient("us-east-1", "default@example.com", "access-key", "secret-key")
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	client.sendingClients["us-east-1"] = recordingClient
-	route := platformemail.BuiltInDeliveryRoute("transactional")
+	client.v2SendingClients["us-east-1"] = recordingClient
+	route, err := platformemail.CustomerDeliveryRoute("transactional", "dugble-t-customer")
+	if err != nil {
+		t.Fatalf("create customer route: %v", err)
+	}
 
 	_, err = client.Send(context.Background(), platformemail.Message{
 		MessageID:        "message-123",
@@ -70,11 +81,11 @@ func TestSendAddsDeliveryCorrelationTags(t *testing.T) {
 	if err != nil {
 		t.Fatalf("send email: %v", err)
 	}
-	if len(recordingClient.input.Tags) != 3 {
-		t.Fatalf("Tags = %#v, want two correlation tags and one stream tag", recordingClient.input.Tags)
+	if len(recordingClient.input.EmailTags) != 3 {
+		t.Fatalf("EmailTags = %#v, want two correlation tags and one stream tag", recordingClient.input.EmailTags)
 	}
 	got := map[string]string{}
-	for _, tag := range recordingClient.input.Tags {
+	for _, tag := range recordingClient.input.EmailTags {
 		got[aws.ToString(tag.Name)] = aws.ToString(tag.Value)
 	}
 	if got[messageIDTagName] != "message-123" || got[attemptIDTagName] != "attempt-456" || got[streamTagName] != "transactional" {

@@ -24,6 +24,10 @@ func (c *Client) ProvisionDomain(ctx context.Context, req platformemail.DomainPr
 	if err != nil {
 		return nil, err
 	}
+	tenantName := strings.TrimSpace(req.SESTenantName)
+	if tenantName == "" {
+		return nil, errors.New("SES tenant name is required for sender-domain provisioning")
+	}
 	selector, privateKey, publicKey, err := generateBYODKIMMaterial()
 	if err != nil {
 		return nil, fmt.Errorf("generate BYODKIM material: %w", err)
@@ -50,7 +54,52 @@ func (c *Client) ProvisionDomain(ctx context.Context, req platformemail.DomainPr
 		}
 		return nil, fmt.Errorf("configure SES MAIL FROM domain: %w", err)
 	}
+	if err := c.associateIdentityWithTenant(ctx, req.Region, tenantName, req.Domain); err != nil {
+		cleanupErr := c.deleteDomainWithClient(ctx, client, req.Domain)
+		if cleanupErr != nil {
+			return nil, errors.Join(err, fmt.Errorf("roll back SES email identity: %w", cleanupErr))
+		}
+		return nil, err
+	}
 	return mapVerificationRecords(req, selector, publicKey), nil
+}
+
+func (c *Client) associateIdentityWithTenant(ctx context.Context, region, tenantName, domainName string) error {
+	client, err := c.tenantClient(region)
+	if err != nil {
+		return err
+	}
+	output, err := client.GetTenant(ctx, &sesv2.GetTenantInput{TenantName: aws.String(strings.TrimSpace(tenantName))})
+	if err != nil {
+		return fmt.Errorf("get SES tenant for sender identity: %w", err)
+	}
+	if output.Tenant == nil || output.Tenant.TenantArn == nil {
+		return errors.New("SES returned an incomplete tenant for sender identity association")
+	}
+	resourceARN, err := identityARN(strings.TrimSpace(*output.Tenant.TenantArn), domainName)
+	if err != nil {
+		return err
+	}
+	_, err = client.CreateTenantResourceAssociation(ctx, &sesv2.CreateTenantResourceAssociationInput{
+		TenantName:  aws.String(strings.TrimSpace(tenantName)),
+		ResourceArn: aws.String(resourceARN),
+	})
+	if err != nil && !isAlreadyExists(err) {
+		return fmt.Errorf("associate SES sender identity with tenant: %w", err)
+	}
+	return nil
+}
+
+func identityARN(tenantARN, identity string) (string, error) {
+	parts := strings.Split(tenantARN, ":")
+	identity = strings.ToLower(strings.TrimSpace(identity))
+	if len(parts) < 6 || parts[0] != "arn" || parts[2] != "ses" || strings.TrimSpace(parts[3]) == "" || strings.TrimSpace(parts[4]) == "" {
+		return "", fmt.Errorf("invalid SES tenant ARN %q", tenantARN)
+	}
+	if identity == "" {
+		return "", errors.New("SES identity is required")
+	}
+	return fmt.Sprintf("arn:%s:ses:%s:%s:identity/%s", parts[1], parts[3], parts[4], identity), nil
 }
 
 func (c *Client) GetDomainStatus(ctx context.Context, domainName, region string) (platformemail.DomainStatus, error) {
