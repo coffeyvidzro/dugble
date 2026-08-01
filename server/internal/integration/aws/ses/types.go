@@ -22,7 +22,16 @@ type sesIdentityAPI interface {
 	DeleteEmailIdentity(context.Context, *sesv2.DeleteEmailIdentityInput, ...func(*sesv2.Options)) (*sesv2.DeleteEmailIdentityOutput, error)
 }
 
-// Client implements provider-neutral sending and sender-domain operations using AWS SES.
+type sesTenantAPI interface {
+	CreateTenant(context.Context, *sesv2.CreateTenantInput, ...func(*sesv2.Options)) (*sesv2.CreateTenantOutput, error)
+	GetTenant(context.Context, *sesv2.GetTenantInput, ...func(*sesv2.Options)) (*sesv2.GetTenantOutput, error)
+	PutTenantSuppressionAttributes(context.Context, *sesv2.PutTenantSuppressionAttributesInput, ...func(*sesv2.Options)) (*sesv2.PutTenantSuppressionAttributesOutput, error)
+	CreateTenantResourceAssociation(context.Context, *sesv2.CreateTenantResourceAssociationInput, ...func(*sesv2.Options)) (*sesv2.CreateTenantResourceAssociationOutput, error)
+	UpdateReputationEntityPolicy(context.Context, *sesv2.UpdateReputationEntityPolicyInput, ...func(*sesv2.Options)) (*sesv2.UpdateReputationEntityPolicyOutput, error)
+}
+
+// Client implements provider-neutral sending, sender-domain, and tenant
+// operations using AWS SES.
 type Client struct {
 	defaultRegion string
 	defaultFrom   string
@@ -31,4 +40,5 @@ type Client struct {
 	mu              sync.Mutex
 	sendingClients  map[string]sesAPI
 	identityClients map[string]sesIdentityAPI
+	tenantClients   map[string]sesTenantAPI
 }
