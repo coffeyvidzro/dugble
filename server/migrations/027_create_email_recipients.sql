@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS email_recipients (
     status TEXT NOT NULL DEFAULT 'pending',
     last_event_type TEXT,
     last_event_at TIMESTAMPTZ,
+    last_action TEXT,
+    last_status_code TEXT,
+    last_diagnostic_code TEXT,
     delivered_at TIMESTAMPTZ,
     failed_at TIMESTAMPTZ,
     error_code TEXT,
@@ -96,35 +99,6 @@ SELECT
     END
 FROM deduplicated
 ON CONFLICT (email_message_id, recipient_email) DO NOTHING;
-
-WITH latest_events AS (
-    SELECT DISTINCT ON (email_message_id, recipient_email)
-        email_message_id,
-        lower(trim(recipient_email)) AS recipient_email,
-        event_type,
-        occurred_at
-    FROM email_recipient_events
-    ORDER BY email_message_id, recipient_email, occurred_at DESC, created_at DESC
-)
-UPDATE email_recipients AS recipient
-SET status = CASE latest.event_type
-        WHEN 'send' THEN 'submitted'
-        WHEN 'delivery_delay' THEN 'delayed'
-        WHEN 'delivery' THEN 'delivered'
-        WHEN 'bounce' THEN 'bounced'
-        WHEN 'complaint' THEN 'complained'
-        WHEN 'reject' THEN 'rejected'
-        WHEN 'rendering_failure' THEN 'failed'
-        ELSE recipient.status
-    END,
-    last_event_type = latest.event_type,
-    last_event_at = latest.occurred_at,
-    delivered_at = CASE WHEN latest.event_type = 'delivery' THEN latest.occurred_at ELSE recipient.delivered_at END,
-    failed_at = CASE WHEN latest.event_type IN ('bounce', 'complaint', 'reject', 'rendering_failure') THEN latest.occurred_at ELSE recipient.failed_at END,
-    updated_at = now()
-FROM latest_events AS latest
-WHERE recipient.email_message_id = latest.email_message_id
-  AND recipient.recipient_email = latest.recipient_email;
 
 CREATE OR REPLACE FUNCTION create_email_recipient_states()
 RETURNS trigger
