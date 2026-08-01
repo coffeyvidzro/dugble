@@ -49,6 +49,15 @@ github.com/golang/protobuf v1.5.0 h1:LUVKkCeviFUMKqHa4tXIIij/lbhnMbP7Fn5wKdKkRh4
 github.com/golang/protobuf v1.5.0/go.mod h1:FsONVRAS9T7sI+LIUmWTfcYkHO4aIWwzhcaSAoJOfIk=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
 github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
+github.com/nats-io/nats-server v1.4.1/go.mod h1:c8f/fHd2B6Hgms3LtCaI7y6pC4WD1f4SUxcCud5vhBc=
+github.com/newrelic/go-agent/v3 v3.44.1 h1:O5DnT3U0cPEian06GL6AXrv4qHoOxvxvAD7shqRGyTQ=
+github.com/newrelic/go-agent/v3 v3.44.1/go.mod h1:5A2u/S0na/zIg5hS197XdK+ZkLqTRq5baFzJfVWrc3Q=
+github.com/newrelic/go-agent/v3/integrations/nrnats v1.1.7 h1:HT6TEm3wKEdpKI+dzEmDNzG2a+ycFPI0id2KKVLcj74=
+github.com/newrelic/go-agent/v3/integrations/nrnats v1.1.7/go.mod h1:GvYFLY3QhdMMukJ0WdJaqG0bHa7YzXJQ8y1OL+PWNMI=
+github.com/newrelic/go-agent/v3/integrations/nrpgx5 v1.3.4 h1:7sEMnE9h0al593pQtNBBI3RxTFyLOo6bFfRDzQ3nsew=
+github.com/newrelic/go-agent/v3/integrations/nrpgx5 v1.3.4/go.mod h1:DKI/Zim0CJVASzMCj3FnNPS850ERsDzi1nxYDJsXWbU=
+github.com/newrelic/go-agent/v3/integrations/nrredis-v9 v1.1.2 h1:Yi8MH7fw8RqfILmGSc4yf0AysoNrlHdihJPMqfpT8xY=
+github.com/newrelic/go-agent/v3/integrations/nrredis-v9 v1.1.2/go.mod h1:8YQCdVir0v8y+Ovc7Oi/hwakevRAuymDNj806kjSE/k=
 github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10/go.mod h1:t/avpk3KcrXxUnYOhZhMXJlSEyie6gQbtLq5NM3loB8=
 github.com/rogpeppe/go-internal v1.12.0 h1:exVL4IDcn6na9z1rAb56Vxr+CgyK3nn3O+epU5NdKM8=
 github.com/rogpeppe/go-internal v1.12.0/go.mod h1:E+RYuTGaKKdloAfM02xzb0FW3Paa99yedzYV+kq4uf4=

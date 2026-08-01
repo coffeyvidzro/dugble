@@ -1,6 +1,8 @@
 package middlewares
 
 import (
+	"errors"
+	"net/http"
 	"strings"
 
 	"github.com/labstack/echo/v5"
@@ -18,13 +20,31 @@ func NewRelic() echo.MiddlewareFunc {
 					path = "unmatched"
 				}
 				txn.SetName(c.Request().Method + " " + path)
+				txn.AddAttribute("http.route", path)
 			}
 
 			err := next(c)
-			if err != nil && txn != nil {
-				txn.NoticeError(err)
+			if txn != nil {
+				if response, ok := c.Response().(*echo.Response); ok {
+					txn.AddAttribute("http.statusCode", response.Status)
+				}
+				if shouldNoticeError(err) {
+					txn.NoticeError(err)
+				}
 			}
 			return err
 		}
 	}
+}
+
+func shouldNoticeError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var httpError *echo.HTTPError
+	if errors.As(err, &httpError) {
+		return httpError.Code >= http.StatusInternalServerError
+	}
+	return true
 }

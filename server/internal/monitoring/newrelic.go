@@ -10,16 +10,27 @@ import (
 	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
+var ignoredHTTPPaths = map[string]struct{}{
+	"/health": {},
+	"/ready":  {},
+}
+
 // NewRelic initializes a New Relic application when NEW_RELIC_LICENSE_KEY is set.
 // Monitoring remains optional so local development does not require credentials.
-func NewRelic(defaultAppName string) (*newrelic.Application, error) {
+func NewRelic(defaultAppName, environment string) (*newrelic.Application, error) {
 	if strings.TrimSpace(os.Getenv("NEW_RELIC_LICENSE_KEY")) == "" {
 		return nil, nil
+	}
+
+	labels := map[string]string{"service": strings.TrimSpace(defaultAppName)}
+	if environment = strings.TrimSpace(environment); environment != "" {
+		labels["environment"] = environment
 	}
 
 	return newrelic.NewApplication(
 		newrelic.ConfigAppName(defaultAppName),
 		newrelic.ConfigFromEnvironment(),
+		newrelic.ConfigLabels(labels),
 		newrelic.ConfigCodeLevelMetricsEnabled(true),
 	)
 }
@@ -38,6 +49,11 @@ func WrapHTTP(app *newrelic.Application, next http.Handler) http.Handler {
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, ignored := ignoredHTTPPaths[r.URL.Path]; ignored {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		txn := app.StartTransaction(r.Method + " unmatched")
 		defer txn.End()
 
