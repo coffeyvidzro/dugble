@@ -3,11 +3,12 @@ package monitoring
 import (
 	"context"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/newrelic/go-agent/v3/newrelic"
+
+	"github.com/coffeyvidzro/dugble/server/internal/config"
 )
 
 var ignoredHTTPPaths = map[string]struct{}{
@@ -15,10 +16,14 @@ var ignoredHTTPPaths = map[string]struct{}{
 	"/ready":  {},
 }
 
-// NewRelic initializes a New Relic application when NEW_RELIC_LICENSE_KEY is set.
+// NewRelic initializes a New Relic application when a license key is configured.
 // Monitoring remains optional so local development does not require credentials.
-func NewRelic(defaultAppName, environment string) (*newrelic.Application, error) {
-	if strings.TrimSpace(os.Getenv("NEW_RELIC_LICENSE_KEY")) == "" {
+func NewRelic(
+	defaultAppName string,
+	environment string,
+	cfg config.NewRelicConfig,
+) (*newrelic.Application, error) {
+	if cfg.LicenseKey == "" {
 		return nil, nil
 	}
 
@@ -29,7 +34,9 @@ func NewRelic(defaultAppName, environment string) (*newrelic.Application, error)
 
 	return newrelic.NewApplication(
 		newrelic.ConfigAppName(defaultAppName),
-		newrelic.ConfigFromEnvironment(),
+		newrelic.ConfigLicense(cfg.LicenseKey),
+		newrelic.ConfigDistributedTracerEnabled(cfg.DistributedTracingEnabled),
+		newrelic.ConfigAppLogEnabled(cfg.LogEnabled),
 		newrelic.ConfigLabels(labels),
 		newrelic.ConfigCodeLevelMetricsEnabled(true),
 	)
