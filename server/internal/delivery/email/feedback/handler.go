@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -14,10 +15,18 @@ type eventProcessor interface {
 
 type Handler struct {
 	repository eventProcessor
+	metrics    *Metrics
 }
 
 func NewHandler(repository eventProcessor) *Handler {
-	return &Handler{repository: repository}
+	return NewHandlerWithMetrics(repository, DefaultMetrics)
+}
+
+func NewHandlerWithMetrics(repository eventProcessor, metrics *Metrics) *Handler {
+	if metrics == nil {
+		metrics = DefaultMetrics
+	}
+	return &Handler{repository: repository, metrics: metrics}
 }
 
 func (h *Handler) Handle(ctx context.Context, event ProviderEventReference) error {
@@ -30,5 +39,13 @@ func (h *Handler) Handle(ctx context.Context, event ProviderEventReference) erro
 	if strings.TrimSpace(event.Provider) != ProviderSES {
 		return errors.New("unsupported email feedback provider")
 	}
-	return h.repository.Process(ctx, event.EventID)
+	startedAt := time.Now()
+	err := h.repository.Process(ctx, event.EventID)
+	h.metrics.ObserveOperation("process", time.Since(startedAt))
+	if err != nil {
+		h.metrics.RecordEvent("process", "provider_event", "error")
+		return err
+	}
+	h.metrics.RecordEvent("process", "provider_event", "success")
+	return nil
 }
