@@ -17,24 +17,42 @@ type DeliveryRoute struct {
 	SESTenantName    string
 }
 
-// BuiltInDeliveryRoute is Dugble's authoritative SES routing policy. The AWS
-// resource names are product invariants rather than deployment configuration.
-// Callers persist the returned route with every accepted message.
-func BuiltInDeliveryRoute(stream string) DeliveryRoute {
+// SystemDeliveryRoute is reserved for email owned by the Dugble product, such
+// as authentication, security, and team-notification messages.
+func SystemDeliveryRoute() DeliveryRoute {
+	return DeliveryRoute{
+		Stream:           "transactional",
+		ConfigurationSet: "dugble-transactional",
+		SESTenantName:    "dugble-system",
+	}
+}
+
+// CustomerDeliveryRoute selects the shared product configuration set while
+// preserving the customer-specific SES tenant selected by the application.
+func CustomerDeliveryRoute(stream, tenantName string) DeliveryRoute {
+	route := DeliveryRoute{SESTenantName: strings.TrimSpace(tenantName)}
 	switch strings.ToLower(strings.TrimSpace(stream)) {
 	case "marketing":
+		route.Stream = "marketing"
+		route.ConfigurationSet = "dugble-marketing"
+	default:
+		route.Stream = "transactional"
+		route.ConfigurationSet = "dugble-transactional"
+	}
+	return route
+}
+
+// BuiltInDeliveryRoute remains as a compatibility helper for Dugble-owned
+// routes. Customer API email must use CustomerDeliveryRoute instead.
+func BuiltInDeliveryRoute(stream string) DeliveryRoute {
+	if strings.EqualFold(strings.TrimSpace(stream), "marketing") {
 		return DeliveryRoute{
 			Stream:           "marketing",
 			ConfigurationSet: "dugble-marketing",
 			SESTenantName:    "dugble-system",
 		}
-	default:
-		return DeliveryRoute{
-			Stream:           "transactional",
-			ConfigurationSet: "dugble-transactional",
-			SESTenantName:    "dugble-system",
-		}
 	}
+	return SystemDeliveryRoute()
 }
 
 // PersistDeliveryRoute returns a copy of headers containing server-owned route
