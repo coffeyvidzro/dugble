@@ -9,7 +9,7 @@ import (
 )
 
 type fakeTransaction struct {
-	committed bool
+	committed  bool
 	rolledBack bool
 }
 
@@ -24,14 +24,14 @@ func (tx *fakeTransaction) Rollback(context.Context) error {
 }
 
 type fakeTenantStore struct {
-	tx             *fakeTransaction
-	created        Tenant
-	createParams   CreateParams
-	markCalls      int
-	markResult     Tenant
-	beginErr       error
-	createErr      error
-	markErr        error
+	tx           *fakeTransaction
+	created      Tenant
+	createParams CreateParams
+	markCalls    int
+	markResult   Tenant
+	beginErr     error
+	createErr    error
+	markErr      error
 }
 
 func (s *fakeTenantStore) BeginTx(context.Context) (Transaction, error) {
@@ -132,7 +132,7 @@ func TestRequestProvisioningRollsBackWhenOutboxFails(t *testing.T) {
 	tenantID := uuid.New()
 	tx := &fakeTransaction{}
 	store := &fakeTenantStore{
-		tx: tx,
+		tx:      tx,
 		created: Tenant{ID: tenantID, TeamID: teamID, Status: StatusPending},
 		markResult: Tenant{
 			ID: tenantID, TeamID: teamID, Provider: ProviderAWSSES, Region: "eu-north-1",
