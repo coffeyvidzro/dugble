@@ -106,6 +106,11 @@ type EmailProviderEvent struct {
 	ProviderPayload        []byte             `db:"provider_payload" json:"provider_payload"`
 	ProcessedAt            pgtype.Timestamptz `db:"processed_at" json:"processed_at"`
 	CreatedAt              pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	AttemptCount           int32              `db:"attempt_count" json:"attempt_count"`
+	NextAttemptAt          pgtype.Timestamptz `db:"next_attempt_at" json:"next_attempt_at"`
+	LastAttemptAt          pgtype.Timestamptz `db:"last_attempt_at" json:"last_attempt_at"`
+	LastError              *string            `db:"last_error" json:"last_error"`
+	DeadLetteredAt         pgtype.Timestamptz `db:"dead_lettered_at" json:"dead_lettered_at"`
 }
 
 type EmailRecipient struct {
