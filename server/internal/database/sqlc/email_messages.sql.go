@@ -56,7 +56,7 @@ INSERT INTO email_messages (
     $18,
     $19
 )
-RETURNING id, team_id, sender_domain_id, delivery_provider, provider_region, message_type, from_email, from_name, reply_to_email, to_email, to_name, subject, html_body, text_body, status, provider, provider_message_id, error_code, error_message, metadata, recipients, headers, attachments, tags, scheduled_at, queued_at, processing_at, submitted_at, delivered_at, failed_at, created_at, updated_at
+RETURNING id, team_id, sender_domain_id, delivery_provider, provider_region, message_type, from_email, from_name, reply_to_email, to_email, to_name, subject, html_body, text_body, status, provider, provider_message_id, error_code, error_message, metadata, recipients, headers, attachments, tags, scheduled_at, queued_at, processing_at, submitted_at, delivered_at, failed_at, created_at, updated_at, current_delivery_attempt_id
 `
 
 type CreateEmailMessageParams struct {
@@ -137,12 +137,13 @@ func (q *Queries) CreateEmailMessage(ctx context.Context, arg CreateEmailMessage
 		&i.FailedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CurrentDeliveryAttemptID,
 	)
 	return i, err
 }
 
 const getEmailMessage = `-- name: GetEmailMessage :one
-SELECT id, team_id, sender_domain_id, delivery_provider, provider_region, message_type, from_email, from_name, reply_to_email, to_email, to_name, subject, html_body, text_body, status, provider, provider_message_id, error_code, error_message, metadata, recipients, headers, attachments, tags, scheduled_at, queued_at, processing_at, submitted_at, delivered_at, failed_at, created_at, updated_at
+SELECT id, team_id, sender_domain_id, delivery_provider, provider_region, message_type, from_email, from_name, reply_to_email, to_email, to_name, subject, html_body, text_body, status, provider, provider_message_id, error_code, error_message, metadata, recipients, headers, attachments, tags, scheduled_at, queued_at, processing_at, submitted_at, delivered_at, failed_at, created_at, updated_at, current_delivery_attempt_id
 FROM email_messages
 WHERE id = $1
   AND team_id = $2
@@ -189,6 +190,7 @@ func (q *Queries) GetEmailMessage(ctx context.Context, arg GetEmailMessageParams
 		&i.FailedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CurrentDeliveryAttemptID,
 	)
 	return i, err
 }

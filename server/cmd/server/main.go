@@ -14,9 +14,11 @@ import (
 
 	"github.com/coffeyvidzro/dugble/server/internal/config"
 	"github.com/coffeyvidzro/dugble/server/internal/database"
-	emaildelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/email"
+	"github.com/coffeyvidzro/dugble/server/internal/delivery/email/feedback"
+	emaildelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/email/send"
 	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
-	emailintegration "github.com/coffeyvidzro/dugble/server/internal/integration/email"
+	awsses "github.com/coffeyvidzro/dugble/server/internal/integration/aws/ses"
+	awssns "github.com/coffeyvidzro/dugble/server/internal/integration/aws/sns"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/security"
 	smsintegration "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/arkesel"
@@ -29,6 +31,7 @@ import (
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 	"github.com/coffeyvidzro/dugble/server/internal/transport"
 	"github.com/coffeyvidzro/dugble/server/internal/transport/middlewares"
+	providersns "github.com/coffeyvidzro/dugble/server/internal/transport/provider/sns"
 )
 
 func main() {
@@ -95,14 +98,26 @@ func run() error {
 		return fmt.Errorf("initialize email renderer: %w", err)
 	}
 
-	emailClient, err := emailintegration.NewClient(
+	emailClient, err := awsses.NewClient(
 		cfg.AWS.Region,
 		cfg.AWS.FromEmail,
 		cfg.AWS.AccessKey,
 		cfg.AWS.SecretKey,
+		cfg.AWS.SESConfigurationSet,
 	)
 	if err != nil {
 		return fmt.Errorf("initialize SES email client: %w", err)
+	}
+
+	outboxRepository := outbox.NewRepository(db)
+
+	var snsHandler *providersns.Handler
+	if len(cfg.AWS.SNSTopicARNs) > 0 {
+		certificateLoader := awssns.NewHTTPCertificateLoader(nil)
+		verifier := awssns.NewVerifier(cfg.AWS.SNSTopicARNs, certificateLoader)
+		confirmer := awssns.NewConfirmer(awssns.NewHTTPConfirmSubscriptionClient(nil))
+		ingestor := feedback.NewRepository(db, outboxRepository)
+		snsHandler = providersns.NewHandler(verifier, confirmer, ingestor)
 	}
 
 	smsRouter, err := routing.NewService(
@@ -120,7 +135,6 @@ func run() error {
 		return fmt.Errorf("initialize SMS sender: %w", err)
 	}
 
-	outboxRepository := outbox.NewRepository(db)
 	router, err := transport.NewRouter(
 		cfg,
 		transport.Dependencies{
@@ -134,6 +148,7 @@ func run() error {
 			SMSSender:      smsSender,
 			SMSDelivery:    smsdelivery.NewQueue(outboxRepository),
 			EmailDelivery:  emaildelivery.NewQueue(outboxRepository),
+			SNSHandler:     snsHandler,
 		},
 	)
 	if err != nil {

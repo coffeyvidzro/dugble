@@ -14,12 +14,15 @@ func TestDomainAllowed(t *testing.T) {
 		}
 	}
 }
+
 func TestStateHashIsStableAndOpaque(t *testing.T) {
 	t.Parallel()
-	if hash("state") != hash("state") {
+	first := hash("state")
+	second := hash("state")
+	if first != second {
 		t.Fatal("hash should be stable")
 	}
-	if hash("state") == "state" {
+	if first == "state" {
 		t.Fatal("state must not be stored in plaintext")
 	}
 }
