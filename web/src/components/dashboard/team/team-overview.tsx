@@ -1,5 +1,3 @@
-// src/components/dashboard/team/team-overview.tsx
-
 import { Building2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { TeamCardHeader } from "./team-card-header";
