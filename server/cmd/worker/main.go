@@ -81,7 +81,7 @@ func run() error {
 		return fmt.Errorf("initialize SES email sender: %w", err)
 	}
 	emailConsumer := emaildelivery.NewConsumer(messagingClient, processedEvents, emaildelivery.NewHandler(emaildelivery.NewRepository(db), emailSender), emaildelivery.ConsumerConfig{
-		Concurrency: 5, AckWait: 2 * time.Minute, HandlerTimeout: 45 * time.Second, MaxDeliver: 6, RetryPolicy: emaildelivery.DefaultRetryPolicy(),
+		Region: cfg.AWS.Region, Concurrency: 5, AckWait: 2 * time.Minute, HandlerTimeout: 45 * time.Second, MaxDeliver: 6, RetryPolicy: emaildelivery.DefaultRetryPolicy(),
 	})
 	systemEmailConsumer := systememail.NewConsumer(messagingClient, processedEvents, emailSender, systememail.ConsumerConfig{
 		Concurrency: 3, AckWait: time.Minute, HandlerTimeout: 30 * time.Second, MaxDeliver: 6,

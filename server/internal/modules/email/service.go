@@ -20,10 +20,10 @@ const (
 )
 
 type DeliveryQueue interface {
-	EnqueueEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error
+	EnqueueEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID, string) error
 }
 type scheduledDeliveryQueue interface {
-	EnqueueEmailDeliveryAtTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID, time.Time) error
+	EnqueueEmailDeliveryAtTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID, string, time.Time) error
 	CancelEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error
 	RescheduleEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID, time.Time) error
 }
@@ -182,7 +182,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to create email message", err)
 	}
-	if err := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(m.ID), tc.Scope.TeamID, validated.ScheduledAt); err != nil {
+	if err := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(m.ID), tc.Scope.TeamID, validated.ProviderRegion, validated.ScheduledAt); err != nil {
 		return Message{}, apperrors.NewInternal("Unable to enqueue email delivery", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -281,7 +281,7 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 		if createErr != nil {
 			return nil, apperrors.NewInternal("Unable to create email message", createErr)
 		}
-		if enqueueErr := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(message.ID), tc.Scope.TeamID, validated[index].ScheduledAt); enqueueErr != nil {
+		if enqueueErr := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(message.ID), tc.Scope.TeamID, validated[index].ProviderRegion, validated[index].ScheduledAt); enqueueErr != nil {
 			return nil, apperrors.NewInternal("Unable to enqueue email delivery", enqueueErr)
 		}
 		result = append(result, message)
@@ -334,14 +334,14 @@ func (s *Service) authorizeSender(ctx context.Context, teamID uuid.UUID, message
 	return nil
 }
 
-func enqueueDelivery(ctx context.Context, queue DeliveryQueue, tx pgx.Tx, messageID, teamID uuid.UUID, scheduledAt *time.Time) error {
+func enqueueDelivery(ctx context.Context, queue DeliveryQueue, tx pgx.Tx, messageID, teamID uuid.UUID, region string, scheduledAt *time.Time) error {
 	if scheduledAt != nil {
 		if scheduled, ok := queue.(scheduledDeliveryQueue); ok {
-			return scheduled.EnqueueEmailDeliveryAtTx(ctx, tx, messageID, teamID, *scheduledAt)
+			return scheduled.EnqueueEmailDeliveryAtTx(ctx, tx, messageID, teamID, region, *scheduledAt)
 		}
 		return errors.New("email delivery queue does not support scheduled delivery")
 	}
-	return queue.EnqueueEmailDeliveryTx(ctx, tx, messageID, teamID)
+	return queue.EnqueueEmailDeliveryTx(ctx, tx, messageID, teamID, region)
 }
 
 func bodySize(body *string) int {

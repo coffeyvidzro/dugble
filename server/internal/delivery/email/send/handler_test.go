@@ -94,7 +94,7 @@ func TestHandlerSubmitsAcceptedMessage(t *testing.T) {
 	repository := &recordingDeliveryRepository{message: deliveryTestMessage()}
 	sender := &stubSender{result: platformemail.Result{Provider: "test", MessageID: "provider-1"}}
 
-	err := NewHandler(repository, sender).Handle(context.Background(), DeliverCommand{MessageID: uuid.New(), TeamID: uuid.New()})
+	err := NewHandler(repository, sender).Handle(context.Background(), DeliverCommand{MessageID: uuid.New(), TeamID: uuid.New(), Region: "eu-west-1"})
 	if err != nil {
 		t.Fatalf("handle email delivery: %v", err)
 	}
@@ -113,9 +113,27 @@ func TestHandlerStopsUnavailableSenderDomainBeforeProvider(t *testing.T) {
 	repository := &recordingDeliveryRepository{claimErr: ErrSenderDomainUnavailable}
 	sender := &stubSender{}
 
-	err := NewHandler(repository, sender).Handle(context.Background(), DeliverCommand{MessageID: uuid.New(), TeamID: uuid.New()})
+	err := NewHandler(repository, sender).Handle(context.Background(), DeliverCommand{MessageID: uuid.New(), TeamID: uuid.New(), Region: "eu-west-1"})
 	if err != nil {
 		t.Fatalf("unavailable sender domain should be handled: %v", err)
+	}
+	if sender.calls != 0 {
+		t.Fatalf("sender calls = %d, want 0", sender.calls)
+	}
+}
+
+func TestHandlerRejectsMismatchedRegionalRouteBeforeProvider(t *testing.T) {
+	repository := &recordingDeliveryRepository{message: deliveryTestMessage()}
+	sender := &stubSender{}
+
+	err := NewHandler(repository, sender).Handle(context.Background(), DeliverCommand{
+		MessageID: uuid.New(), TeamID: uuid.New(), Region: "us-east-1",
+	})
+	if err != nil {
+		t.Fatalf("regional mismatch should be recorded: %v", err)
+	}
+	if repository.failedCode != "delivery_region_mismatch" {
+		t.Fatalf("failure code = %q", repository.failedCode)
 	}
 	if sender.calls != 0 {
 		t.Fatalf("sender calls = %d, want 0", sender.calls)
@@ -127,7 +145,7 @@ func TestHandlerRecordsRetryableProviderFailure(t *testing.T) {
 	repository := &recordingDeliveryRepository{message: deliveryTestMessage()}
 	sender := &stubSender{err: providerErr}
 
-	err := NewHandler(repository, sender).Handle(context.Background(), DeliverCommand{MessageID: uuid.New(), TeamID: uuid.New()})
+	err := NewHandler(repository, sender).Handle(context.Background(), DeliverCommand{MessageID: uuid.New(), TeamID: uuid.New(), Region: "eu-west-1"})
 	if err == nil {
 		t.Fatal("expected retryable provider error")
 	}
@@ -144,7 +162,7 @@ func TestHandlerQuarantinesAmbiguousProviderFailure(t *testing.T) {
 	repository := &recordingDeliveryRepository{message: deliveryTestMessage()}
 	sender := &stubSender{err: providerErr}
 
-	err := NewHandler(repository, sender).Handle(context.Background(), DeliverCommand{MessageID: uuid.New(), TeamID: uuid.New()})
+	err := NewHandler(repository, sender).Handle(context.Background(), DeliverCommand{MessageID: uuid.New(), TeamID: uuid.New(), Region: "eu-west-1"})
 	if err != nil {
 		t.Fatalf("ambiguous provider result should be quarantined and acknowledged: %v", err)
 	}
@@ -161,7 +179,7 @@ func TestHandlerQuarantinesAcceptedMessageWhenPersistenceFails(t *testing.T) {
 	repository := &recordingDeliveryRepository{message: deliveryTestMessage(), markSubmittedErr: persistErr}
 	sender := &stubSender{result: platformemail.Result{Provider: "aws_ses", MessageID: "provider-1"}}
 
-	err := NewHandler(repository, sender).Handle(context.Background(), DeliverCommand{MessageID: uuid.New(), TeamID: uuid.New()})
+	err := NewHandler(repository, sender).Handle(context.Background(), DeliverCommand{MessageID: uuid.New(), TeamID: uuid.New(), Region: "eu-west-1"})
 	if err != nil {
 		t.Fatalf("accepted message should be quarantined when persistence recovers: %v", err)
 	}
@@ -175,7 +193,7 @@ func TestHandlerRecordsPermanentProviderFailure(t *testing.T) {
 	repository := &recordingDeliveryRepository{message: deliveryTestMessage()}
 	sender := &stubSender{err: providerErr}
 
-	err := NewHandler(repository, sender).Handle(context.Background(), DeliverCommand{MessageID: uuid.New(), TeamID: uuid.New()})
+	err := NewHandler(repository, sender).Handle(context.Background(), DeliverCommand{MessageID: uuid.New(), TeamID: uuid.New(), Region: "eu-west-1"})
 	if err != nil {
 		t.Fatalf("permanent provider rejection should be handled: %v", err)
 	}
@@ -188,7 +206,7 @@ func TestHandlerExhaustedMarksFailed(t *testing.T) {
 	repository := &recordingDeliveryRepository{}
 	cause := errors.New("still failing")
 
-	err := NewHandler(repository, nil).HandleExhausted(context.Background(), DeliverCommand{MessageID: uuid.New(), TeamID: uuid.New()}, cause)
+	err := NewHandler(repository, nil).HandleExhausted(context.Background(), DeliverCommand{MessageID: uuid.New(), TeamID: uuid.New(), Region: "eu-west-1"}, cause)
 	if err != nil {
 		t.Fatalf("handle exhausted: %v", err)
 	}

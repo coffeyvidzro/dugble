@@ -21,7 +21,7 @@ var testServiceConfig = ServiceConfig{
 	DefaultRegion:    "us-east-1",
 }
 
-func (configuredDeliveryQueue) EnqueueEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error {
+func (configuredDeliveryQueue) EnqueueEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID, string) error {
 	return nil
 }
 
@@ -53,7 +53,7 @@ func (r *stubCustomerRouteResolver) ResolveActiveCustomerRouteTx(_ context.Conte
 	return route, nil
 }
 
-func (q *immediateOnlyDeliveryQueue) EnqueueEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error {
+func (q *immediateOnlyDeliveryQueue) EnqueueEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID, string) error {
 	q.calls++
 	return nil
 }
@@ -61,7 +61,7 @@ func (q *immediateOnlyDeliveryQueue) EnqueueEmailDeliveryTx(context.Context, pgx
 func TestEnqueueDeliveryDoesNotSilentlyIgnoreSchedule(t *testing.T) {
 	queue := &immediateOnlyDeliveryQueue{}
 	scheduledAt := time.Now().UTC().Add(time.Hour)
-	err := enqueueDelivery(context.Background(), queue, nil, uuid.New(), uuid.New(), &scheduledAt)
+	err := enqueueDelivery(context.Background(), queue, nil, uuid.New(), uuid.New(), "us-east-1", &scheduledAt)
 	if err == nil {
 		t.Fatal("expected a queue without scheduling support to return an error")
 	}
@@ -170,7 +170,7 @@ func TestAuthorizeSenderUsesOnboardingIdentityWithoutSystemFallback(t *testing.T
 func TestAuthorizeSenderRejectsOnboardingMarketing(t *testing.T) {
 	service := NewService(nil, nil, testServiceConfig)
 	err := service.authorizeSender(context.Background(), uuid.New(), &validatedSend{
-		FromEmail: platformemail.CustomerOnboardingIdentity,
+		FromEmail:   platformemail.CustomerOnboardingIdentity,
 		MessageType: MessageTypeMarketing,
 	})
 	if err == nil {

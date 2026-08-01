@@ -79,6 +79,8 @@ make down
 
 Deployment assets live in `deploy/`. `compose.yaml` defines the runtime stack, while `Caddyfile` and `nats-server.conf` configure the edge proxy and a three-node NATS JetStream cluster. Applications receive all three NATS client URLs and every durable stream stores three replicas, allowing the cluster to keep serving through the loss of one node.
 
+Customer email jobs are partitioned by their persisted SES region. The primary `worker` consumes `dugble.job.email.send.v1.${AWS_REGION}`, while `worker-secondary` consumes `dugble.job.email.send.v1.${AWS_SECONDARY_REGION}`. Configure and provision SES identities, tenants, and configuration sets in both regions before enabling the secondary worker.
+
 ### Run individual services
 
 ```sh
