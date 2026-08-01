@@ -40,22 +40,5 @@ func (s *Service) Rotate(ctx context.Context) (Result, error) {
 			result.Rotated++
 		}
 	}
-	oidc, err := s.q.ListOIDCSecretsForRotation(ctx)
-	if err != nil {
-		return result, fmt.Errorf("list OIDC secrets: %w", err)
-	}
-	for _, row := range oidc {
-		result.Scanned++
-		_, replacement, rotate, err := s.cipher.DecryptAndRotate(row.ClientSecretCiphertext)
-		if err != nil {
-			return result, fmt.Errorf("decrypt OIDC secret for %s: %w", row.ID, err)
-		}
-		if rotate {
-			if err = s.q.RotateOIDCConnectionSecretCiphertext(ctx, db.RotateOIDCConnectionSecretCiphertextParams{ID: row.ID, OldCiphertext: row.ClientSecretCiphertext, NewCiphertext: replacement}); err != nil {
-				return result, err
-			}
-			result.Rotated++
-		}
-	}
 	return result, nil
 }

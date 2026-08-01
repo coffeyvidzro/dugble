@@ -10,23 +10,21 @@ import (
 )
 
 type AuditEvent struct {
-	ID                uuid.UUID          `db:"id" json:"id"`
-	TeamID            *uuid.UUID         `db:"team_id" json:"team_id"`
-	ActorType         string             `db:"actor_type" json:"actor_type"`
-	ActorUserID       *uuid.UUID         `db:"actor_user_id" json:"actor_user_id"`
-	ActorSessionID    *string            `db:"actor_session_id" json:"actor_session_id"`
-	ActorTokenID      *uuid.UUID         `db:"actor_token_id" json:"actor_token_id"`
-	ActorWorkloadID   *uuid.UUID         `db:"actor_workload_id" json:"actor_workload_id"`
-	ActorCredentialID *uuid.UUID         `db:"actor_credential_id" json:"actor_credential_id"`
-	Action            string             `db:"action" json:"action"`
-	ResourceType      string             `db:"resource_type" json:"resource_type"`
-	ResourceID        string             `db:"resource_id" json:"resource_id"`
-	Outcome           string             `db:"outcome" json:"outcome"`
-	Metadata          []byte             `db:"metadata" json:"metadata"`
-	RequestID         *string            `db:"request_id" json:"request_id"`
-	IpAddress         *string            `db:"ip_address" json:"ip_address"`
-	UserAgent         *string            `db:"user_agent" json:"user_agent"`
-	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	ID             uuid.UUID          `db:"id" json:"id"`
+	TeamID         *uuid.UUID         `db:"team_id" json:"team_id"`
+	ActorType      string             `db:"actor_type" json:"actor_type"`
+	ActorUserID    *uuid.UUID         `db:"actor_user_id" json:"actor_user_id"`
+	ActorSessionID *string            `db:"actor_session_id" json:"actor_session_id"`
+	ActorTokenID   *uuid.UUID         `db:"actor_token_id" json:"actor_token_id"`
+	Action         string             `db:"action" json:"action"`
+	ResourceType   string             `db:"resource_type" json:"resource_type"`
+	ResourceID     string             `db:"resource_id" json:"resource_id"`
+	Outcome        string             `db:"outcome" json:"outcome"`
+	Metadata       []byte             `db:"metadata" json:"metadata"`
+	RequestID      *string            `db:"request_id" json:"request_id"`
+	IpAddress      *string            `db:"ip_address" json:"ip_address"`
+	UserAgent      *string            `db:"user_agent" json:"user_agent"`
+	CreatedAt      pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
 type AuthenticationChallenge struct {
@@ -148,16 +146,6 @@ type EmailTenant struct {
 	UpdatedAt        pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
-type ExternalIdentity struct {
-	ID           uuid.UUID          `db:"id" json:"id"`
-	UserID       uuid.UUID          `db:"user_id" json:"user_id"`
-	ConnectionID uuid.UUID          `db:"connection_id" json:"connection_id"`
-	Subject      string             `db:"subject" json:"subject"`
-	Email        string             `db:"email" json:"email"`
-	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	LastLoginAt  pgtype.Timestamptz `db:"last_login_at" json:"last_login_at"`
-}
-
 type IdempotencyKey struct {
 	Scope               string             `db:"scope" json:"scope"`
 	IdempotencyKey      string             `db:"idempotency_key" json:"idempotency_key"`
@@ -182,30 +170,6 @@ type OauthIdentity struct {
 	Provider    string             `db:"provider" json:"provider"`
 	ProviderUid string             `db:"provider_uid" json:"provider_uid"`
 	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
-}
-
-type OidcConnection struct {
-	ID                     uuid.UUID          `db:"id" json:"id"`
-	TeamID                 uuid.UUID          `db:"team_id" json:"team_id"`
-	Name                   string             `db:"name" json:"name"`
-	IssuerUrl              string             `db:"issuer_url" json:"issuer_url"`
-	ClientID               string             `db:"client_id" json:"client_id"`
-	ClientSecretCiphertext []byte             `db:"client_secret_ciphertext" json:"client_secret_ciphertext"`
-	AllowedDomains         []string           `db:"allowed_domains" json:"allowed_domains"`
-	Enabled                bool               `db:"enabled" json:"enabled"`
-	CreatedBy              *uuid.UUID         `db:"created_by" json:"created_by"`
-	CreatedAt              pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt              pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-}
-
-type OidcLoginState struct {
-	StateHash              string             `db:"state_hash" json:"state_hash"`
-	ConnectionID           uuid.UUID          `db:"connection_id" json:"connection_id"`
-	CodeVerifierCiphertext []byte             `db:"code_verifier_ciphertext" json:"code_verifier_ciphertext"`
-	Nonce                  string             `db:"nonce" json:"nonce"`
-	ExpiresAt              pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
-	ConsumedAt             pgtype.Timestamptz `db:"consumed_at" json:"consumed_at"`
-	CreatedAt              pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
 type OutboxEvent struct {
@@ -253,27 +217,6 @@ type RecoveryCode struct {
 	CodeHash  string             `db:"code_hash" json:"code_hash"`
 	UsedAt    pgtype.Timestamptz `db:"used_at" json:"used_at"`
 	CreatedAt pgtype.Timestamptz `db:"created_at" json:"created_at"`
-}
-
-type ScimExternalID struct {
-	TeamID      uuid.UUID          `db:"team_id" json:"team_id"`
-	UserID      uuid.UUID          `db:"user_id" json:"user_id"`
-	ExternalID  string             `db:"external_id" json:"external_id"`
-	DisplayName string             `db:"display_name" json:"display_name"`
-	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-}
-
-type ScimToken struct {
-	ID         uuid.UUID          `db:"id" json:"id"`
-	TeamID     uuid.UUID          `db:"team_id" json:"team_id"`
-	Name       string             `db:"name" json:"name"`
-	TokenHash  string             `db:"token_hash" json:"token_hash"`
-	CreatedBy  *uuid.UUID         `db:"created_by" json:"created_by"`
-	LastUsedAt pgtype.Timestamptz `db:"last_used_at" json:"last_used_at"`
-	ExpiresAt  pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
-	RevokedAt  pgtype.Timestamptz `db:"revoked_at" json:"revoked_at"`
-	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
 type SenderDomain struct {
@@ -364,15 +307,6 @@ type Team struct {
 	CreatedBy *uuid.UUID         `db:"created_by" json:"created_by"`
 	CreatedAt pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-}
-
-type TeamIdentityPolicy struct {
-	TeamID               uuid.UUID          `db:"team_id" json:"team_id"`
-	RequireMfa           bool               `db:"require_mfa" json:"require_mfa"`
-	SessionMaxAgeMinutes int32              `db:"session_max_age_minutes" json:"session_max_age_minutes"`
-	UpdatedBy            *uuid.UUID         `db:"updated_by" json:"updated_by"`
-	CreatedAt            pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt            pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
 type TeamInvitation struct {
@@ -484,54 +418,4 @@ type WebhookEvent struct {
 	Payload    []byte             `db:"payload" json:"payload"`
 	OccurredAt pgtype.Timestamptz `db:"occurred_at" json:"occurred_at"`
 	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
-}
-
-type WorkloadAccessToken struct {
-	ID           uuid.UUID          `db:"id" json:"id"`
-	WorkloadID   uuid.UUID          `db:"workload_id" json:"workload_id"`
-	CredentialID *uuid.UUID         `db:"credential_id" json:"credential_id"`
-	TokenHash    string             `db:"token_hash" json:"token_hash"`
-	ExpiresAt    pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
-	LastUsedAt   pgtype.Timestamptz `db:"last_used_at" json:"last_used_at"`
-	RevokedAt    pgtype.Timestamptz `db:"revoked_at" json:"revoked_at"`
-	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	FederationID *uuid.UUID         `db:"federation_id" json:"federation_id"`
-}
-
-type WorkloadCredential struct {
-	ID           uuid.UUID          `db:"id" json:"id"`
-	WorkloadID   uuid.UUID          `db:"workload_id" json:"workload_id"`
-	SecretHash   string             `db:"secret_hash" json:"secret_hash"`
-	SecretPrefix string             `db:"secret_prefix" json:"secret_prefix"`
-	ExpiresAt    pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
-	LastUsedAt   pgtype.Timestamptz `db:"last_used_at" json:"last_used_at"`
-	RevokedAt    pgtype.Timestamptz `db:"revoked_at" json:"revoked_at"`
-	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
-}
-
-type WorkloadIdentity struct {
-	ID          uuid.UUID          `db:"id" json:"id"`
-	TeamID      uuid.UUID          `db:"team_id" json:"team_id"`
-	Name        string             `db:"name" json:"name"`
-	Description string             `db:"description" json:"description"`
-	Status      string             `db:"status" json:"status"`
-	Permissions []string           `db:"permissions" json:"permissions"`
-	CreatedBy   *uuid.UUID         `db:"created_by" json:"created_by"`
-	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	DisabledAt  pgtype.Timestamptz `db:"disabled_at" json:"disabled_at"`
-}
-
-type WorkloadOidcFederation struct {
-	ID             uuid.UUID          `db:"id" json:"id"`
-	WorkloadID     uuid.UUID          `db:"workload_id" json:"workload_id"`
-	Name           string             `db:"name" json:"name"`
-	IssuerUrl      string             `db:"issuer_url" json:"issuer_url"`
-	Audiences      []string           `db:"audiences" json:"audiences"`
-	Subject        string             `db:"subject" json:"subject"`
-	RequiredClaims []byte             `db:"required_claims" json:"required_claims"`
-	Enabled        bool               `db:"enabled" json:"enabled"`
-	CreatedBy      *uuid.UUID         `db:"created_by" json:"created_by"`
-	CreatedAt      pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt      pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }

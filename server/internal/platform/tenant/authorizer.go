@@ -24,7 +24,7 @@ func (RoleAuthorizer) Authorize(access AccessContext, permission Permission) Dec
 	if access.Scope.Status != StatusActive {
 		return Decision{Reason: "active tenant scope is required"}
 	}
-	if !access.Actor.IsUser() && !access.Actor.IsTeamToken() && !access.Actor.IsWorkload() {
+	if !access.Actor.IsUser() && !access.Actor.IsTeamToken() {
 		return Decision{Reason: "authenticated actor is required"}
 	}
 	if permission == "" {
@@ -35,12 +35,6 @@ func (RoleAuthorizer) Authorize(access AccessContext, permission Permission) Dec
 			return Decision{Allowed: true}
 		}
 		return Decision{Reason: "team token permission is required"}
-	}
-	if access.Actor.IsWorkload() {
-		if HasPermission(access.Scope.Permissions, permission) {
-			return Decision{Allowed: true}
-		}
-		return Decision{Reason: "workload permission is required"}
 	}
 	if access.Actor.IsUser() && Can(access.Scope.Role, permission) {
 		return Decision{Allowed: true}

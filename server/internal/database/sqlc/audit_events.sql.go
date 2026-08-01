@@ -14,35 +14,32 @@ import (
 const createAuditEvent = `-- name: CreateAuditEvent :one
 INSERT INTO audit_events (
     team_id, actor_type, actor_user_id, actor_session_id, actor_token_id,
-    actor_workload_id, actor_credential_id, action, resource_type, resource_id,
+    action, resource_type, resource_id,
     outcome, metadata, request_id, ip_address, user_agent
 ) VALUES (
     $1, $2, $3,
     $4, $5,
-    $6, $7,
-    $8, $9, $10,
-    $11, $12, $13,
-    $14, $15
+    $6, $7, $8,
+    $9, $10, $11,
+    $12, $13
 )
-RETURNING id, team_id, actor_type, actor_user_id, actor_session_id, actor_token_id, actor_workload_id, actor_credential_id, action, resource_type, resource_id, outcome, metadata, request_id, ip_address, user_agent, created_at
+RETURNING id, team_id, actor_type, actor_user_id, actor_session_id, actor_token_id, action, resource_type, resource_id, outcome, metadata, request_id, ip_address, user_agent, created_at
 `
 
 type CreateAuditEventParams struct {
-	TeamID            *uuid.UUID `db:"team_id" json:"team_id"`
-	ActorType         string     `db:"actor_type" json:"actor_type"`
-	ActorUserID       *uuid.UUID `db:"actor_user_id" json:"actor_user_id"`
-	ActorSessionID    *string    `db:"actor_session_id" json:"actor_session_id"`
-	ActorTokenID      *uuid.UUID `db:"actor_token_id" json:"actor_token_id"`
-	ActorWorkloadID   *uuid.UUID `db:"actor_workload_id" json:"actor_workload_id"`
-	ActorCredentialID *uuid.UUID `db:"actor_credential_id" json:"actor_credential_id"`
-	Action            string     `db:"action" json:"action"`
-	ResourceType      string     `db:"resource_type" json:"resource_type"`
-	ResourceID        string     `db:"resource_id" json:"resource_id"`
-	Outcome           string     `db:"outcome" json:"outcome"`
-	Metadata          []byte     `db:"metadata" json:"metadata"`
-	RequestID         *string    `db:"request_id" json:"request_id"`
-	IpAddress         *string    `db:"ip_address" json:"ip_address"`
-	UserAgent         *string    `db:"user_agent" json:"user_agent"`
+	TeamID         *uuid.UUID `db:"team_id" json:"team_id"`
+	ActorType      string     `db:"actor_type" json:"actor_type"`
+	ActorUserID    *uuid.UUID `db:"actor_user_id" json:"actor_user_id"`
+	ActorSessionID *string    `db:"actor_session_id" json:"actor_session_id"`
+	ActorTokenID   *uuid.UUID `db:"actor_token_id" json:"actor_token_id"`
+	Action         string     `db:"action" json:"action"`
+	ResourceType   string     `db:"resource_type" json:"resource_type"`
+	ResourceID     string     `db:"resource_id" json:"resource_id"`
+	Outcome        string     `db:"outcome" json:"outcome"`
+	Metadata       []byte     `db:"metadata" json:"metadata"`
+	RequestID      *string    `db:"request_id" json:"request_id"`
+	IpAddress      *string    `db:"ip_address" json:"ip_address"`
+	UserAgent      *string    `db:"user_agent" json:"user_agent"`
 }
 
 func (q *Queries) CreateAuditEvent(ctx context.Context, arg CreateAuditEventParams) (AuditEvent, error) {
@@ -52,8 +49,6 @@ func (q *Queries) CreateAuditEvent(ctx context.Context, arg CreateAuditEventPara
 		arg.ActorUserID,
 		arg.ActorSessionID,
 		arg.ActorTokenID,
-		arg.ActorWorkloadID,
-		arg.ActorCredentialID,
 		arg.Action,
 		arg.ResourceType,
 		arg.ResourceID,
@@ -71,8 +66,6 @@ func (q *Queries) CreateAuditEvent(ctx context.Context, arg CreateAuditEventPara
 		&i.ActorUserID,
 		&i.ActorSessionID,
 		&i.ActorTokenID,
-		&i.ActorWorkloadID,
-		&i.ActorCredentialID,
 		&i.Action,
 		&i.ResourceType,
 		&i.ResourceID,
@@ -93,7 +86,7 @@ WITH cursor_event AS (
     WHERE id = $2
       AND team_id = $1
 )
-SELECT audit_events.id, audit_events.team_id, audit_events.actor_type, audit_events.actor_user_id, audit_events.actor_session_id, audit_events.actor_token_id, audit_events.actor_workload_id, audit_events.actor_credential_id, audit_events.action, audit_events.resource_type, audit_events.resource_id, audit_events.outcome, audit_events.metadata, audit_events.request_id, audit_events.ip_address, audit_events.user_agent, audit_events.created_at
+SELECT audit_events.id, audit_events.team_id, audit_events.actor_type, audit_events.actor_user_id, audit_events.actor_session_id, audit_events.actor_token_id, audit_events.action, audit_events.resource_type, audit_events.resource_id, audit_events.outcome, audit_events.metadata, audit_events.request_id, audit_events.ip_address, audit_events.user_agent, audit_events.created_at
 FROM audit_events
 WHERE audit_events.team_id = $1
   AND (
@@ -128,8 +121,6 @@ func (q *Queries) ListTeamAuditEvents(ctx context.Context, arg ListTeamAuditEven
 			&i.ActorUserID,
 			&i.ActorSessionID,
 			&i.ActorTokenID,
-			&i.ActorWorkloadID,
-			&i.ActorCredentialID,
 			&i.Action,
 			&i.ResourceType,
 			&i.ResourceID,

@@ -18,7 +18,7 @@ type AWSConfig struct {
 
 	// Deployments outside AWS provide a tightly scoped access-key pair through
 	// their secret manager. AWS-hosted deployments may leave these empty and use
-	// the SDK default credential chain with a workload role.
+	// the SDK default credential chain with an IAM role.
 	AccessKey string `env:"ACCESS_KEY_ID"`
 	SecretKey string `env:"SECRET_ACCESS_KEY"`
 

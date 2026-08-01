@@ -5,8 +5,6 @@ CREATE TABLE IF NOT EXISTS audit_events (
     actor_user_id UUID,
     actor_session_id TEXT,
     actor_token_id UUID,
-    actor_workload_id UUID,
-    actor_credential_id UUID,
     action TEXT NOT NULL,
     resource_type TEXT NOT NULL,
     resource_id TEXT NOT NULL,
@@ -17,7 +15,7 @@ CREATE TABLE IF NOT EXISTS audit_events (
     user_agent TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT chk_audit_events_actor_type CHECK (
-        actor_type IN ('user', 'team_token', 'workload', 'system')
+        actor_type IN ('user', 'team_token', 'system')
     ),
     CONSTRAINT chk_audit_events_outcome CHECK (
         outcome IN ('success', 'failure')

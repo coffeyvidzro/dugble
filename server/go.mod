@@ -11,7 +11,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sesv2 v1.66.3
 	github.com/aws/smithy-go v1.27.6
 	github.com/caarlos0/env/v11 v11.4.1
-	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/getsentry/sentry-go v0.48.0
 	github.com/getsentry/sentry-go/echo v0.48.0
 	github.com/google/uuid v1.6.0
@@ -25,7 +24,6 @@ require (
 	github.com/newrelic/go-agent/v3/integrations/nrredis-v9 v1.1.2
 	github.com/redis/go-redis/v9 v9.21.0
 	golang.org/x/crypto v0.54.0
-	golang.org/x/oauth2 v0.36.0
 )
 
 require (
@@ -42,7 +40,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.38.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.45.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/gofrs/uuid/v5 v5.5.0 // indirect
 	github.com/google/go-tpm v0.9.8 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect

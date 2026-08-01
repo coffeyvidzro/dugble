@@ -54,7 +54,7 @@ func (s *Service) List(ctx context.Context, before string, requested int32) (Lis
 }
 
 func eventFromEntry(entry audit.Entry) Event {
-	return Event{ID: entry.ID.String(), TeamID: entry.TeamID.String(), ActorType: entry.ActorType, ActorUserID: uuidString(entry.ActorUserID), ActorSessionID: stringValue(entry.ActorSessionID), ActorTokenID: uuidString(entry.ActorTokenID), ActorWorkloadID: uuidString(entry.ActorWorkloadID), ActorCredentialID: uuidString(entry.ActorCredentialID), Action: entry.Action, ResourceType: entry.ResourceType, ResourceID: entry.ResourceID, Outcome: entry.Outcome, Metadata: entry.Metadata, RequestID: stringValue(entry.Request.RequestID), IPAddress: stringValue(entry.Request.IPAddress), UserAgent: stringValue(entry.Request.UserAgent), CreatedAt: entry.CreatedAt}
+	return Event{ID: entry.ID.String(), TeamID: entry.TeamID.String(), ActorType: entry.ActorType, ActorUserID: uuidString(entry.ActorUserID), ActorSessionID: stringValue(entry.ActorSessionID), ActorTokenID: uuidString(entry.ActorTokenID), Action: entry.Action, ResourceType: entry.ResourceType, ResourceID: entry.ResourceID, Outcome: entry.Outcome, Metadata: entry.Metadata, RequestID: stringValue(entry.Request.RequestID), IPAddress: stringValue(entry.Request.IPAddress), UserAgent: stringValue(entry.Request.UserAgent), CreatedAt: entry.CreatedAt}
 }
 
 func uuidString(value uuid.UUID) *string {

@@ -31,21 +31,19 @@ type RequestMetadata struct {
 }
 
 type Entry struct {
-	ID                uuid.UUID
-	TeamID            uuid.UUID
-	ActorType         string
-	ActorUserID       uuid.UUID
-	ActorSessionID    string
-	ActorTokenID      uuid.UUID
-	ActorWorkloadID   uuid.UUID
-	ActorCredentialID uuid.UUID
-	Action            string
-	ResourceType      string
-	ResourceID        string
-	Outcome           string
-	Metadata          map[string]any
-	Request           RequestMetadata
-	CreatedAt         time.Time
+	ID             uuid.UUID
+	TeamID         uuid.UUID
+	ActorType      string
+	ActorUserID    uuid.UUID
+	ActorSessionID string
+	ActorTokenID   uuid.UUID
+	Action         string
+	ResourceType   string
+	ResourceID     string
+	Outcome        string
+	Metadata       map[string]any
+	Request        RequestMetadata
+	CreatedAt      time.Time
 }
 
 type Sink interface {
@@ -71,7 +69,7 @@ func ContextWithRequestMetadata(ctx context.Context, metadata RequestMetadata) c
 }
 
 func Record(ctx context.Context, access tenant.AccessContext, event Event) {
-	entry := Entry{TeamID: access.Scope.TeamID, ActorType: string(access.Actor.Type), ActorUserID: access.Actor.UserID, ActorSessionID: access.Actor.SessionID, ActorTokenID: access.Actor.TokenID, ActorWorkloadID: access.Actor.WorkloadID, ActorCredentialID: access.Actor.CredentialID, Action: event.Action, ResourceType: event.ResourceType, ResourceID: event.ResourceID, Outcome: event.Outcome, Metadata: event.Metadata}
+	entry := Entry{TeamID: access.Scope.TeamID, ActorType: string(access.Actor.Type), ActorUserID: access.Actor.UserID, ActorSessionID: access.Actor.SessionID, ActorTokenID: access.Actor.TokenID, Action: event.Action, ResourceType: event.ResourceType, ResourceID: event.ResourceID, Outcome: event.Outcome, Metadata: event.Metadata}
 	persist(ctx, entry)
 	attributes := []slog.Attr{
 		slog.String("actor_type", string(access.Actor.Type)),
@@ -85,12 +83,6 @@ func Record(ctx context.Context, access tenant.AccessContext, event Event) {
 	}
 	if access.Actor.TokenID != uuid.Nil {
 		attributes = append(attributes, slog.String("actor_token_id", access.Actor.TokenID.String()))
-	}
-	if access.Actor.WorkloadID != uuid.Nil {
-		attributes = append(attributes, slog.String("actor_workload_id", access.Actor.WorkloadID.String()))
-	}
-	if access.Actor.CredentialID != uuid.Nil {
-		attributes = append(attributes, slog.String("actor_credential_id", access.Actor.CredentialID.String()))
 	}
 	record(ctx, event, attributes)
 }
