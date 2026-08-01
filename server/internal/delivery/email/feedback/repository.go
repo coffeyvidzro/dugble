@@ -58,7 +58,7 @@ func (r *Repository) Ingest(ctx context.Context, envelope awssns.Envelope) error
 		INSERT INTO email_provider_events (
 			id, email_message_id, provider, transport, provider_notification_id,
 			provider_message_id, event_type, occurred_at, received_at,
-			normalized_payload, provider_payload
+			normalized_payload, provider_payload, next_attempt_at
 		)
 		VALUES (
 			$1,
@@ -68,7 +68,7 @@ func (r *Repository) Ingest(ctx context.Context, envelope awssns.Envelope) error
 				WHERE provider = $2
 				  AND provider_message_id = $3
 			),
-			$2, $4, $5, $3, $6, $7, $8, $9, $10
+			$2, $4, $5, $3, $6, $7, $8, $9, $10, $8
 		)
 		ON CONFLICT (provider, transport, provider_notification_id) DO NOTHING
 	`,
@@ -119,11 +119,30 @@ func (r *Repository) Ingest(ctx context.Context, envelope awssns.Envelope) error
 	return nil
 }
 
+// Process claims one event for the initial JetStream delivery. Once claimed,
+// PostgreSQL owns all retries; successfully persisting a reschedule is treated
+// as successful handling so JetStream can acknowledge the wake-up message.
 func (r *Repository) Process(ctx context.Context, eventID uuid.UUID) error {
 	if r == nil || r.db == nil {
 		return errors.New("email feedback repository is not configured")
 	}
 	if eventID == uuid.Nil {
+		return errors.New("email provider event ID is required")
+	}
+	claim, claimed, err := r.claimSpecific(ctx, eventID, 2*time.Minute)
+	if err != nil || !claimed {
+		return err
+	}
+	if err := r.processClaimed(ctx, claim); err != nil {
+		if recordErr := r.RecordReconcileFailure(ctx, claim, err); recordErr != nil {
+			return fmt.Errorf("process email provider event %s: %v; persist retry: %w", eventID, err, recordErr)
+		}
+	}
+	return nil
+}
+
+func (r *Repository) processClaimed(ctx context.Context, claim ReconcileClaim) error {
+	if claim.EventID == uuid.Nil {
 		return errors.New("email provider event ID is required")
 	}
 
@@ -138,28 +157,30 @@ func (r *Repository) Process(ctx context.Context, eventID uuid.UUID) error {
 	var eventType string
 	var occurredAt time.Time
 	var normalizedPayload []byte
-	var processedAt pgtype.Timestamptz
+	var processedAt, deadLetteredAt pgtype.Timestamptz
 	if err := tx.QueryRow(ctx, `
-		SELECT email_message_id, provider_message_id, event_type, occurred_at, normalized_payload, processed_at
+		SELECT email_message_id, provider_message_id, event_type, occurred_at,
+			normalized_payload, processed_at, dead_lettered_at
 		FROM email_provider_events
 		WHERE id = $1
 		  AND provider = $2
 		  AND transport = $3
 		FOR UPDATE
-	`, eventID, ProviderSES, TransportSNS).Scan(
+	`, claim.EventID, ProviderSES, TransportSNS).Scan(
 		&emailMessageID,
 		&providerMessageID,
 		&eventType,
 		&occurredAt,
 		&normalizedPayload,
 		&processedAt,
+		&deadLetteredAt,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("email provider event %s not found", eventID)
+			return fmt.Errorf("email provider event %s not found", claim.EventID)
 		}
-		return fmt.Errorf("load email provider event %s: %w", eventID, err)
+		return fmt.Errorf("load email provider event %s: %w", claim.EventID, err)
 	}
-	if processedAt.Valid {
+	if processedAt.Valid || deadLetteredAt.Valid {
 		return tx.Commit(ctx)
 	}
 
@@ -169,21 +190,27 @@ func (r *Repository) Process(ctx context.Context, eventID uuid.UUID) error {
 		OccurredAt:        occurredAt,
 	}
 	if err := json.Unmarshal(normalizedPayload, &providerEvent); err != nil {
-		return fmt.Errorf("decode normalized email provider event %s: %w", eventID, err)
+		return fmt.Errorf("decode normalized email provider event %s: %w", claim.EventID, err)
 	}
 	providerEvent.EventType = eventType
 	providerEvent.ProviderMessageID = providerMessageID
 	providerEvent.OccurredAt = occurredAt
 
-	messageID, currentStatus, err := linkAndLockMessage(ctx, tx, eventID, emailMessageID, providerMessageID)
+	messageID, currentStatus, err := linkAndLockMessage(ctx, tx, claim.EventID, emailMessageID, providerEvent)
 	if err != nil {
+		if errors.Is(err, ErrProviderEventUnlinked) {
+			if err := scheduleClaimTx(ctx, tx, claim, err); err != nil {
+				return err
+			}
+			return tx.Commit(ctx)
+		}
 		return err
 	}
 	var teamID uuid.UUID
 	if err := tx.QueryRow(ctx, `SELECT team_id FROM email_messages WHERE id = $1`, messageID).Scan(&teamID); err != nil {
 		return fmt.Errorf("load team for email message %s: %w", messageID, err)
 	}
-	if err := persistRecipientEvents(ctx, tx, eventID, messageID, providerEvent); err != nil {
+	if err := persistRecipientEvents(ctx, tx, claim.EventID, messageID, providerEvent); err != nil {
 		return err
 	}
 	if err := applyRecipientCurrentState(ctx, tx, messageID, providerEvent); err != nil {
@@ -214,15 +241,17 @@ func (r *Repository) Process(ctx context.Context, eventID uuid.UUID) error {
 		return fmt.Errorf("apply recipient aggregate status to email %s: %w", messageID, err)
 	}
 
-	if err := r.emitLifecycleWebhook(ctx, tx, eventID, messageID, teamID, providerEvent); err != nil {
+	if err := r.emitLifecycleWebhook(ctx, tx, claim.EventID, messageID, teamID, providerEvent); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE email_provider_events
-		SET processed_at = COALESCE(processed_at, now())
+		SET processed_at = COALESCE(processed_at, now()),
+			next_attempt_at = NULL,
+			last_error = NULL
 		WHERE id = $1
-	`, eventID); err != nil {
-		return fmt.Errorf("mark email provider event %s processed: %w", eventID, err)
+	`, claim.EventID); err != nil {
+		return fmt.Errorf("mark email provider event %s processed: %w", claim.EventID, err)
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit email feedback transaction: %w", err)
@@ -235,7 +264,7 @@ func linkAndLockMessage(
 	tx pgx.Tx,
 	eventID uuid.UUID,
 	emailMessageID *uuid.UUID,
-	providerMessageID string,
+	providerEvent awsses.FeedbackEvent,
 ) (uuid.UUID, string, error) {
 	var messageID uuid.UUID
 	var currentStatus string
@@ -255,28 +284,128 @@ func linkAndLockMessage(
 		}
 	}
 
+	providerMessageID := strings.TrimSpace(providerEvent.ProviderMessageID)
 	err := tx.QueryRow(ctx, `
 		SELECT id, status
 		FROM email_messages
 		WHERE provider = $1
 		  AND provider_message_id = $2
 		FOR UPDATE
-	`, ProviderSES, strings.TrimSpace(providerMessageID)).Scan(&messageID, &currentStatus)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return uuid.Nil, "", fmt.Errorf("%w: provider message %q", ErrProviderEventUnlinked, providerMessageID)
+	`, ProviderSES, providerMessageID).Scan(&messageID, &currentStatus)
+	if err == nil {
+		if err := linkProviderEvent(ctx, tx, eventID, messageID); err != nil {
+			return uuid.Nil, "", err
+		}
+		return messageID, currentStatus, nil
 	}
-	if err != nil {
+	if !errors.Is(err, pgx.ErrNoRows) {
 		return uuid.Nil, "", fmt.Errorf("find email by provider message %q: %w", providerMessageID, err)
 	}
+
+	internalMessageID, parseErr := uuid.Parse(strings.TrimSpace(providerEvent.InternalMessageID))
+	if parseErr != nil {
+		return uuid.Nil, "", fmt.Errorf("%w: provider message %q", ErrProviderEventUnlinked, providerMessageID)
+	}
+	var currentAttemptID *uuid.UUID
+	if err := tx.QueryRow(ctx, `
+		SELECT id, status, current_delivery_attempt_id
+		FROM email_messages
+		WHERE id = $1
+		FOR UPDATE
+	`, internalMessageID).Scan(&messageID, &currentStatus, &currentAttemptID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return uuid.Nil, "", fmt.Errorf("%w: internal message %q", ErrProviderEventUnlinked, internalMessageID)
+		}
+		return uuid.Nil, "", fmt.Errorf("lock internally tagged email message %s: %w", internalMessageID, err)
+	}
+
+	attemptID, attemptErr := uuid.Parse(strings.TrimSpace(providerEvent.InternalAttemptID))
+	if attemptErr == nil {
+		var attemptExists bool
+		if err := tx.QueryRow(ctx, `
+			SELECT EXISTS (
+				SELECT 1
+				FROM email_delivery_attempts
+				WHERE id = $1
+				  AND email_message_id = $2
+			)
+		`, attemptID, messageID).Scan(&attemptExists); err != nil {
+			return uuid.Nil, "", fmt.Errorf("verify tagged email delivery attempt %s: %w", attemptID, err)
+		}
+		if !attemptExists {
+			return uuid.Nil, "", fmt.Errorf("%w: internal attempt %q", ErrProviderEventUnlinked, attemptID)
+		}
+		if _, err := tx.Exec(ctx, `
+			UPDATE email_delivery_attempts
+			SET status = 'submitted',
+				provider_message_id = COALESCE(provider_message_id, $2),
+				error_code = NULL,
+				error_message = NULL,
+				completed_at = COALESCE(completed_at, now()),
+				updated_at = now()
+			WHERE id = $1
+		`, attemptID, providerMessageID); err != nil {
+			return uuid.Nil, "", fmt.Errorf("reconcile tagged email delivery attempt %s: %w", attemptID, err)
+		}
+	} else if currentAttemptID != nil {
+		attemptID = *currentAttemptID
+	}
+
+	if _, err := tx.Exec(ctx, `
+		UPDATE email_messages
+		SET provider = COALESCE(provider, $2),
+			provider_message_id = COALESCE(provider_message_id, $3),
+			status = CASE WHEN status = 'submission_unknown' THEN 'submitted' ELSE status END,
+			submitted_at = COALESCE(submitted_at, now()),
+			error_code = CASE WHEN status = 'submission_unknown' THEN NULL ELSE error_code END,
+			error_message = CASE WHEN status = 'submission_unknown' THEN NULL ELSE error_message END,
+			updated_at = now()
+		WHERE id = $1
+		RETURNING status
+	`, messageID, ProviderSES, providerMessageID).Scan(&currentStatus); err != nil {
+		return uuid.Nil, "", fmt.Errorf("reconcile internally tagged email message %s: %w", messageID, err)
+	}
+	if err := linkProviderEvent(ctx, tx, eventID, messageID); err != nil {
+		return uuid.Nil, "", err
+	}
+	return messageID, currentStatus, nil
+}
+
+func linkProviderEvent(ctx context.Context, tx pgx.Tx, eventID, messageID uuid.UUID) error {
 	if _, err := tx.Exec(ctx, `
 		UPDATE email_provider_events
 		SET email_message_id = $2
 		WHERE id = $1
 		  AND email_message_id IS NULL
 	`, eventID, messageID); err != nil {
-		return uuid.Nil, "", fmt.Errorf("link email provider event %s: %w", eventID, err)
+		return fmt.Errorf("link email provider event %s: %w", eventID, err)
 	}
-	return messageID, currentStatus, nil
+	return nil
+}
+
+func scheduleClaimTx(ctx context.Context, tx pgx.Tx, claim ReconcileClaim, cause error) error {
+	reason := truncateReconciliationError(cause)
+	if claim.AttemptCount >= defaultReconciliationMaxAttempts {
+		if _, err := tx.Exec(ctx, `
+			UPDATE email_provider_events
+			SET dead_lettered_at = COALESCE(dead_lettered_at, now()),
+				next_attempt_at = NULL,
+				last_error = $2
+			WHERE id = $1
+		`, claim.EventID, reason); err != nil {
+			return fmt.Errorf("dead-letter unlinked email provider event %s: %w", claim.EventID, err)
+		}
+		return nil
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE email_provider_events
+		SET next_attempt_at = now() + $2::interval,
+			last_error = $3
+		WHERE id = $1
+	`, claim.EventID, reconciliationDelay(claim.AttemptCount).String(), reason); err != nil {
+		return fmt.Errorf("reschedule unlinked email provider event %s: %w", claim.EventID, err)
+	}
+	return nil
 }
 
 func (r *Repository) currentTime() time.Time {
