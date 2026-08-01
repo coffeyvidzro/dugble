@@ -40,7 +40,7 @@ func TestHostedPostgresJetStreamFeedbackFlow(t *testing.T) {
 		Type:      awssns.TypeNotification,
 		MessageID: notificationID,
 		TopicARN:  "arn:aws:sns:us-east-1:123456789012:dugble-feedback",
-		Message: hostedBouncePayload(providerMessageID, messageID, false),
+		Message:   hostedBouncePayload(providerMessageID, messageID, false),
 	}); err != nil {
 		t.Fatalf("ingest hosted SES event: %v", err)
 	}
@@ -125,7 +125,7 @@ func TestHostedPostgresReconcilesInitiallyUnlinkedEvent(t *testing.T) {
 		Type:      awssns.TypeNotification,
 		MessageID: notificationID,
 		TopicARN:  "arn:aws:sns:us-east-1:123456789012:dugble-feedback",
-		Message: hostedBouncePayload(providerMessageID, messageID, true),
+		Message:   hostedBouncePayload(providerMessageID, messageID, true),
 	}); err != nil {
 		t.Fatalf("ingest unlinked SES event: %v", err)
 	}
