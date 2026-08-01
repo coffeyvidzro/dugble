@@ -51,3 +51,18 @@ type CreateRequest struct {
 	Region           string `json:"region"`
 	CustomReturnPath string `json:"custom_return_path"`
 }
+
+// ProvisioningStatus describes asynchronous preparation of the isolated SES
+// tenant required before a sender domain can be created in a region.
+type ProvisioningStatus struct {
+	TenantID      string  `json:"tenant_id"`
+	Region        string  `json:"region"`
+	Status        string  `json:"status"`
+	FailureReason *string `json:"failure_reason,omitempty"`
+	StatusURL     string  `json:"status_url"`
+}
+
+type CreateResult struct {
+	Domain       *SenderDomain
+	Provisioning *ProvisioningStatus
+}

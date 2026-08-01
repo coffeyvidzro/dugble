@@ -27,7 +27,11 @@ Domain authentication helps you:
     </Step>
     <Step title="Add it to Dugble">
         Create the sender domain in your Dugble team and select the provider
-        region used for delivery. New domains begin in the `pending` state.
+        region used for delivery. The first request in a region can return
+        `202 Accepted` while Dugble prepares an isolated email tenant. Follow
+        the response's `status_url` and submit the domain request again after
+        the provisioning status becomes `active`. New domains then begin in
+        the `pending` state.
     </Step>
     <Step title="Publish the DNS records">
         Add every verification record shown by Dugble at your DNS provider. Copy
@@ -38,6 +42,15 @@ Domain authentication helps you:
         until its Dugble status is `verified`.
     </Step>
 </Steps>
+
+## Regional tenant provisioning
+
+Tenant preparation runs asynchronously and is idempotent. A `202 Accepted`
+response contains the tenant ID, region, current lifecycle status, and a
+`status_url` such as `/domains/provisioning/eu-north-1`. Reading that URL does
+not restart provisioning. If provisioning reaches `failed`, the response also
+includes `failure_reason`; submit the original create-domain request again to
+retry the failed provisioning operation.
 
 ## Domain states
 

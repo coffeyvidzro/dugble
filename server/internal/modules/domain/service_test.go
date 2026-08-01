@@ -5,7 +5,12 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/google/uuid"
+
+	"github.com/coffeyvidzro/dugble/server/internal/modules/emailtenant"
+
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
+	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 )
 
 type checkProvider struct {
@@ -132,5 +137,63 @@ func TestVerificationStatusRequiresAllChecks(t *testing.T) {
 				t.Fatalf("verificationStatus() = %q, want %q", got, test.want)
 			}
 		})
+	}
+}
+
+type provisioningStub struct {
+	tenant      emailtenant.Tenant
+	err         error
+	requests    int
+	statusReads int
+}
+
+func (s *provisioningStub) RequestProvisioning(context.Context, uuid.UUID, string) (emailtenant.Tenant, error) {
+	s.requests++
+	return s.tenant, s.err
+}
+func (s *provisioningStub) ProvisioningStatus(context.Context, uuid.UUID, string) (emailtenant.Tenant, error) {
+	s.statusReads++
+	return s.tenant, s.err
+}
+
+func domainAccessContext(teamID uuid.UUID) context.Context {
+	return tenant.ContextWithAccess(context.Background(), tenant.AccessContext{
+		Actor: tenant.Actor{Type: tenant.ActorTypeUser, UserID: uuid.New()},
+		Scope: tenant.Scope{TeamID: teamID, Role: tenant.RoleOwner, Status: tenant.StatusActive},
+	})
+}
+
+func TestCreateReturnsAsynchronousProvisioningStatus(t *testing.T) {
+	teamID, tenantID := uuid.New(), uuid.New()
+	provisioner := &provisioningStub{tenant: emailtenant.Tenant{ID: tenantID, TeamID: teamID, Region: "eu-north-1", Status: emailtenant.StatusProvisioning}}
+	service := NewService(nil, checkProvider{}, checkDNS(true), provisioner)
+
+	result, err := service.Create(domainAccessContext(teamID), CreateRequest{Domain: "example.com", Region: "eu-north-1"})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if result.Domain != nil || result.Provisioning == nil {
+		t.Fatalf("result = %#v, want provisioning status", result)
+	}
+	if result.Provisioning.TenantID != tenantID.String() || result.Provisioning.Status != emailtenant.StatusProvisioning || result.Provisioning.StatusURL != "/domains/provisioning/eu-north-1" {
+		t.Fatalf("provisioning = %#v", result.Provisioning)
+	}
+}
+
+func TestProvisioningStatusReadsExistingLifecycleWithoutScheduling(t *testing.T) {
+	teamID := uuid.New()
+	failure := "SES rejected the request"
+	provisioner := &provisioningStub{tenant: emailtenant.Tenant{ID: uuid.New(), TeamID: teamID, Region: "eu-north-1", Status: emailtenant.StatusFailed, FailureReason: &failure}}
+	service := NewService(nil, nil, nil, provisioner)
+
+	status, err := service.ProvisioningStatus(domainAccessContext(teamID), " EU-NORTH-1 ")
+	if err != nil {
+		t.Fatalf("ProvisioningStatus() error = %v", err)
+	}
+	if status.Status != emailtenant.StatusFailed || status.FailureReason == nil || *status.FailureReason != failure {
+		t.Fatalf("status = %#v", status)
+	}
+	if provisioner.statusReads != 1 || provisioner.requests != 0 {
+		t.Fatalf("status reads = %d, requests = %d", provisioner.statusReads, provisioner.requests)
 	}
 }

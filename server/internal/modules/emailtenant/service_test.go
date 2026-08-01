@@ -32,6 +32,12 @@ type fakeTenantStore struct {
 	beginErr     error
 	createErr    error
 	markErr      error
+	getResult    Tenant
+	getErr       error
+}
+
+func (s *fakeTenantStore) GetByTeam(context.Context, uuid.UUID, string, string) (Tenant, error) {
+	return s.getResult, s.getErr
 }
 
 func (s *fakeTenantStore) BeginTx(context.Context) (Transaction, error) {
@@ -152,5 +158,23 @@ func TestRequestProvisioningRollsBackWhenOutboxFails(t *testing.T) {
 	}
 	if !tx.rolledBack {
 		t.Fatal("transaction was not rolled back")
+	}
+}
+
+func TestProvisioningStatusReadsWithoutEnqueueing(t *testing.T) {
+	teamID := uuid.New()
+	want := Tenant{ID: uuid.New(), TeamID: teamID, Provider: ProviderAWSSES, Region: "eu-north-1", Status: StatusProvisioning}
+	store := &fakeTenantStore{getResult: want}
+	queue := &fakeProvisionQueue{}
+
+	got, err := NewService(store, queue).ProvisioningStatus(context.Background(), teamID, " EU-NORTH-1 ")
+	if err != nil {
+		t.Fatalf("ProvisioningStatus() error = %v", err)
+	}
+	if got != want {
+		t.Fatalf("tenant = %#v, want %#v", got, want)
+	}
+	if queue.calls != 0 {
+		t.Fatalf("queue calls = %d, want 0", queue.calls)
 	}
 }

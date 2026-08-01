@@ -13,6 +13,23 @@ type tenantStore interface {
 	BeginTx(context.Context) (Transaction, error)
 	CreateTx(context.Context, Transaction, CreateParams) (Tenant, error)
 	MarkProvisioningTx(context.Context, Transaction, uuid.UUID) (Tenant, error)
+	GetByTeam(context.Context, uuid.UUID, string, string) (Tenant, error)
+}
+
+// ProvisioningStatus returns the current lifecycle state for one team's
+// regional SES tenant without scheduling or retrying provisioning work.
+func (s *Service) ProvisioningStatus(ctx context.Context, teamID uuid.UUID, region string) (Tenant, error) {
+	if s == nil || s.repository == nil {
+		return Tenant{}, errors.New("email tenant service is not configured")
+	}
+	if teamID == uuid.Nil {
+		return Tenant{}, errors.New("email tenant team id is required")
+	}
+	region = strings.ToLower(strings.TrimSpace(region))
+	if region == "" {
+		return Tenant{}, errors.New("email tenant region is required")
+	}
+	return s.repository.GetByTeam(ctx, teamID, ProviderAWSSES, region)
 }
 
 type provisioningQueue interface {
