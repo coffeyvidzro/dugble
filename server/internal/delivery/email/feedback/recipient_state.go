@@ -40,27 +40,19 @@ type aggregateTransition struct {
 	failedAt     *time.Time
 }
 
-func applyRecipientCurrentState(
-	ctx context.Context,
-	tx pgx.Tx,
-	messageID uuid.UUID,
-	event awsses.FeedbackEvent,
-) error {
+func applyRecipientCurrentState(ctx context.Context, tx pgx.Tx, messageID uuid.UUID, event awsses.FeedbackEvent) error {
 	for _, recipientEmail := range normalizedRecipients(event.Recipients) {
 		var currentStatus string
 		var lastEventAt *time.Time
 		err := tx.QueryRow(ctx, `
 			SELECT status, last_event_at
 			FROM email_recipients
-			WHERE email_message_id = $1
-			  AND recipient_email = $2
+			WHERE email_message_id = $1 AND recipient_email = $2
 			FOR UPDATE
 		`, messageID, recipientEmail).Scan(&currentStatus, &lastEventAt)
 		if errors.Is(err, pgx.ErrNoRows) {
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO email_recipients (
-					id, email_message_id, recipient_email, recipient_type, status
-				)
+				INSERT INTO email_recipients (id, email_message_id, recipient_email, recipient_type, status)
 				VALUES ($1, $2, $3, 'unknown', 'pending')
 				ON CONFLICT (email_message_id, recipient_email) DO NOTHING
 			`, uuid.New(), messageID, recipientEmail); err != nil {
@@ -71,7 +63,6 @@ func applyRecipientCurrentState(
 		} else if err != nil {
 			return fmt.Errorf("lock current state for recipient %q: %w", recipientEmail, err)
 		}
-
 		occurredAt := event.OccurredAt.UTC()
 		if lastEventAt != nil && occurredAt.Before(lastEventAt.UTC()) {
 			continue
@@ -97,22 +88,10 @@ func applyRecipientCurrentState(
 				error_code = $11,
 				error_message = $12,
 				updated_at = now()
-			WHERE email_message_id = $1
-			  AND recipient_email = $2
-		`,
-			messageID,
-			recipientEmail,
-			transition.status,
-			event.EventType,
-			occurredAt,
-			nullableString(diagnostic.Action),
-			nullableString(diagnostic.StatusCode),
-			nullableString(diagnostic.DiagnosticCode),
-			transition.deliveredAt,
-			transition.failedAt,
-			transition.errorCode,
-			transition.errorMessage,
-		); err != nil {
+			WHERE email_message_id = $1 AND recipient_email = $2
+		`, messageID, recipientEmail, transition.status, event.EventType, occurredAt,
+			nullableString(diagnostic.Action), nullableString(diagnostic.StatusCode), nullableString(diagnostic.DiagnosticCode),
+			transition.deliveredAt, transition.failedAt, transition.errorCode, transition.errorMessage); err != nil {
 			return fmt.Errorf("apply %s state to recipient %q: %w", event.EventType, recipientEmail, err)
 		}
 	}
@@ -141,14 +120,12 @@ func recipientStatusTransition(currentStatus, eventType string, occurredAt time.
 	currentStatus = strings.TrimSpace(currentStatus)
 	eventType = strings.TrimSpace(eventType)
 	occurredAt = occurredAt.UTC()
-
 	transition := recipientTransition{}
 	providerError := func(code, message string) {
 		transition.errorCode = &code
 		transition.errorMessage = &message
 		transition.failedAt = &occurredAt
 	}
-
 	switch eventType {
 	case "send":
 		if !recipientStatusIn(currentStatus, recipientStatusPending, recipientStatusSubmitted) {
@@ -197,6 +174,8 @@ func recipientStatusTransition(currentStatus, eventType string, occurredAt time.
 		}
 		transition.status = recipientStatusFailed
 		providerError("ses_rendering_failure", "SES could not render the message")
+	case "open", "click", "subscription":
+		return recipientTransition{}, false, nil
 	default:
 		return recipientTransition{}, false, fmt.Errorf("unsupported persisted SES event type %q", eventType)
 	}
@@ -214,7 +193,6 @@ func aggregateRecipientMessageStatus(ctx context.Context, tx pgx.Tx, messageID u
 		return aggregateTransition{}, fmt.Errorf("load recipient states for email %s: %w", messageID, err)
 	}
 	defer rows.Close()
-
 	counts := map[string]int{}
 	var total int
 	var latestDeliveredAt *time.Time
