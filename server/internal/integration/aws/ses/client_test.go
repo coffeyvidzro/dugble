@@ -6,31 +6,31 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	awsses "github.com/aws/aws-sdk-go-v2/service/ses"
+	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 )
 
-type recordingSESClient struct {
+type recordingSESV2Client struct {
 	calls int
-	input *awsses.SendRawEmailInput
+	input *sesv2.SendEmailInput
 }
 
-func (c *recordingSESClient) SendRawEmail(_ context.Context, input *awsses.SendRawEmailInput, _ ...func(*awsses.Options)) (*awsses.SendRawEmailOutput, error) {
+func (c *recordingSESV2Client) SendEmail(_ context.Context, input *sesv2.SendEmailInput, _ ...func(*sesv2.Options)) (*sesv2.SendEmailOutput, error) {
 	c.calls++
 	c.input = input
-	return &awsses.SendRawEmailOutput{MessageId: aws.String("provider-message-id")}, nil
+	return &sesv2.SendEmailOutput{MessageId: aws.String("provider-message-id")}, nil
 }
 
 func TestSendUsesMessageRegion(t *testing.T) {
-	defaultClient, regionalClient := &recordingSESClient{}, &recordingSESClient{}
+	defaultClient, regionalClient := &recordingSESV2Client{}, &recordingSESV2Client{}
 	client, err := NewClient("us-east-1", "default@example.com", "access-key", "secret-key")
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	client.sendingClients["us-east-1"] = defaultClient
-	client.sendingClients["eu-west-1"] = regionalClient
-	route := platformemail.BuiltInDeliveryRoute("transactional")
+	client.v2SendingClients["us-east-1"] = defaultClient
+	client.v2SendingClients["eu-west-1"] = regionalClient
+	route := platformemail.CustomerDeliveryRoute("transactional", "dugble-t-customer")
 	_, err = client.Send(context.Background(), platformemail.Message{
 		Region:           "eu-west-1",
 		Stream:           route.Stream,
@@ -49,14 +49,14 @@ func TestSendUsesMessageRegion(t *testing.T) {
 	}
 }
 
-func TestSendUsesMessageConfigurationSet(t *testing.T) {
-	recordingClient := &recordingSESClient{}
+func TestSendUsesPersistedConfigurationSetAndTenant(t *testing.T) {
+	recordingClient := &recordingSESV2Client{}
 	client, err := NewClient("us-east-1", "default@example.com", "access-key", "secret-key")
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	client.sendingClients["us-east-1"] = recordingClient
-	route := platformemail.BuiltInDeliveryRoute("marketing")
+	client.v2SendingClients["us-east-1"] = recordingClient
+	route := platformemail.CustomerDeliveryRoute("marketing", "dugble-t-customer")
 	_, err = client.Send(context.Background(), platformemail.Message{
 		Stream:           route.Stream,
 		ConfigurationSet: route.ConfigurationSet,
@@ -71,6 +71,9 @@ func TestSendUsesMessageConfigurationSet(t *testing.T) {
 	}
 	if got := aws.ToString(recordingClient.input.ConfigurationSetName); got != "dugble-marketing" {
 		t.Fatalf("ConfigurationSetName = %q, want %q", got, "dugble-marketing")
+	}
+	if got := aws.ToString(recordingClient.input.TenantName); got != "dugble-t-customer" {
+		t.Fatalf("TenantName = %q, want %q", got, "dugble-t-customer")
 	}
 }
 
@@ -88,7 +91,7 @@ func TestGenerateBYODKIMMaterial(t *testing.T) {
 }
 
 func TestMapVerificationRecords(t *testing.T) {
-	records := mapVerificationRecords(platformemail.DomainProvisionRequest{Domain: "example.com", Region: "us-east-1", CustomReturnPath: "send"}, "dugble123", "public-key")
+	records := mapVerificationRecords(platformemail.DomainProvisionRequest{Domain: "example.com", Region: "us-east-1", CustomReturnPath: "send", SESTenantName: "dugble-t-customer"}, "dugble123", "public-key")
 	if len(records) != 3 {
 		t.Fatalf("records length = %d, want 3", len(records))
 	}
