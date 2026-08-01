@@ -3,8 +3,6 @@ package user
 import (
 	"context"
 	"log/slog"
-	"net/mail"
-	"strings"
 
 	"github.com/coffeyvidzro/dugble/server/internal/notifications"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
@@ -39,9 +37,9 @@ func (s *Service) GetMe(ctx context.Context) (User, error) {
 }
 
 func (s *Service) GetByID(ctx context.Context, id string) (User, error) {
-	id = strings.TrimSpace(id)
-	if id == "" {
-		return User{}, apperrors.NewBadRequest("User id is required")
+	id, err := validateID(id)
+	if err != nil {
+		return User{}, err
 	}
 
 	user, err := s.repository.GetByID(ctx, id)
@@ -58,9 +56,9 @@ func (s *Service) UpdateProfile(ctx context.Context, req UpdateProfileRequest) (
 		return User{}, apperrors.NewUnauthorized("Authentication is required")
 	}
 
-	name := strings.TrimSpace(req.Name)
-	if name == "" {
-		return User{}, apperrors.NewBadRequest("Name is required")
+	name, err := validateName(req.Name)
+	if err != nil {
+		return User{}, err
 	}
 
 	updated, err := s.repository.UpdateProfile(ctx, principal.UserID.String(), name)
@@ -77,9 +75,9 @@ func (s *Service) UpdateEmail(ctx context.Context, req UpdateEmailRequest) (User
 		return User{}, apperrors.NewUnauthorized("Authentication is required")
 	}
 
-	email := normalizeEmail(req.Email)
-	if _, err := mail.ParseAddress(email); err != nil {
-		return User{}, apperrors.NewBadRequest("A valid email is required")
+	email, err := validateEmail(req.Email)
+	if err != nil {
+		return User{}, err
 	}
 
 	current, err := s.repository.GetByID(ctx, principal.UserID.String())
@@ -101,25 +99,15 @@ func (s *Service) UpdateEmail(ctx context.Context, req UpdateEmailRequest) (User
 	return updated, nil
 }
 
-func normalizeEmail(email string) string {
-	value := strings.TrimSpace(strings.ToLower(email))
-	address, err := mail.ParseAddress(value)
-	if err != nil {
-		return value
-	}
-
-	return strings.TrimSpace(strings.ToLower(address.Address))
-}
-
 func (s *Service) UpdatePassword(ctx context.Context, req UpdatePasswordRequest) (User, error) {
 	principal, ok := authnz.PrincipalFromContext(ctx)
 	if !ok {
 		return User{}, apperrors.NewUnauthorized("Authentication is required")
 	}
 
-	password := strings.TrimSpace(req.Password)
-	if len(password) < 12 {
-		return User{}, apperrors.NewBadRequest("Password must be at least 12 characters")
+	password, err := validatePassword(req.Password)
+	if err != nil {
+		return User{}, err
 	}
 
 	hash, err := authnz.HashPassword(password)
@@ -160,21 +148,4 @@ func (s *Service) DeleteMe(ctx context.Context) error {
 		}
 	}
 	return nil
-}
-
-func uniqueEmails(values ...string) []string {
-	seen := make(map[string]struct{}, len(values))
-	out := make([]string, 0, len(values))
-	for _, value := range values {
-		value = normalizeEmail(value)
-		if value == "" {
-			continue
-		}
-		if _, ok := seen[value]; ok {
-			continue
-		}
-		seen[value] = struct{}{}
-		out = append(out, value)
-	}
-	return out
 }
