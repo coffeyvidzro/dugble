@@ -132,6 +132,21 @@ type EmailRecipient struct {
 	UpdatedAt          pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
+type EmailTenant struct {
+	ID               uuid.UUID          `db:"id" json:"id"`
+	TeamID           uuid.UUID          `db:"team_id" json:"team_id"`
+	Provider         string             `db:"provider" json:"provider"`
+	Region           string             `db:"region" json:"region"`
+	ExternalName     string             `db:"external_name" json:"external_name"`
+	ExternalID       *string            `db:"external_id" json:"external_id"`
+	Status           string             `db:"status" json:"status"`
+	SuppressionScope string             `db:"suppression_scope" json:"suppression_scope"`
+	ReputationPolicy string             `db:"reputation_policy" json:"reputation_policy"`
+	FailureReason    *string            `db:"failure_reason" json:"failure_reason"`
+	CreatedAt        pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
 type ExternalIdentity struct {
 	ID           uuid.UUID          `db:"id" json:"id"`
 	UserID       uuid.UUID          `db:"user_id" json:"user_id"`
