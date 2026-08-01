@@ -20,10 +20,17 @@ INSERT INTO email_tenants (
     suppression_scope,
     reputation_policy
 )
-VALUES ($1, $2, $3, $4, $5, $6)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6
+)
 ON CONFLICT (team_id, provider, region)
 DO UPDATE SET updated_at = email_tenants.updated_at
-RETURNING id, team_id, provider, region, external_name, external_id, status, suppression_scope, reputation_policy, failure_reason, created_at, updated_at, tenant_arn
+RETURNING id, team_id, provider, region, external_name, external_id, tenant_arn, status, suppression_scope, reputation_policy, failure_reason, created_at, updated_at
 `
 
 type CreateEmailTenantParams struct {
@@ -52,13 +59,13 @@ func (q *Queries) CreateEmailTenant(ctx context.Context, arg CreateEmailTenantPa
 		&i.Region,
 		&i.ExternalName,
 		&i.ExternalID,
+		&i.TenantArn,
 		&i.Status,
 		&i.SuppressionScope,
 		&i.ReputationPolicy,
 		&i.FailureReason,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.TenantArn,
 	)
 	return i, err
 }
@@ -82,7 +89,7 @@ func (q *Queries) DeleteEmailTenant(ctx context.Context, arg DeleteEmailTenantPa
 }
 
 const getEmailTenant = `-- name: GetEmailTenant :one
-SELECT id, team_id, provider, region, external_name, external_id, status, suppression_scope, reputation_policy, failure_reason, created_at, updated_at, tenant_arn
+SELECT id, team_id, provider, region, external_name, external_id, tenant_arn, status, suppression_scope, reputation_policy, failure_reason, created_at, updated_at
 FROM email_tenants
 WHERE id = $1
 `
@@ -101,19 +108,19 @@ func (q *Queries) GetEmailTenant(ctx context.Context, arg GetEmailTenantParams) 
 		&i.Region,
 		&i.ExternalName,
 		&i.ExternalID,
+		&i.TenantArn,
 		&i.Status,
 		&i.SuppressionScope,
 		&i.ReputationPolicy,
 		&i.FailureReason,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.TenantArn,
 	)
 	return i, err
 }
 
 const getEmailTenantByTeamProviderRegion = `-- name: GetEmailTenantByTeamProviderRegion :one
-SELECT id, team_id, provider, region, external_name, external_id, status, suppression_scope, reputation_policy, failure_reason, created_at, updated_at, tenant_arn
+SELECT id, team_id, provider, region, external_name, external_id, tenant_arn, status, suppression_scope, reputation_policy, failure_reason, created_at, updated_at
 FROM email_tenants
 WHERE team_id = $1
   AND provider = $2
@@ -136,37 +143,37 @@ func (q *Queries) GetEmailTenantByTeamProviderRegion(ctx context.Context, arg Ge
 		&i.Region,
 		&i.ExternalName,
 		&i.ExternalID,
+		&i.TenantArn,
 		&i.Status,
 		&i.SuppressionScope,
 		&i.ReputationPolicy,
 		&i.FailureReason,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.TenantArn,
 	)
 	return i, err
 }
 
 const markEmailTenantActive = `-- name: MarkEmailTenantActive :one
 UPDATE email_tenants
-SET external_id = $2,
-    tenant_arn = $3,
+SET external_id = $1,
+    tenant_arn = $2,
     status = 'active',
     failure_reason = NULL,
     updated_at = now()
-WHERE id = $1
+WHERE id = $3
   AND status = 'provisioning'
-RETURNING id, team_id, provider, region, external_name, external_id, status, suppression_scope, reputation_policy, failure_reason, created_at, updated_at, tenant_arn
+RETURNING id, team_id, provider, region, external_name, external_id, tenant_arn, status, suppression_scope, reputation_policy, failure_reason, created_at, updated_at
 `
 
 type MarkEmailTenantActiveParams struct {
-	ID         uuid.UUID `db:"id" json:"id"`
 	ExternalID *string   `db:"external_id" json:"external_id"`
 	TenantArn  *string   `db:"tenant_arn" json:"tenant_arn"`
+	ID         uuid.UUID `db:"id" json:"id"`
 }
 
 func (q *Queries) MarkEmailTenantActive(ctx context.Context, arg MarkEmailTenantActiveParams) (EmailTenant, error) {
-	row := q.db.QueryRow(ctx, markEmailTenantActive, arg.ID, arg.ExternalID, arg.TenantArn)
+	row := q.db.QueryRow(ctx, markEmailTenantActive, arg.ExternalID, arg.TenantArn, arg.ID)
 	var i EmailTenant
 	err := row.Scan(
 		&i.ID,
@@ -175,13 +182,13 @@ func (q *Queries) MarkEmailTenantActive(ctx context.Context, arg MarkEmailTenant
 		&i.Region,
 		&i.ExternalName,
 		&i.ExternalID,
+		&i.TenantArn,
 		&i.Status,
 		&i.SuppressionScope,
 		&i.ReputationPolicy,
 		&i.FailureReason,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.TenantArn,
 	)
 	return i, err
 }
@@ -192,7 +199,7 @@ SET status = 'deleting',
     updated_at = now()
 WHERE id = $1
   AND status IN ('active', 'paused', 'failed')
-RETURNING id, team_id, provider, region, external_name, external_id, status, suppression_scope, reputation_policy, failure_reason, created_at, updated_at, tenant_arn
+RETURNING id, team_id, provider, region, external_name, external_id, tenant_arn, status, suppression_scope, reputation_policy, failure_reason, created_at, updated_at
 `
 
 type MarkEmailTenantDeletingParams struct {
@@ -209,13 +216,13 @@ func (q *Queries) MarkEmailTenantDeleting(ctx context.Context, arg MarkEmailTena
 		&i.Region,
 		&i.ExternalName,
 		&i.ExternalID,
+		&i.TenantArn,
 		&i.Status,
 		&i.SuppressionScope,
 		&i.ReputationPolicy,
 		&i.FailureReason,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.TenantArn,
 	)
 	return i, err
 }
@@ -223,20 +230,20 @@ func (q *Queries) MarkEmailTenantDeleting(ctx context.Context, arg MarkEmailTena
 const markEmailTenantFailed = `-- name: MarkEmailTenantFailed :one
 UPDATE email_tenants
 SET status = 'failed',
-    failure_reason = $2,
+    failure_reason = $1,
     updated_at = now()
-WHERE id = $1
+WHERE id = $2
   AND status IN ('pending', 'provisioning')
-RETURNING id, team_id, provider, region, external_name, external_id, status, suppression_scope, reputation_policy, failure_reason, created_at, updated_at, tenant_arn
+RETURNING id, team_id, provider, region, external_name, external_id, tenant_arn, status, suppression_scope, reputation_policy, failure_reason, created_at, updated_at
 `
 
 type MarkEmailTenantFailedParams struct {
-	ID            uuid.UUID `db:"id" json:"id"`
 	FailureReason *string   `db:"failure_reason" json:"failure_reason"`
+	ID            uuid.UUID `db:"id" json:"id"`
 }
 
 func (q *Queries) MarkEmailTenantFailed(ctx context.Context, arg MarkEmailTenantFailedParams) (EmailTenant, error) {
-	row := q.db.QueryRow(ctx, markEmailTenantFailed, arg.ID, arg.FailureReason)
+	row := q.db.QueryRow(ctx, markEmailTenantFailed, arg.FailureReason, arg.ID)
 	var i EmailTenant
 	err := row.Scan(
 		&i.ID,
@@ -245,13 +252,13 @@ func (q *Queries) MarkEmailTenantFailed(ctx context.Context, arg MarkEmailTenant
 		&i.Region,
 		&i.ExternalName,
 		&i.ExternalID,
+		&i.TenantArn,
 		&i.Status,
 		&i.SuppressionScope,
 		&i.ReputationPolicy,
 		&i.FailureReason,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.TenantArn,
 	)
 	return i, err
 }
@@ -259,20 +266,20 @@ func (q *Queries) MarkEmailTenantFailed(ctx context.Context, arg MarkEmailTenant
 const markEmailTenantPaused = `-- name: MarkEmailTenantPaused :one
 UPDATE email_tenants
 SET status = 'paused',
-    failure_reason = $2,
+    failure_reason = $1,
     updated_at = now()
-WHERE id = $1
+WHERE id = $2
   AND status = 'active'
-RETURNING id, team_id, provider, region, external_name, external_id, status, suppression_scope, reputation_policy, failure_reason, created_at, updated_at, tenant_arn
+RETURNING id, team_id, provider, region, external_name, external_id, tenant_arn, status, suppression_scope, reputation_policy, failure_reason, created_at, updated_at
 `
 
 type MarkEmailTenantPausedParams struct {
-	ID            uuid.UUID `db:"id" json:"id"`
 	FailureReason *string   `db:"failure_reason" json:"failure_reason"`
+	ID            uuid.UUID `db:"id" json:"id"`
 }
 
 func (q *Queries) MarkEmailTenantPaused(ctx context.Context, arg MarkEmailTenantPausedParams) (EmailTenant, error) {
-	row := q.db.QueryRow(ctx, markEmailTenantPaused, arg.ID, arg.FailureReason)
+	row := q.db.QueryRow(ctx, markEmailTenantPaused, arg.FailureReason, arg.ID)
 	var i EmailTenant
 	err := row.Scan(
 		&i.ID,
@@ -281,13 +288,13 @@ func (q *Queries) MarkEmailTenantPaused(ctx context.Context, arg MarkEmailTenant
 		&i.Region,
 		&i.ExternalName,
 		&i.ExternalID,
+		&i.TenantArn,
 		&i.Status,
 		&i.SuppressionScope,
 		&i.ReputationPolicy,
 		&i.FailureReason,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.TenantArn,
 	)
 	return i, err
 }
@@ -299,7 +306,7 @@ SET status = 'provisioning',
     updated_at = now()
 WHERE id = $1
   AND status IN ('pending', 'failed')
-RETURNING id, team_id, provider, region, external_name, external_id, status, suppression_scope, reputation_policy, failure_reason, created_at, updated_at, tenant_arn
+RETURNING id, team_id, provider, region, external_name, external_id, tenant_arn, status, suppression_scope, reputation_policy, failure_reason, created_at, updated_at
 `
 
 type MarkEmailTenantProvisioningParams struct {
@@ -316,13 +323,13 @@ func (q *Queries) MarkEmailTenantProvisioning(ctx context.Context, arg MarkEmail
 		&i.Region,
 		&i.ExternalName,
 		&i.ExternalID,
+		&i.TenantArn,
 		&i.Status,
 		&i.SuppressionScope,
 		&i.ReputationPolicy,
 		&i.FailureReason,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.TenantArn,
 	)
 	return i, err
 }
