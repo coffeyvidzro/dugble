@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS email_provider_events (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email_message_id UUID REFERENCES email_messages(id) ON DELETE SET NULL,
     provider TEXT NOT NULL,
     transport TEXT NOT NULL,
