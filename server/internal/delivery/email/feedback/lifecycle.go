@@ -14,10 +14,7 @@ import (
 	platformwebhook "github.com/coffeyvidzro/dugble/server/internal/platform/webhook"
 )
 
-var (
-	recipientEventNamespace = uuid.MustParse("480d4153-58c3-5f6a-a66d-e4ab7bb168d2")
-	webhookEventNamespace   = uuid.MustParse("d90f621c-937d-5fd2-9c85-cd8f55cacaa2")
-)
+var webhookEventNamespace = uuid.MustParse("d90f621c-937d-5fd2-9c85-cd8f55cacaa2")
 
 type webhookEmitter interface {
 	EmitTx(context.Context, pgx.Tx, platformwebhook.Event) (uuid.UUID, int64, error)
@@ -48,36 +45,6 @@ func NewRepositoryWithWebhookEmitter(db *pgxpool.Pool, emitter webhookEmitter) *
 	repository := NewRepository(db, nil)
 	repository.emitter = emitter
 	return repository
-}
-
-func persistRecipientEvents(
-	ctx context.Context,
-	tx pgx.Tx,
-	providerEventID uuid.UUID,
-	messageID uuid.UUID,
-	event awsses.FeedbackEvent,
-) error {
-	for _, recipient := range normalizedRecipients(event.Recipients) {
-		recipientEventID := uuid.NewSHA1(
-			recipientEventNamespace,
-			[]byte(providerEventID.String()+":"+recipient),
-		)
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO email_recipient_events (
-				id,
-				email_provider_event_id,
-				email_message_id,
-				recipient_email,
-				event_type,
-				occurred_at
-			)
-			VALUES ($1, $2, $3, $4, $5, $6)
-			ON CONFLICT (email_provider_event_id, recipient_email) DO NOTHING
-		`, recipientEventID, providerEventID, messageID, recipient, event.EventType, event.OccurredAt); err != nil {
-			return fmt.Errorf("insert %s recipient event for %q: %w", event.EventType, recipient, err)
-		}
-	}
-	return nil
 }
 
 func (r *Repository) emitLifecycleWebhook(
