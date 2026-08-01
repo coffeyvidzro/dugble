@@ -306,13 +306,12 @@ func linkAndLockMessage(
 	if parseErr != nil {
 		return uuid.Nil, "", fmt.Errorf("%w: provider message %q", ErrProviderEventUnlinked, providerMessageID)
 	}
-	var currentAttemptID *uuid.UUID
 	if err := tx.QueryRow(ctx, `
-		SELECT id, status, current_delivery_attempt_id
+		SELECT id, status
 		FROM email_messages
 		WHERE id = $1
 		FOR UPDATE
-	`, internalMessageID).Scan(&messageID, &currentStatus, &currentAttemptID); err != nil {
+	`, internalMessageID).Scan(&messageID, &currentStatus); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return uuid.Nil, "", fmt.Errorf("%w: internal message %q", ErrProviderEventUnlinked, internalMessageID)
 		}
@@ -347,11 +346,9 @@ func linkAndLockMessage(
 		`, attemptID, providerMessageID); err != nil {
 			return uuid.Nil, "", fmt.Errorf("reconcile tagged email delivery attempt %s: %w", attemptID, err)
 		}
-	} else if currentAttemptID != nil {
-		attemptID = *currentAttemptID
 	}
 
-	if _, err := tx.Exec(ctx, `
+	if err := tx.QueryRow(ctx, `
 		UPDATE email_messages
 		SET provider = COALESCE(provider, $2),
 			provider_message_id = COALESCE(provider_message_id, $3),
