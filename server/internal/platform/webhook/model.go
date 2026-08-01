@@ -21,6 +21,9 @@ var subscribableEventTypes = []string{
 	EventEmailComplained,
 	EventEmailRejected,
 	EventEmailFailed,
+	EventEmailOpened,
+	EventEmailClicked,
+	EventEmailSubscriptionChanged,
 }
 
 func SubscribableEventTypes() []string {
@@ -38,13 +41,16 @@ const (
 	EventSMSUndelivered = "sms.undelivered"
 	EventSMSFailed      = "sms.failed"
 
-	EventEmailSubmitted  = "email.submitted"
-	EventEmailDelivered  = "email.delivered"
-	EventEmailDelayed    = "email.delayed"
-	EventEmailBounced    = "email.bounced"
-	EventEmailComplained = "email.complained"
-	EventEmailRejected   = "email.rejected"
-	EventEmailFailed     = "email.failed"
+	EventEmailSubmitted           = "email.submitted"
+	EventEmailDelivered           = "email.delivered"
+	EventEmailDelayed             = "email.delayed"
+	EventEmailBounced             = "email.bounced"
+	EventEmailComplained          = "email.complained"
+	EventEmailRejected            = "email.rejected"
+	EventEmailFailed              = "email.failed"
+	EventEmailOpened              = "email.opened"
+	EventEmailClicked             = "email.clicked"
+	EventEmailSubscriptionChanged = "email.subscription_changed"
 
 	EventTest = "webhook.test"
 )
