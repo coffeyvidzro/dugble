@@ -13,16 +13,17 @@ import (
 
 	"github.com/google/uuid"
 
+	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
 const (
 	maxEmailNameCharacters = 128
 	maxSubjectCharacters   = 255
-	maxBodyBytes           = 1 << 20
+	maxBodyBytes           = platformemail.MaxBodyBytes
 	maxMetadataBytes       = 16 << 10
 	maxRecipients          = 50
-	maxAttachmentsBytes    = 40 << 20
+	maxAttachmentsBytes    = platformemail.MaxAttachmentsDecodedBytes
 )
 
 var tagPattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
@@ -235,7 +236,7 @@ func normalizeAttachments(items []Attachment) ([]Attachment, error) {
 		total += decodedSize
 	}
 	if total > maxAttachmentsBytes {
-		return nil, apperrors.NewPayloadTooLarge("Email attachments exceed 40MB")
+		return nil, apperrors.NewPayloadTooLarge("Email attachments exceed 7MB")
 	}
 	return items, nil
 }
