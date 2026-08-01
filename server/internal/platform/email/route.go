@@ -17,6 +17,26 @@ type DeliveryRoute struct {
 	SESTenantName    string
 }
 
+// BuiltInDeliveryRoute is Dugble's authoritative SES routing policy. The AWS
+// resource names are product invariants rather than deployment configuration.
+// Callers persist the returned route with every accepted message.
+func BuiltInDeliveryRoute(stream string) DeliveryRoute {
+	switch strings.ToLower(strings.TrimSpace(stream)) {
+	case "marketing":
+		return DeliveryRoute{
+			Stream:           "marketing",
+			ConfigurationSet: "dugble-marketing",
+			SESTenantName:    "dugble-system",
+		}
+	default:
+		return DeliveryRoute{
+			Stream:           "transactional",
+			ConfigurationSet: "dugble-transactional",
+			SESTenantName:    "dugble-system",
+		}
+	}
+}
+
 // PersistDeliveryRoute returns a copy of headers containing server-owned route
 // metadata. Existing values for these internal keys are always overwritten.
 func PersistDeliveryRoute(headers map[string]string, route DeliveryRoute) map[string]string {
