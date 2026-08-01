@@ -91,7 +91,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	userRepository := user.NewRepository(deps.DB)
 	user.RegisterRoutes(router, user.NewHandler(user.NewService(userRepository, emailService)), authMiddleware, csrfMiddleware)
 	teamRepository := team.NewRepository(deps.DB)
-	teamService := team.NewService(teamRepository, emailService)
+	teamService := team.NewService(teamRepository, emailService).WithRecipientStore(userRepository)
 	teamTokenRepository := teamtoken.NewRepository(deps.DB)
 	domainRepository := domain.NewRepository(deps.DB)
 	emailTenantRepository := emailtenant.NewRepository(deps.DB)
@@ -111,7 +111,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	}
 	team.RegisterRoutes(router, team.NewHandler(teamService), authMiddleware, csrfMiddleware, tenantMiddleware)
 	auditevent.RegisterRoutes(router, auditevent.NewHandler(auditevent.NewService(auditRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
-	teamtoken.RegisterRoutes(router, teamtoken.NewHandler(teamtoken.NewService(teamTokenRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
+	teamtoken.RegisterRoutes(router, teamtoken.NewHandler(teamtoken.NewService(teamTokenRepository).WithNotifier(emailService)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	senderid.RegisterRoutes(router, senderid.NewHandler(senderid.NewService(senderIDRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	domain.RegisterRoutes(router, domain.NewHandler(domain.NewService(domainRepository, deps.DomainProvider, deps.DNSVerifier, emailTenantService)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	smsService := smsmodule.NewService(smsRepository, deps.SMSSender, deps.SMSDelivery)

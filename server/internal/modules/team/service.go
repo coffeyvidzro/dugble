@@ -3,6 +3,7 @@ package team
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/mail"
 	"strings"
 	"time"
@@ -19,10 +20,17 @@ import (
 type Service struct {
 	repository *Repository
 	notifier   InvitationNotifier
+	recipients MemberRecipientStore
 }
 
 type InvitationNotifier interface {
 	SendTeamInvitation(ctx context.Context, input notifications.SendTeamInvitationInput) error
+	SendTeamMemberRemoved(ctx context.Context, input notifications.SendTeamMemberChangedInput) error
+	SendTeamMemberRoleChanged(ctx context.Context, input notifications.SendTeamMemberChangedInput) error
+}
+
+type MemberRecipientStore interface {
+	GetNotificationRecipient(context.Context, uuid.UUID) (notifications.Recipient, error)
 }
 
 func NewService(repository *Repository, notifiers ...InvitationNotifier) *Service {
@@ -31,6 +39,11 @@ func NewService(repository *Repository, notifiers ...InvitationNotifier) *Servic
 		service.notifier = notifiers[0]
 	}
 	return service
+}
+
+func (s *Service) WithRecipientStore(recipients MemberRecipientStore) *Service {
+	s.recipients = recipients
+	return s
 }
 
 const teamInvitationTTL = 7 * 24 * time.Hour
@@ -164,6 +177,7 @@ func (s *Service) RemoveMember(ctx context.Context, teamID string, userID string
 		return apperrors.NewInternal("Unable to remove team member", err)
 	}
 	audit.Record(ctx, tenantContext, audit.Event{Action: "team_member.removed", ResourceType: "team_member", ResourceID: parsedUserID.String()})
+	s.notifyMemberChange(ctx, tenantContext.Scope.TeamID, parsedUserID, member.Role, "removed")
 	return nil
 }
 
@@ -197,7 +211,33 @@ func (s *Service) UpdateMemberRole(
 		return Member{}, apperrors.NewInternal("Unable to update team member role", err)
 	}
 	audit.Record(ctx, tenantContext, audit.Event{Action: "team_member.role_updated", ResourceType: "team_member", ResourceID: parsedUserID.String(), Metadata: map[string]any{"role": role}})
+	s.notifyMemberChange(ctx, tenantContext.Scope.TeamID, parsedUserID, role, "role_changed")
 	return member, nil
+}
+
+func (s *Service) notifyMemberChange(ctx context.Context, teamID, userID uuid.UUID, role, event string) {
+	if s.notifier == nil || s.recipients == nil {
+		return
+	}
+	recipient, err := s.recipients.GetNotificationRecipient(ctx, userID)
+	if err != nil {
+		slog.Warn("failed to resolve team member notification recipient", "error", err, "user_id", userID)
+		return
+	}
+	teamRecord, err := s.repository.Get(ctx, teamID)
+	if err != nil {
+		slog.Warn("failed to resolve team notification context", "error", err, "team_id", teamID)
+		return
+	}
+	input := notifications.SendTeamMemberChangedInput{ToEmail: recipient.Email, Name: recipient.Name, Team: teamRecord.Name, Role: role}
+	if event == "removed" {
+		err = s.notifier.SendTeamMemberRemoved(ctx, input)
+	} else {
+		err = s.notifier.SendTeamMemberRoleChanged(ctx, input)
+	}
+	if err != nil {
+		slog.Warn("failed to send team member notification", "error", err, "event", event, "user_id", userID, "team_id", teamID)
+	}
 }
 
 func (s *Service) InviteMember(

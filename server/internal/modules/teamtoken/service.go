@@ -2,11 +2,13 @@ package teamtoken
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/coffeyvidzro/dugble/server/internal/notifications"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/audit"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
@@ -34,9 +36,20 @@ var allowedPermissions = map[tenant.Permission]struct{}{
 
 type Service struct {
 	repository *Repository
+	notifier   AdministrativeNotifier
 }
 
 func NewService(repository *Repository) *Service { return &Service{repository: repository} }
+
+type AdministrativeNotifier interface {
+	SendTeamTokenCreated(context.Context, notifications.SendTeamTokenChangedInput) error
+	SendTeamTokenRevoked(context.Context, notifications.SendTeamTokenChangedInput) error
+}
+
+func (s *Service) WithNotifier(notifier AdministrativeNotifier) *Service {
+	s.notifier = notifier
+	return s
+}
 
 func (s *Service) List(ctx context.Context) ([]Token, error) {
 	tenantContext, err := requireTenantPermission(ctx, tenant.PermissionTeamTokensRead)
@@ -80,6 +93,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (CreatedToken, 
 		return CreatedToken{}, apperrors.NewInternal("Unable to create team token", err)
 	}
 	audit.Record(ctx, tenantContext, audit.Event{Action: "team_token.created", ResourceType: "team_token", ResourceID: token.ID, Metadata: map[string]any{"token_prefix": token.TokenPrefix}})
+	s.notify(ctx, tenantContext, token, "created")
 	return CreatedToken{Token: token, Secret: secret}, nil
 }
 
@@ -131,7 +145,28 @@ func (s *Service) Revoke(ctx context.Context, tokenID string) (Token, error) {
 		return Token{}, apperrors.NewNotFound("Team token not found")
 	}
 	audit.Record(ctx, tenantContext, audit.Event{Action: "team_token.revoked", ResourceType: "team_token", ResourceID: token.ID, Metadata: map[string]any{"token_prefix": token.TokenPrefix}})
+	s.notify(ctx, tenantContext, token, "revoked")
 	return token, nil
+}
+
+func (s *Service) notify(ctx context.Context, access tenant.AccessContext, token Token, event string) {
+	if s.notifier == nil {
+		return
+	}
+	principal, ok := authnz.PrincipalFromContext(ctx)
+	if !ok || strings.TrimSpace(principal.Email) == "" {
+		return
+	}
+	input := notifications.SendTeamTokenChangedInput{ToEmail: principal.Email, Name: principal.Name, TeamID: access.Scope.TeamID.String(), TokenName: token.Name, TokenPrefix: token.TokenPrefix}
+	var err error
+	if event == "created" {
+		err = s.notifier.SendTeamTokenCreated(ctx, input)
+	} else {
+		err = s.notifier.SendTeamTokenRevoked(ctx, input)
+	}
+	if err != nil {
+		slog.Warn("failed to send team token notification", "error", err, "event", event, "team_id", access.Scope.TeamID, "token_id", token.ID)
+	}
 }
 
 func requireTenantPermission(

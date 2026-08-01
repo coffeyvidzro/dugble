@@ -35,6 +35,21 @@ type SendSecurityEventInput struct {
 	Name    string
 }
 
+type SendTeamMemberChangedInput struct {
+	ToEmail string
+	Name    string
+	Team    string
+	Role    string
+}
+
+type SendTeamTokenChangedInput struct {
+	ToEmail     string
+	Name        string
+	TeamID      string
+	TokenName   string
+	TokenPrefix string
+}
+
 type SendTeamInvitationInput struct {
 	ToEmail     string
 	Name        string

@@ -8,10 +8,19 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
+	"github.com/coffeyvidzro/dugble/server/internal/notifications"
 )
 
 type Repository struct {
 	queries *dbsqlc.Queries
+}
+
+func (r *Repository) GetNotificationRecipient(ctx context.Context, userID uuid.UUID) (notifications.Recipient, error) {
+	user, err := r.GetByID(ctx, userID.String())
+	if err != nil {
+		return notifications.Recipient{}, err
+	}
+	return notifications.Recipient{Name: user.Name, Email: user.Email}, nil
 }
 
 func NewRepository(db *pgxpool.Pool) *Repository {

@@ -17,6 +17,7 @@ const (
 	passwordChangedTemplate = "password_changed.html"
 	securityEventTemplate   = "security_event.html"
 	accountDeletedTemplate  = "account_deleted.html"
+	administrativeTemplate  = "administrative_event.html"
 	teamInvitationTemplate  = "team_invitation.html"
 )
 
@@ -104,6 +105,26 @@ func (s *EmailService) SendAccountDeleted(ctx context.Context, input SendSecurit
 
 func (s *EmailService) sendSecurityEvent(ctx context.Context, toEmail, name, subject, preview, message string) error {
 	return s.SendTemplateEmail(ctx, SendTemplateEmailInput{To: toEmail, Subject: subject, TemplateName: securityEventTemplate, Data: map[string]string{"Name": displayName(name), "PreviewText": preview, "Message": message}})
+}
+
+func (s *EmailService) SendTeamMemberRemoved(ctx context.Context, input SendTeamMemberChangedInput) error {
+	return s.sendAdministrativeEvent(ctx, input.ToEmail, input.Name, "You were removed from a Dugble team", "Your Dugble team membership changed.", "You were removed from the "+input.Team+" team.")
+}
+
+func (s *EmailService) SendTeamMemberRoleChanged(ctx context.Context, input SendTeamMemberChangedInput) error {
+	return s.sendAdministrativeEvent(ctx, input.ToEmail, input.Name, "Your Dugble team role changed", "Your Dugble team role changed.", "Your role on the "+input.Team+" team was changed to "+displayRole(input.Role)+".")
+}
+
+func (s *EmailService) SendTeamTokenCreated(ctx context.Context, input SendTeamTokenChangedInput) error {
+	return s.sendAdministrativeEvent(ctx, input.ToEmail, input.Name, "A Dugble team token was created", "A team API token was created.", "The "+input.TokenName+" API token ("+input.TokenPrefix+") was created for team "+input.TeamID+".")
+}
+
+func (s *EmailService) SendTeamTokenRevoked(ctx context.Context, input SendTeamTokenChangedInput) error {
+	return s.sendAdministrativeEvent(ctx, input.ToEmail, input.Name, "A Dugble team token was revoked", "A team API token was revoked.", "The "+input.TokenName+" API token ("+input.TokenPrefix+") was revoked for team "+input.TeamID+".")
+}
+
+func (s *EmailService) sendAdministrativeEvent(ctx context.Context, toEmail, name, subject, preview, message string) error {
+	return s.SendTemplateEmail(ctx, SendTemplateEmailInput{To: toEmail, Subject: subject, TemplateName: administrativeTemplate, Data: map[string]string{"Name": displayName(name), "PreviewText": preview, "Message": message}})
 }
 
 func (s *EmailService) SendTeamInvitation(ctx context.Context, input SendTeamInvitationInput) error {
