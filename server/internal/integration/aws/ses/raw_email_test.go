@@ -126,12 +126,27 @@ func TestBuildMIMEAllowsApplicationHeaders(t *testing.T) {
 	}
 }
 
-type fakeSESAPIError struct{ code string }
+type fakeSESAPIError struct {
+	code    string
+	message string
+}
 
 func (e fakeSESAPIError) Error() string                 { return e.code }
 func (e fakeSESAPIError) ErrorCode() string             { return e.code }
-func (e fakeSESAPIError) ErrorMessage() string          { return e.code }
+func (e fakeSESAPIError) ErrorMessage() string          { return e.message }
 func (e fakeSESAPIError) ErrorFault() smithy.ErrorFault { return smithy.FaultServer }
+
+func TestShouldRetryWithoutConfigurationSetForAccessDeniedConfigSet(t *testing.T) {
+	if !shouldRetryWithoutConfigurationSet(fakeSESAPIError{code: "AccessDenied", message: "User is not authorized to perform ses:SendRawEmail on resource arn:aws:ses:eu-north-1:123456789012:configuration-set/dugble-transactional"}) {
+		t.Fatal("shouldRetryWithoutConfigurationSet() = false, want true")
+	}
+}
+
+func TestShouldRetryWithoutConfigurationSetForOtherErrors(t *testing.T) {
+	if shouldRetryWithoutConfigurationSet(fakeSESAPIError{code: "AccessDenied", message: "User is not authorized to perform ses:SendRawEmail"}) {
+		t.Fatal("shouldRetryWithoutConfigurationSet() = true, want false")
+	}
+}
 
 func TestClassifySESFailureTreatsTransportErrorsAsUnknown(t *testing.T) {
 	err := classifySESFailure(errors.New("connection reset"))
