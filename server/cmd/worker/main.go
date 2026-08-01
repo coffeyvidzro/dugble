@@ -17,6 +17,7 @@ import (
 	domainreconciliation "github.com/coffeyvidzro/dugble/server/internal/delivery/domain"
 	emailfeedback "github.com/coffeyvidzro/dugble/server/internal/delivery/email/feedback"
 	emaildelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/email/send"
+	systememail "github.com/coffeyvidzro/dugble/server/internal/delivery/email/system"
 	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
 	webhookdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/webhooks"
 	awsses "github.com/coffeyvidzro/dugble/server/internal/integration/aws/ses"
@@ -73,19 +74,15 @@ func run() error {
 	processedEvents := inbox.NewRepository(db)
 	webhookModuleRepository := webhookmodule.NewRepository(db)
 	webhookEmitter := platformwebhook.NewEmitter(webhookModuleRepository)
-	emailSender, err := awsses.NewSESSender(
-		startupCtx,
-		cfg.AWS.Region,
-		cfg.AWS.FromEmail,
-		cfg.AWS.AccessKey,
-		cfg.AWS.SecretKey,
-		cfg.AWS.SESConfigurationSet,
-	)
+	emailSender, err := awsses.NewSESSender(startupCtx, cfg.AWS.Region, cfg.AWS.FromEmail, cfg.AWS.AccessKey, cfg.AWS.SecretKey, cfg.AWS.SESConfigurationSet)
 	if err != nil {
 		return fmt.Errorf("initialize SES email sender: %w", err)
 	}
 	emailConsumer := emaildelivery.NewConsumer(messagingClient, processedEvents, emaildelivery.NewHandler(emaildelivery.NewRepository(db), emailSender), emaildelivery.ConsumerConfig{
 		Concurrency: 5, AckWait: 2 * time.Minute, HandlerTimeout: 45 * time.Second, MaxDeliver: 6, RetryPolicy: emaildelivery.DefaultRetryPolicy(),
+	})
+	systemEmailConsumer := systememail.NewConsumer(messagingClient, processedEvents, emailSender, systememail.ConsumerConfig{
+		Concurrency: 3, AckWait: time.Minute, HandlerTimeout: 30 * time.Second, MaxDeliver: 6,
 	})
 	feedbackMetrics := emailfeedback.DefaultMetrics
 	emailFeedbackRepository := emailfeedback.NewRepositoryWithWebhookEmitter(db, webhookEmitter)
@@ -141,6 +138,7 @@ func run() error {
 		healthComponent,
 		{Name: "outbox relay", Run: outboxRelay.Run},
 		{Name: "email JetStream consumer", Run: emailConsumer.Run},
+		{Name: "system email JetStream consumer", Run: systemEmailConsumer.Run},
 		{Name: "email feedback JetStream consumer", Run: emailFeedbackConsumer.Run},
 		{Name: "email feedback database reconciler", Run: emailFeedbackReconciler.Run},
 		{Name: "email feedback metrics collector", Run: emailFeedbackMetricsCollector.Run},
