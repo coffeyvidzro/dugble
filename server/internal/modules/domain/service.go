@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/coffeyvidzro/dugble/server/internal/modules/emailtenant"
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
@@ -14,10 +15,15 @@ import (
 
 const manualHealthFailureReason = "sender domain verification checks no longer pass"
 
+type emailTenantProvisioner interface {
+	RequestProvisioning(context.Context, uuid.UUID, string) (emailtenant.Tenant, error)
+}
+
 type Service struct {
-	repository *Repository
-	provider   platformemail.DomainProvider
-	dns        platformemail.DNSVerifier
+	repository      *Repository
+	provider        platformemail.DomainProvider
+	dns             platformemail.DNSVerifier
+	tenantProvision emailTenantProvisioner
 }
 
 type ReconciliationResult struct {
@@ -25,8 +31,12 @@ type ReconciliationResult struct {
 	VerificationRecords []VerificationRecord
 }
 
-func NewService(repository *Repository, provider platformemail.DomainProvider, dns platformemail.DNSVerifier) *Service {
-	return &Service{repository: repository, provider: provider, dns: dns}
+func NewService(repository *Repository, provider platformemail.DomainProvider, dns platformemail.DNSVerifier, provisioners ...emailTenantProvisioner) *Service {
+	var provisioner emailTenantProvisioner
+	if len(provisioners) > 0 {
+		provisioner = provisioners[0]
+	}
+	return &Service{repository: repository, provider: provider, dns: dns, tenantProvision: provisioner}
 }
 
 func (s *Service) List(ctx context.Context) ([]SenderDomain, error) {
@@ -69,6 +79,17 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (SenderDomain, 
 	if s.provider == nil {
 		return SenderDomain{}, apperrors.NewInternal("Sender domain provider is not configured", nil)
 	}
+	if s.tenantProvision == nil {
+		return SenderDomain{}, apperrors.NewInternal("Customer email tenant provisioning is not configured", nil)
+	}
+
+	emailTenant, err := s.tenantProvision.RequestProvisioning(ctx, tc.Scope.TeamID, region)
+	if err != nil {
+		return SenderDomain{}, apperrors.NewInternal("Unable to prepare customer email tenant", err)
+	}
+	if emailTenant.Status != emailtenant.StatusActive {
+		return SenderDomain{}, apperrors.NewConflict("Customer email tenant is being provisioned; retry sender-domain creation shortly")
+	}
 
 	domain, err := s.repository.Create(ctx, tc.Scope.TeamID, domainName, DefaultProvider, region, []VerificationRecord{}, tc.Actor.UserID)
 	if err != nil {
@@ -80,7 +101,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (SenderDomain, 
 	id := uuid.MustParse(domain.ID)
 
 	records, provisionErr := s.provider.ProvisionDomain(ctx, platformemail.DomainProvisionRequest{
-		Domain: domainName, Region: region, CustomReturnPath: returnPath,
+		Domain: domainName, Region: region, CustomReturnPath: returnPath, SESTenantName: emailTenant.ExternalName,
 	})
 	if provisionErr != nil {
 		reason := provisionErr.Error()
