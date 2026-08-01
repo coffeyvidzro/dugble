@@ -100,10 +100,12 @@ type DomainStatus struct {
 	MailFromVerified bool
 }
 
-// DomainProvider is implemented by integrations that provision and inspect sender identities.
+// DomainProvider is implemented by integrations that provision, inspect, and
+// deprovision sender identities.
 type DomainProvider interface {
 	ProvisionDomain(context.Context, DomainProvisionRequest) ([]VerificationRecord, error)
 	GetDomainStatus(context.Context, string, string) (DomainStatus, error)
+	DeleteDomain(context.Context, string, string) error
 }
 
 // SendError exposes provider-neutral failure metadata to delivery workers.
