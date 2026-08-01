@@ -10,7 +10,7 @@ ALTER TABLE email_messages
     ));
 
 CREATE TABLE IF NOT EXISTS email_recipients (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email_message_id UUID NOT NULL REFERENCES email_messages(id) ON DELETE CASCADE,
     recipient_email TEXT NOT NULL,
     recipient_type TEXT NOT NULL,
@@ -74,14 +74,12 @@ WITH recipient_addresses AS (
     ORDER BY email_message_id, recipient_email, priority
 )
 INSERT INTO email_recipients (
-    id,
     email_message_id,
     recipient_email,
     recipient_type,
     status
 )
 SELECT
-    gen_random_uuid(),
     email_message_id,
     recipient_email,
     recipient_type,
@@ -106,14 +104,12 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
     INSERT INTO email_recipients (
-        id,
         email_message_id,
         recipient_email,
         recipient_type,
         status
     )
     SELECT
-        gen_random_uuid(),
         NEW.id,
         address.recipient_email,
         address.recipient_type,
