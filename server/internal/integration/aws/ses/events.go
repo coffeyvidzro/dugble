@@ -78,7 +78,9 @@ type feedbackEnvelope struct {
 		Destination []string            `json:"destination"`
 		Tags        map[string][]string `json:"tags"`
 	} `json:"mail"`
-	Send struct{ Timestamp time.Time `json:"timestamp"` } `json:"send"`
+	Send struct {
+		Timestamp time.Time `json:"timestamp"`
+	} `json:"send"`
 	Delivery struct {
 		Timestamp            time.Time `json:"timestamp"`
 		Recipients           []string  `json:"recipients"`
@@ -117,7 +119,9 @@ type feedbackEnvelope struct {
 		FeedbackID            string    `json:"feedbackId"`
 		UserAgent             string    `json:"userAgent"`
 		ArrivalDate           string    `json:"arrivalDate"`
-		ComplainedRecipients  []struct{ EmailAddress string `json:"emailAddress"` } `json:"complainedRecipients"`
+		ComplainedRecipients  []struct {
+			EmailAddress string `json:"emailAddress"`
+		} `json:"complainedRecipients"`
 	} `json:"complaint"`
 	Reject struct {
 		Timestamp time.Time `json:"timestamp"`
@@ -187,17 +191,28 @@ func ParseFeedbackEvent(message string) (FeedbackEvent, error) {
 
 func normalizeFeedbackEvent(envelope feedbackEnvelope) (string, time.Time, []string, error) {
 	switch strings.ToLower(strings.TrimSpace(envelope.EventType)) {
-	case "send": return "send", envelope.Send.Timestamp, nil, nil
-	case "delivery": return "delivery", envelope.Delivery.Timestamp, normalizeRecipients(envelope.Delivery.Recipients), nil
-	case "deliverydelay", "delivery_delay": return "delivery_delay", envelope.DeliveryDelay.Timestamp, delayedRecipients(envelope.DeliveryDelay.DelayedRecipients), nil
-	case "bounce": return "bounce", envelope.Bounce.Timestamp, bouncedRecipients(envelope.Bounce.BouncedRecipients), nil
-	case "complaint": return "complaint", envelope.Complaint.Timestamp, complainedRecipients(envelope.Complaint.ComplainedRecipients), nil
-	case "reject": return "reject", envelope.Reject.Timestamp, nil, nil
-	case "rendering failure", "renderingfailure", "rendering_failure": return "rendering_failure", envelope.Failure.Timestamp, nil, nil
-	case "open": return "open", envelope.Open.Timestamp, nil, nil
-	case "click": return "click", envelope.Click.Timestamp, nil, nil
-	case "subscription": return "subscription", envelope.Subscription.Timestamp, nil, nil
-	default: return "", time.Time{}, nil, fmt.Errorf("%w: unsupported event type %q", ErrInvalidEvent, envelope.EventType)
+	case "send":
+		return "send", envelope.Send.Timestamp, nil, nil
+	case "delivery":
+		return "delivery", envelope.Delivery.Timestamp, normalizeRecipients(envelope.Delivery.Recipients), nil
+	case "deliverydelay", "delivery_delay":
+		return "delivery_delay", envelope.DeliveryDelay.Timestamp, delayedRecipients(envelope.DeliveryDelay.DelayedRecipients), nil
+	case "bounce":
+		return "bounce", envelope.Bounce.Timestamp, bouncedRecipients(envelope.Bounce.BouncedRecipients), nil
+	case "complaint":
+		return "complaint", envelope.Complaint.Timestamp, complainedRecipients(envelope.Complaint.ComplainedRecipients), nil
+	case "reject":
+		return "reject", envelope.Reject.Timestamp, nil, nil
+	case "rendering failure", "renderingfailure", "rendering_failure":
+		return "rendering_failure", envelope.Failure.Timestamp, nil, nil
+	case "open":
+		return "open", envelope.Open.Timestamp, nil, nil
+	case "click":
+		return "click", envelope.Click.Timestamp, nil, nil
+	case "subscription":
+		return "subscription", envelope.Subscription.Timestamp, nil, nil
+	default:
+		return "", time.Time{}, nil, fmt.Errorf("%w: unsupported event type %q", ErrInvalidEvent, envelope.EventType)
 	}
 }
 
@@ -218,34 +233,149 @@ func normalizeEventDiagnostics(envelope feedbackEnvelope) EventDiagnostics {
 }
 
 func normalizeTopicPreferences(values []topicPreference) []SubscriptionTopicPreference {
-	result := make([]SubscriptionTopicPreference, 0, len(values)); seen := map[string]struct{}{}
+	result := make([]SubscriptionTopicPreference, 0, len(values))
+	seen := map[string]struct{}{}
 	for _, value := range values {
 		name, status := strings.TrimSpace(value.TopicName), strings.TrimSpace(value.SubscriptionStatus)
-		if name == "" || status == "" { continue }
-		key := strings.ToLower(name) + "\x00" + strings.ToLower(status); if _, ok := seen[key]; ok { continue }; seen[key] = struct{}{}
+		if name == "" || status == "" {
+			continue
+		}
+		key := strings.ToLower(name) + "\x00" + strings.ToLower(status)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
 		result = append(result, SubscriptionTopicPreference{TopicName: name, SubscriptionStatus: status})
 	}
-	if len(result) == 0 { return nil }; return result
+	if len(result) == 0 {
+		return nil
+	}
+	return result
 }
 
 func normalizeRecipientDiagnostics(envelope feedbackEnvelope) []RecipientDiagnostics {
-	result := make([]RecipientDiagnostics, 0, len(envelope.Bounce.BouncedRecipients)+len(envelope.DeliveryDelay.DelayedRecipients)); seen := map[string]struct{}{}
+	result := make([]RecipientDiagnostics, 0, len(envelope.Bounce.BouncedRecipients)+len(envelope.DeliveryDelay.DelayedRecipients))
+	seen := map[string]struct{}{}
 	for _, recipient := range envelope.Bounce.BouncedRecipients {
-		email := normalizeRecipient(recipient.EmailAddress); if email == "" { continue }; if _, ok := seen[email]; ok { continue }; seen[email] = struct{}{}
+		email := normalizeRecipient(recipient.EmailAddress)
+		if email == "" {
+			continue
+		}
+		if _, ok := seen[email]; ok {
+			continue
+		}
+		seen[email] = struct{}{}
 		result = append(result, RecipientDiagnostics{Email: email, Action: strings.TrimSpace(recipient.Action), StatusCode: strings.TrimSpace(recipient.Status), DiagnosticCode: strings.TrimSpace(recipient.DiagnosticCode)})
 	}
 	for _, recipient := range envelope.DeliveryDelay.DelayedRecipients {
-		email := normalizeRecipient(recipient.EmailAddress); if email == "" { continue }; if _, ok := seen[email]; ok { continue }; seen[email] = struct{}{}
+		email := normalizeRecipient(recipient.EmailAddress)
+		if email == "" {
+			continue
+		}
+		if _, ok := seen[email]; ok {
+			continue
+		}
+		seen[email] = struct{}{}
 		result = append(result, RecipientDiagnostics{Email: email, StatusCode: strings.TrimSpace(recipient.Status), DiagnosticCode: strings.TrimSpace(recipient.DiagnosticCode)})
 	}
-	if len(result) == 0 { return nil }; return result
+	if len(result) == 0 {
+		return nil
+	}
+	return result
 }
 
-func normalizeRecipients(values []string) []string { result := make([]string, 0, len(values)); seen := map[string]struct{}{}; for _, value := range values { value = normalizeRecipient(value); if value == "" { continue }; if _, ok := seen[value]; ok { continue }; seen[value] = struct{}{}; result = append(result, value) }; return result }
+func normalizeRecipients(values []string) []string {
+	result := make([]string, 0, len(values))
+	seen := map[string]struct{}{}
+	for _, value := range values {
+		value = normalizeRecipient(value)
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	return result
+}
 func normalizeRecipient(value string) string { return strings.ToLower(strings.TrimSpace(value)) }
-func normalizeTags(values map[string][]string) map[string][]string { if len(values)==0{return nil}; result:=make(map[string][]string,len(values)); for key,entries:=range values{key=strings.ToLower(strings.TrimSpace(key));if key==""{continue};seen:=map[string]struct{}{};for _,entry:=range entries{entry=strings.TrimSpace(entry);if entry==""{continue};if _,ok:=seen[entry];ok{continue};seen[entry]=struct{}{};result[key]=append(result[key],entry)};if len(result[key])==0{delete(result,key)}};if len(result)==0{return nil};return result }
-func firstTagValue(tags map[string][]string, key string) string { values:=tags[strings.ToLower(strings.TrimSpace(key))];if len(values)==0{return ""};return strings.TrimSpace(values[0]) }
-func firstNonEmpty(values ...string) string { for _,value:=range values{if value=strings.TrimSpace(value);value!=""{return value}};return "" }
-func delayedRecipients(values []struct{ EmailAddress string `json:"emailAddress"`; Status string `json:"status"`; DiagnosticCode string `json:"diagnosticCode"` }) []string { recipients:=make([]string,0,len(values));for _,value:=range values{recipients=append(recipients,value.EmailAddress)};return normalizeRecipients(recipients) }
-func bouncedRecipients(values []struct{ EmailAddress string `json:"emailAddress"`; Action string `json:"action"`; Status string `json:"status"`; DiagnosticCode string `json:"diagnosticCode"` }) []string { recipients:=make([]string,0,len(values));for _,value:=range values{recipients=append(recipients,value.EmailAddress)};return normalizeRecipients(recipients) }
-func complainedRecipients(values []struct{ EmailAddress string `json:"emailAddress"` }) []string { recipients:=make([]string,0,len(values));for _,value:=range values{recipients=append(recipients,value.EmailAddress)};return normalizeRecipients(recipients) }
+func normalizeTags(values map[string][]string) map[string][]string {
+	if len(values) == 0 {
+		return nil
+	}
+	result := make(map[string][]string, len(values))
+	for key, entries := range values {
+		key = strings.ToLower(strings.TrimSpace(key))
+		if key == "" {
+			continue
+		}
+		seen := map[string]struct{}{}
+		for _, entry := range entries {
+			entry = strings.TrimSpace(entry)
+			if entry == "" {
+				continue
+			}
+			if _, ok := seen[entry]; ok {
+				continue
+			}
+			seen[entry] = struct{}{}
+			result[key] = append(result[key], entry)
+		}
+		if len(result[key]) == 0 {
+			delete(result, key)
+		}
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}
+func firstTagValue(tags map[string][]string, key string) string {
+	values := tags[strings.ToLower(strings.TrimSpace(key))]
+	if len(values) == 0 {
+		return ""
+	}
+	return strings.TrimSpace(values[0])
+}
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if value = strings.TrimSpace(value); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+func delayedRecipients(values []struct {
+	EmailAddress   string `json:"emailAddress"`
+	Status         string `json:"status"`
+	DiagnosticCode string `json:"diagnosticCode"`
+}) []string {
+	recipients := make([]string, 0, len(values))
+	for _, value := range values {
+		recipients = append(recipients, value.EmailAddress)
+	}
+	return normalizeRecipients(recipients)
+}
+func bouncedRecipients(values []struct {
+	EmailAddress   string `json:"emailAddress"`
+	Action         string `json:"action"`
+	Status         string `json:"status"`
+	DiagnosticCode string `json:"diagnosticCode"`
+}) []string {
+	recipients := make([]string, 0, len(values))
+	for _, value := range values {
+		recipients = append(recipients, value.EmailAddress)
+	}
+	return normalizeRecipients(recipients)
+}
+func complainedRecipients(values []struct {
+	EmailAddress string `json:"emailAddress"`
+}) []string {
+	recipients := make([]string, 0, len(values))
+	for _, value := range values {
+		recipients = append(recipients, value.EmailAddress)
+	}
+	return normalizeRecipients(recipients)
+}
