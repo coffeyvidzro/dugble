@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/google/uuid"
+
+	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 )
 
 type tenantStore interface {
@@ -40,9 +41,9 @@ func (s *Service) RequestProvisioning(ctx context.Context, teamID uuid.UUID, reg
 	if teamID == uuid.Nil {
 		return Tenant{}, errors.New("email tenant team id is required")
 	}
-	region = strings.ToLower(strings.TrimSpace(region))
-	if region == "" {
-		return Tenant{}, errors.New("email tenant region is required")
+	region, supported := platformemail.NormalizeSESRegion(region)
+	if !supported {
+		return Tenant{}, fmt.Errorf("unsupported SES region %q", region)
 	}
 
 	tx, err := s.repository.BeginTx(ctx)

@@ -154,3 +154,14 @@ func TestRequestProvisioningRollsBackWhenOutboxFails(t *testing.T) {
 		t.Fatal("transaction was not rolled back")
 	}
 }
+
+func TestRequestProvisioningRejectsUnsupportedRegionBeforeTransaction(t *testing.T) {
+	store := &fakeTenantStore{}
+	_, err := NewService(store, &fakeProvisionQueue{}).RequestProvisioning(context.Background(), uuid.New(), "eu-west-1")
+	if err == nil {
+		t.Fatal("RequestProvisioning() error = nil, want unsupported region")
+	}
+	if store.tx != nil {
+		t.Fatal("transaction began for unsupported region")
+	}
+}

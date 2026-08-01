@@ -88,7 +88,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (SenderDomain, 
 		return SenderDomain{}, apperrors.NewInternal("Unable to prepare customer email tenant", err)
 	}
 	if emailTenant.Status != emailtenant.StatusActive {
-		return SenderDomain{}, apperrors.NewConflict("Customer email tenant is being provisioned; retry sender-domain creation shortly")
+		return SenderDomain{}, apperrors.NewConflict("Customer email infrastructure is being prepared; retry sender-domain creation shortly")
 	}
 
 	domain, err := s.repository.Create(ctx, tc.Scope.TeamID, domainName, DefaultProvider, region, []VerificationRecord{}, tc.Actor.UserID)

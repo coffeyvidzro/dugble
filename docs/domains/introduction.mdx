@@ -27,7 +27,10 @@ Domain authentication helps you:
     </Step>
     <Step title="Add it to Dugble">
         Create the sender domain in your Dugble team and select the provider
-        region used for delivery. New domains begin in the `pending` state.
+        region used for delivery. Dugble currently supports `us-east-1` and
+        `eu-north-1`. The first request in a region may report that email
+        infrastructure is still being prepared; retry the request shortly. New
+        domains begin in the `pending` state.
     </Step>
     <Step title="Publish the DNS records">
         Add every verification record shown by Dugble at your DNS provider. Copy

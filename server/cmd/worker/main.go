@@ -91,7 +91,7 @@ func run() error {
 		messagingClient,
 		processedEvents,
 		tenantprovision.NewHandler(emailTenantRepository, emailSender),
-		tenantprovision.Config{Concurrency: 3, AckWait: 2 * time.Minute, HandlerTimeout: 60 * time.Second, MaxDeliver: 6},
+		tenantprovision.Config{Concurrency: 3, AckWait: 2 * time.Minute, HandlerTimeout: 60 * time.Second, RetryBackOff: tenantprovision.DefaultRetryBackOff()},
 	)
 	feedbackMetrics := emailfeedback.DefaultMetrics
 	emailFeedbackRepository := emailfeedback.NewRepositoryWithWebhookEmitter(db, webhookEmitter)

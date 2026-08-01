@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS email_tenants (
     region TEXT NOT NULL,
     external_name TEXT NOT NULL,
     external_id TEXT,
+    tenant_arn TEXT,
     status TEXT NOT NULL DEFAULT 'pending',
     suppression_scope TEXT NOT NULL DEFAULT 'tenant',
     reputation_policy TEXT NOT NULL DEFAULT 'standard',
@@ -33,6 +34,9 @@ CREATE TABLE IF NOT EXISTS email_tenants (
 
     CONSTRAINT chk_email_tenants_external_id
         CHECK (external_id IS NULL OR length(trim(external_id)) > 0),
+
+    CONSTRAINT chk_email_tenants_tenant_arn
+        CHECK (tenant_arn IS NULL OR length(trim(tenant_arn)) > 0),
 
     CONSTRAINT chk_email_tenants_status
         CHECK (status IN (

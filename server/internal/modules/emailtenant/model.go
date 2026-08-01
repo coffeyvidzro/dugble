@@ -33,6 +33,7 @@ type Tenant struct {
 	Region           string    `json:"region"`
 	ExternalName     string    `json:"external_name"`
 	ExternalID       *string   `json:"external_id,omitempty"`
+	TenantARN        *string   `json:"tenant_arn,omitempty"`
 	Status           string    `json:"status"`
 	SuppressionScope string    `json:"suppression_scope"`
 	ReputationPolicy string    `json:"reputation_policy"`

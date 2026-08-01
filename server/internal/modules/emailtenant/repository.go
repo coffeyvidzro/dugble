@@ -94,12 +94,16 @@ func (r *Repository) MarkProvisioningTx(ctx context.Context, tx Transaction, id 
 	return lifecycleResult(row, err, "mark email tenant provisioning")
 }
 
-func (r *Repository) MarkActive(ctx context.Context, id uuid.UUID, externalID string) (Tenant, error) {
+func (r *Repository) MarkActive(ctx context.Context, id uuid.UUID, externalID, tenantARN string) (Tenant, error) {
 	externalID = strings.TrimSpace(externalID)
+	tenantARN = strings.TrimSpace(tenantARN)
 	if externalID == "" {
 		return Tenant{}, errors.New("email tenant external id is required")
 	}
-	row, err := r.queries.MarkEmailTenantActive(ctx, dbsqlc.MarkEmailTenantActiveParams{ID: id, ExternalID: &externalID})
+	if tenantARN == "" {
+		return Tenant{}, errors.New("email tenant ARN is required")
+	}
+	row, err := r.queries.MarkEmailTenantActive(ctx, dbsqlc.MarkEmailTenantActiveParams{ID: id, ExternalID: &externalID, TenantArn: &tenantARN})
 	return lifecycleResult(row, err, "mark email tenant active")
 }
 
@@ -163,6 +167,7 @@ func tenantFromSQLC(row dbsqlc.EmailTenant) Tenant {
 		Region:           row.Region,
 		ExternalName:     row.ExternalName,
 		ExternalID:       row.ExternalID,
+		TenantARN:        row.TenantArn,
 		Status:           row.Status,
 		SuppressionScope: row.SuppressionScope,
 		ReputationPolicy: row.ReputationPolicy,
