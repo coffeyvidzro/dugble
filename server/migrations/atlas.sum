@@ -1,4 +1,4 @@
-h1:afuPUoPwXpoWMMv5oIFNKcxtLsYrGrn7GFEcv5s1vk4=
+h1:cxSlYQZpotZHwicjYGelqZlk/IJZWsYR7e3TqIiKwjM=
 001_create_users.sql h1:JTRXA+2GFqJ6N6MWXoqAE8fZb5kB28z6+7uqoaZYI0U=
 002_create_sessions.sql h1:wul/MiEK5DIVgprcVdAmyhclf8NdX5nb7d7pD2h9kPg=
 003_create_oauth_identities.sql h1:qx/BC7QcasRh3Ct6UR/qD2Rm/cK/wUMLCDcJQCEbtAU=
@@ -21,3 +21,4 @@ h1:afuPUoPwXpoWMMv5oIFNKcxtLsYrGrn7GFEcv5s1vk4=
 023_create_email_tenants.sql h1:bp605NkU8YmFFay0LU+uGpA3LWG22L6EOt73B8T3XHg=
 024_enforce_customer_email_tenant_routes.sql h1:l8iuWvC9BYSzlM/uR/E8ABMcLa8PdXI3vt9e6Pt3pA4=
 025_create_billing.sql h1:HunPHPr5vvbBqTRF36AdPUbyFffgCBsO23mUf+TLiGI=
+026_seed_billing.sql h1:I/YQ+dZ/KmBHSfW2XgVVPwhSPhC1oqMfN3SSf+nrz58=
