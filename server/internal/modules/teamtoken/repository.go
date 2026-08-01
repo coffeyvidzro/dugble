@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
@@ -34,7 +33,7 @@ func (r *Repository) Create(
 			TokenPrefix: tokenPrefix,
 			Permissions: permissions,
 			CreatedBy:   &createdBy,
-			ExpiresAt:   timestamptz(expiresAt),
+			ExpiresAt:   pgconv.NullableTimestamptz(expiresAt),
 		},
 	)
 	if err != nil {
@@ -80,7 +79,7 @@ func (r *Repository) Update(
 			TeamID:      teamID,
 			Name:        name,
 			Permissions: permissions,
-			ExpiresAt:   timestamptz(expiresAt),
+			ExpiresAt:   pgconv.NullableTimestamptz(expiresAt),
 		},
 	)
 	if err != nil {
@@ -123,11 +122,4 @@ func tokenFromSQLC(row dbsqlc.TeamToken) Token {
 		CreatedAt:   row.CreatedAt.Time,
 		UpdatedAt:   row.UpdatedAt.Time,
 	}
-}
-
-func timestamptz(value *time.Time) pgtype.Timestamptz {
-	if value == nil {
-		return pgtype.Timestamptz{}
-	}
-	return pgtype.Timestamptz{Time: value.UTC(), Valid: true}
 }

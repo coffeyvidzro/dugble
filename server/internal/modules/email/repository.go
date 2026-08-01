@@ -9,11 +9,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
+	"github.com/coffeyvidzro/dugble/server/pkg/pgconv"
 )
 
 var ErrNotFound = errors.New("email message not found")
@@ -79,7 +79,7 @@ func (r *Repository) CreateTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, 
 		Headers:          headers,
 		Attachments:      attachments,
 		Tags:             tags,
-		ScheduledAt:      timestamptz(req.ScheduledAt),
+		ScheduledAt:      pgconv.NullableTimestamptz(req.ScheduledAt),
 	})
 	if err != nil {
 		return Message{}, fmt.Errorf("create email message: %w", err)
@@ -187,7 +187,7 @@ func (r *Repository) List(ctx context.Context, teamID uuid.UUID, limit, offset i
 		messages = append(messages, MessageSummary{
 			ID: row.ID.String(), ToEmail: row.ToEmail, ToName: row.ToName, Subject: row.Subject,
 			Status: row.Status, Provider: row.Provider, QueuedAt: row.QueuedAt.Time,
-			SubmittedAt: optionalTime(row.SubmittedAt), DeliveredAt: optionalTime(row.DeliveredAt),
+			SubmittedAt: pgconv.TimestamptzToTimePtr(row.SubmittedAt), DeliveredAt: pgconv.TimestamptzToTimePtr(row.DeliveredAt),
 			CreatedAt: row.CreatedAt.Time,
 		})
 	}
@@ -213,12 +213,12 @@ func messageFromSQLC(row dbsqlc.EmailMessage) Message {
 		ErrorCode:         row.ErrorCode,
 		ErrorMessage:      row.ErrorMessage,
 		Metadata:          json.RawMessage(row.Metadata),
-		ScheduledAt:       optionalTime(row.ScheduledAt),
+		ScheduledAt:       pgconv.TimestamptzToTimePtr(row.ScheduledAt),
 		QueuedAt:          row.QueuedAt.Time,
-		ProcessingAt:      optionalTime(row.ProcessingAt),
-		SubmittedAt:       optionalTime(row.SubmittedAt),
-		DeliveredAt:       optionalTime(row.DeliveredAt),
-		FailedAt:          optionalTime(row.FailedAt),
+		ProcessingAt:      pgconv.TimestamptzToTimePtr(row.ProcessingAt),
+		SubmittedAt:       pgconv.TimestamptzToTimePtr(row.SubmittedAt),
+		DeliveredAt:       pgconv.TimestamptzToTimePtr(row.DeliveredAt),
+		FailedAt:          pgconv.TimestamptzToTimePtr(row.FailedAt),
 		CreatedAt:         row.CreatedAt.Time,
 		UpdatedAt:         row.UpdatedAt.Time,
 	}
@@ -236,18 +236,4 @@ func messageFromSQLC(row dbsqlc.EmailMessage) Message {
 	_ = json.Unmarshal(row.Attachments, &message.Attachments)
 	_ = json.Unmarshal(row.Tags, &message.Tags)
 	return message
-}
-
-func optionalTime(value pgtype.Timestamptz) *time.Time {
-	if !value.Valid {
-		return nil
-	}
-	return &value.Time
-}
-
-func timestamptz(value *time.Time) pgtype.Timestamptz {
-	if value == nil {
-		return pgtype.Timestamptz{}
-	}
-	return pgtype.Timestamptz{Time: *value, Valid: true}
 }
