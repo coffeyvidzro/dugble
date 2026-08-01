@@ -10,6 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 	sestypes "github.com/aws/aws-sdk-go-v2/service/sesv2/types"
 	"github.com/aws/smithy-go"
+
+	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 )
 
 const (
@@ -72,17 +74,36 @@ func (c *Client) ProvisionTenant(ctx context.Context, request TenantProvisionReq
 	}
 
 	tenantARN := strings.TrimSpace(*tenant.TenantArn)
+	resources := []struct {
+		label string
+		arn   string
+	}{ }
 	for _, configurationSet := range []string{TransactionalConfigurationSet, MarketingConfigurationSet} {
 		resourceARN, arnErr := configurationSetARN(tenantARN, configurationSet)
 		if arnErr != nil {
 			return TenantProvisionResult{}, arnErr
 		}
+		resources = append(resources, struct {
+			label string
+			arn   string
+		}{label: "configuration set " + configurationSet, arn: resourceARN})
+	}
+	onboardingARN, err := identityARN(tenantARN, platformemail.CustomerOnboardingIdentity)
+	if err != nil {
+		return TenantProvisionResult{}, err
+	}
+	resources = append(resources, struct {
+		label string
+		arn   string
+	}{label: "onboarding identity", arn: onboardingARN})
+
+	for _, resource := range resources {
 		_, associationErr := client.CreateTenantResourceAssociation(ctx, &sesv2.CreateTenantResourceAssociationInput{
 			TenantName:  aws.String(name),
-			ResourceArn: aws.String(resourceARN),
+			ResourceArn: aws.String(resource.arn),
 		})
 		if associationErr != nil && !isAlreadyExists(associationErr) {
-			return TenantProvisionResult{}, fmt.Errorf("associate SES configuration set %s: %w", configurationSet, associationErr)
+			return TenantProvisionResult{}, fmt.Errorf("associate SES %s: %w", resource.label, associationErr)
 		}
 	}
 
