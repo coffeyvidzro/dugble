@@ -37,8 +37,11 @@ jobs:
       - name: Generate sqlc code
         run: go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
 
+      - name: Install Atlas
+        run: curl -sSf https://atlasgo.sh | sh -s -- -y
+
       - name: Regenerate Atlas checksum
-        run: go run ariga.io/atlas/cmd/atlas@latest migrate hash --dir file://migrations
+        run: atlas migrate hash --dir file://migrations
 
       - name: Commit generated files
         run: |
