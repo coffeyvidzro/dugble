@@ -1,4 +1,4 @@
-package email
+package ses
 
 import (
 	"context"
@@ -7,11 +7,11 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/ses"
+	awsses "github.com/aws/aws-sdk-go-v2/service/ses"
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 )
 
-func NewClient(region, defaultFrom, accessKey, secretKey string) (*Client, error) {
+func NewClient(region, defaultFrom, accessKey, secretKey string, configurationSet ...string) (*Client, error) {
 	region = strings.TrimSpace(region)
 	accessKey = strings.TrimSpace(accessKey)
 	secretKey = strings.TrimSpace(secretKey)
@@ -21,19 +21,23 @@ func NewClient(region, defaultFrom, accessKey, secretKey string) (*Client, error
 	if accessKey == "" || secretKey == "" {
 		return nil, errors.New("SES credentials are required")
 	}
+	configuredSet := ""
+	if len(configurationSet) > 0 {
+		configuredSet = strings.TrimSpace(configurationSet[0])
+	}
 	return &Client{
-		defaultRegion:   region,
-		defaultFrom:     strings.TrimSpace(defaultFrom),
-		accessKey:       accessKey,
-		secretKey:       secretKey,
-		sendingClients:  make(map[string]sesAPI),
-		identityClients: make(map[string]sesIdentityAPI),
+		defaultRegion:    region,
+		defaultFrom:      strings.TrimSpace(defaultFrom),
+		configurationSet: configuredSet,
+		accessKey:        accessKey,
+		secretKey:        secretKey,
+		sendingClients:   make(map[string]sesAPI),
+		identityClients:  make(map[string]sesIdentityAPI),
 	}, nil
 }
 
-// NewSESSender preserves the existing constructor used by the server and worker.
-func NewSESSender(_ context.Context, region, defaultFrom, accessKey, secretKey string) (*Client, error) {
-	return NewClient(region, defaultFrom, accessKey, secretKey)
+func NewSESSender(_ context.Context, region, defaultFrom, accessKey, secretKey string, configurationSet ...string) (*Client, error) {
+	return NewClient(region, defaultFrom, accessKey, secretKey, configurationSet...)
 }
 
 func (c *Client) awsConfig(region string) aws.Config {
@@ -56,7 +60,7 @@ func (c *Client) sendingClient(region string) (sesAPI, error) {
 	if client, ok := c.sendingClients[region]; ok {
 		return client, nil
 	}
-	client := ses.NewFromConfig(c.awsConfig(region))
+	client := awsses.NewFromConfig(c.awsConfig(region))
 	c.sendingClients[region] = client
 	return client, nil
 }

@@ -1,46 +1,20 @@
-package email
+package ses
 
 import (
 	"context"
-	"errors"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
-	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/ses"
-	sestypes "github.com/aws/aws-sdk-go-v2/service/ses/types"
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 	sesv2types "github.com/aws/aws-sdk-go-v2/service/sesv2/types"
-	"github.com/aws/smithy-go"
 
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 )
-
-func (c *Client) Send(ctx context.Context, message platformemail.Message) (platformemail.Result, error) {
-	client, err := c.sendingClient(message.Region)
-	if err != nil {
-		return platformemail.Result{}, err
-	}
-	if strings.TrimSpace(message.From.Email) == "" {
-		message.From.Email = c.defaultFrom
-	}
-	raw, err := buildMIME(message)
-	if err != nil {
-		code := "invalid_message"
-		if errors.Is(err, ErrUnsupportedAttachmentPath) {
-			code = "unsupported_attachment_path"
-		}
-		return platformemail.Result{}, platformemail.NewSendError(code, false, err)
-	}
-	output, err := client.SendRawEmail(ctx, &ses.SendRawEmailInput{RawMessage: &sestypes.RawMessage{Data: raw}})
-	if err != nil {
-		return platformemail.Result{}, classifySESFailure(err)
-	}
-	if output.MessageId == nil || strings.TrimSpace(*output.MessageId) == "" {
-		return platformemail.Result{}, platformemail.NewSendError("empty_provider_message_id", true, errors.New("SES returned an empty message ID"))
-	}
-	return platformemail.Result{Provider: ProviderSES, MessageID: strings.TrimSpace(*output.MessageId)}, nil
-}
 
 func (c *Client) ProvisionDomain(ctx context.Context, req platformemail.DomainProvisionRequest) ([]platformemail.VerificationRecord, error) {
 	client, err := c.identityClient(req.Region)
@@ -91,16 +65,32 @@ func (c *Client) GetDomainStatus(ctx context.Context, domainName, region string)
 	return status, nil
 }
 
-func classifySESFailure(err error) error {
-	var apiError smithy.APIError
-	if !errors.As(err, &apiError) {
-		return platformemail.NewSendError("ses_request_failed", platformemail.IsRetryable(err), err)
+func mapVerificationRecords(req platformemail.DomainProvisionRequest, selector, publicKey string) []platformemail.VerificationRecord {
+	priority := 10
+	return []platformemail.VerificationRecord{
+		{Record: platformemail.RecordDKIM, Name: selector + "._domainkey", Value: "v=DKIM1; k=rsa; p=" + publicKey, Type: platformemail.RecordTypeTXT, Status: platformemail.RecordStatusPending, TTL: "Auto"},
+		{Record: platformemail.RecordSPF, Name: req.CustomReturnPath, Value: "feedback-smtp." + req.Region + ".amazonses.com", Type: platformemail.RecordTypeMX, Status: platformemail.RecordStatusPending, TTL: "Auto", Priority: &priority},
+		{Record: platformemail.RecordSPF, Name: req.CustomReturnPath, Value: "v=spf1 include:amazonses.com ~all", Type: platformemail.RecordTypeTXT, Status: platformemail.RecordStatusPending, TTL: "Auto"},
 	}
-	code := strings.ToLower(strings.TrimSpace(apiError.ErrorCode()))
-	retryable := false
-	switch code {
-	case "throttling", "throttlingexception", "requesttimeout", "requesttimeoutexception", "serviceunavailable", "internalfailure", "internalservererror":
-		retryable = true
+}
+
+func generateBYODKIMMaterial() (selector, privateKey, publicKey string, err error) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return "", "", "", err
 	}
-	return platformemail.NewSendError(code, retryable, err)
+	privateDER, err := x509.MarshalPKCS8PrivateKey(key)
+	if err != nil {
+		return "", "", "", err
+	}
+	publicDER, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
+	if err != nil {
+		return "", "", "", err
+	}
+	random := make([]byte, 6)
+	if _, err := rand.Read(random); err != nil {
+		return "", "", "", err
+	}
+	selector = "dugble" + hex.EncodeToString(random)
+	return selector, base64.StdEncoding.EncodeToString(privateDER), base64.StdEncoding.EncodeToString(publicDER), nil
 }

@@ -13,10 +13,12 @@ type ProviderConfig struct {
 }
 
 type AWSConfig struct {
-	FromEmail string `env:"FROM_EMAIL,required,notEmpty"`
-	Region    string `env:"REGION,required,notEmpty"`
-	AccessKey string `env:"ACCESS_KEY_ID,required,notEmpty"`
-	SecretKey string `env:"SECRET_ACCESS_KEY,required,notEmpty"`
+	FromEmail           string   `env:"FROM_EMAIL,required,notEmpty"`
+	Region              string   `env:"REGION,required,notEmpty"`
+	AccessKey           string   `env:"ACCESS_KEY_ID,required,notEmpty"`
+	SecretKey           string   `env:"SECRET_ACCESS_KEY,required,notEmpty"`
+	SESConfigurationSet string   `env:"SES_CONFIGURATION_SET"`
+	SNSTopicARNs        []string `env:"SNS_TOPIC_ARNS" envSeparator:","`
 }
 
 type BackofficeConfig struct {
@@ -81,6 +83,8 @@ func (c *Config) normalize() {
 	c.AWS.Region = strings.TrimSpace(c.AWS.Region)
 	c.AWS.AccessKey = strings.TrimSpace(c.AWS.AccessKey)
 	c.AWS.SecretKey = strings.TrimSpace(c.AWS.SecretKey)
+	c.AWS.SESConfigurationSet = strings.TrimSpace(c.AWS.SESConfigurationSet)
+	c.AWS.SNSTopicARNs = normalizeStrings(c.AWS.SNSTopicARNs)
 	c.NATSURL = strings.TrimSpace(c.NATSURL)
 	c.Arkesel.APIKey = strings.TrimSpace(c.Arkesel.APIKey)
 	c.Arkesel.BaseURL = strings.TrimRight(strings.TrimSpace(c.Arkesel.BaseURL), "/")
@@ -109,4 +113,14 @@ func (c *Config) normalize() {
 		adminEmails = append(adminEmails, email)
 	}
 	c.Backoffice.AdminEmails = adminEmails
+}
+
+func normalizeStrings(values []string) []string {
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if value = strings.TrimSpace(value); value != "" {
+			result = append(result, value)
+		}
+	}
+	return result
 }

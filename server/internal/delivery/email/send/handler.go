@@ -12,9 +12,12 @@ import (
 
 type deliveryRepository interface {
 	Claim(context.Context, uuid.UUID, uuid.UUID) (DeliveryMessage, error)
-	MarkSubmitted(context.Context, uuid.UUID, uuid.UUID, platformemail.Result) error
-	MarkRetryable(context.Context, uuid.UUID, uuid.UUID, error) error
-	MarkFailed(context.Context, uuid.UUID, uuid.UUID, string, error) error
+	MarkRequestStarted(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error
+	MarkSubmitted(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, platformemail.Result) error
+	MarkRetryable(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, error) error
+	MarkSubmissionUnknown(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, string, error) error
+	MarkFailed(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, string, error) error
+	MarkExhausted(context.Context, uuid.UUID, uuid.UUID, error) error
 }
 
 type Handler struct {
@@ -40,7 +43,13 @@ func (h *Handler) Handle(ctx context.Context, command DeliverCommand) error {
 	if err != nil {
 		return err
 	}
+
+	if err := h.repository.MarkRequestStarted(ctx, command.MessageID, command.TeamID, message.AttemptID); err != nil {
+		return err
+	}
 	result, err := h.sender.Send(ctx, platformemail.Message{
+		MessageID:   message.ID.String(),
+		AttemptID:   message.AttemptID.String(),
 		Provider:    message.Provider,
 		Region:      message.Region,
 		From:        platformemail.Address{Email: message.FromEmail, Name: message.FromName},
@@ -55,23 +64,46 @@ func (h *Handler) Handle(ctx context.Context, command DeliverCommand) error {
 		Attachments: message.Attachments,
 	})
 	if err != nil {
+		if platformemail.IsSubmissionUnknown(err) {
+			if recordErr := h.repository.MarkSubmissionUnknown(
+				ctx, command.MessageID, command.TeamID, message.AttemptID,
+				platformemail.FailureCode(err), err,
+			); recordErr != nil {
+				return errors.Join(err, recordErr)
+			}
+			return nil
+		}
 		if platformemail.IsRetryable(err) {
-			if recordErr := h.repository.MarkRetryable(ctx, command.MessageID, command.TeamID, err); recordErr != nil {
+			if recordErr := h.repository.MarkRetryable(ctx, command.MessageID, command.TeamID, message.AttemptID, err); recordErr != nil {
 				return errors.Join(err, recordErr)
 			}
 			return fmt.Errorf("send email: %w", err)
 		}
-		if recordErr := h.repository.MarkFailed(ctx, command.MessageID, command.TeamID, platformemail.FailureCode(err), err); recordErr != nil {
+		if recordErr := h.repository.MarkFailed(
+			ctx, command.MessageID, command.TeamID, message.AttemptID,
+			platformemail.FailureCode(err), err,
+		); recordErr != nil {
 			return errors.Join(err, recordErr)
 		}
 		return nil
 	}
-	return h.repository.MarkSubmitted(ctx, command.MessageID, command.TeamID, result)
+
+	if err := h.repository.MarkSubmitted(ctx, command.MessageID, command.TeamID, message.AttemptID, result); err != nil {
+		unknownErr := fmt.Errorf("persist provider submission result: %w", err)
+		if recordErr := h.repository.MarkSubmissionUnknown(
+			ctx, command.MessageID, command.TeamID, message.AttemptID,
+			"submission_persistence_failed", unknownErr,
+		); recordErr != nil {
+			return errors.Join(unknownErr, recordErr)
+		}
+		return nil
+	}
+	return nil
 }
 
 func (h *Handler) HandleExhausted(ctx context.Context, command DeliverCommand, cause error) error {
 	if h == nil || h.repository == nil {
 		return errors.New("email delivery repository is not configured")
 	}
-	return h.repository.MarkFailed(ctx, command.MessageID, command.TeamID, "retry_exhausted", cause)
+	return h.repository.MarkExhausted(ctx, command.MessageID, command.TeamID, cause)
 }
