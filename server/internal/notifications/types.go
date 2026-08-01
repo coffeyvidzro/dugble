@@ -35,6 +35,14 @@ type SendSecurityEventInput struct {
 	Name    string
 }
 
+type SendNewLoginInput struct {
+	ToEmail   string
+	Name      string
+	IPAddress string
+	UserAgent string
+	Method    string
+}
+
 type SendTeamMemberChangedInput struct {
 	ToEmail string
 	Name    string

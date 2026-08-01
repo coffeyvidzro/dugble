@@ -149,6 +149,29 @@ func (q *Queries) GetSessionByTokenHash(ctx context.Context, arg GetSessionByTok
 	return i, err
 }
 
+const hasKnownSessionFingerprint = `-- name: HasKnownSessionFingerprint :one
+SELECT EXISTS (
+    SELECT 1
+    FROM sessions
+    WHERE user_id = $1
+      AND user_agent IS NOT DISTINCT FROM $2
+      AND ip_address IS NOT DISTINCT FROM $3
+)
+`
+
+type HasKnownSessionFingerprintParams struct {
+	UserID    uuid.UUID `db:"user_id" json:"user_id"`
+	UserAgent *string   `db:"user_agent" json:"user_agent"`
+	IpAddress *string   `db:"ip_address" json:"ip_address"`
+}
+
+func (q *Queries) HasKnownSessionFingerprint(ctx context.Context, arg HasKnownSessionFingerprintParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasKnownSessionFingerprint, arg.UserID, arg.UserAgent, arg.IpAddress)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const listSessionsByUserID = `-- name: ListSessionsByUserID :many
 SELECT id, user_id, token_hash, user_agent, ip_address, expires_at, revoked_at, created_at, last_seen_at, credential_version, authentication_method, assurance_level, authenticated_at, mfa_completed_at
 FROM sessions

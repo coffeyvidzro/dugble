@@ -269,6 +269,10 @@ func (s *Service) createSession(
 	assurance authnz.AssuranceLevel,
 	mfaCompletedAt *time.Time,
 ) (AuthResponse, string, time.Time, error) {
+	knownFingerprint, fingerprintErr := s.sessions.HasKnownFingerprint(ctx, user.ID, userAgent, ipAddress)
+	if fingerprintErr != nil {
+		slog.Warn("failed to evaluate session fingerprint", "error", fingerprintErr, "user_id", user.ID)
+	}
 	token, err := authnz.NewSessionToken()
 	if err != nil {
 		return AuthResponse{}, "", time.Time{}, apperrors.NewInternal(
@@ -298,7 +302,30 @@ func (s *Service) createSession(
 			err,
 		)
 	}
+	if fingerprintErr == nil && !knownFingerprint {
+		s.notifyNewLogin(ctx, user, userAgent, ipAddress, method)
+	}
 	return AuthResponse{User: authenticatedUserFromRecord(user)}, token, expiresAt, nil
+}
+
+func (s *Service) notifyNewLogin(ctx context.Context, user UserRecord, userAgent, ipAddress *string, method authnz.AuthenticationMethod) {
+	notifier, ok := s.notifier.(interface {
+		SendNewLogin(context.Context, notifications.SendNewLoginInput) error
+	})
+	if !ok {
+		return
+	}
+	input := notifications.SendNewLoginInput{ToEmail: user.Email, Name: user.Name, Method: string(method), UserAgent: optionalString(userAgent), IPAddress: optionalString(ipAddress)}
+	if err := notifier.SendNewLogin(ctx, input); err != nil {
+		slog.Warn("failed to send new login notification", "error", err, "user_id", user.ID)
+	}
+}
+
+func optionalString(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func (s *Service) issueEmailVerificationToken(ctx context.Context, email string, name string) error {

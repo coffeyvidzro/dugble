@@ -92,6 +92,7 @@ type Querier interface {
 	GetWebhookDelivery(ctx context.Context, arg GetWebhookDeliveryParams) (WebhookDelivery, error)
 	GetWebhookEndpoint(ctx context.Context, arg GetWebhookEndpointParams) (WebhookEndpoint, error)
 	GetWebhookEvent(ctx context.Context, arg GetWebhookEventParams) (WebhookEvent, error)
+	HasKnownSessionFingerprint(ctx context.Context, arg HasKnownSessionFingerprintParams) (bool, error)
 	IsTOTPEnabled(ctx context.Context, arg IsTOTPEnabledParams) (bool, error)
 	LinkEmailProviderEvent(ctx context.Context, arg LinkEmailProviderEventParams) (int64, error)
 	ListEmailDeliveryAttempts(ctx context.Context, arg ListEmailDeliveryAttemptsParams) ([]EmailDeliveryAttempt, error)

@@ -89,6 +89,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	mfa.RegisterRoutes(router, mfa.NewHandler(mfaService), authMiddleware, csrfMiddleware)
 
 	userRepository := user.NewRepository(deps.DB)
+	mfaService.WithRecipientStore(userRepository)
 	user.RegisterRoutes(router, user.NewHandler(user.NewService(userRepository, emailService)), authMiddleware, csrfMiddleware)
 	teamRepository := team.NewRepository(deps.DB)
 	teamService := team.NewService(teamRepository, emailService).WithRecipientStore(userRepository)

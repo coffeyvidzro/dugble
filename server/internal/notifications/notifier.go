@@ -99,8 +99,19 @@ func (s *EmailService) SendRecoveryCodeUsed(ctx context.Context, input SendSecur
 	return s.sendSecurityEvent(ctx, input.ToEmail, input.Name, "A recovery code was used", "A recovery code was used on your Dugble account.", "A recovery code was used to verify access to your account.")
 }
 
+func (s *EmailService) SendMFALoginFailed(ctx context.Context, input SendSecurityEventInput) error {
+	return s.sendSecurityEvent(ctx, input.ToEmail, input.Name, "A failed MFA sign-in attempt was detected", "A failed MFA sign-in attempt was detected on your Dugble account.", "Someone with your password failed the multi-factor authentication step while trying to access your account.")
+}
+
 func (s *EmailService) SendAccountDeleted(ctx context.Context, input SendSecurityEventInput) error {
 	return s.SendTemplateEmail(ctx, SendTemplateEmailInput{To: input.ToEmail, Subject: "Your Dugble account was deleted", TemplateName: accountDeletedTemplate, Data: map[string]string{"Name": displayName(input.Name), "PreviewText": "Your Dugble account was deleted."}})
+}
+
+func (s *EmailService) SendNewLogin(ctx context.Context, input SendNewLoginInput) error {
+	return s.SendTemplateEmail(ctx, SendTemplateEmailInput{To: input.ToEmail, Subject: "New sign-in to your Dugble account", TemplateName: securityEventTemplate, Data: map[string]string{
+		"Name": displayName(input.Name), "PreviewText": "A new sign-in was detected on your Dugble account.",
+		"Message": "A new sign-in was detected using " + displayValue(input.Method) + " authentication from IP " + displayValue(input.IPAddress) + " with " + displayValue(input.UserAgent) + ".",
+	}})
 }
 
 func (s *EmailService) sendSecurityEvent(ctx context.Context, toEmail, name, subject, preview, message string) error {
@@ -165,4 +176,12 @@ func displayRole(role string) string {
 		return "member"
 	}
 	return role
+}
+
+func displayValue(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "unknown"
+	}
+	return value
 }

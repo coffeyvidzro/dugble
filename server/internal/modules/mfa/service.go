@@ -41,12 +41,18 @@ type Service struct {
 	issuer     string
 	now        func() time.Time
 	notifier   SecurityNotifier
+	recipients RecipientStore
 }
 
 type SecurityNotifier interface {
 	SendMFAEnabled(context.Context, notifications.SendSecurityEventInput) error
 	SendMFADisabled(context.Context, notifications.SendSecurityEventInput) error
 	SendRecoveryCodeUsed(context.Context, notifications.SendSecurityEventInput) error
+	SendMFALoginFailed(context.Context, notifications.SendSecurityEventInput) error
+}
+
+type RecipientStore interface {
+	GetNotificationRecipient(context.Context, uuid.UUID) (notifications.Recipient, error)
 }
 
 func NewService(repository store, cipher *authnz.SecretCipher, issuer string) *Service {
@@ -55,6 +61,11 @@ func NewService(repository store, cipher *authnz.SecretCipher, issuer string) *S
 
 func (s *Service) WithNotifier(notifier SecurityNotifier) *Service {
 	s.notifier = notifier
+	return s
+}
+
+func (s *Service) WithRecipientStore(recipients RecipientStore) *Service {
+	s.recipients = recipients
 	return s
 }
 
@@ -258,9 +269,13 @@ func (s *Service) CompleteLoginTOTP(ctx context.Context, challengeToken, code st
 	}
 	step, ok := s.validateCredential(ctx, userID, credential, code)
 	if !ok || (credential.LastUsedStep != nil && step <= *credential.LastUsedStep) {
+		s.notifyFailedLogin(ctx, userID)
 		return uuid.Nil, pgx.ErrNoRows
 	}
 	if err := s.repository.ConsumeLoginTOTP(ctx, tokenHash, userID, step); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			s.notifyFailedLogin(ctx, userID)
+		}
 		return uuid.Nil, err
 	}
 	return userID, nil
@@ -279,9 +294,26 @@ func (s *Service) CompleteLoginRecovery(ctx context.Context, challengeToken, cod
 		return uuid.Nil, err
 	}
 	if err := s.repository.ConsumeLoginRecoveryCode(ctx, tokenHash, userID, authnz.HashRecoveryCode(code)); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			s.notifyFailedLogin(ctx, userID)
+		}
 		return uuid.Nil, err
 	}
 	return userID, nil
+}
+
+func (s *Service) notifyFailedLogin(ctx context.Context, userID uuid.UUID) {
+	if s.notifier == nil || s.recipients == nil {
+		return
+	}
+	recipient, err := s.recipients.GetNotificationRecipient(ctx, userID)
+	if err != nil {
+		slog.Warn("failed to resolve failed MFA notification recipient", "error", err, "user_id", userID)
+		return
+	}
+	if err := s.notifier.SendMFALoginFailed(ctx, notifications.SendSecurityEventInput{ToEmail: recipient.Email, Name: recipient.Name}); err != nil {
+		slog.Warn("failed to send failed MFA notification", "error", err, "user_id", userID)
+	}
 }
 
 func loginChallengeHash(token string) (string, error) {

@@ -45,6 +45,12 @@ func TestSecurityNotificationsRenderAndSend(t *testing.T) {
 		{name: "account deleted", send: func() error {
 			return service.SendAccountDeleted(context.Background(), SendSecurityEventInput{ToEmail: "person@example.com", Name: "Person"})
 		}, want: "account was permanently deleted"},
+		{name: "new login", send: func() error {
+			return service.SendNewLogin(context.Background(), SendNewLoginInput{ToEmail: "person@example.com", Name: "Person", IPAddress: "203.0.113.10", UserAgent: "Example Browser", Method: "password"})
+		}, want: "203.0.113.10"},
+		{name: "failed MFA login", send: func() error {
+			return service.SendMFALoginFailed(context.Background(), SendSecurityEventInput{ToEmail: "person@example.com", Name: "Person"})
+		}, want: "failed the multi-factor authentication step"},
 		{name: "member removed", send: func() error {
 			return service.SendTeamMemberRemoved(context.Background(), SendTeamMemberChangedInput{ToEmail: "person@example.com", Name: "Person", Team: "Example"})
 		}, want: "removed from the Example team"},
