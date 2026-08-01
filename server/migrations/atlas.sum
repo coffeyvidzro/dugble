@@ -1,4 +1,4 @@
-h1:iEctE91lKWqtEeCIEoEXfmACN8BjZ2XL1AlYbwXmPA8=
+h1:z1va3d9zSi1ve81EQPmaYsAE4UhQun98pJ3TDFfu+6U=
 001_create_users.sql h1:ZnfCa2IqXF1xhkheZcJF1k8scsvdcQeouGHZVN5qRVM=
 003_create_sessions.sql h1:Jgh76mMsQJ0vYQn1K5dM4+qOLr6Ku8dYNjtfyvv8MV8=
 004_create_oauth_identities.sql h1:BJdL5SVp/FafjeIzpLjZCvKq88pbp/psnGOhZrS9lQs=
@@ -18,6 +18,6 @@ h1:iEctE91lKWqtEeCIEoEXfmACN8BjZ2XL1AlYbwXmPA8=
 021_create_oidc_sso.sql h1:2+yiKW0duYoOUlpWKq91zhHr1AOr0f3hm1zuuPhWfZo=
 022_create_scim.sql h1:Ag66mk7zQMtjZHRXsiplFvzPKI5X7IW1TakvtqnpQFE=
 023_create_workload_oidc_federation.sql h1:ptgcvtBx30EkeHBl6nMivDqbKkaf7QfueYmrJyF7Wj4=
-024_create_email_provider_events.sql h1:2zemm0sBdS/S54QjBBdGRrLdBBEsJRHeXj+Al7kAQ9I=
-026_create_email_delivery_attempts.sql h1:k9+Skvv5hKI91HQruOJGOVcHWhvy3ZzPw2YUhgaFu70=
-027_create_email_recipients.sql h1:ISOR1aNQq7o2uPf68XdiCf5gd2QSu4zWMOtVBk5Np3Y=
+024_create_email_provider_events.sql h1:LZtOGoXmEP2onlBWAx9sbG1YDTBVpFVc1WhwUEID1qY=
+026_create_email_delivery_attempts.sql h1:Y3zIEzi1cdVwHHZFZVX3VFU6u2I5Rn/FPNFCEZP42Bc=
+027_create_email_recipients.sql h1:LSjU2JgMCvLEnEeODaBY+PpIOmZ1R0M6VVrYi0fA4aA=
