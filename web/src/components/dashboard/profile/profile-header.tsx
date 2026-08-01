@@ -19,7 +19,7 @@ export function ProfileHeader({
             <div className="relative flex flex-wrap items-end justify-between gap-6 border-b border-border/40 pb-6">
                 <div className="space-y-2">
                     <p className="font-mono text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground">
-                        Settings &gt; Team
+                        Settings &gt; Profile
                     </p>
                     <h1 className="font-heading text-3xl font-semibold tracking-tight text-foreground">
                         {name}
