@@ -11,20 +11,20 @@ import (
 var ErrInvalidEvent = errors.New("invalid SES feedback event")
 
 type EventDiagnostics struct {
-	BounceType              string `json:"bounce_type,omitempty"`
-	BounceSubType           string `json:"bounce_sub_type,omitempty"`
-	ComplaintFeedbackType   string `json:"complaint_feedback_type,omitempty"`
-	ComplaintFeedbackID     string `json:"complaint_feedback_id,omitempty"`
-	ComplaintUserAgent      string `json:"complaint_user_agent,omitempty"`
-	ArrivalDate             string `json:"arrival_date,omitempty"`
-	ReportingMTA            string `json:"reporting_mta,omitempty"`
-	SMTPResponse            string `json:"smtp_response,omitempty"`
-	ProcessingTimeMillis    int64  `json:"processing_time_millis,omitempty"`
-	DelayType               string `json:"delay_type,omitempty"`
-	ExpirationTime          string `json:"expiration_time,omitempty"`
-	RejectReason            string `json:"reject_reason,omitempty"`
-	FailureReason           string `json:"failure_reason,omitempty"`
-	RemoteMTAIPAddress      string `json:"remote_mta_ip_address,omitempty"`
+	BounceType            string `json:"bounce_type,omitempty"`
+	BounceSubType         string `json:"bounce_sub_type,omitempty"`
+	ComplaintFeedbackType string `json:"complaint_feedback_type,omitempty"`
+	ComplaintFeedbackID   string `json:"complaint_feedback_id,omitempty"`
+	ComplaintUserAgent    string `json:"complaint_user_agent,omitempty"`
+	ArrivalDate           string `json:"arrival_date,omitempty"`
+	ReportingMTA          string `json:"reporting_mta,omitempty"`
+	SMTPResponse          string `json:"smtp_response,omitempty"`
+	ProcessingTimeMillis  int64  `json:"processing_time_millis,omitempty"`
+	DelayType             string `json:"delay_type,omitempty"`
+	ExpirationTime        string `json:"expiration_time,omitempty"`
+	RejectReason          string `json:"reject_reason,omitempty"`
+	FailureReason         string `json:"failure_reason,omitempty"`
+	RemoteMTAIPAddress    string `json:"remote_mta_ip_address,omitempty"`
 }
 
 type RecipientDiagnostics struct {
@@ -35,21 +35,21 @@ type RecipientDiagnostics struct {
 }
 
 type FeedbackEvent struct {
-	EventType           string                 `json:"event_type"`
-	ProviderMessageID   string                 `json:"provider_message_id"`
-	OccurredAt          time.Time              `json:"occurred_at"`
-	Recipients          []string               `json:"recipients"`
-	Tags                map[string][]string    `json:"tags,omitempty"`
-	InternalMessageID   string                 `json:"internal_message_id,omitempty"`
-	InternalAttemptID   string                 `json:"internal_attempt_id,omitempty"`
-	Diagnostics         EventDiagnostics       `json:"diagnostics,omitempty"`
+	EventType            string                 `json:"event_type"`
+	ProviderMessageID    string                 `json:"provider_message_id"`
+	OccurredAt           time.Time              `json:"occurred_at"`
+	Recipients           []string               `json:"recipients"`
+	Tags                 map[string][]string    `json:"tags,omitempty"`
+	InternalMessageID    string                 `json:"internal_message_id,omitempty"`
+	InternalAttemptID    string                 `json:"internal_attempt_id,omitempty"`
+	Diagnostics          EventDiagnostics       `json:"diagnostics,omitempty"`
 	RecipientDiagnostics []RecipientDiagnostics `json:"recipient_diagnostics,omitempty"`
-	BounceType          string                 `json:"bounce_type,omitempty"`
-	BounceSubType       string                 `json:"bounce_sub_type,omitempty"`
-	ComplaintType       string                 `json:"complaint_type,omitempty"`
-	RejectReason        string                 `json:"reject_reason,omitempty"`
-	FailureReason       string                 `json:"failure_reason,omitempty"`
-	Payload             json.RawMessage        `json:"-"`
+	BounceType           string                 `json:"bounce_type,omitempty"`
+	BounceSubType        string                 `json:"bounce_sub_type,omitempty"`
+	ComplaintType        string                 `json:"complaint_type,omitempty"`
+	RejectReason         string                 `json:"reject_reason,omitempty"`
+	FailureReason        string                 `json:"failure_reason,omitempty"`
+	Payload              json.RawMessage        `json:"-"`
 }
 
 type feedbackEnvelope struct {
@@ -64,12 +64,12 @@ type feedbackEnvelope struct {
 		Timestamp time.Time `json:"timestamp"`
 	} `json:"send"`
 	Delivery struct {
-		Timestamp                time.Time `json:"timestamp"`
-		Recipients               []string  `json:"recipients"`
-		ProcessingTimeMillis     int64     `json:"processingTimeMillis"`
-		ReportingMTA             string    `json:"reportingMTA"`
-		SMTPResponse             string    `json:"smtpResponse"`
-		RemoteMTAIPAddress       string    `json:"remoteMtaIp"`
+		Timestamp            time.Time `json:"timestamp"`
+		Recipients           []string  `json:"recipients"`
+		ProcessingTimeMillis int64     `json:"processingTimeMillis"`
+		ReportingMTA         string    `json:"reportingMTA"`
+		SMTPResponse         string    `json:"smtpResponse"`
+		RemoteMTAIPAddress   string    `json:"remoteMtaIp"`
 	} `json:"delivery"`
 	DeliveryDelay struct {
 		Timestamp         time.Time `json:"timestamp"`
@@ -82,13 +82,13 @@ type feedbackEnvelope struct {
 		} `json:"delayedRecipients"`
 	} `json:"deliveryDelay"`
 	Bounce struct {
-		Timestamp         time.Time `json:"timestamp"`
-		BounceType        string    `json:"bounceType"`
-		BounceSubType     string    `json:"bounceSubType"`
-		FeedbackID        string    `json:"feedbackId"`
-		RemoteMTAIPAddress string   `json:"remoteMtaIp"`
-		ReportingMTA      string    `json:"reportingMTA"`
-		BouncedRecipients []struct {
+		Timestamp          time.Time `json:"timestamp"`
+		BounceType         string    `json:"bounceType"`
+		BounceSubType      string    `json:"bounceSubType"`
+		FeedbackID         string    `json:"feedbackId"`
+		RemoteMTAIPAddress string    `json:"remoteMtaIp"`
+		ReportingMTA       string    `json:"reportingMTA"`
+		BouncedRecipients  []struct {
 			EmailAddress   string `json:"emailAddress"`
 			Action         string `json:"action"`
 			Status         string `json:"status"`
@@ -189,20 +189,20 @@ func normalizeFeedbackEvent(envelope feedbackEnvelope) (string, time.Time, []str
 
 func normalizeEventDiagnostics(envelope feedbackEnvelope) EventDiagnostics {
 	return EventDiagnostics{
-		BounceType:           strings.TrimSpace(envelope.Bounce.BounceType),
-		BounceSubType:        strings.TrimSpace(envelope.Bounce.BounceSubType),
+		BounceType:            strings.TrimSpace(envelope.Bounce.BounceType),
+		BounceSubType:         strings.TrimSpace(envelope.Bounce.BounceSubType),
 		ComplaintFeedbackType: strings.TrimSpace(envelope.Complaint.ComplaintFeedbackType),
-		ComplaintFeedbackID:  strings.TrimSpace(envelope.Complaint.FeedbackID),
-		ComplaintUserAgent:   strings.TrimSpace(envelope.Complaint.UserAgent),
-		ArrivalDate:          strings.TrimSpace(envelope.Complaint.ArrivalDate),
-		ReportingMTA:         firstNonEmpty(envelope.Delivery.ReportingMTA, envelope.Bounce.ReportingMTA),
-		SMTPResponse:         strings.TrimSpace(envelope.Delivery.SMTPResponse),
-		ProcessingTimeMillis: envelope.Delivery.ProcessingTimeMillis,
-		DelayType:            strings.TrimSpace(envelope.DeliveryDelay.DelayType),
-		ExpirationTime:       strings.TrimSpace(envelope.DeliveryDelay.ExpirationTime),
-		RejectReason:         strings.TrimSpace(envelope.Reject.Reason),
-		FailureReason:        strings.TrimSpace(envelope.Failure.ErrorMessage),
-		RemoteMTAIPAddress:   firstNonEmpty(envelope.Delivery.RemoteMTAIPAddress, envelope.Bounce.RemoteMTAIPAddress),
+		ComplaintFeedbackID:   strings.TrimSpace(envelope.Complaint.FeedbackID),
+		ComplaintUserAgent:    strings.TrimSpace(envelope.Complaint.UserAgent),
+		ArrivalDate:           strings.TrimSpace(envelope.Complaint.ArrivalDate),
+		ReportingMTA:          firstNonEmpty(envelope.Delivery.ReportingMTA, envelope.Bounce.ReportingMTA),
+		SMTPResponse:          strings.TrimSpace(envelope.Delivery.SMTPResponse),
+		ProcessingTimeMillis:  envelope.Delivery.ProcessingTimeMillis,
+		DelayType:             strings.TrimSpace(envelope.DeliveryDelay.DelayType),
+		ExpirationTime:        strings.TrimSpace(envelope.DeliveryDelay.ExpirationTime),
+		RejectReason:          strings.TrimSpace(envelope.Reject.Reason),
+		FailureReason:         strings.TrimSpace(envelope.Failure.ErrorMessage),
+		RemoteMTAIPAddress:    firstNonEmpty(envelope.Delivery.RemoteMTAIPAddress, envelope.Bounce.RemoteMTAIPAddress),
 	}
 }
 

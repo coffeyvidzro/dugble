@@ -32,16 +32,16 @@ type emailLifecycleRecipient struct {
 }
 
 type emailLifecyclePayload struct {
-	Object            string                          `json:"object"`
-	ID                string                          `json:"id"`
-	Status            string                          `json:"status"`
-	Provider          string                          `json:"provider"`
-	ProviderEventID   string                          `json:"provider_event_id"`
-	ProviderMessageID string                          `json:"provider_message_id"`
-	LastEvent         string                          `json:"last_event"`
-	Recipients        []string                        `json:"recipients"`
-	RecipientDetails  []emailLifecycleRecipient       `json:"recipient_details,omitempty"`
-	Diagnostics       awsses.EventDiagnostics         `json:"diagnostics,omitempty"`
+	Object            string                    `json:"object"`
+	ID                string                    `json:"id"`
+	Status            string                    `json:"status"`
+	Provider          string                    `json:"provider"`
+	ProviderEventID   string                    `json:"provider_event_id"`
+	ProviderMessageID string                    `json:"provider_message_id"`
+	LastEvent         string                    `json:"last_event"`
+	Recipients        []string                  `json:"recipients"`
+	RecipientDetails  []emailLifecycleRecipient `json:"recipient_details,omitempty"`
+	Diagnostics       awsses.EventDiagnostics   `json:"diagnostics,omitempty"`
 }
 
 func NewRepositoryWithWebhookEmitter(db *pgxpool.Pool, emitter webhookEmitter) *Repository {
