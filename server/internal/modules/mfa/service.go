@@ -147,10 +147,11 @@ func (s *Service) Recover(ctx context.Context, code string) error {
 	if err != nil {
 		return err
 	}
-	hash := authnz.HashRecoveryCode(code)
-	if strings.TrimSpace(code) == "" {
-		return apperrors.NewBadRequest("Recovery code is required")
+	code, err = validateRecoveryCode(code)
+	if err != nil {
+		return err
 	}
+	hash := authnz.HashRecoveryCode(code)
 	if err := s.repository.UseRecoveryCode(ctx, principal.UserID, principal.SessionID, hash); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return apperrors.NewUnauthorized("Invalid or used recovery code")
@@ -214,7 +215,7 @@ func (s *Service) validateCredential(ctx context.Context, userID uuid.UUID, cred
 	if rotated {
 		_ = s.repository.RotateSecretCiphertext(ctx, userID, credential.SecretCiphertext, replacement)
 	}
-	return authnz.ValidateTOTP(string(secret), strings.TrimSpace(code), s.now().UTC())
+	return authnz.ValidateTOTP(string(secret), normalizeAuthenticationCode(code), s.now().UTC())
 }
 
 func principalFromContext(ctx context.Context) (authnz.Principal, error) {
@@ -256,7 +257,7 @@ func (s *Service) BeginLogin(ctx context.Context, userID uuid.UUID, credentialVe
 }
 
 func (s *Service) CompleteLoginTOTP(ctx context.Context, challengeToken, code string) (uuid.UUID, error) {
-	tokenHash, err := loginChallengeHash(challengeToken)
+	tokenHash, err := validateLoginChallengeToken(challengeToken)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -282,8 +283,12 @@ func (s *Service) CompleteLoginTOTP(ctx context.Context, challengeToken, code st
 }
 
 func (s *Service) CompleteLoginRecovery(ctx context.Context, challengeToken, code string) (uuid.UUID, error) {
-	tokenHash, err := loginChallengeHash(challengeToken)
-	if err != nil || strings.TrimSpace(code) == "" {
+	tokenHash, err := validateLoginChallengeToken(challengeToken)
+	if err != nil {
+		return uuid.Nil, pgx.ErrNoRows
+	}
+	code, err = validateRecoveryCode(code)
+	if err != nil {
 		return uuid.Nil, pgx.ErrNoRows
 	}
 	userID, _, err := s.repository.GetLoginChallenge(ctx, tokenHash)
@@ -314,12 +319,4 @@ func (s *Service) notifyFailedLogin(ctx context.Context, userID uuid.UUID) {
 	if err := s.notifier.SendMFALoginFailed(ctx, notifications.SendSecurityEventInput{ToEmail: recipient.Email, Name: recipient.Name}); err != nil {
 		slog.Warn("failed to send failed MFA notification", "error", err, "user_id", userID)
 	}
-}
-
-func loginChallengeHash(token string) (string, error) {
-	token = strings.TrimSpace(token)
-	if !strings.HasPrefix(token, loginChallengePrefix) {
-		return "", pgx.ErrNoRows
-	}
-	return authnz.HashSessionToken(token), nil
 }

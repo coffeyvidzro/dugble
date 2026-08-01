@@ -50,3 +50,15 @@ func TestValidatePermissionsRejectsPrivilegedScope(t *testing.T) {
 		t.Fatal("validatePermissions() error = nil, want unsupported permission error")
 	}
 }
+
+func TestValidateMutationRejectsInvalidName(t *testing.T) {
+	if _, _, _, err := validateMutation(" ", []string{"team:read"}, nil); err == nil {
+		t.Fatal("validateMutation() accepted an empty name")
+	}
+}
+
+func TestValidateTokenIDRejectsInvalidID(t *testing.T) {
+	if _, err := validateTokenID("invalid"); err == nil {
+		t.Fatal("validateTokenID() accepted an invalid id")
+	}
+}

@@ -32,6 +32,10 @@ func (s *Service) List(ctx context.Context) ([]Session, error) {
 }
 
 func (s *Service) Revoke(ctx context.Context, id string) error {
+	id, err := validateSessionID(id)
+	if err != nil {
+		return err
+	}
 	principal, ok := authnz.PrincipalFromContext(ctx)
 	if !ok {
 		return apperrors.NewUnauthorized("Authentication is required")
