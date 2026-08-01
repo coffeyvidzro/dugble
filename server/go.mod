@@ -37,6 +37,7 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/klauspost/compress v1.19.1 // indirect
+	github.com/nats-io/gnatsd v1.4.1 // indirect
 	github.com/nats-io/nkeys v0.4.16 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/tetratelabs/wazero v1.12.0 // indirect
@@ -48,9 +49,6 @@ require (
 	golang.org/x/text v0.40.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260120221211-b8f7ae30c516 // indirect
-<<<<<<< HEAD
 	google.golang.org/grpc v1.80.0 // indirect
-=======
->>>>>>> 6b8aa973906cc113afab3e2788c54ba5f8a99ad4
 	google.golang.org/protobuf v1.36.11 // indirect
 )
