@@ -16,12 +16,13 @@ const (
 )
 
 type Team struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Status    string    `json:"status"`
-	CreatedBy *string   `json:"created_by,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID         string    `json:"id"`
+	Name       string    `json:"name"`
+	MarketCode string    `json:"market_code"`
+	Status     string    `json:"status"`
+	CreatedBy  *string   `json:"created_by,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 type Member struct {
@@ -34,7 +35,8 @@ type Member struct {
 }
 
 type CreateRequest struct {
-	Name string `json:"name"`
+	Name       string `json:"name"`
+	MarketCode string `json:"market_code"`
 }
 
 type UpdateRequest struct {

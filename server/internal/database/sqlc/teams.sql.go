@@ -55,40 +55,43 @@ func (q *Queries) CreateTeamMember(ctx context.Context, arg CreateTeamMemberPara
 
 const createTeamWithOwner = `-- name: CreateTeamWithOwner :one
 WITH created_team AS (
-    INSERT INTO teams (name, created_by)
-    VALUES ($1, $2)
-    RETURNING id, name, status, created_by, created_at, updated_at
+    INSERT INTO teams (name, market_code, created_by)
+    VALUES ($1, $2, $3)
+    RETURNING id, name, market_code, status, created_by, created_at, updated_at
 ), created_owner AS (
     INSERT INTO team_members (team_id, user_id, role, status)
-    SELECT id, $2, 'owner', 'active'
+    SELECT id, $3, 'owner', 'active'
     FROM created_team
     RETURNING team_id
 )
-SELECT created_team.id, created_team.name, created_team.status, created_team.created_by, created_team.created_at, created_team.updated_at
+SELECT created_team.id, created_team.name, created_team.market_code, created_team.status, created_team.created_by, created_team.created_at, created_team.updated_at
 FROM created_team
 JOIN created_owner ON created_owner.team_id = created_team.id
 `
 
 type CreateTeamWithOwnerParams struct {
-	Name    string     `db:"name" json:"name"`
-	OwnerID *uuid.UUID `db:"owner_id" json:"owner_id"`
+	Name       string     `db:"name" json:"name"`
+	MarketCode string     `db:"market_code" json:"market_code"`
+	OwnerID    *uuid.UUID `db:"owner_id" json:"owner_id"`
 }
 
 type CreateTeamWithOwnerRow struct {
-	ID        uuid.UUID          `db:"id" json:"id"`
-	Name      string             `db:"name" json:"name"`
-	Status    string             `db:"status" json:"status"`
-	CreatedBy *uuid.UUID         `db:"created_by" json:"created_by"`
-	CreatedAt pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ID         uuid.UUID          `db:"id" json:"id"`
+	Name       string             `db:"name" json:"name"`
+	MarketCode string             `db:"market_code" json:"market_code"`
+	Status     string             `db:"status" json:"status"`
+	CreatedBy  *uuid.UUID         `db:"created_by" json:"created_by"`
+	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
 func (q *Queries) CreateTeamWithOwner(ctx context.Context, arg CreateTeamWithOwnerParams) (CreateTeamWithOwnerRow, error) {
-	row := q.db.QueryRow(ctx, createTeamWithOwner, arg.Name, arg.OwnerID)
+	row := q.db.QueryRow(ctx, createTeamWithOwner, arg.Name, arg.MarketCode, arg.OwnerID)
 	var i CreateTeamWithOwnerRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
+		&i.MarketCode,
 		&i.Status,
 		&i.CreatedBy,
 		&i.CreatedAt,
@@ -102,7 +105,7 @@ UPDATE teams
 SET status = 'disabled',
     updated_at = now()
 WHERE id = $1
-RETURNING id, name, status, created_by, created_at, updated_at
+RETURNING id, name, market_code, status, created_by, created_at, updated_at
 `
 
 type DisableTeamParams struct {
@@ -115,6 +118,7 @@ func (q *Queries) DisableTeam(ctx context.Context, arg DisableTeamParams) (Team,
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
+		&i.MarketCode,
 		&i.Status,
 		&i.CreatedBy,
 		&i.CreatedAt,
@@ -124,7 +128,7 @@ func (q *Queries) DisableTeam(ctx context.Context, arg DisableTeamParams) (Team,
 }
 
 const getTeam = `-- name: GetTeam :one
-SELECT id, name, status, created_by, created_at, updated_at
+SELECT id, name, market_code, status, created_by, created_at, updated_at
 FROM teams
 WHERE id = $1
 `
@@ -139,6 +143,7 @@ func (q *Queries) GetTeam(ctx context.Context, arg GetTeamParams) (Team, error) 
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
+		&i.MarketCode,
 		&i.Status,
 		&i.CreatedBy,
 		&i.CreatedAt,
@@ -212,7 +217,7 @@ func (q *Queries) ListTeamMembers(ctx context.Context, arg ListTeamMembersParams
 }
 
 const listTeamsForUser = `-- name: ListTeamsForUser :many
-SELECT t.id, t.name, t.status, t.created_by, t.created_at, t.updated_at
+SELECT t.id, t.name, t.market_code, t.status, t.created_by, t.created_at, t.updated_at
 FROM teams t
 JOIN team_members tm ON tm.team_id = t.id
 WHERE tm.user_id = $1
@@ -237,6 +242,7 @@ func (q *Queries) ListTeamsForUser(ctx context.Context, arg ListTeamsForUserPara
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
+			&i.MarketCode,
 			&i.Status,
 			&i.CreatedBy,
 			&i.CreatedAt,
@@ -273,7 +279,7 @@ UPDATE teams
 SET name = $1,
     updated_at = now()
 WHERE id = $2
-RETURNING id, name, status, created_by, created_at, updated_at
+RETURNING id, name, market_code, status, created_by, created_at, updated_at
 `
 
 type UpdateTeamParams struct {
@@ -287,6 +293,7 @@ func (q *Queries) UpdateTeam(ctx context.Context, arg UpdateTeamParams) (Team, e
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
+		&i.MarketCode,
 		&i.Status,
 		&i.CreatedBy,
 		&i.CreatedAt,

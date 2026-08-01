@@ -1,7 +1,7 @@
 -- name: CreateTeamWithOwner :one
 WITH created_team AS (
-    INSERT INTO teams (name, created_by)
-    VALUES (sqlc.arg(name), sqlc.arg(owner_id))
+    INSERT INTO teams (name, market_code, created_by)
+    VALUES (sqlc.arg(name), sqlc.arg(market_code), sqlc.arg(owner_id))
     RETURNING *
 ), created_owner AS (
     INSERT INTO team_members (team_id, user_id, role, status)

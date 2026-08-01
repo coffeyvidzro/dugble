@@ -30,16 +30,22 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 	return &Repository{db: db, queries: dbsqlc.New(db)}
 }
 
-func (r *Repository) CreateWithOwner(ctx context.Context, name string, ownerID uuid.UUID) (Team, error) {
+func (r *Repository) CreateWithOwner(
+	ctx context.Context,
+	name string,
+	marketCode string,
+	ownerID uuid.UUID,
+) (Team, error) {
 	row, err := r.queries.CreateTeamWithOwner(
 		ctx,
-		dbsqlc.CreateTeamWithOwnerParams{Name: name, OwnerID: &ownerID},
+		dbsqlc.CreateTeamWithOwnerParams{Name: name, MarketCode: marketCode, OwnerID: &ownerID},
 	)
 	if err != nil {
 		return Team{}, fmt.Errorf("create team with owner: %w", err)
 	}
 	return Team{
-		ID: row.ID.String(), Name: row.Name, Status: row.Status, CreatedBy: stringPointer(row.CreatedBy),
+		ID: row.ID.String(), Name: row.Name, MarketCode: row.MarketCode,
+		Status: row.Status, CreatedBy: stringPointer(row.CreatedBy),
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}, nil
 }
@@ -264,12 +270,13 @@ func isUniqueViolation(err error) bool {
 
 func teamFromSQLC(row dbsqlc.Team) Team {
 	return Team{
-		ID:        row.ID.String(),
-		Name:      row.Name,
-		Status:    row.Status,
-		CreatedBy: stringPointer(row.CreatedBy),
-		CreatedAt: row.CreatedAt.Time,
-		UpdatedAt: row.UpdatedAt.Time,
+		ID:         row.ID.String(),
+		Name:       row.Name,
+		MarketCode: row.MarketCode,
+		Status:     row.Status,
+		CreatedBy:  stringPointer(row.CreatedBy),
+		CreatedAt:  row.CreatedAt.Time,
+		UpdatedAt:  row.UpdatedAt.Time,
 	}
 }
 

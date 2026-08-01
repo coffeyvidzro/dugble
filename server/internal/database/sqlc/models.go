@@ -286,12 +286,13 @@ type SmsMessage struct {
 }
 
 type Team struct {
-	ID        uuid.UUID          `db:"id" json:"id"`
-	Name      string             `db:"name" json:"name"`
-	Status    string             `db:"status" json:"status"`
-	CreatedBy *uuid.UUID         `db:"created_by" json:"created_by"`
-	CreatedAt pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ID         uuid.UUID          `db:"id" json:"id"`
+	Name       string             `db:"name" json:"name"`
+	MarketCode string             `db:"market_code" json:"market_code"`
+	Status     string             `db:"status" json:"status"`
+	CreatedBy  *uuid.UUID         `db:"created_by" json:"created_by"`
+	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
 type TeamInvitation struct {
