@@ -127,6 +127,7 @@ type ServiceConfig struct {
 	DefaultProvider  string
 	DefaultRegion    string
 	DeliveryRegions  []string
+	FailoverRegion   string
 }
 
 func NewService(repository *Repository, delivery DeliveryQueue, config ServiceConfig, dependencies ...any) *Service {
@@ -297,7 +298,7 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 
 func (s *Service) authorizeSender(ctx context.Context, teamID uuid.UUID, message *validatedSend) error {
 	provider := strings.TrimSpace(s.config.DefaultProvider)
-	region := selectDeliveryRegion(teamID, s.config.DeliveryRegions)
+	region := selectDeliveryRegion(teamID, s.config.DeliveryRegions, s.config.FailoverRegion)
 	if provider == "" || region == "" {
 		return apperrors.NewInternal("Email delivery route is not configured", nil)
 	}
@@ -357,8 +358,16 @@ func normalizeDeliveryRegions(defaultRegion string, regions []string) []string {
 	return result
 }
 
-func selectDeliveryRegion(teamID uuid.UUID, regions []string) string {
+func selectDeliveryRegion(teamID uuid.UUID, regions []string, failoverRegion string) string {
 	if len(regions) == 0 {
+		return ""
+	}
+	if failoverRegion = strings.ToLower(strings.TrimSpace(failoverRegion)); failoverRegion != "" {
+		for _, region := range regions {
+			if region == failoverRegion {
+				return failoverRegion
+			}
+		}
 		return ""
 	}
 	hash := fnv.New32a()

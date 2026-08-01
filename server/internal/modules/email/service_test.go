@@ -173,8 +173,8 @@ func TestDeliveryRegionSelectionIsStableAndNormalized(t *testing.T) {
 		t.Fatalf("normalized regions = %v", regions)
 	}
 	teamID := uuid.MustParse("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
-	first := selectDeliveryRegion(teamID, regions)
-	second := selectDeliveryRegion(teamID, regions)
+	first := selectDeliveryRegion(teamID, regions, "")
+	second := selectDeliveryRegion(teamID, regions, "")
 	if first != second {
 		t.Fatalf("region selection changed: %q != %q", first, second)
 	}
@@ -185,8 +185,23 @@ func TestDeliveryRegionSelectionIsStableAndNormalized(t *testing.T) {
 
 func TestDeliveryRegionSelectionFallsBackToDefault(t *testing.T) {
 	regions := normalizeDeliveryRegions("EU-NORTH-1", nil)
-	if len(regions) != 1 || selectDeliveryRegion(uuid.New(), regions) != "eu-north-1" {
+	if len(regions) != 1 || selectDeliveryRegion(uuid.New(), regions, "") != "eu-north-1" {
 		t.Fatalf("default regions = %v", regions)
+	}
+}
+
+func TestDeliveryRegionSelectionHonorsControlledFailover(t *testing.T) {
+	regions := []string{"us-east-1", "eu-north-1"}
+	for range 10 {
+		if got := selectDeliveryRegion(uuid.New(), regions, " EU-NORTH-1 "); got != "eu-north-1" {
+			t.Fatalf("failover region = %q", got)
+		}
+	}
+}
+
+func TestDeliveryRegionSelectionRejectsUnconfiguredFailover(t *testing.T) {
+	if got := selectDeliveryRegion(uuid.New(), []string{"us-east-1", "eu-north-1"}, "ap-south-1"); got != "" {
+		t.Fatalf("unconfigured failover region = %q", got)
 	}
 }
 

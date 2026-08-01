@@ -83,6 +83,8 @@ Customer email jobs are partitioned by their persisted SES region. The primary `
 
 Set `AWS_REGIONS` to the comma-separated regions available for new customer email. Dugble uses a stable team-based selection so a team remains on the same region while traffic is distributed across the configured regions. A verified custom sender domain retains its explicitly provisioned region.
 
+For a controlled regional evacuation, set `AWS_FAILOVER_REGION` to one of the configured `AWS_REGIONS` and restart the API. New onboarding-identity emails are then pinned to that region. Clear the value to restore stable selection. This control does not reroute custom-domain, already queued, submitted, or submission-unknown email, preventing an operational failover from causing duplicate delivery.
+
 ### Run individual services
 
 ```sh

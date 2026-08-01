@@ -123,6 +123,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		DefaultProvider:  domain.DefaultProvider,
 		DefaultRegion:    cfg.AWS.Region,
 		DeliveryRegions:  cfg.AWS.Regions,
+		FailoverRegion:   cfg.AWS.FailoverRegion,
 	})
 	emailmodule.RegisterRoutes(router, emailmodule.NewHandler(emailServiceAPI), tenantAccess)
 	webhookService := webhooks.NewService(webhookRepository, webhookEmitter)
