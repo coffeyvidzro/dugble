@@ -10,20 +10,46 @@ import (
 
 var ErrInvalidEvent = errors.New("invalid SES feedback event")
 
+type EventDiagnostics struct {
+	BounceType              string `json:"bounce_type,omitempty"`
+	BounceSubType           string `json:"bounce_sub_type,omitempty"`
+	ComplaintFeedbackType   string `json:"complaint_feedback_type,omitempty"`
+	ComplaintFeedbackID     string `json:"complaint_feedback_id,omitempty"`
+	ComplaintUserAgent      string `json:"complaint_user_agent,omitempty"`
+	ArrivalDate             string `json:"arrival_date,omitempty"`
+	ReportingMTA            string `json:"reporting_mta,omitempty"`
+	SMTPResponse            string `json:"smtp_response,omitempty"`
+	ProcessingTimeMillis    int64  `json:"processing_time_millis,omitempty"`
+	DelayType               string `json:"delay_type,omitempty"`
+	ExpirationTime          string `json:"expiration_time,omitempty"`
+	RejectReason            string `json:"reject_reason,omitempty"`
+	FailureReason           string `json:"failure_reason,omitempty"`
+	RemoteMTAIPAddress      string `json:"remote_mta_ip_address,omitempty"`
+}
+
+type RecipientDiagnostics struct {
+	Email          string `json:"email"`
+	Action         string `json:"action,omitempty"`
+	StatusCode     string `json:"status_code,omitempty"`
+	DiagnosticCode string `json:"diagnostic_code,omitempty"`
+}
+
 type FeedbackEvent struct {
-	EventType         string              `json:"event_type"`
-	ProviderMessageID string              `json:"provider_message_id"`
-	OccurredAt        time.Time           `json:"occurred_at"`
-	Recipients        []string            `json:"recipients"`
-	Tags              map[string][]string `json:"tags,omitempty"`
-	InternalMessageID string              `json:"internal_message_id,omitempty"`
-	InternalAttemptID string              `json:"internal_attempt_id,omitempty"`
-	BounceType        string              `json:"bounce_type,omitempty"`
-	BounceSubType     string              `json:"bounce_sub_type,omitempty"`
-	ComplaintType     string              `json:"complaint_type,omitempty"`
-	RejectReason      string              `json:"reject_reason,omitempty"`
-	FailureReason     string              `json:"failure_reason,omitempty"`
-	Payload           json.RawMessage     `json:"-"`
+	EventType           string                 `json:"event_type"`
+	ProviderMessageID   string                 `json:"provider_message_id"`
+	OccurredAt          time.Time              `json:"occurred_at"`
+	Recipients          []string               `json:"recipients"`
+	Tags                map[string][]string    `json:"tags,omitempty"`
+	InternalMessageID   string                 `json:"internal_message_id,omitempty"`
+	InternalAttemptID   string                 `json:"internal_attempt_id,omitempty"`
+	Diagnostics         EventDiagnostics       `json:"diagnostics,omitempty"`
+	RecipientDiagnostics []RecipientDiagnostics `json:"recipient_diagnostics,omitempty"`
+	BounceType          string                 `json:"bounce_type,omitempty"`
+	BounceSubType       string                 `json:"bounce_sub_type,omitempty"`
+	ComplaintType       string                 `json:"complaint_type,omitempty"`
+	RejectReason        string                 `json:"reject_reason,omitempty"`
+	FailureReason       string                 `json:"failure_reason,omitempty"`
+	Payload             json.RawMessage        `json:"-"`
 }
 
 type feedbackEnvelope struct {
@@ -38,26 +64,43 @@ type feedbackEnvelope struct {
 		Timestamp time.Time `json:"timestamp"`
 	} `json:"send"`
 	Delivery struct {
-		Timestamp  time.Time `json:"timestamp"`
-		Recipients []string  `json:"recipients"`
+		Timestamp                time.Time `json:"timestamp"`
+		Recipients               []string  `json:"recipients"`
+		ProcessingTimeMillis     int64     `json:"processingTimeMillis"`
+		ReportingMTA             string    `json:"reportingMTA"`
+		SMTPResponse             string    `json:"smtpResponse"`
+		RemoteMTAIPAddress       string    `json:"remoteMtaIp"`
 	} `json:"delivery"`
 	DeliveryDelay struct {
 		Timestamp         time.Time `json:"timestamp"`
+		DelayType         string    `json:"delayType"`
+		ExpirationTime    string    `json:"expirationTime"`
 		DelayedRecipients []struct {
-			EmailAddress string `json:"emailAddress"`
+			EmailAddress   string `json:"emailAddress"`
+			Status         string `json:"status"`
+			DiagnosticCode string `json:"diagnosticCode"`
 		} `json:"delayedRecipients"`
 	} `json:"deliveryDelay"`
 	Bounce struct {
 		Timestamp         time.Time `json:"timestamp"`
 		BounceType        string    `json:"bounceType"`
 		BounceSubType     string    `json:"bounceSubType"`
+		FeedbackID        string    `json:"feedbackId"`
+		RemoteMTAIPAddress string   `json:"remoteMtaIp"`
+		ReportingMTA      string    `json:"reportingMTA"`
 		BouncedRecipients []struct {
-			EmailAddress string `json:"emailAddress"`
+			EmailAddress   string `json:"emailAddress"`
+			Action         string `json:"action"`
+			Status         string `json:"status"`
+			DiagnosticCode string `json:"diagnosticCode"`
 		} `json:"bouncedRecipients"`
 	} `json:"bounce"`
 	Complaint struct {
 		Timestamp             time.Time `json:"timestamp"`
 		ComplaintFeedbackType string    `json:"complaintFeedbackType"`
+		FeedbackID            string    `json:"feedbackId"`
+		UserAgent             string    `json:"userAgent"`
+		ArrivalDate           string    `json:"arrivalDate"`
 		ComplainedRecipients  []struct {
 			EmailAddress string `json:"emailAddress"`
 		} `json:"complainedRecipients"`
@@ -101,21 +144,25 @@ func ParseFeedbackEvent(message string) (FeedbackEvent, error) {
 		recipients = normalizeRecipients(envelope.Mail.Destination)
 	}
 	tags := normalizeTags(envelope.Mail.Tags)
+	diagnostics := normalizeEventDiagnostics(envelope)
+	recipientDiagnostics := normalizeRecipientDiagnostics(envelope)
 
 	return FeedbackEvent{
-		EventType:         eventType,
-		ProviderMessageID: messageID,
-		OccurredAt:        occurredAt.UTC(),
-		Recipients:        recipients,
-		Tags:              tags,
-		InternalMessageID: firstTagValue(tags, "dugble_message_id"),
-		InternalAttemptID: firstTagValue(tags, "dugble_attempt_id"),
-		BounceType:        strings.TrimSpace(envelope.Bounce.BounceType),
-		BounceSubType:     strings.TrimSpace(envelope.Bounce.BounceSubType),
-		ComplaintType:     strings.TrimSpace(envelope.Complaint.ComplaintFeedbackType),
-		RejectReason:      strings.TrimSpace(envelope.Reject.Reason),
-		FailureReason:     strings.TrimSpace(envelope.Failure.ErrorMessage),
-		Payload:           append(json.RawMessage(nil), raw...),
+		EventType:            eventType,
+		ProviderMessageID:    messageID,
+		OccurredAt:           occurredAt.UTC(),
+		Recipients:           recipients,
+		Tags:                 tags,
+		InternalMessageID:    firstTagValue(tags, "dugble_message_id"),
+		InternalAttemptID:    firstTagValue(tags, "dugble_attempt_id"),
+		Diagnostics:          diagnostics,
+		RecipientDiagnostics: recipientDiagnostics,
+		BounceType:           diagnostics.BounceType,
+		BounceSubType:        diagnostics.BounceSubType,
+		ComplaintType:        diagnostics.ComplaintFeedbackType,
+		RejectReason:         diagnostics.RejectReason,
+		FailureReason:        diagnostics.FailureReason,
+		Payload:              append(json.RawMessage(nil), raw...),
 	}, nil
 }
 
@@ -140,11 +187,66 @@ func normalizeFeedbackEvent(envelope feedbackEnvelope) (string, time.Time, []str
 	}
 }
 
+func normalizeEventDiagnostics(envelope feedbackEnvelope) EventDiagnostics {
+	return EventDiagnostics{
+		BounceType:           strings.TrimSpace(envelope.Bounce.BounceType),
+		BounceSubType:        strings.TrimSpace(envelope.Bounce.BounceSubType),
+		ComplaintFeedbackType: strings.TrimSpace(envelope.Complaint.ComplaintFeedbackType),
+		ComplaintFeedbackID:  strings.TrimSpace(envelope.Complaint.FeedbackID),
+		ComplaintUserAgent:   strings.TrimSpace(envelope.Complaint.UserAgent),
+		ArrivalDate:          strings.TrimSpace(envelope.Complaint.ArrivalDate),
+		ReportingMTA:         firstNonEmpty(envelope.Delivery.ReportingMTA, envelope.Bounce.ReportingMTA),
+		SMTPResponse:         strings.TrimSpace(envelope.Delivery.SMTPResponse),
+		ProcessingTimeMillis: envelope.Delivery.ProcessingTimeMillis,
+		DelayType:            strings.TrimSpace(envelope.DeliveryDelay.DelayType),
+		ExpirationTime:       strings.TrimSpace(envelope.DeliveryDelay.ExpirationTime),
+		RejectReason:         strings.TrimSpace(envelope.Reject.Reason),
+		FailureReason:        strings.TrimSpace(envelope.Failure.ErrorMessage),
+		RemoteMTAIPAddress:   firstNonEmpty(envelope.Delivery.RemoteMTAIPAddress, envelope.Bounce.RemoteMTAIPAddress),
+	}
+}
+
+func normalizeRecipientDiagnostics(envelope feedbackEnvelope) []RecipientDiagnostics {
+	result := make([]RecipientDiagnostics, 0, len(envelope.Bounce.BouncedRecipients)+len(envelope.DeliveryDelay.DelayedRecipients))
+	seen := make(map[string]struct{})
+	for _, recipient := range envelope.Bounce.BouncedRecipients {
+		email := normalizeRecipient(recipient.EmailAddress)
+		if email == "" {
+			continue
+		}
+		seen[email] = struct{}{}
+		result = append(result, RecipientDiagnostics{
+			Email:          email,
+			Action:         strings.TrimSpace(recipient.Action),
+			StatusCode:     strings.TrimSpace(recipient.Status),
+			DiagnosticCode: strings.TrimSpace(recipient.DiagnosticCode),
+		})
+	}
+	for _, recipient := range envelope.DeliveryDelay.DelayedRecipients {
+		email := normalizeRecipient(recipient.EmailAddress)
+		if email == "" {
+			continue
+		}
+		if _, exists := seen[email]; exists {
+			continue
+		}
+		result = append(result, RecipientDiagnostics{
+			Email:          email,
+			StatusCode:     strings.TrimSpace(recipient.Status),
+			DiagnosticCode: strings.TrimSpace(recipient.DiagnosticCode),
+		})
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}
+
 func normalizeRecipients(values []string) []string {
 	result := make([]string, 0, len(values))
 	seen := make(map[string]struct{}, len(values))
 	for _, value := range values {
-		value = strings.ToLower(strings.TrimSpace(value))
+		value = normalizeRecipient(value)
 		if value == "" {
 			continue
 		}
@@ -155,6 +257,10 @@ func normalizeRecipients(values []string) []string {
 		result = append(result, value)
 	}
 	return result
+}
+
+func normalizeRecipient(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
 }
 
 func normalizeTags(values map[string][]string) map[string][]string {
@@ -197,8 +303,19 @@ func firstTagValue(tags map[string][]string, key string) string {
 	return strings.TrimSpace(values[0])
 }
 
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if value = strings.TrimSpace(value); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
 func delayedRecipients(values []struct {
-	EmailAddress string `json:"emailAddress"`
+	EmailAddress   string `json:"emailAddress"`
+	Status         string `json:"status"`
+	DiagnosticCode string `json:"diagnosticCode"`
 }) []string {
 	recipients := make([]string, 0, len(values))
 	for _, value := range values {
@@ -208,7 +325,10 @@ func delayedRecipients(values []struct {
 }
 
 func bouncedRecipients(values []struct {
-	EmailAddress string `json:"emailAddress"`
+	EmailAddress   string `json:"emailAddress"`
+	Action         string `json:"action"`
+	Status         string `json:"status"`
+	DiagnosticCode string `json:"diagnosticCode"`
 }) []string {
 	recipients := make([]string, 0, len(values))
 	for _, value := range values {
