@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/mail"
 	"strings"
 	"time"
@@ -249,6 +250,13 @@ func (s *Service) ResetPassword(ctx context.Context, req ResetPasswordRequest) e
 		return apperrors.NewInternal("Unable to reset password", err)
 	}
 	audit.RecordIdentity(ctx, user.ID, audit.Event{Action: "identity.password_reset", ResourceType: "user", ResourceID: user.ID.String()})
+	if notifier, ok := s.notifier.(interface {
+		SendPasswordChanged(context.Context, notifications.SendPasswordChangedInput) error
+	}); ok {
+		if err := notifier.SendPasswordChanged(ctx, notifications.SendPasswordChangedInput{ToEmail: user.Email, Name: user.Name}); err != nil {
+			slog.Warn("failed to send password changed notification", "error", err, "user_id", user.ID)
+		}
+	}
 	return nil
 }
 

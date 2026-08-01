@@ -78,7 +78,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	if err != nil {
 		return nil, err
 	}
-	mfaService := mfa.NewService(mfa.NewRepository(deps.DB), mfaCipher, "Dugble")
+	mfaService := mfa.NewService(mfa.NewRepository(deps.DB), mfaCipher, "Dugble").WithNotifier(emailService)
 	authService := auth.NewService(authRepository, sessionRepository, emailService, mfaService)
 	authMiddleware := middlewares.SessionAuth(middlewares.SessionAuthConfig{Sessions: sessionRepository, Users: authRepository})
 	csrfConfig := middlewares.CSRFConfig{Development: cfg.IsDevelopment(), TrustedOrigins: cfg.CORSOrigins}
@@ -89,7 +89,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	mfa.RegisterRoutes(router, mfa.NewHandler(mfaService), authMiddleware, csrfMiddleware)
 
 	userRepository := user.NewRepository(deps.DB)
-	user.RegisterRoutes(router, user.NewHandler(user.NewService(userRepository)), authMiddleware, csrfMiddleware)
+	user.RegisterRoutes(router, user.NewHandler(user.NewService(userRepository, emailService)), authMiddleware, csrfMiddleware)
 	teamRepository := team.NewRepository(deps.DB)
 	teamService := team.NewService(teamRepository, emailService)
 	teamTokenRepository := teamtoken.NewRepository(deps.DB)

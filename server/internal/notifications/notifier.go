@@ -15,6 +15,8 @@ const (
 	verifyEmailTemplate     = "verify_email.html"
 	forgotPasswordTemplate  = "forgot_password.html"
 	passwordChangedTemplate = "password_changed.html"
+	securityEventTemplate   = "security_event.html"
+	accountDeletedTemplate  = "account_deleted.html"
 	teamInvitationTemplate  = "team_invitation.html"
 )
 
@@ -78,6 +80,30 @@ func (s *EmailService) SendPasswordReset(ctx context.Context, input SendPassword
 
 func (s *EmailService) SendPasswordChanged(ctx context.Context, input SendPasswordChangedInput) error {
 	return s.SendTemplateEmail(ctx, SendTemplateEmailInput{To: input.ToEmail, Subject: "Your Dugble password was changed", TemplateName: passwordChangedTemplate, Data: map[string]string{"Name": displayName(input.Name), "PreviewText": "Your dugble password was changed."}})
+}
+
+func (s *EmailService) SendEmailChanged(ctx context.Context, input SendEmailChangedInput) error {
+	return s.sendSecurityEvent(ctx, input.ToEmail, input.Name, "Your Dugble email address was changed", "Your Dugble email address was changed.", "Your account email address was changed to "+input.Email+".")
+}
+
+func (s *EmailService) SendMFAEnabled(ctx context.Context, input SendSecurityEventInput) error {
+	return s.sendSecurityEvent(ctx, input.ToEmail, input.Name, "Authenticator MFA was enabled", "Authenticator MFA was enabled on your Dugble account.", "Authenticator-app multi-factor authentication was enabled on your account.")
+}
+
+func (s *EmailService) SendMFADisabled(ctx context.Context, input SendSecurityEventInput) error {
+	return s.sendSecurityEvent(ctx, input.ToEmail, input.Name, "Authenticator MFA was disabled", "Authenticator MFA was disabled on your Dugble account.", "Authenticator-app multi-factor authentication was disabled on your account.")
+}
+
+func (s *EmailService) SendRecoveryCodeUsed(ctx context.Context, input SendSecurityEventInput) error {
+	return s.sendSecurityEvent(ctx, input.ToEmail, input.Name, "A recovery code was used", "A recovery code was used on your Dugble account.", "A recovery code was used to verify access to your account.")
+}
+
+func (s *EmailService) SendAccountDeleted(ctx context.Context, input SendSecurityEventInput) error {
+	return s.SendTemplateEmail(ctx, SendTemplateEmailInput{To: input.ToEmail, Subject: "Your Dugble account was deleted", TemplateName: accountDeletedTemplate, Data: map[string]string{"Name": displayName(input.Name), "PreviewText": "Your Dugble account was deleted."}})
+}
+
+func (s *EmailService) sendSecurityEvent(ctx context.Context, toEmail, name, subject, preview, message string) error {
+	return s.SendTemplateEmail(ctx, SendTemplateEmailInput{To: toEmail, Subject: subject, TemplateName: securityEventTemplate, Data: map[string]string{"Name": displayName(name), "PreviewText": preview, "Message": message}})
 }
 
 func (s *EmailService) SendTeamInvitation(ctx context.Context, input SendTeamInvitationInput) error {

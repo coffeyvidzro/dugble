@@ -3,12 +3,14 @@ package mfa
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/coffeyvidzro/dugble/server/internal/notifications"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/audit"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
@@ -38,10 +40,22 @@ type Service struct {
 	cipher     *authnz.SecretCipher
 	issuer     string
 	now        func() time.Time
+	notifier   SecurityNotifier
+}
+
+type SecurityNotifier interface {
+	SendMFAEnabled(context.Context, notifications.SendSecurityEventInput) error
+	SendMFADisabled(context.Context, notifications.SendSecurityEventInput) error
+	SendRecoveryCodeUsed(context.Context, notifications.SendSecurityEventInput) error
 }
 
 func NewService(repository store, cipher *authnz.SecretCipher, issuer string) *Service {
 	return &Service{repository: repository, cipher: cipher, issuer: issuer, now: time.Now}
+}
+
+func (s *Service) WithNotifier(notifier SecurityNotifier) *Service {
+	s.notifier = notifier
+	return s
 }
 
 func (s *Service) Enroll(ctx context.Context) (EnrollResponse, error) {
@@ -87,6 +101,7 @@ func (s *Service) Confirm(ctx context.Context, code string) (ConfirmResponse, er
 		return ConfirmResponse{}, apperrors.NewInternal("Unable to confirm MFA enrollment", err)
 	}
 	audit.RecordIdentity(ctx, principal.UserID, audit.Event{Action: "identity.mfa_enabled", ResourceType: "user", ResourceID: principal.UserID.String()})
+	s.notify(ctx, principal, "enabled")
 	return ConfirmResponse{RecoveryCodes: codes}, nil
 }
 
@@ -132,6 +147,7 @@ func (s *Service) Recover(ctx context.Context, code string) error {
 		return apperrors.NewInternal("Unable to use recovery code", err)
 	}
 	audit.RecordIdentity(ctx, principal.UserID, audit.Event{Action: "identity.recovery_code_used", ResourceType: "session", ResourceID: principal.SessionID})
+	s.notify(ctx, principal, "recovery")
 	return nil
 }
 
@@ -144,7 +160,27 @@ func (s *Service) Disable(ctx context.Context) error {
 		return apperrors.NewInternal("Unable to disable MFA", err)
 	}
 	audit.RecordIdentity(ctx, principal.UserID, audit.Event{Action: "identity.mfa_disabled", ResourceType: "user", ResourceID: principal.UserID.String()})
+	s.notify(ctx, principal, "disabled")
 	return nil
+}
+
+func (s *Service) notify(ctx context.Context, principal authnz.Principal, event string) {
+	if s.notifier == nil || strings.TrimSpace(principal.Email) == "" {
+		return
+	}
+	input := notifications.SendSecurityEventInput{ToEmail: principal.Email, Name: principal.Name}
+	var err error
+	switch event {
+	case "enabled":
+		err = s.notifier.SendMFAEnabled(ctx, input)
+	case "disabled":
+		err = s.notifier.SendMFADisabled(ctx, input)
+	case "recovery":
+		err = s.notifier.SendRecoveryCodeUsed(ctx, input)
+	}
+	if err != nil {
+		slog.Warn("failed to send MFA security notification", "error", err, "event", event, "user_id", principal.UserID)
+	}
 }
 
 func (s *Service) Status(ctx context.Context) (StatusResponse, error) {

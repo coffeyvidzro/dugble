@@ -2,19 +2,32 @@ package user
 
 import (
 	"context"
+	"log/slog"
 	"net/mail"
 	"strings"
 
+	"github.com/coffeyvidzro/dugble/server/internal/notifications"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
 type Service struct {
 	repository *Repository
+	notifier   SecurityNotifier
 }
 
-func NewService(repository *Repository) *Service {
-	return &Service{repository: repository}
+type SecurityNotifier interface {
+	SendPasswordChanged(context.Context, notifications.SendPasswordChangedInput) error
+	SendEmailChanged(context.Context, notifications.SendEmailChangedInput) error
+	SendAccountDeleted(context.Context, notifications.SendSecurityEventInput) error
+}
+
+func NewService(repository *Repository, notifiers ...SecurityNotifier) *Service {
+	service := &Service{repository: repository}
+	if len(notifiers) > 0 {
+		service.notifier = notifiers[0]
+	}
+	return service
 }
 
 func (s *Service) GetMe(ctx context.Context) (User, error) {
@@ -69,11 +82,22 @@ func (s *Service) UpdateEmail(ctx context.Context, req UpdateEmailRequest) (User
 		return User{}, apperrors.NewBadRequest("A valid email is required")
 	}
 
+	current, err := s.repository.GetByID(ctx, principal.UserID.String())
+	if err != nil {
+		return User{}, apperrors.NewInternal("Unable to load current email", err)
+	}
 	updated, err := s.repository.UpdateEmail(ctx, principal.UserID.String(), email)
 	if err != nil {
 		return User{}, apperrors.NewInternal("Unable to update email", err)
 	}
 
+	if s.notifier != nil {
+		for _, recipient := range uniqueEmails(current.Email, updated.Email) {
+			if err := s.notifier.SendEmailChanged(ctx, notifications.SendEmailChangedInput{ToEmail: recipient, Name: updated.Name, Email: updated.Email}); err != nil {
+				slog.Warn("failed to send email changed notification", "error", err, "user_id", updated.ID)
+			}
+		}
+	}
 	return updated, nil
 }
 
@@ -108,6 +132,11 @@ func (s *Service) UpdatePassword(ctx context.Context, req UpdatePasswordRequest)
 		return User{}, apperrors.NewInternal("Unable to update password", err)
 	}
 
+	if s.notifier != nil {
+		if err := s.notifier.SendPasswordChanged(ctx, notifications.SendPasswordChangedInput{ToEmail: updated.Email, Name: updated.Name}); err != nil {
+			slog.Warn("failed to send password changed notification", "error", err, "user_id", updated.ID)
+		}
+	}
 	return updated, nil
 }
 
@@ -117,9 +146,35 @@ func (s *Service) DeleteMe(ctx context.Context) error {
 		return apperrors.NewUnauthorized("Authentication is required")
 	}
 
+	current, err := s.repository.GetByID(ctx, principal.UserID.String())
+	if err != nil {
+		return apperrors.NewInternal("Unable to load user", err)
+	}
 	if err := s.repository.Delete(ctx, principal.UserID.String()); err != nil {
 		return apperrors.NewInternal("Unable to delete user", err)
 	}
 
+	if s.notifier != nil {
+		if err := s.notifier.SendAccountDeleted(ctx, notifications.SendSecurityEventInput{ToEmail: current.Email, Name: current.Name}); err != nil {
+			slog.Warn("failed to send account deleted notification", "error", err, "user_id", current.ID)
+		}
+	}
 	return nil
+}
+
+func uniqueEmails(values ...string) []string {
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		value = normalizeEmail(value)
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	return out
 }
