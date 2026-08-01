@@ -15,6 +15,10 @@ type sesAPI interface {
 	SendRawEmail(context.Context, *awsses.SendRawEmailInput, ...func(*awsses.Options)) (*awsses.SendRawEmailOutput, error)
 }
 
+type sesV2SendAPI interface {
+	SendEmail(context.Context, *sesv2.SendEmailInput, ...func(*sesv2.Options)) (*sesv2.SendEmailOutput, error)
+}
+
 type sesIdentityAPI interface {
 	CreateEmailIdentity(context.Context, *sesv2.CreateEmailIdentityInput, ...func(*sesv2.Options)) (*sesv2.CreateEmailIdentityOutput, error)
 	PutEmailIdentityMailFromAttributes(context.Context, *sesv2.PutEmailIdentityMailFromAttributesInput, ...func(*sesv2.Options)) (*sesv2.PutEmailIdentityMailFromAttributesOutput, error)
@@ -37,8 +41,9 @@ type Client struct {
 	defaultFrom   string
 	awsConfig     aws.Config
 
-	mu              sync.Mutex
-	sendingClients  map[string]sesAPI
-	identityClients map[string]sesIdentityAPI
-	tenantClients   map[string]sesTenantAPI
+	mu               sync.Mutex
+	sendingClients   map[string]sesAPI
+	v2SendingClients map[string]sesV2SendAPI
+	identityClients  map[string]sesIdentityAPI
+	tenantClients    map[string]sesTenantAPI
 }
