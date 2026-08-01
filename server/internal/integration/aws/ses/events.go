@@ -11,24 +11,28 @@ import (
 var ErrInvalidEvent = errors.New("invalid SES feedback event")
 
 type FeedbackEvent struct {
-	EventType         string          `json:"event_type"`
-	ProviderMessageID string          `json:"provider_message_id"`
-	OccurredAt        time.Time       `json:"occurred_at"`
-	Recipients        []string        `json:"recipients"`
-	BounceType        string          `json:"bounce_type,omitempty"`
-	BounceSubType     string          `json:"bounce_sub_type,omitempty"`
-	ComplaintType     string          `json:"complaint_type,omitempty"`
-	RejectReason      string          `json:"reject_reason,omitempty"`
-	FailureReason     string          `json:"failure_reason,omitempty"`
-	Payload           json.RawMessage `json:"-"`
+	EventType         string              `json:"event_type"`
+	ProviderMessageID string              `json:"provider_message_id"`
+	OccurredAt        time.Time           `json:"occurred_at"`
+	Recipients        []string            `json:"recipients"`
+	Tags              map[string][]string `json:"tags,omitempty"`
+	InternalMessageID string              `json:"internal_message_id,omitempty"`
+	InternalAttemptID string              `json:"internal_attempt_id,omitempty"`
+	BounceType        string              `json:"bounce_type,omitempty"`
+	BounceSubType     string              `json:"bounce_sub_type,omitempty"`
+	ComplaintType     string              `json:"complaint_type,omitempty"`
+	RejectReason      string              `json:"reject_reason,omitempty"`
+	FailureReason     string              `json:"failure_reason,omitempty"`
+	Payload           json.RawMessage     `json:"-"`
 }
 
 type feedbackEnvelope struct {
 	EventType string `json:"eventType"`
 	Mail      struct {
-		Timestamp   time.Time `json:"timestamp"`
-		MessageID   string    `json:"messageId"`
-		Destination []string  `json:"destination"`
+		Timestamp   time.Time           `json:"timestamp"`
+		MessageID   string              `json:"messageId"`
+		Destination []string            `json:"destination"`
+		Tags        map[string][]string `json:"tags"`
 	} `json:"mail"`
 	Send struct {
 		Timestamp time.Time `json:"timestamp"`
@@ -96,12 +100,16 @@ func ParseFeedbackEvent(message string) (FeedbackEvent, error) {
 	if len(recipients) == 0 {
 		recipients = normalizeRecipients(envelope.Mail.Destination)
 	}
+	tags := normalizeTags(envelope.Mail.Tags)
 
 	return FeedbackEvent{
 		EventType:         eventType,
 		ProviderMessageID: messageID,
 		OccurredAt:        occurredAt.UTC(),
 		Recipients:        recipients,
+		Tags:              tags,
+		InternalMessageID: firstTagValue(tags, "dugble_message_id"),
+		InternalAttemptID: firstTagValue(tags, "dugble_attempt_id"),
 		BounceType:        strings.TrimSpace(envelope.Bounce.BounceType),
 		BounceSubType:     strings.TrimSpace(envelope.Bounce.BounceSubType),
 		ComplaintType:     strings.TrimSpace(envelope.Complaint.ComplaintFeedbackType),
@@ -147,6 +155,46 @@ func normalizeRecipients(values []string) []string {
 		result = append(result, value)
 	}
 	return result
+}
+
+func normalizeTags(values map[string][]string) map[string][]string {
+	if len(values) == 0 {
+		return nil
+	}
+	result := make(map[string][]string, len(values))
+	for key, entries := range values {
+		key = strings.ToLower(strings.TrimSpace(key))
+		if key == "" {
+			continue
+		}
+		seen := make(map[string]struct{}, len(entries))
+		for _, entry := range entries {
+			entry = strings.TrimSpace(entry)
+			if entry == "" {
+				continue
+			}
+			if _, exists := seen[entry]; exists {
+				continue
+			}
+			seen[entry] = struct{}{}
+			result[key] = append(result[key], entry)
+		}
+		if len(result[key]) == 0 {
+			delete(result, key)
+		}
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}
+
+func firstTagValue(tags map[string][]string, key string) string {
+	values := tags[strings.ToLower(strings.TrimSpace(key))]
+	if len(values) == 0 {
+		return ""
+	}
+	return strings.TrimSpace(values[0])
 }
 
 func delayedRecipients(values []struct {
