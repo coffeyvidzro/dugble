@@ -51,7 +51,7 @@ func run() error {
 		return fmt.Errorf("load configuration: %w", err)
 	}
 
-	newRelic, err := monitoring.NewRelic("dugble-api", cfg.AppEnv)
+	newRelic, err := monitoring.NewRelic("dugble-api", cfg.AppEnv, cfg.NewRelic)
 	if err != nil {
 		return fmt.Errorf("initialize New Relic: %w", err)
 	}
