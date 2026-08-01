@@ -16,6 +16,20 @@ func TestConfigurationSetARN(t *testing.T) {
 	}
 }
 
+func TestIdentityARN(t *testing.T) {
+	got, err := identityARN(
+		"arn:aws:ses:eu-north-1:123456789012:tenant/dugble-t-example/tn-123",
+		"Example.COM",
+	)
+	if err != nil {
+		t.Fatalf("identityARN() error = %v", err)
+	}
+	want := "arn:aws:ses:eu-north-1:123456789012:identity/example.com"
+	if got != want {
+		t.Fatalf("identityARN() = %q, want %q", got, want)
+	}
+}
+
 func TestReputationPolicyARN(t *testing.T) {
 	got, err := reputationPolicyARN(
 		"arn:aws:ses:eu-north-1:123456789012:tenant/dugble-t-example/tn-123",
