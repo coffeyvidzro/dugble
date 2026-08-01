@@ -47,21 +47,25 @@ func (h *Handler) Handle(ctx context.Context, command DeliverCommand) error {
 	if err := h.repository.MarkRequestStarted(ctx, command.MessageID, command.TeamID, message.AttemptID); err != nil {
 		return err
 	}
+	route, applicationHeaders := platformemail.ExtractDeliveryRoute(message.Headers)
 	result, err := h.sender.Send(ctx, platformemail.Message{
-		MessageID:   message.ID.String(),
-		AttemptID:   message.AttemptID.String(),
-		Provider:    message.Provider,
-		Region:      message.Region,
-		From:        platformemail.Address{Email: message.FromEmail, Name: message.FromName},
-		ReplyTo:     message.ReplyTo,
-		To:          message.To,
-		CC:          message.CC,
-		BCC:         message.BCC,
-		Subject:     message.Subject,
-		HTML:        message.HTML,
-		Text:        message.Text,
-		Headers:     message.Headers,
-		Attachments: message.Attachments,
+		MessageID:       message.ID.String(),
+		AttemptID:       message.AttemptID.String(),
+		Provider:        message.Provider,
+		Region:          message.Region,
+		Stream:          route.Stream,
+		ConfigurationSet: route.ConfigurationSet,
+		SESTenantName:   route.SESTenantName,
+		From:            platformemail.Address{Email: message.FromEmail, Name: message.FromName},
+		ReplyTo:         message.ReplyTo,
+		To:              message.To,
+		CC:              message.CC,
+		BCC:             message.BCC,
+		Subject:         message.Subject,
+		HTML:            message.HTML,
+		Text:            message.Text,
+		Headers:         applicationHeaders,
+		Attachments:     message.Attachments,
 	})
 	if err != nil {
 		if platformemail.IsSubmissionUnknown(err) {
