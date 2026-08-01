@@ -20,14 +20,18 @@ func TestSendUsesEnvelopeDestinationsForBCC(t *testing.T) {
 		t.Fatalf("create client: %v", err)
 	}
 	client.sendingClients["us-east-1"] = recordingClient
+	route := platformemail.BuiltInDeliveryRoute("transactional")
 
 	_, err = client.Send(context.Background(), platformemail.Message{
-		From:    platformemail.Address{Email: "sender@example.com"},
-		To:      []platformemail.Address{{Email: "to@example.com"}},
-		CC:      []platformemail.Address{{Email: "cc@example.com"}},
-		BCC:     []platformemail.Address{{Email: "hidden@example.com"}, {Email: "TO@example.com"}},
-		Subject: "BCC delivery",
-		Text:    "Hello",
+		Stream:           route.Stream,
+		ConfigurationSet: route.ConfigurationSet,
+		SESTenantName:    route.SESTenantName,
+		From:             platformemail.Address{Email: "sender@example.com"},
+		To:               []platformemail.Address{{Email: "to@example.com"}},
+		CC:               []platformemail.Address{{Email: "cc@example.com"}},
+		BCC:              []platformemail.Address{{Email: "hidden@example.com"}, {Email: "TO@example.com"}},
+		Subject:          "BCC delivery",
+		Text:             "Hello",
 	})
 	if err != nil {
 		t.Fatalf("send email: %v", err)
@@ -50,27 +54,31 @@ func TestSendAddsDeliveryCorrelationTags(t *testing.T) {
 		t.Fatalf("create client: %v", err)
 	}
 	client.sendingClients["us-east-1"] = recordingClient
+	route := platformemail.BuiltInDeliveryRoute("transactional")
 
 	_, err = client.Send(context.Background(), platformemail.Message{
-		MessageID: "message-123",
-		AttemptID: "attempt-456",
-		From:      platformemail.Address{Email: "sender@example.com"},
-		To:        []platformemail.Address{{Email: "recipient@example.com"}},
-		Subject:   "Correlation",
-		Text:      "Hello",
+		MessageID:        "message-123",
+		AttemptID:        "attempt-456",
+		Stream:           route.Stream,
+		ConfigurationSet: route.ConfigurationSet,
+		SESTenantName:    route.SESTenantName,
+		From:             platformemail.Address{Email: "sender@example.com"},
+		To:               []platformemail.Address{{Email: "recipient@example.com"}},
+		Subject:          "Correlation",
+		Text:             "Hello",
 	})
 	if err != nil {
 		t.Fatalf("send email: %v", err)
 	}
-	if len(recordingClient.input.Tags) != 2 {
-		t.Fatalf("Tags = %#v, want two correlation tags", recordingClient.input.Tags)
+	if len(recordingClient.input.Tags) != 3 {
+		t.Fatalf("Tags = %#v, want two correlation tags and one stream tag", recordingClient.input.Tags)
 	}
 	got := map[string]string{}
 	for _, tag := range recordingClient.input.Tags {
 		got[aws.ToString(tag.Name)] = aws.ToString(tag.Value)
 	}
-	if got[messageIDTagName] != "message-123" || got[attemptIDTagName] != "attempt-456" {
-		t.Fatalf("correlation tags = %#v", got)
+	if got[messageIDTagName] != "message-123" || got[attemptIDTagName] != "attempt-456" || got[streamTagName] != "transactional" {
+		t.Fatalf("delivery tags = %#v", got)
 	}
 }
 
@@ -79,7 +87,7 @@ func TestBuildMIMERejectsOversizedEncodedMessage(t *testing.T) {
 		From:    platformemail.Address{Email: "sender@example.com"},
 		To:      []platformemail.Address{{Email: "recipient@example.com"}},
 		Subject: "Oversized",
-		Text:    strings.Repeat("x", maxSESRawMessageBytes),
+		Text:    strings.Repeat("x", platformemail.MaxRawMessageBytes),
 	})
 	if !errors.Is(err, ErrMessageTooLarge) {
 		t.Fatalf("buildMIME() error = %v, want ErrMessageTooLarge", err)
