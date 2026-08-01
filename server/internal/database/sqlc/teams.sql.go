@@ -55,18 +55,54 @@ func (q *Queries) CreateTeamMember(ctx context.Context, arg CreateTeamMemberPara
 
 const createTeamWithOwner = `-- name: CreateTeamWithOwner :one
 WITH created_team AS (
-    INSERT INTO teams (name, market_code, created_by)
-    VALUES ($1, $2, $3)
+    INSERT INTO teams (
+        name,
+        market_code,
+        created_by
+    )
+    VALUES (
+        $1,
+        $2,
+        $3
+    )
     RETURNING id, name, market_code, status, created_by, created_at, updated_at
-), created_owner AS (
-    INSERT INTO team_members (team_id, user_id, role, status)
-    SELECT id, $3, 'owner', 'active'
+),
+created_owner AS (
+    INSERT INTO team_members (
+        team_id,
+        user_id,
+        role,
+        status
+    )
+    SELECT
+        id,
+        $3,
+        'owner',
+        'active'
+    FROM created_team
+    RETURNING team_id
+),
+created_wallet AS (
+    INSERT INTO team_wallets (
+        team_id,
+        currency
+    )
+    SELECT
+        id,
+        CASE market_code
+            WHEN 'GH' THEN 'GHS'
+            WHEN 'KE' THEN 'KES'
+            WHEN 'NG' THEN 'NGN'
+        END
     FROM created_team
     RETURNING team_id
 )
 SELECT created_team.id, created_team.name, created_team.market_code, created_team.status, created_team.created_by, created_team.created_at, created_team.updated_at
 FROM created_team
-JOIN created_owner ON created_owner.team_id = created_team.id
+JOIN created_owner
+    ON created_owner.team_id = created_team.id
+JOIN created_wallet
+    ON created_wallet.team_id = created_team.id
 `
 
 type CreateTeamWithOwnerParams struct {
