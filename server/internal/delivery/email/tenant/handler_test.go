@@ -16,6 +16,7 @@ type handlerStore struct {
 	getErr      error
 	activeID    uuid.UUID
 	externalID  string
+	tenantARN   string
 	activeErr   error
 	failedID    uuid.UUID
 	failedCause error
@@ -25,8 +26,8 @@ type handlerStore struct {
 func (s *handlerStore) Get(context.Context, uuid.UUID) (emailtenant.Tenant, error) {
 	return s.tenant, s.getErr
 }
-func (s *handlerStore) MarkActive(_ context.Context, id uuid.UUID, externalID string) (emailtenant.Tenant, error) {
-	s.activeID, s.externalID = id, externalID
+func (s *handlerStore) MarkActive(_ context.Context, id uuid.UUID, externalID, tenantARN string) (emailtenant.Tenant, error) {
+	s.activeID, s.externalID, s.tenantARN = id, externalID, tenantARN
 	return s.tenant, s.activeErr
 }
 func (s *handlerStore) MarkFailed(_ context.Context, id uuid.UUID, cause error) (emailtenant.Tenant, error) {
@@ -65,8 +66,8 @@ func TestHandlerProvisionsAndActivatesTenant(t *testing.T) {
 	if provider.calls != 1 || provider.request.ExternalName != tenant.ExternalName || provider.request.Region != tenant.Region {
 		t.Fatalf("provider request = %#v, calls = %d", provider.request, provider.calls)
 	}
-	if store.activeID != tenant.ID || store.externalID != "provider-tenant-id" {
-		t.Fatalf("activation = (%s, %q)", store.activeID, store.externalID)
+	if store.activeID != tenant.ID || store.externalID != "provider-tenant-id" || store.tenantARN != provider.result.TenantARN {
+		t.Fatalf("activation = (%s, %q, %q)", store.activeID, store.externalID, store.tenantARN)
 	}
 }
 

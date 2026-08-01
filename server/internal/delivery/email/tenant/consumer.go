@@ -45,6 +45,13 @@ type Config struct {
 	AckWait        time.Duration
 	HandlerTimeout time.Duration
 	MaxDeliver     int
+	RetryBackOff   []time.Duration
+}
+
+var defaultRetryBackOff = []time.Duration{time.Second, 5 * time.Second, 30 * time.Second, 2 * time.Minute, 5 * time.Minute, 15 * time.Minute}
+
+func DefaultRetryBackOff() []time.Duration {
+	return append([]time.Duration(nil), defaultRetryBackOff...)
 }
 
 type Consumer struct {
@@ -65,9 +72,15 @@ func NewConsumer(client *jetstreammessaging.Client, processed processedEventStor
 	if config.HandlerTimeout <= 0 {
 		config.HandlerTimeout = 60 * time.Second
 	}
-	if config.MaxDeliver <= 0 {
-		config.MaxDeliver = 6
+	if len(config.RetryBackOff) == 0 {
+		config.RetryBackOff = DefaultRetryBackOff()
+	} else {
+		config.RetryBackOff = append([]time.Duration(nil), config.RetryBackOff...)
 	}
+	if config.MaxDeliver <= 0 {
+		config.MaxDeliver = len(config.RetryBackOff)
+	}
+	config.RetryBackOff = normalizeRetryBackOff(config.RetryBackOff, config.MaxDeliver)
 	return &Consumer{provider: client, publisher: client, processed: processed, handler: handler, config: config}
 }
 
@@ -78,7 +91,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 	consumer, err := c.provider.CreateOrUpdateConsumer(ctx, jetstreammessaging.JobsStreamName, natsjs.ConsumerConfig{
 		Name: ConsumerName, Durable: ConsumerName, Description: "Durable SES tenant provisioning jobs",
 		DeliverPolicy: natsjs.DeliverAllPolicy, AckPolicy: natsjs.AckExplicitPolicy, AckWait: c.config.AckWait,
-		MaxDeliver: c.config.MaxDeliver, BackOff: []time.Duration{time.Second, 5 * time.Second, 30 * time.Second, 2 * time.Minute, 5 * time.Minute, 15 * time.Minute},
+		MaxDeliver: c.config.MaxDeliver, BackOff: c.config.RetryBackOff,
 		FilterSubject: emailtenant.ProvisionSubject, ReplayPolicy: natsjs.ReplayInstantPolicy,
 		MaxAckPending: c.config.Concurrency * 4, MaxWaiting: c.config.Concurrency * 2, MaxRequestBatch: 1,
 	})
@@ -142,7 +155,7 @@ func (c *Consumer) process(parent context.Context, message natsjs.Msg) {
 			c.deadLetter(parent, message, metadata, command.EventID, err)
 			return
 		}
-		_ = message.NakWithDelay(retryDelay(metadata.NumDelivered))
+		_ = message.NakWithDelay(c.retryDelay(metadata.NumDelivered))
 		return
 	}
 
@@ -170,8 +183,8 @@ func decodeCommand(message natsjs.Msg) (emailtenant.ProvisionCommand, error) {
 	return command, nil
 }
 
-func retryDelay(delivered uint64) time.Duration {
-	delays := []time.Duration{time.Second, 5 * time.Second, 30 * time.Second, 2 * time.Minute, 5 * time.Minute, 15 * time.Minute}
+func (c *Consumer) retryDelay(delivered uint64) time.Duration {
+	delays := c.config.RetryBackOff
 	index := int(delivered) - 1
 	if index < 0 {
 		index = 0
@@ -180,6 +193,21 @@ func retryDelay(delivered uint64) time.Duration {
 		index = len(delays) - 1
 	}
 	return delays[index]
+}
+
+func normalizeRetryBackOff(delays []time.Duration, maxDeliver int) []time.Duration {
+	if maxDeliver <= 0 {
+		return nil
+	}
+	result := make([]time.Duration, maxDeliver)
+	for index := range result {
+		source := index
+		if source >= len(delays) {
+			source = len(delays) - 1
+		}
+		result[index] = delays[source]
+	}
+	return result
 }
 
 func (c *Consumer) deadLetter(ctx context.Context, message natsjs.Msg, metadata *natsjs.MsgMetadata, eventID uuid.UUID, cause error) {

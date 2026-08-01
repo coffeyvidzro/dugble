@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -93,7 +94,28 @@ func messageFor(t *testing.T, command emailtenant.ProvisionCommand, deliveries u
 	return &testMessage{data: data, headers: nats.Header{"Dugble-Event-Id": []string{command.EventID.String()}}, subject: emailtenant.ProvisionSubject, metadata: &natsjs.MsgMetadata{NumDelivered: deliveries, Sequence: natsjs.SequencePair{Stream: 7}}}
 }
 func testConsumer(handler commandHandler, store processedEventStore, pub messagePublisher) *Consumer {
-	return &Consumer{handler: handler, processed: store, publisher: pub, config: Config{HandlerTimeout: time.Second, MaxDeliver: 6}}
+	return &Consumer{handler: handler, processed: store, publisher: pub, config: Config{HandlerTimeout: time.Second, MaxDeliver: 6, RetryBackOff: DefaultRetryBackOff()}}
+}
+
+func TestNewConsumerDerivesConsistentRetryPolicy(t *testing.T) {
+	consumer := NewConsumer(nil, nil, nil, Config{RetryBackOff: []time.Duration{time.Second, 3 * time.Second, 9 * time.Second}})
+	if consumer.config.MaxDeliver != 3 || len(consumer.config.RetryBackOff) != 3 {
+		t.Fatalf("policy = max %d, backoff %v", consumer.config.MaxDeliver, consumer.config.RetryBackOff)
+	}
+
+	consumer = NewConsumer(nil, nil, nil, Config{MaxDeliver: 5, RetryBackOff: []time.Duration{time.Second, 2 * time.Second}})
+	want := []time.Duration{time.Second, 2 * time.Second, 2 * time.Second, 2 * time.Second, 2 * time.Second}
+	if !slices.Equal(consumer.config.RetryBackOff, want) {
+		t.Fatalf("backoff = %v, want %v", consumer.config.RetryBackOff, want)
+	}
+}
+
+func TestDefaultRetryBackOffReturnsCopy(t *testing.T) {
+	policy := DefaultRetryBackOff()
+	policy[0] = time.Hour
+	if DefaultRetryBackOff()[0] == time.Hour {
+		t.Fatal("caller mutated default retry policy")
+	}
 }
 
 func TestConsumerProcessesAndAcknowledgesCommand(t *testing.T) {

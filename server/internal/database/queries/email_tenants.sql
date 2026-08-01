@@ -36,6 +36,7 @@ RETURNING *;
 -- name: MarkEmailTenantActive :one
 UPDATE email_tenants
 SET external_id = $2,
+    tenant_arn = $3,
     status = 'active',
     failure_reason = NULL,
     updated_at = now()

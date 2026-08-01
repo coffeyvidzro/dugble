@@ -139,6 +139,7 @@ type EmailTenant struct {
 	Region           string             `db:"region" json:"region"`
 	ExternalName     string             `db:"external_name" json:"external_name"`
 	ExternalID       *string            `db:"external_id" json:"external_id"`
+	TenantArn        *string            `db:"tenant_arn" json:"tenant_arn"`
 	Status           string             `db:"status" json:"status"`
 	SuppressionScope string             `db:"suppression_scope" json:"suppression_scope"`
 	ReputationPolicy string             `db:"reputation_policy" json:"reputation_policy"`

@@ -13,7 +13,7 @@ import (
 
 type tenantStore interface {
 	Get(context.Context, uuid.UUID) (emailtenant.Tenant, error)
-	MarkActive(context.Context, uuid.UUID, string) (emailtenant.Tenant, error)
+	MarkActive(context.Context, uuid.UUID, string, string) (emailtenant.Tenant, error)
 	MarkFailed(context.Context, uuid.UUID, error) (emailtenant.Tenant, error)
 }
 
@@ -57,7 +57,7 @@ func (h *Handler) Handle(ctx context.Context, command emailtenant.ProvisionComma
 	if err != nil {
 		return fmt.Errorf("provision SES tenant: %w", err)
 	}
-	if _, err := h.store.MarkActive(ctx, current.ID, result.ExternalID); err != nil {
+	if _, err := h.store.MarkActive(ctx, current.ID, result.ExternalID, result.TenantARN); err != nil {
 		return fmt.Errorf("activate email tenant: %w", err)
 	}
 	return nil
