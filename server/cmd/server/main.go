@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/getsentry/sentry-go/echo"
 	"github.com/labstack/echo/v5"
 
 	"github.com/coffeyvidzro/dugble/server/internal/config"
@@ -53,6 +54,11 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("load configuration: %w", err)
 	}
+
+	if err := monitoring.InitSentry(cfg.Sentry, cfg.AppEnv); err != nil {
+		return fmt.Errorf("initialize Sentry: %w", err)
+	}
+	defer monitoring.FlushSentry(5 * time.Second)
 
 	newRelic, err := monitoring.NewRelic("dugble-api", cfg.AppEnv, cfg.NewRelic)
 	if err != nil {
@@ -155,6 +161,11 @@ func run() error {
 		return fmt.Errorf("create HTTP router: %w", err)
 	}
 	router.Use(middlewares.NewRelic())
+	router.Use(sentryecho.New(sentryecho.Options{
+		Repanic:         true,
+		WaitForDelivery: false,
+	}))
+	router.Use(middlewares.SentryErrors())
 
 	server := echo.StartConfig{
 		Address:         ":" + cfg.HTTPPort,
