@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	DeliverDLQSubjectPrefix = "dugble.dlq.email.send.v1"
+	DeliverConsumerName = "dugble-email-delivery-v1"
+	DeliverDLQSubject   = "dugble.dlq.email.send.v1"
 )
 
 type processedEventStore interface {
@@ -39,7 +40,6 @@ type messagePublisher interface {
 }
 
 type ConsumerConfig struct {
-	Region         string
 	Concurrency    int
 	AckWait        time.Duration
 	HandlerTimeout time.Duration
@@ -66,7 +66,6 @@ func NewConsumer(client *jetstreammessaging.Client, processed processedEventStor
 }
 
 func normalizeConsumerConfig(config ConsumerConfig) ConsumerConfig {
-	config.Region = strings.ToLower(strings.TrimSpace(config.Region))
 	if config.Concurrency <= 0 {
 		config.Concurrency = 5
 	}
@@ -89,24 +88,16 @@ func (c *Consumer) Run(ctx context.Context) error {
 	if c == nil || c.provider == nil || c.publisher == nil || c.processed == nil || c.handler == nil {
 		return errors.New("email delivery consumer is not fully configured")
 	}
-	consumerName, err := deliveryConsumerName(c.config.Region)
-	if err != nil {
-		return err
-	}
-	subject, err := deliverySubject(c.config.Region)
-	if err != nil {
-		return err
-	}
 	consumer, err := c.provider.CreateOrUpdateConsumer(ctx, jetstreammessaging.JobsStreamName, natsjs.ConsumerConfig{
-		Name:            consumerName,
-		Durable:         consumerName,
+		Name:            DeliverConsumerName,
+		Durable:         DeliverConsumerName,
 		Description:     "Durable email delivery commands",
 		DeliverPolicy:   natsjs.DeliverAllPolicy,
 		AckPolicy:       natsjs.AckExplicitPolicy,
 		AckWait:         c.config.AckWait,
 		MaxDeliver:      c.config.MaxDeliver,
 		BackOff:         append([]time.Duration(nil), c.config.RetryPolicy.Delays...),
-		FilterSubject:   subject,
+		FilterSubject:   DeliverSubject,
 		ReplayPolicy:    natsjs.ReplayInstantPolicy,
 		MaxAckPending:   max(c.config.Concurrency*4, c.config.Concurrency),
 		MaxWaiting:      max(c.config.Concurrency*2, c.config.Concurrency),
@@ -175,12 +166,7 @@ func (c *Consumer) processMessage(parent context.Context, message natsjs.Msg) {
 		c.deadLetter(parent, message, metadata, uuid.Nil, err)
 		return
 	}
-	consumerName, _ := deliveryConsumerName(c.config.Region)
-	if command.Region != c.config.Region {
-		c.deadLetter(parent, message, metadata, command.EventID, errors.New("email delivery command region does not match consumer region"))
-		return
-	}
-	processed, err := c.processed.IsProcessed(parent, consumerName, command.EventID)
+	processed, err := c.processed.IsProcessed(parent, DeliverConsumerName, command.EventID)
 	if err != nil {
 		c.retry(message, metadata.NumDelivered, err)
 		return
@@ -212,7 +198,7 @@ func (c *Consumer) processMessage(parent context.Context, message natsjs.Msg) {
 		return
 	}
 
-	if err := c.processed.MarkProcessed(parent, consumerName, command.EventID, map[string]any{
+	if err := c.processed.MarkProcessed(parent, DeliverConsumerName, command.EventID, map[string]any{
 		"subject": message.Subject(), "stream_sequence": metadata.Sequence.Stream, "deliveries": metadata.NumDelivered,
 	}); err != nil {
 		c.retry(message, metadata.NumDelivered, err)
@@ -226,7 +212,7 @@ func decodeCommand(message natsjs.Msg) (DeliverCommand, error) {
 	if err := json.Unmarshal(message.Data(), &command); err != nil {
 		return DeliverCommand{}, fmt.Errorf("decode email delivery command: %w", err)
 	}
-	if command.EventID == uuid.Nil || command.MessageID == uuid.Nil || command.TeamID == uuid.Nil || strings.TrimSpace(command.Region) == "" || command.SchemaVersion != 1 {
+	if command.EventID == uuid.Nil || command.MessageID == uuid.Nil || command.TeamID == uuid.Nil || command.SchemaVersion != 1 {
 		return DeliverCommand{}, errors.New("invalid email delivery command")
 	}
 	headerEventID := strings.TrimSpace(message.Headers().Get("Dugble-Event-Id"))
@@ -265,11 +251,10 @@ func (c *Consumer) deadLetter(ctx context.Context, message natsjs.Msg, metadata 
 	headers["Dugble-Dead-Letter-Reason"] = truncateDeadLetterReason(cause)
 	headers["Dugble-Delivery-Count"] = strconv.FormatUint(metadata.NumDelivered, 10)
 	messageID := eventID.String() + "-dlq"
-	consumerName, _ := deliveryConsumerName(c.config.Region)
 	if eventID == uuid.Nil {
-		messageID = fmt.Sprintf("%s-%d-dlq", consumerName, metadata.Sequence.Stream)
+		messageID = fmt.Sprintf("%s-%d-dlq", DeliverConsumerName, metadata.Sequence.Stream)
 	}
-	if err := c.publisher.Publish(ctx, DeliverDLQSubjectPrefix+"."+c.config.Region, message.Data(), headers, messageID); err != nil {
+	if err := c.publisher.Publish(ctx, DeliverDLQSubject, message.Data(), headers, messageID); err != nil {
 		c.retry(message, metadata.NumDelivered, fmt.Errorf("publish email command to DLQ: %w", err))
 		return
 	}

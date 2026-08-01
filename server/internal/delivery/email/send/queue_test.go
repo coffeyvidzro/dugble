@@ -49,16 +49,15 @@ func TestQueueEnqueueEmailDeliveryTx(t *testing.T) {
 	teamID := uuid.New()
 	store := &recordingStore{}
 
-	err := NewQueue(store).EnqueueEmailDeliveryTx(context.Background(), nil, messageID, teamID, "eu-north-1")
+	err := NewQueue(store).EnqueueEmailDeliveryTx(context.Background(), nil, messageID, teamID)
 	if err != nil {
 		t.Fatalf("enqueue email delivery: %v", err)
 	}
 	if !store.usedTx || store.enqueue != 1 {
 		t.Fatalf("expected one transactional enqueue, usedTx=%v count=%d", store.usedTx, store.enqueue)
 	}
-	wantSubject := DeliverSubjectPrefix + ".eu-north-1"
-	if store.event.Subject != wantSubject {
-		t.Fatalf("subject = %q, want %q", store.event.Subject, wantSubject)
+	if store.event.Subject != DeliverSubject {
+		t.Fatalf("subject = %q, want %q", store.event.Subject, DeliverSubject)
 	}
 	if store.event.AggregateType != "email_message" || store.event.AggregateID != messageID {
 		t.Fatalf("unexpected aggregate: %q %s", store.event.AggregateType, store.event.AggregateID)
@@ -71,7 +70,7 @@ func TestQueueEnqueueEmailDeliveryTx(t *testing.T) {
 	if err := json.Unmarshal(store.event.Payload, &command); err != nil {
 		t.Fatalf("decode command: %v", err)
 	}
-	if command.EventID != store.event.ID || command.MessageID != messageID || command.TeamID != teamID || command.Region != "eu-north-1" || command.SchemaVersion != 1 {
+	if command.EventID != store.event.ID || command.MessageID != messageID || command.TeamID != teamID || command.SchemaVersion != 1 {
 		t.Fatalf("unexpected command: %+v", command)
 	}
 }
@@ -81,7 +80,7 @@ func TestQueueEnqueueEmailDeliveryAtTxPreservesSchedule(t *testing.T) {
 	scheduledAt := time.Now().UTC().Add(time.Hour).Truncate(time.Microsecond)
 
 	err := NewQueue(store).EnqueueEmailDeliveryAtTx(
-		context.Background(), nil, uuid.New(), uuid.New(), "us-east-1", scheduledAt,
+		context.Background(), nil, uuid.New(), uuid.New(), scheduledAt,
 	)
 	if err != nil {
 		t.Fatalf("enqueue scheduled email delivery: %v", err)
@@ -121,11 +120,11 @@ func TestQueueRescheduleEmailDeliveryTxUpdatesDeterministicEvent(t *testing.T) {
 func TestQueueUsesDeterministicEventID(t *testing.T) {
 	messageID := uuid.New()
 	teamID := uuid.New()
-	first, err := newDeliveryEvent(messageID, teamID, "us-east-1")
+	first, err := newDeliveryEvent(messageID, teamID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := newDeliveryEvent(messageID, teamID, "us-east-1")
+	second, err := newDeliveryEvent(messageID, teamID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,34 +134,7 @@ func TestQueueUsesDeterministicEventID(t *testing.T) {
 }
 
 func TestQueueRequiresStore(t *testing.T) {
-	if err := (*Queue)(nil).EnqueueEmailDelivery(context.Background(), uuid.New(), uuid.New(), "us-east-1"); err == nil {
+	if err := (*Queue)(nil).EnqueueEmailDelivery(context.Background(), uuid.New(), uuid.New()); err == nil {
 		t.Fatal("expected an error for an unconfigured queue")
-	}
-}
-
-func TestQueueRejectsInvalidRegion(t *testing.T) {
-	store := &recordingStore{}
-	if err := NewQueue(store).EnqueueEmailDelivery(context.Background(), uuid.New(), uuid.New(), "us.east.1"); err == nil {
-		t.Fatal("expected an invalid region to be rejected")
-	}
-	if store.enqueue != 0 {
-		t.Fatal("invalid regional delivery was enqueued")
-	}
-}
-
-func TestRegionalDeliveryNames(t *testing.T) {
-	subject, err := deliverySubject(" EU-NORTH-1 ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if subject != "dugble.job.email.send.v1.eu-north-1" {
-		t.Fatalf("subject = %q", subject)
-	}
-	consumer, err := deliveryConsumerName("eu-north-1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if consumer != "dugble-email-delivery-v1-eu-north-1" {
-		t.Fatalf("consumer = %q", consumer)
 	}
 }

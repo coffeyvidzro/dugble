@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/caarlos0/env/v11"
@@ -14,10 +13,8 @@ type ProviderConfig struct {
 }
 
 type AWSConfig struct {
-	FromEmail      string   `env:"FROM_EMAIL,required,notEmpty"`
-	Region         string   `env:"REGION,required,notEmpty"`
-	Regions        []string `env:"REGIONS" envSeparator:","`
-	FailoverRegion string   `env:"FAILOVER_REGION"`
+	FromEmail string `env:"FROM_EMAIL,required,notEmpty"`
+	Region    string `env:"REGION,required,notEmpty"`
 
 	// Deployments outside AWS provide a tightly scoped access-key pair through
 	// their secret manager. AWS-hosted deployments may leave these empty and use
@@ -83,9 +80,6 @@ func Load() (*Config, error) {
 	}
 
 	cfg.normalize()
-	if err := cfg.validate(); err != nil {
-		return nil, err
-	}
 	return cfg, nil
 }
 
@@ -112,11 +106,6 @@ func (c *Config) normalize() {
 
 	c.AWS.FromEmail = strings.TrimSpace(c.AWS.FromEmail)
 	c.AWS.Region = strings.TrimSpace(c.AWS.Region)
-	c.AWS.Regions = normalizeRegions(c.AWS.Regions)
-	if len(c.AWS.Regions) == 0 {
-		c.AWS.Regions = []string{c.AWS.Region}
-	}
-	c.AWS.FailoverRegion = strings.ToLower(strings.TrimSpace(c.AWS.FailoverRegion))
 	c.AWS.AccessKey = strings.TrimSpace(c.AWS.AccessKey)
 	c.AWS.SecretKey = strings.TrimSpace(c.AWS.SecretKey)
 	c.AWS.SESConfigurationSet = "dugble-transactional"
@@ -153,41 +142,12 @@ func (c *Config) normalize() {
 	c.Backoffice.AdminEmails = adminEmails
 }
 
-func (c *Config) validate() error {
-	if c.AWS.FailoverRegion == "" {
-		return nil
-	}
-	for _, region := range c.AWS.Regions {
-		if region == c.AWS.FailoverRegion {
-			return nil
-		}
-	}
-	return fmt.Errorf("AWS_FAILOVER_REGION must be included in AWS_REGIONS")
-}
-
 func normalizeStrings(values []string) []string {
 	result := make([]string, 0, len(values))
 	for _, value := range values {
 		if value = strings.TrimSpace(value); value != "" {
 			result = append(result, value)
 		}
-	}
-	return result
-}
-
-func normalizeRegions(values []string) []string {
-	result := make([]string, 0, len(values))
-	seen := make(map[string]struct{}, len(values))
-	for _, value := range values {
-		value = strings.ToLower(strings.TrimSpace(value))
-		if value == "" {
-			continue
-		}
-		if _, exists := seen[value]; exists {
-			continue
-		}
-		seen[value] = struct{}{}
-		result = append(result, value)
 	}
 	return result
 }

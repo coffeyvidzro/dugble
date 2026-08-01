@@ -24,11 +24,11 @@ type Queue struct {
 
 func NewQueue(store eventStore) *Queue { return &Queue{store: store} }
 
-func (q *Queue) EnqueueEmailDelivery(ctx context.Context, messageID uuid.UUID, teamID uuid.UUID, region string) error {
+func (q *Queue) EnqueueEmailDelivery(ctx context.Context, messageID uuid.UUID, teamID uuid.UUID) error {
 	if q == nil || q.store == nil {
 		return errors.New("email delivery outbox is not configured")
 	}
-	event, err := newDeliveryEvent(messageID, teamID, region)
+	event, err := newDeliveryEvent(messageID, teamID)
 	if err != nil {
 		return err
 	}
@@ -36,15 +36,15 @@ func (q *Queue) EnqueueEmailDelivery(ctx context.Context, messageID uuid.UUID, t
 	return err
 }
 
-func (q *Queue) EnqueueEmailDeliveryTx(ctx context.Context, tx pgx.Tx, messageID uuid.UUID, teamID uuid.UUID, region string) error {
-	return q.EnqueueEmailDeliveryAtTx(ctx, tx, messageID, teamID, region, time.Time{})
+func (q *Queue) EnqueueEmailDeliveryTx(ctx context.Context, tx pgx.Tx, messageID uuid.UUID, teamID uuid.UUID) error {
+	return q.EnqueueEmailDeliveryAtTx(ctx, tx, messageID, teamID, time.Time{})
 }
 
-func (q *Queue) EnqueueEmailDeliveryAtTx(ctx context.Context, tx pgx.Tx, messageID uuid.UUID, teamID uuid.UUID, region string, availableAt time.Time) error {
+func (q *Queue) EnqueueEmailDeliveryAtTx(ctx context.Context, tx pgx.Tx, messageID uuid.UUID, teamID uuid.UUID, availableAt time.Time) error {
 	if q == nil || q.store == nil {
 		return errors.New("email delivery outbox is not configured")
 	}
-	event, err := newDeliveryEvent(messageID, teamID, region)
+	event, err := newDeliveryEvent(messageID, teamID)
 	if err != nil {
 		return err
 	}

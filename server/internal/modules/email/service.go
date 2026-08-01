@@ -3,7 +3,6 @@ package email
 import (
 	"context"
 	"errors"
-	"hash/fnv"
 	"strings"
 	"time"
 
@@ -21,10 +20,10 @@ const (
 )
 
 type DeliveryQueue interface {
-	EnqueueEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID, string) error
+	EnqueueEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error
 }
 type scheduledDeliveryQueue interface {
-	EnqueueEmailDeliveryAtTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID, string, time.Time) error
+	EnqueueEmailDeliveryAtTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID, time.Time) error
 	CancelEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID) error
 	RescheduleEmailDeliveryTx(context.Context, pgx.Tx, uuid.UUID, uuid.UUID, time.Time) error
 }
@@ -126,12 +125,9 @@ type ServiceConfig struct {
 	DefaultFromName  string
 	DefaultProvider  string
 	DefaultRegion    string
-	DeliveryRegions  []string
-	FailoverRegion   string
 }
 
 func NewService(repository *Repository, delivery DeliveryQueue, config ServiceConfig, dependencies ...any) *Service {
-	config.DeliveryRegions = normalizeDeliveryRegions(config.DefaultRegion, config.DeliveryRegions)
 	service := &Service{repository: repository, delivery: delivery, config: config, senderDomains: repository, routes: repository}
 	for _, dependency := range dependencies {
 		if resolver, ok := dependency.(senderDomainResolver); ok {
@@ -186,7 +182,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to create email message", err)
 	}
-	if err := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(m.ID), tc.Scope.TeamID, validated.ProviderRegion, validated.ScheduledAt); err != nil {
+	if err := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(m.ID), tc.Scope.TeamID, validated.ScheduledAt); err != nil {
 		return Message{}, apperrors.NewInternal("Unable to enqueue email delivery", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -285,7 +281,7 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 		if createErr != nil {
 			return nil, apperrors.NewInternal("Unable to create email message", createErr)
 		}
-		if enqueueErr := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(message.ID), tc.Scope.TeamID, validated[index].ProviderRegion, validated[index].ScheduledAt); enqueueErr != nil {
+		if enqueueErr := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(message.ID), tc.Scope.TeamID, validated[index].ScheduledAt); enqueueErr != nil {
 			return nil, apperrors.NewInternal("Unable to enqueue email delivery", enqueueErr)
 		}
 		result = append(result, message)
@@ -298,7 +294,7 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 
 func (s *Service) authorizeSender(ctx context.Context, teamID uuid.UUID, message *validatedSend) error {
 	provider := strings.TrimSpace(s.config.DefaultProvider)
-	region := selectDeliveryRegion(teamID, s.config.DeliveryRegions, s.config.FailoverRegion)
+	region := strings.TrimSpace(s.config.DefaultRegion)
 	if provider == "" || region == "" {
 		return apperrors.NewInternal("Email delivery route is not configured", nil)
 	}
@@ -338,51 +334,14 @@ func (s *Service) authorizeSender(ctx context.Context, teamID uuid.UUID, message
 	return nil
 }
 
-func normalizeDeliveryRegions(defaultRegion string, regions []string) []string {
-	if len(regions) == 0 {
-		regions = []string{defaultRegion}
-	}
-	result := make([]string, 0, len(regions))
-	seen := make(map[string]struct{}, len(regions))
-	for _, region := range regions {
-		region = strings.ToLower(strings.TrimSpace(region))
-		if region == "" {
-			continue
-		}
-		if _, exists := seen[region]; exists {
-			continue
-		}
-		seen[region] = struct{}{}
-		result = append(result, region)
-	}
-	return result
-}
-
-func selectDeliveryRegion(teamID uuid.UUID, regions []string, failoverRegion string) string {
-	if len(regions) == 0 {
-		return ""
-	}
-	if failoverRegion = strings.ToLower(strings.TrimSpace(failoverRegion)); failoverRegion != "" {
-		for _, region := range regions {
-			if region == failoverRegion {
-				return failoverRegion
-			}
-		}
-		return ""
-	}
-	hash := fnv.New32a()
-	_, _ = hash.Write(teamID[:])
-	return regions[int(hash.Sum32()%uint32(len(regions)))]
-}
-
-func enqueueDelivery(ctx context.Context, queue DeliveryQueue, tx pgx.Tx, messageID, teamID uuid.UUID, region string, scheduledAt *time.Time) error {
+func enqueueDelivery(ctx context.Context, queue DeliveryQueue, tx pgx.Tx, messageID, teamID uuid.UUID, scheduledAt *time.Time) error {
 	if scheduledAt != nil {
 		if scheduled, ok := queue.(scheduledDeliveryQueue); ok {
-			return scheduled.EnqueueEmailDeliveryAtTx(ctx, tx, messageID, teamID, region, *scheduledAt)
+			return scheduled.EnqueueEmailDeliveryAtTx(ctx, tx, messageID, teamID, *scheduledAt)
 		}
 		return errors.New("email delivery queue does not support scheduled delivery")
 	}
-	return queue.EnqueueEmailDeliveryTx(ctx, tx, messageID, teamID, region)
+	return queue.EnqueueEmailDeliveryTx(ctx, tx, messageID, teamID)
 }
 
 func bodySize(body *string) int {

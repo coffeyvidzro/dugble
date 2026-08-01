@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/google/uuid"
 
@@ -43,13 +42,6 @@ func (h *Handler) Handle(ctx context.Context, command DeliverCommand) error {
 	}
 	if err != nil {
 		return err
-	}
-	if !strings.EqualFold(strings.TrimSpace(message.Region), strings.TrimSpace(command.Region)) {
-		routingErr := fmt.Errorf("persisted email region %q does not match delivery command region %q", message.Region, command.Region)
-		if recordErr := h.repository.MarkFailed(ctx, command.MessageID, command.TeamID, message.AttemptID, "delivery_region_mismatch", routingErr); recordErr != nil {
-			return errors.Join(routingErr, recordErr)
-		}
-		return nil
 	}
 
 	if err := h.repository.MarkRequestStarted(ctx, command.MessageID, command.TeamID, message.AttemptID); err != nil {

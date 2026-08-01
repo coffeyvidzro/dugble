@@ -79,12 +79,6 @@ make down
 
 Deployment assets live in `deploy/`. `compose.yaml` defines the runtime stack, while `Caddyfile` and `nats-server.conf` configure the edge proxy and a three-node NATS JetStream cluster. Applications receive all three NATS client URLs and every durable stream stores three replicas, allowing the cluster to keep serving through the loss of one node.
 
-Customer email jobs are partitioned by their persisted SES region. The primary `worker` consumes `dugble.job.email.send.v1.${AWS_REGION}`, while `worker-secondary` consumes `dugble.job.email.send.v1.${AWS_SECONDARY_REGION}`. Configure and provision SES identities, tenants, and configuration sets in both regions before enabling the secondary worker.
-
-Set `AWS_REGIONS` to the comma-separated regions available for new customer email. Dugble uses a stable team-based selection so a team remains on the same region while traffic is distributed across the configured regions. A verified custom sender domain retains its explicitly provisioned region.
-
-For a controlled regional evacuation, set `AWS_FAILOVER_REGION` to one of the configured `AWS_REGIONS` and restart the API. New onboarding-identity emails are then pinned to that region. Clear the value to restore stable selection. This control does not reroute custom-domain, already queued, submitted, or submission-unknown email, preventing an operational failover from causing duplicate delivery.
-
 ### Run individual services
 
 ```sh
