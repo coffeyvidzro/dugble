@@ -2,6 +2,7 @@ package sso
 
 import (
 	"context"
+
 	db "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

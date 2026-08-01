@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/getsentry/sentry-go"
-	"github.com/getsentry/sentry-go/echo"
+	sentryecho "github.com/getsentry/sentry-go/echo"
 	"github.com/labstack/echo/v5"
 	"github.com/newrelic/go-agent/v3/newrelic"
 )

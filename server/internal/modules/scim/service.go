@@ -2,6 +2,10 @@ package scim
 
 import (
 	"context"
+	"net/mail"
+	"strings"
+	"time"
+
 	db "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/audit"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
@@ -9,9 +13,6 @@ import (
 	app "github.com/coffeyvidzro/dugble/server/pkg/errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	"net/mail"
-	"strings"
-	"time"
 )
 
 type Service struct{ repo *Repository }

@@ -2,13 +2,14 @@ package sso
 
 import (
 	"encoding/json"
+	"net/http"
+	"strings"
+
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
 	app "github.com/coffeyvidzro/dugble/server/pkg/errors"
 	"github.com/coffeyvidzro/dugble/server/pkg/httputil"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
-	"net/http"
-	"strings"
 )
 
 type Handler struct {

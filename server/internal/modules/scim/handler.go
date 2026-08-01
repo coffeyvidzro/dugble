@@ -3,14 +3,15 @@ package scim
 import (
 	"encoding/json"
 	"errors"
-	app "github.com/coffeyvidzro/dugble/server/pkg/errors"
-	"github.com/coffeyvidzro/dugble/server/pkg/httputil"
-	"github.com/google/uuid"
-	"github.com/labstack/echo/v5"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
+
+	app "github.com/coffeyvidzro/dugble/server/pkg/errors"
+	"github.com/coffeyvidzro/dugble/server/pkg/httputil"
+	"github.com/google/uuid"
+	"github.com/labstack/echo/v5"
 )
 
 type Handler struct{ service *Service }

@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/getsentry/sentry-go/echo"
+	sentryecho "github.com/getsentry/sentry-go/echo"
 	"github.com/labstack/echo/v5"
 
 	"github.com/coffeyvidzro/dugble/server/internal/config"

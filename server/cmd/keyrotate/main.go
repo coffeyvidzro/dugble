@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/coffeyvidzro/dugble/server/internal/database"
-	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
-	"github.com/coffeyvidzro/dugble/server/internal/platform/keyrotation"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/coffeyvidzro/dugble/server/internal/database"
+	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
+	"github.com/coffeyvidzro/dugble/server/internal/platform/keyrotation"
 )
 
 func main() {
