@@ -34,22 +34,11 @@ func (h *Handler) Create(c *echo.Context) error {
 	if err := decodeJSON(c, &req); err != nil {
 		return err
 	}
-	result, err := h.service.Create(c.Request().Context(), req)
+	domain, err := h.service.Create(c.Request().Context(), req)
 	if err != nil {
 		return httputil.Error(c, err)
 	}
-	if result.Provisioning != nil {
-		return httputil.Accepted(c, result.Provisioning)
-	}
-	return httputil.Created(c, result.Domain)
-}
-
-func (h *Handler) ProvisioningStatus(c *echo.Context) error {
-	status, err := h.service.ProvisioningStatus(c.Request().Context(), c.Param("region"))
-	if err != nil {
-		return httputil.Error(c, err)
-	}
-	return httputil.OK(c, status)
+	return httputil.Created(c, domain)
 }
 
 func (h *Handler) Verify(c *echo.Context) error {

@@ -17,7 +17,6 @@ const manualHealthFailureReason = "sender domain verification checks no longer p
 
 type emailTenantProvisioner interface {
 	RequestProvisioning(context.Context, uuid.UUID, string) (emailtenant.Tenant, error)
-	ProvisioningStatus(context.Context, uuid.UUID, string) (emailtenant.Tenant, error)
 }
 
 type Service struct {
@@ -68,37 +67,36 @@ func (s *Service) Get(ctx context.Context, domainID string) (SenderDomain, error
 	return domain, nil
 }
 
-func (s *Service) Create(ctx context.Context, req CreateRequest) (CreateResult, error) {
+func (s *Service) Create(ctx context.Context, req CreateRequest) (SenderDomain, error) {
 	tc, err := requireTenantPermission(ctx, tenant.PermissionSenderDomainsCreate)
 	if err != nil {
-		return CreateResult{}, err
+		return SenderDomain{}, err
 	}
 	domainName, region, returnPath, err := validateCreate(req)
 	if err != nil {
-		return CreateResult{}, err
+		return SenderDomain{}, err
 	}
 	if s.provider == nil {
-		return CreateResult{}, apperrors.NewInternal("Sender domain provider is not configured", nil)
+		return SenderDomain{}, apperrors.NewInternal("Sender domain provider is not configured", nil)
 	}
 	if s.tenantProvision == nil {
-		return CreateResult{}, apperrors.NewInternal("Customer email tenant provisioning is not configured", nil)
+		return SenderDomain{}, apperrors.NewInternal("Customer email tenant provisioning is not configured", nil)
 	}
 
 	emailTenant, err := s.tenantProvision.RequestProvisioning(ctx, tc.Scope.TeamID, region)
 	if err != nil {
-		return CreateResult{}, apperrors.NewInternal("Unable to prepare customer email tenant", err)
+		return SenderDomain{}, apperrors.NewInternal("Unable to prepare customer email tenant", err)
 	}
 	if emailTenant.Status != emailtenant.StatusActive {
-		status := provisioningStatus(emailTenant)
-		return CreateResult{Provisioning: &status}, nil
+		return SenderDomain{}, apperrors.NewConflict("Customer email infrastructure is being prepared; retry sender-domain creation shortly")
 	}
 
 	domain, err := s.repository.Create(ctx, tc.Scope.TeamID, domainName, DefaultProvider, region, []VerificationRecord{}, tc.Actor.UserID)
 	if err != nil {
 		if errors.Is(err, ErrSenderDomainAlreadyExists) {
-			return CreateResult{}, apperrors.NewConflict("Sender domain already exists")
+			return SenderDomain{}, apperrors.NewConflict("Sender domain already exists")
 		}
-		return CreateResult{}, apperrors.NewInternal("Unable to create sender domain", err)
+		return SenderDomain{}, apperrors.NewInternal("Unable to create sender domain", err)
 	}
 	id := uuid.MustParse(domain.ID)
 
@@ -108,11 +106,11 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (CreateResult, 
 	if provisionErr != nil {
 		reason := provisionErr.Error()
 		_, _ = s.repository.UpdateVerification(ctx, id, tc.Scope.TeamID, StatusFailed, []VerificationRecord{}, &reason)
-		return CreateResult{}, apperrors.NewInternal("Unable to provision sender domain", provisionErr)
+		return SenderDomain{}, apperrors.NewInternal("Unable to provision sender domain", provisionErr)
 	}
 	updated, saveErr := s.repository.UpdateVerification(ctx, id, tc.Scope.TeamID, StatusPending, records, nil)
 	if saveErr == nil {
-		return CreateResult{Domain: &updated}, nil
+		return updated, nil
 	}
 
 	cleanupErr := s.provider.DeleteDomain(ctx, domainName, region)
@@ -124,36 +122,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (CreateResult, 
 	if cleanupErr != nil {
 		saveErr = errors.Join(saveErr, cleanupErr)
 	}
-	return CreateResult{}, apperrors.NewInternal("Unable to save sender domain verification records", saveErr)
-}
-
-func (s *Service) ProvisioningStatus(ctx context.Context, region string) (ProvisioningStatus, error) {
-	tc, err := requireTenantPermission(ctx, tenant.PermissionSenderDomainsRead)
-	if err != nil {
-		return ProvisioningStatus{}, err
-	}
-	if s.tenantProvision == nil {
-		return ProvisioningStatus{}, apperrors.NewInternal("Customer email tenant provisioning is not configured", nil)
-	}
-	normalizedRegion, supported := platformemail.NormalizeSESRegion(region)
-	if normalizedRegion == "" {
-		return ProvisioningStatus{}, apperrors.NewBadRequest("Sender domain region is required")
-	}
-	if !supported {
-		return ProvisioningStatus{}, apperrors.NewBadRequest("Sender domain region is not supported")
-	}
-	emailTenant, err := s.tenantProvision.ProvisioningStatus(ctx, tc.Scope.TeamID, normalizedRegion)
-	if errors.Is(err, emailtenant.ErrNotFound) {
-		return ProvisioningStatus{}, apperrors.NewNotFound("Customer email tenant provisioning has not been requested")
-	}
-	if err != nil {
-		return ProvisioningStatus{}, apperrors.NewInternal("Unable to load customer email tenant provisioning status", err)
-	}
-	return provisioningStatus(emailTenant), nil
-}
-
-func provisioningStatus(value emailtenant.Tenant) ProvisioningStatus {
-	return ProvisioningStatus{TenantID: value.ID.String(), Region: value.Region, Status: value.Status, FailureReason: value.FailureReason, StatusURL: "/domains/provisioning/" + value.Region}
+	return SenderDomain{}, apperrors.NewInternal("Unable to save sender domain verification records", saveErr)
 }
 
 func (s *Service) Verify(ctx context.Context, domainID string) (SenderDomain, error) {
