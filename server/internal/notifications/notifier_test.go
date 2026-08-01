@@ -53,16 +53,16 @@ func TestSecurityNotificationsRenderAndSend(t *testing.T) {
 		}, want: "failed the multi-factor authentication step"},
 		{name: "member removed", send: func() error {
 			return service.SendTeamMemberRemoved(context.Background(), SendTeamMemberChangedInput{ToEmail: "person@example.com", Name: "Person", Team: "Example"})
-		}, want: "removed from the Example team"},
+		}, want: "Example</strong> team"},
 		{name: "member role changed", send: func() error {
 			return service.SendTeamMemberRoleChanged(context.Background(), SendTeamMemberChangedInput{ToEmail: "person@example.com", Name: "Person", Team: "Example", Role: "admin"})
-		}, want: "changed to admin"},
+		}, want: "admin</strong>"},
 		{name: "team token created", send: func() error {
 			return service.SendTeamTokenCreated(context.Background(), SendTeamTokenChangedInput{ToEmail: "person@example.com", Name: "Person", TeamID: "team-id", TokenName: "CI", TokenPrefix: "dgb_team_abcd"})
-		}, want: "CI API token"},
+		}, want: "CI</strong>"},
 		{name: "team token revoked", send: func() error {
 			return service.SendTeamTokenRevoked(context.Background(), SendTeamTokenChangedInput{ToEmail: "person@example.com", Name: "Person", TeamID: "team-id", TokenName: "CI", TokenPrefix: "dgb_team_abcd"})
-		}, want: "revoked for team team-id"},
+		}, want: "can no longer authenticate"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

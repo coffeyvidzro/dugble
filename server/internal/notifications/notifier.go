@@ -12,13 +12,21 @@ import (
 )
 
 const (
-	verifyEmailTemplate     = "verify_email.html"
-	forgotPasswordTemplate  = "forgot_password.html"
-	passwordChangedTemplate = "password_changed.html"
-	securityEventTemplate   = "security_event.html"
-	accountDeletedTemplate  = "account_deleted.html"
-	administrativeTemplate  = "administrative_event.html"
-	teamInvitationTemplate  = "team_invitation.html"
+	verifyEmailTemplate           = "verify_email.html"
+	forgotPasswordTemplate        = "forgot_password.html"
+	passwordChangedTemplate       = "password_changed.html"
+	emailChangedTemplate          = "email_changed.html"
+	mfaEnabledTemplate            = "mfa_enabled.html"
+	mfaDisabledTemplate           = "mfa_disabled.html"
+	recoveryCodeUsedTemplate      = "recovery_code_used.html"
+	mfaLoginFailedTemplate        = "mfa_login_failed.html"
+	newLoginTemplate              = "new_login.html"
+	accountDeletedTemplate        = "account_deleted.html"
+	teamMemberRemovedTemplate     = "team_member_removed.html"
+	teamMemberRoleChangedTemplate = "team_member_role_changed.html"
+	teamTokenCreatedTemplate      = "team_token_created.html"
+	teamTokenRevokedTemplate      = "team_token_revoked.html"
+	teamInvitationTemplate        = "team_invitation.html"
 )
 
 type EmailService struct {
@@ -84,23 +92,23 @@ func (s *EmailService) SendPasswordChanged(ctx context.Context, input SendPasswo
 }
 
 func (s *EmailService) SendEmailChanged(ctx context.Context, input SendEmailChangedInput) error {
-	return s.sendSecurityEvent(ctx, input.ToEmail, input.Name, "Your Dugble email address was changed", "Your Dugble email address was changed.", "Your account email address was changed to "+input.Email+".")
+	return s.SendTemplateEmail(ctx, SendTemplateEmailInput{To: input.ToEmail, Subject: "Your Dugble email address was changed", TemplateName: emailChangedTemplate, Data: map[string]string{"Name": displayName(input.Name), "PreviewText": "Your Dugble email address was changed.", "Email": input.Email}})
 }
 
 func (s *EmailService) SendMFAEnabled(ctx context.Context, input SendSecurityEventInput) error {
-	return s.sendSecurityEvent(ctx, input.ToEmail, input.Name, "Authenticator MFA was enabled", "Authenticator MFA was enabled on your Dugble account.", "Authenticator-app multi-factor authentication was enabled on your account.")
+	return s.SendTemplateEmail(ctx, SendTemplateEmailInput{To: input.ToEmail, Subject: "Authenticator MFA was enabled", TemplateName: mfaEnabledTemplate, Data: securityEventData(input, "Authenticator MFA was enabled on your Dugble account.")})
 }
 
 func (s *EmailService) SendMFADisabled(ctx context.Context, input SendSecurityEventInput) error {
-	return s.sendSecurityEvent(ctx, input.ToEmail, input.Name, "Authenticator MFA was disabled", "Authenticator MFA was disabled on your Dugble account.", "Authenticator-app multi-factor authentication was disabled on your account.")
+	return s.SendTemplateEmail(ctx, SendTemplateEmailInput{To: input.ToEmail, Subject: "Authenticator MFA was disabled", TemplateName: mfaDisabledTemplate, Data: securityEventData(input, "Authenticator MFA was disabled on your Dugble account.")})
 }
 
 func (s *EmailService) SendRecoveryCodeUsed(ctx context.Context, input SendSecurityEventInput) error {
-	return s.sendSecurityEvent(ctx, input.ToEmail, input.Name, "A recovery code was used", "A recovery code was used on your Dugble account.", "A recovery code was used to verify access to your account.")
+	return s.SendTemplateEmail(ctx, SendTemplateEmailInput{To: input.ToEmail, Subject: "A recovery code was used", TemplateName: recoveryCodeUsedTemplate, Data: securityEventData(input, "A recovery code was used on your Dugble account.")})
 }
 
 func (s *EmailService) SendMFALoginFailed(ctx context.Context, input SendSecurityEventInput) error {
-	return s.sendSecurityEvent(ctx, input.ToEmail, input.Name, "A failed MFA sign-in attempt was detected", "A failed MFA sign-in attempt was detected on your Dugble account.", "Someone with your password failed the multi-factor authentication step while trying to access your account.")
+	return s.SendTemplateEmail(ctx, SendTemplateEmailInput{To: input.ToEmail, Subject: "A failed MFA sign-in attempt was detected", TemplateName: mfaLoginFailedTemplate, Data: securityEventData(input, "A failed MFA sign-in attempt was detected on your Dugble account.")})
 }
 
 func (s *EmailService) SendAccountDeleted(ctx context.Context, input SendSecurityEventInput) error {
@@ -108,34 +116,34 @@ func (s *EmailService) SendAccountDeleted(ctx context.Context, input SendSecurit
 }
 
 func (s *EmailService) SendNewLogin(ctx context.Context, input SendNewLoginInput) error {
-	return s.SendTemplateEmail(ctx, SendTemplateEmailInput{To: input.ToEmail, Subject: "New sign-in to your Dugble account", TemplateName: securityEventTemplate, Data: map[string]string{
+	return s.SendTemplateEmail(ctx, SendTemplateEmailInput{To: input.ToEmail, Subject: "New sign-in to your Dugble account", TemplateName: newLoginTemplate, Data: map[string]string{
 		"Name": displayName(input.Name), "PreviewText": "A new sign-in was detected on your Dugble account.",
-		"Message": "A new sign-in was detected using " + displayValue(input.Method) + " authentication from IP " + displayValue(input.IPAddress) + " with " + displayValue(input.UserAgent) + ".",
+		"Method": displayValue(input.Method), "IPAddress": displayValue(input.IPAddress), "UserAgent": displayValue(input.UserAgent),
 	}})
 }
 
-func (s *EmailService) sendSecurityEvent(ctx context.Context, toEmail, name, subject, preview, message string) error {
-	return s.SendTemplateEmail(ctx, SendTemplateEmailInput{To: toEmail, Subject: subject, TemplateName: securityEventTemplate, Data: map[string]string{"Name": displayName(name), "PreviewText": preview, "Message": message}})
+func securityEventData(input SendSecurityEventInput, preview string) map[string]string {
+	return map[string]string{"Name": displayName(input.Name), "PreviewText": preview}
 }
 
 func (s *EmailService) SendTeamMemberRemoved(ctx context.Context, input SendTeamMemberChangedInput) error {
-	return s.sendAdministrativeEvent(ctx, input.ToEmail, input.Name, "You were removed from a Dugble team", "Your Dugble team membership changed.", "You were removed from the "+input.Team+" team.")
+	return s.SendTemplateEmail(ctx, SendTemplateEmailInput{To: input.ToEmail, Subject: "You were removed from a Dugble team", TemplateName: teamMemberRemovedTemplate, Data: map[string]string{"Name": displayName(input.Name), "PreviewText": "Your Dugble team membership changed.", "Team": input.Team}})
 }
 
 func (s *EmailService) SendTeamMemberRoleChanged(ctx context.Context, input SendTeamMemberChangedInput) error {
-	return s.sendAdministrativeEvent(ctx, input.ToEmail, input.Name, "Your Dugble team role changed", "Your Dugble team role changed.", "Your role on the "+input.Team+" team was changed to "+displayRole(input.Role)+".")
+	return s.SendTemplateEmail(ctx, SendTemplateEmailInput{To: input.ToEmail, Subject: "Your Dugble team role changed", TemplateName: teamMemberRoleChangedTemplate, Data: map[string]string{"Name": displayName(input.Name), "PreviewText": "Your Dugble team role changed.", "Team": input.Team, "Role": displayRole(input.Role)}})
 }
 
 func (s *EmailService) SendTeamTokenCreated(ctx context.Context, input SendTeamTokenChangedInput) error {
-	return s.sendAdministrativeEvent(ctx, input.ToEmail, input.Name, "A Dugble team token was created", "A team API token was created.", "The "+input.TokenName+" API token ("+input.TokenPrefix+") was created for team "+input.TeamID+".")
+	return s.SendTemplateEmail(ctx, SendTemplateEmailInput{To: input.ToEmail, Subject: "A Dugble team token was created", TemplateName: teamTokenCreatedTemplate, Data: teamTokenEventData(input, "A team API token was created.")})
 }
 
 func (s *EmailService) SendTeamTokenRevoked(ctx context.Context, input SendTeamTokenChangedInput) error {
-	return s.sendAdministrativeEvent(ctx, input.ToEmail, input.Name, "A Dugble team token was revoked", "A team API token was revoked.", "The "+input.TokenName+" API token ("+input.TokenPrefix+") was revoked for team "+input.TeamID+".")
+	return s.SendTemplateEmail(ctx, SendTemplateEmailInput{To: input.ToEmail, Subject: "A Dugble team token was revoked", TemplateName: teamTokenRevokedTemplate, Data: teamTokenEventData(input, "A team API token was revoked.")})
 }
 
-func (s *EmailService) sendAdministrativeEvent(ctx context.Context, toEmail, name, subject, preview, message string) error {
-	return s.SendTemplateEmail(ctx, SendTemplateEmailInput{To: toEmail, Subject: subject, TemplateName: administrativeTemplate, Data: map[string]string{"Name": displayName(name), "PreviewText": preview, "Message": message}})
+func teamTokenEventData(input SendTeamTokenChangedInput, preview string) map[string]string {
+	return map[string]string{"Name": displayName(input.Name), "PreviewText": preview, "TeamID": input.TeamID, "TokenName": input.TokenName, "TokenPrefix": input.TokenPrefix}
 }
 
 func (s *EmailService) SendTeamInvitation(ctx context.Context, input SendTeamInvitationInput) error {
