@@ -77,7 +77,7 @@ func (c *Client) ProvisionTenant(ctx context.Context, request TenantProvisionReq
 	resources := []struct {
 		label string
 		arn   string
-	}{ }
+	}{}
 	for _, configurationSet := range []string{TransactionalConfigurationSet, MarketingConfigurationSet} {
 		resourceARN, arnErr := configurationSetARN(tenantARN, configurationSet)
 		if arnErr != nil {
@@ -88,14 +88,14 @@ func (c *Client) ProvisionTenant(ctx context.Context, request TenantProvisionReq
 			arn   string
 		}{label: "configuration set " + configurationSet, arn: resourceARN})
 	}
-	onboardingARN, err := identityARN(tenantARN, platformemail.CustomerOnboardingIdentity)
+	onboardingARN, err := identityARN(tenantARN, platformemail.CustomerOnboardingSESIdentity)
 	if err != nil {
 		return TenantProvisionResult{}, err
 	}
 	resources = append(resources, struct {
 		label string
 		arn   string
-	}{label: "onboarding identity", arn: onboardingARN})
+	}{label: "onboarding domain identity", arn: onboardingARN})
 
 	for _, resource := range resources {
 		_, associationErr := client.CreateTenantResourceAssociation(ctx, &sesv2.CreateTenantResourceAssociationInput{
