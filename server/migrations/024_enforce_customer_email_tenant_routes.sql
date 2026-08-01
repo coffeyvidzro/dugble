@@ -9,7 +9,7 @@ DECLARE
     persisted_configuration_set TEXT;
     persisted_tenant TEXT;
 BEGIN
-    IF lower(NEW.from_email) = 'onboarding@dugble.me' THEN
+    IF lower(NEW.from_email) = 'onboarding@runnage.dev' THEN
         IF NEW.message_type <> 'transactional' THEN
             RAISE EXCEPTION 'onboarding identity supports transactional email only'
                 USING ERRCODE = '23514';
