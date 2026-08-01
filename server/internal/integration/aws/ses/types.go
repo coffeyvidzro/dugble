@@ -24,10 +24,9 @@ type sesIdentityAPI interface {
 
 // Client implements provider-neutral sending and sender-domain operations using AWS SES.
 type Client struct {
-	defaultRegion    string
-	defaultFrom      string
-	configurationSet string
-	awsConfig        aws.Config
+	defaultRegion string
+	defaultFrom   string
+	awsConfig     aws.Config
 
 	mu              sync.Mutex
 	sendingClients  map[string]sesAPI
