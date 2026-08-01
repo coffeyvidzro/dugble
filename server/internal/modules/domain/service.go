@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/google/uuid"
 
@@ -136,12 +135,12 @@ func (s *Service) ProvisioningStatus(ctx context.Context, region string) (Provis
 	if s.tenantProvision == nil {
 		return ProvisioningStatus{}, apperrors.NewInternal("Customer email tenant provisioning is not configured", nil)
 	}
-	normalizedRegion := strings.ToLower(strings.TrimSpace(region))
+	normalizedRegion, supported := platformemail.NormalizeSESRegion(region)
 	if normalizedRegion == "" {
-		normalizedRegion = DefaultRegion
+		return ProvisioningStatus{}, apperrors.NewBadRequest("Sender domain region is required")
 	}
-	if err := validateRegion(normalizedRegion); err != nil {
-		return ProvisioningStatus{}, err
+	if !supported {
+		return ProvisioningStatus{}, apperrors.NewBadRequest("Sender domain region is not supported")
 	}
 	emailTenant, err := s.tenantProvision.ProvisioningStatus(ctx, tc.Scope.TeamID, normalizedRegion)
 	if errors.Is(err, emailtenant.ErrNotFound) {

@@ -197,3 +197,17 @@ func TestProvisioningStatusReadsExistingLifecycleWithoutScheduling(t *testing.T)
 		t.Fatalf("status reads = %d, requests = %d", provisioner.statusReads, provisioner.requests)
 	}
 }
+
+func TestProvisioningStatusRejectsEmptyRegion(t *testing.T) {
+	teamID := uuid.New()
+	provisioner := &provisioningStub{}
+	service := NewService(nil, nil, nil, provisioner)
+
+	_, err := service.ProvisioningStatus(domainAccessContext(teamID), " \t ")
+	if err == nil {
+		t.Fatal("ProvisioningStatus() error = nil, want required region error")
+	}
+	if provisioner.statusReads != 0 {
+		t.Fatalf("status reads = %d, want 0", provisioner.statusReads)
+	}
+}
