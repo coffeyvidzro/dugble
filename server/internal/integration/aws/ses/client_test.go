@@ -30,7 +30,10 @@ func TestSendUsesMessageRegion(t *testing.T) {
 	}
 	client.v2SendingClients["us-east-1"] = defaultClient
 	client.v2SendingClients["eu-west-1"] = regionalClient
-	route := platformemail.CustomerDeliveryRoute("transactional", "dugble-t-customer")
+	route, err := platformemail.CustomerDeliveryRoute("transactional", "dugble-t-customer")
+	if err != nil {
+		t.Fatalf("create customer route: %v", err)
+	}
 	_, err = client.Send(context.Background(), platformemail.Message{
 		Region:           "eu-west-1",
 		Stream:           route.Stream,
@@ -56,7 +59,10 @@ func TestSendUsesPersistedConfigurationSetAndTenant(t *testing.T) {
 		t.Fatalf("create client: %v", err)
 	}
 	client.v2SendingClients["us-east-1"] = recordingClient
-	route := platformemail.CustomerDeliveryRoute("marketing", "dugble-t-customer")
+	route, err := platformemail.CustomerDeliveryRoute("marketing", "dugble-t-customer")
+	if err != nil {
+		t.Fatalf("create customer route: %v", err)
+	}
 	_, err = client.Send(context.Background(), platformemail.Message{
 		Stream:           route.Stream,
 		ConfigurationSet: route.ConfigurationSet,
