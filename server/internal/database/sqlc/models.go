@@ -196,6 +196,18 @@ type ProcessedEvent struct {
 	Metadata     []byte             `db:"metadata" json:"metadata"`
 }
 
+type ProductRate struct {
+	ID         uuid.UUID          `db:"id" json:"id"`
+	Product    string             `db:"product" json:"product"`
+	MarketCode string             `db:"market_code" json:"market_code"`
+	Tier       string             `db:"tier" json:"tier"`
+	Currency   string             `db:"currency" json:"currency"`
+	CostUnits  int64              `db:"cost_units" json:"cost_units"`
+	IsActive   bool               `db:"is_active" json:"is_active"`
+	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
 type RecoveryCode struct {
 	ID        uuid.UUID          `db:"id" json:"id"`
 	UserID    uuid.UUID          `db:"user_id" json:"user_id"`
@@ -334,6 +346,17 @@ type TeamToken struct {
 	UpdatedAt   pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
+type TeamWallet struct {
+	TeamID             uuid.UUID          `db:"team_id" json:"team_id"`
+	Currency           string             `db:"currency" json:"currency"`
+	BalanceUnits       int64              `db:"balance_units" json:"balance_units"`
+	Tier               string             `db:"tier" json:"tier"`
+	FreeEmailAllowance int32              `db:"free_email_allowance" json:"free_email_allowance"`
+	LastAllowanceReset pgtype.Timestamptz `db:"last_allowance_reset" json:"last_allowance_reset"`
+	CreatedAt          pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
 type TotpCredential struct {
 	UserID           uuid.UUID          `db:"user_id" json:"user_id"`
 	SecretCiphertext []byte             `db:"secret_ciphertext" json:"secret_ciphertext"`
@@ -360,6 +383,15 @@ type VerificationToken struct {
 	TokenHash  string             `db:"token_hash" json:"token_hash"`
 	ExpiresAt  pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
 	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
+type WalletLedger struct {
+	ID              uuid.UUID          `db:"id" json:"id"`
+	TeamID          uuid.UUID          `db:"team_id" json:"team_id"`
+	AmountUnits     int64              `db:"amount_units" json:"amount_units"`
+	TransactionType string             `db:"transaction_type" json:"transaction_type"`
+	ReferenceID     string             `db:"reference_id" json:"reference_id"`
+	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
 type WebhookDelivery struct {
