@@ -24,10 +24,10 @@ type AWSConfig struct {
 
 	// SESConfigurationSet remains as a compatibility fallback for deployments
 	// that have not split transactional and marketing streams yet.
-	SESConfigurationSet              string `env:"SES_CONFIGURATION_SET"`
-	SESTransactionalConfigurationSet string `env:"SES_TRANSACTIONAL_CONFIGURATION_SET"`
-	SESMarketingConfigurationSet     string `env:"SES_MARKETING_CONFIGURATION_SET"`
-	SESTenantName                    string `env:"SES_TENANT_NAME"`
+	SESConfigurationSet              string   `env:"SES_CONFIGURATION_SET"`
+	SESTransactionalConfigurationSet string   `env:"SES_TRANSACTIONAL_CONFIGURATION_SET"`
+	SESMarketingConfigurationSet     string   `env:"SES_MARKETING_CONFIGURATION_SET"`
+	SESTenantName                    string   `env:"SES_TENANT_NAME"`
 	SNSTopicARNs                     []string `env:"SNS_TOPIC_ARNS" envSeparator:","`
 }
 
@@ -46,7 +46,7 @@ type SentryConfig struct {
 	DSN             string  `env:"DSN"`
 	Release         string  `env:"RELEASE"`
 	ErrorSampleRate float64 `env:"ERROR_SAMPLE_RATE" envDefault:"1"`
-	Debug            bool    `env:"DEBUG" envDefault:"false"`
+	Debug           bool    `env:"DEBUG" envDefault:"false"`
 }
 
 type Config struct {
@@ -114,6 +114,9 @@ func (c *Config) normalize() {
 	c.AWS.SESTenantName = strings.TrimSpace(c.AWS.SESTenantName)
 	if c.AWS.SESTransactionalConfigurationSet == "" {
 		c.AWS.SESTransactionalConfigurationSet = c.AWS.SESConfigurationSet
+	}
+	if c.AWS.SESConfigurationSet == "" {
+		c.AWS.SESConfigurationSet = c.AWS.SESTransactionalConfigurationSet
 	}
 	c.AWS.SNSTopicARNs = normalizeStrings(c.AWS.SNSTopicARNs)
 	c.NATSURL = strings.TrimSpace(c.NATSURL)
