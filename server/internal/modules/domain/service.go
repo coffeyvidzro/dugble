@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 
@@ -76,20 +77,31 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (SenderDomain, 
 		}
 		return SenderDomain{}, apperrors.NewInternal("Unable to create sender domain", err)
 	}
+	id := uuid.MustParse(domain.ID)
 
 	records, provisionErr := s.provider.ProvisionDomain(ctx, platformemail.DomainProvisionRequest{
 		Domain: domainName, Region: region, CustomReturnPath: returnPath,
 	})
 	if provisionErr != nil {
 		reason := provisionErr.Error()
-		_, _ = s.repository.UpdateVerification(ctx, uuid.MustParse(domain.ID), tc.Scope.TeamID, StatusFailed, []VerificationRecord{}, &reason)
+		_, _ = s.repository.UpdateVerification(ctx, id, tc.Scope.TeamID, StatusFailed, []VerificationRecord{}, &reason)
 		return SenderDomain{}, apperrors.NewInternal("Unable to provision sender domain", provisionErr)
 	}
-	updated, err := s.repository.UpdateVerification(ctx, uuid.MustParse(domain.ID), tc.Scope.TeamID, StatusPending, records, nil)
-	if err != nil {
-		return SenderDomain{}, apperrors.NewInternal("Unable to save sender domain verification records", err)
+	updated, saveErr := s.repository.UpdateVerification(ctx, id, tc.Scope.TeamID, StatusPending, records, nil)
+	if saveErr == nil {
+		return updated, nil
 	}
-	return updated, nil
+
+	cleanupErr := s.provider.DeleteDomain(ctx, domainName, region)
+	reason := "unable to save sender domain verification records"
+	if cleanupErr != nil {
+		reason = fmt.Sprintf("%s; provider cleanup failed: %v", reason, cleanupErr)
+	}
+	_, _ = s.repository.UpdateVerification(ctx, id, tc.Scope.TeamID, StatusFailed, []VerificationRecord{}, &reason)
+	if cleanupErr != nil {
+		saveErr = errors.Join(saveErr, cleanupErr)
+	}
+	return SenderDomain{}, apperrors.NewInternal("Unable to save sender domain verification records", saveErr)
 }
 
 func (s *Service) Verify(ctx context.Context, domainID string) (SenderDomain, error) {
@@ -195,11 +207,25 @@ func (s *Service) Delete(ctx context.Context, domainID string) (SenderDomain, er
 	if err != nil {
 		return SenderDomain{}, err
 	}
-	domain, err := s.repository.Delete(ctx, id, tc.Scope.TeamID)
+	if s.provider == nil {
+		return SenderDomain{}, apperrors.NewInternal("Sender domain provider is not configured", nil)
+	}
+
+	domain, err := s.repository.Disable(ctx, id, tc.Scope.TeamID)
 	if err != nil {
 		return SenderDomain{}, apperrors.NewNotFound("Sender domain not found")
 	}
-	return domain, nil
+	if err := s.provider.DeleteDomain(ctx, domain.Domain, domain.ProviderRegion); err != nil {
+		return domain, apperrors.NewInternal("Unable to delete sender domain from provider; the domain has been disabled", err)
+	}
+	purged, err := s.repository.PurgeIfUnreferenced(ctx, id, tc.Scope.TeamID)
+	if err != nil {
+		return domain, apperrors.NewInternal("Sender domain was removed from provider but local cleanup failed", err)
+	}
+	if purged {
+		return domain, nil
+	}
+	return s.repository.Get(ctx, id, tc.Scope.TeamID)
 }
 
 func requireTenantPermission(ctx context.Context, permission tenant.Permission) (tenant.AccessContext, error) {
