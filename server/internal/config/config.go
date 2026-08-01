@@ -22,6 +22,14 @@ type AWSConfig struct {
 	AccessKey string `env:"ACCESS_KEY_ID"`
 	SecretKey string `env:"SECRET_ACCESS_KEY"`
 
+	// These values are internal compatibility fields for bootstrap wiring. They
+	// are not environment configuration; message routing is resolved by the
+	// platform email policy and persisted per message.
+	SESConfigurationSet              string
+	SESTransactionalConfigurationSet string
+	SESMarketingConfigurationSet     string
+	SESTenantName                    string
+
 	SNSTopicARNs []string `env:"SNS_TOPIC_ARNS" envSeparator:","`
 }
 
@@ -103,6 +111,10 @@ func (c *Config) normalize() {
 	c.AWS.Region = strings.TrimSpace(c.AWS.Region)
 	c.AWS.AccessKey = strings.TrimSpace(c.AWS.AccessKey)
 	c.AWS.SecretKey = strings.TrimSpace(c.AWS.SecretKey)
+	c.AWS.SESConfigurationSet = "dugble-transactional"
+	c.AWS.SESTransactionalConfigurationSet = "dugble-transactional"
+	c.AWS.SESMarketingConfigurationSet = "dugble-marketing"
+	c.AWS.SESTenantName = "dugble-system"
 	c.AWS.SNSTopicARNs = normalizeStrings(c.AWS.SNSTopicARNs)
 	c.NATSURL = strings.TrimSpace(c.NATSURL)
 	c.Arkesel.APIKey = strings.TrimSpace(c.Arkesel.APIKey)
