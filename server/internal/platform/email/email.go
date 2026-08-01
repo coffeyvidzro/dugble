@@ -39,23 +39,29 @@ type Message struct {
 	// MessageID and AttemptID are provider-neutral correlation identifiers. An
 	// integration may attach them as provider metadata so asynchronous feedback
 	// can reconcile a submission whose synchronous result could not be stored.
-	MessageID string
-	AttemptID string
+	MessageID string `json:"message_id,omitempty"`
+	AttemptID string `json:"attempt_id,omitempty"`
 
-	// Provider and Region select the immutable delivery route resolved when the
-	// Email API accepted the message. Empty values use the sender's defaults.
-	Provider    string
-	Region      string
-	From        Address
-	ReplyTo     []Address
-	To          []Address
-	CC          []Address
-	BCC         []Address
-	Subject     string
-	HTML        string
-	Text        string
-	Headers     map[string]string
-	Attachments []Attachment
+	// Provider, Region, Stream, ConfigurationSet, and SESTenantName form the
+	// immutable delivery route resolved when the application accepts a message.
+	// Empty values are supported only for legacy and system messages, where the
+	// sender's configured defaults are used.
+	Provider         string `json:"provider,omitempty"`
+	Region           string `json:"region,omitempty"`
+	Stream           string `json:"stream,omitempty"`
+	ConfigurationSet string `json:"configuration_set,omitempty"`
+	SESTenantName    string `json:"ses_tenant_name,omitempty"`
+
+	From        Address           `json:"from"`
+	ReplyTo     []Address         `json:"reply_to,omitempty"`
+	To          []Address         `json:"to"`
+	CC          []Address         `json:"cc,omitempty"`
+	BCC         []Address         `json:"bcc,omitempty"`
+	Subject     string            `json:"subject"`
+	HTML        string            `json:"html,omitempty"`
+	Text        string            `json:"text,omitempty"`
+	Headers     map[string]string `json:"headers,omitempty"`
+	Attachments []Attachment      `json:"attachments,omitempty"`
 }
 
 // Result identifies a message accepted by an email provider.
@@ -94,10 +100,12 @@ type DomainStatus struct {
 	MailFromVerified bool
 }
 
-// DomainProvider is implemented by integrations that provision and inspect sender identities.
+// DomainProvider is implemented by integrations that provision, inspect, and
+// deprovision sender identities.
 type DomainProvider interface {
 	ProvisionDomain(context.Context, DomainProvisionRequest) ([]VerificationRecord, error)
 	GetDomainStatus(context.Context, string, string) (DomainStatus, error)
+	DeleteDomain(context.Context, string, string) error
 }
 
 // SendError exposes provider-neutral failure metadata to delivery workers.

@@ -5,7 +5,7 @@ import "testing"
 func TestValidateCreateNormalizesDomain(t *testing.T) {
 	domainName, region, returnPath, err := validateCreate(CreateRequest{
 		Domain:           " HTTPS://Mail.Example.COM/path ",
-		Region:           " us-east-1 ",
+		Region:           " eu-north-1 ",
 		CustomReturnPath: " Bounce ",
 	})
 	if err != nil {
@@ -14,8 +14,8 @@ func TestValidateCreateNormalizesDomain(t *testing.T) {
 	if domainName != "mail.example.com" {
 		t.Fatalf("domainName = %q, want mail.example.com", domainName)
 	}
-	if region != "us-east-1" {
-		t.Fatalf("region = %q, want us-east-1", region)
+	if region != "eu-north-1" {
+		t.Fatalf("region = %q, want eu-north-1", region)
 	}
 	if returnPath != "bounce" {
 		t.Fatalf("returnPath = %q, want bounce", returnPath)
@@ -27,7 +27,7 @@ func TestValidateCreateUsesDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("validateCreate returned error: %v", err)
 	}
-	if domainName != "example.com" || region != DefaultRegion || returnPath != DefaultCustomReturnPath {
+	if domainName != "example.com" || region != "eu-north-1" || returnPath != DefaultCustomReturnPath {
 		t.Fatalf("validateCreate = %q, %q, %q", domainName, region, returnPath)
 	}
 }

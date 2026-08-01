@@ -19,6 +19,7 @@ func (p checkProvider) ProvisionDomain(context.Context, platformemail.DomainProv
 func (p checkProvider) GetDomainStatus(context.Context, string, string) (platformemail.DomainStatus, error) {
 	return p.status, p.err
 }
+func (p checkProvider) DeleteDomain(context.Context, string, string) error { return p.err }
 
 type checkDNS bool
 

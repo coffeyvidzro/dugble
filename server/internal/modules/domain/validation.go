@@ -15,7 +15,7 @@ var (
 	domainPattern    = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$`)
 	labelPattern     = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
 	supportedRegions = map[string]struct{}{
-		"us-east-1": {}, "eu-west-1": {}, "sa-east-1": {}, "ap-northeast-1": {},
+		"eu-north-1": {}, "us-east-1": {}, "eu-west-1": {}, "sa-east-1": {}, "ap-northeast-1": {},
 	}
 )
 

@@ -13,12 +13,24 @@ type ProviderConfig struct {
 }
 
 type AWSConfig struct {
-	FromEmail           string   `env:"FROM_EMAIL,required,notEmpty"`
-	Region              string   `env:"REGION,required,notEmpty"`
-	AccessKey           string   `env:"ACCESS_KEY_ID,required,notEmpty"`
-	SecretKey           string   `env:"SECRET_ACCESS_KEY,required,notEmpty"`
-	SESConfigurationSet string   `env:"SES_CONFIGURATION_SET"`
-	SNSTopicARNs        []string `env:"SNS_TOPIC_ARNS" envSeparator:","`
+	FromEmail string `env:"FROM_EMAIL,required,notEmpty"`
+	Region    string `env:"REGION,required,notEmpty"`
+
+	// Deployments outside AWS provide a tightly scoped access-key pair through
+	// their secret manager. AWS-hosted deployments may leave these empty and use
+	// the SDK default credential chain with a workload role.
+	AccessKey string `env:"ACCESS_KEY_ID"`
+	SecretKey string `env:"SECRET_ACCESS_KEY"`
+
+	// These values are internal compatibility fields for bootstrap wiring. They
+	// are not environment configuration; message routing is resolved by the
+	// platform email policy and persisted per message.
+	SESConfigurationSet              string
+	SESTransactionalConfigurationSet string
+	SESMarketingConfigurationSet     string
+	SESTenantName                    string
+
+	SNSTopicARNs []string `env:"SNS_TOPIC_ARNS" envSeparator:","`
 }
 
 type BackofficeConfig struct {
@@ -69,7 +81,6 @@ func Load() (*Config, error) {
 	}
 
 	cfg.normalize()
-
 	return cfg, nil
 }
 
@@ -87,6 +98,7 @@ func (c *Config) normalize() {
 	c.BackendURL = strings.TrimRight(strings.TrimSpace(c.BackendURL), "/")
 	c.CookieDomain = strings.TrimSpace(c.CookieDomain)
 	c.MFAEncryptionKey = strings.TrimSpace(c.MFAEncryptionKey)
+
 	keys := make([]string, 0, len(c.EncryptionKeys))
 	for _, key := range c.EncryptionKeys {
 		if key = strings.TrimSpace(key); key != "" {
@@ -94,11 +106,15 @@ func (c *Config) normalize() {
 		}
 	}
 	c.EncryptionKeys = keys
+
 	c.AWS.FromEmail = strings.TrimSpace(c.AWS.FromEmail)
 	c.AWS.Region = strings.TrimSpace(c.AWS.Region)
 	c.AWS.AccessKey = strings.TrimSpace(c.AWS.AccessKey)
 	c.AWS.SecretKey = strings.TrimSpace(c.AWS.SecretKey)
-	c.AWS.SESConfigurationSet = strings.TrimSpace(c.AWS.SESConfigurationSet)
+	c.AWS.SESConfigurationSet = "dugble-transactional"
+	c.AWS.SESTransactionalConfigurationSet = "dugble-transactional"
+	c.AWS.SESMarketingConfigurationSet = "dugble-marketing"
+	c.AWS.SESTenantName = "dugble-system"
 	c.AWS.SNSTopicARNs = normalizeStrings(c.AWS.SNSTopicARNs)
 	c.NATSURL = strings.TrimSpace(c.NATSURL)
 	c.Arkesel.APIKey = strings.TrimSpace(c.Arkesel.APIKey)
@@ -113,22 +129,18 @@ func (c *Config) normalize() {
 	origins := make([]string, 0, len(c.CORSOrigins))
 	for _, origin := range c.CORSOrigins {
 		origin = strings.TrimSpace(origin)
-		if origin == "" {
-			continue
+		if origin != "" {
+			origins = append(origins, origin)
 		}
-
-		origins = append(origins, origin)
 	}
 	c.CORSOrigins = origins
 
 	adminEmails := make([]string, 0, len(c.Backoffice.AdminEmails))
 	for _, email := range c.Backoffice.AdminEmails {
 		email = strings.ToLower(strings.TrimSpace(email))
-		if email == "" {
-			continue
+		if email != "" {
+			adminEmails = append(adminEmails, email)
 		}
-
-		adminEmails = append(adminEmails, email)
 	}
 	c.Backoffice.AdminEmails = adminEmails
 }

@@ -30,7 +30,17 @@ func TestSendUsesMessageRegion(t *testing.T) {
 	}
 	client.sendingClients["us-east-1"] = defaultClient
 	client.sendingClients["eu-west-1"] = regionalClient
-	_, err = client.Send(context.Background(), platformemail.Message{Region: "eu-west-1", From: platformemail.Address{Email: "sender@example.com"}, To: []platformemail.Address{{Email: "recipient@example.com"}}, Subject: "Regional delivery", Text: "Hello"})
+	route := platformemail.BuiltInDeliveryRoute("transactional")
+	_, err = client.Send(context.Background(), platformemail.Message{
+		Region:           "eu-west-1",
+		Stream:           route.Stream,
+		ConfigurationSet: route.ConfigurationSet,
+		SESTenantName:    route.SESTenantName,
+		From:             platformemail.Address{Email: "sender@example.com"},
+		To:               []platformemail.Address{{Email: "recipient@example.com"}},
+		Subject:          "Regional delivery",
+		Text:             "Hello",
+	})
 	if err != nil {
 		t.Fatalf("send email: %v", err)
 	}
@@ -39,19 +49,28 @@ func TestSendUsesMessageRegion(t *testing.T) {
 	}
 }
 
-func TestSendUsesConfiguredSESConfigurationSet(t *testing.T) {
+func TestSendUsesMessageConfigurationSet(t *testing.T) {
 	recordingClient := &recordingSESClient{}
-	client, err := NewClient("us-east-1", "default@example.com", "access-key", "secret-key", "dugble-transactional")
+	client, err := NewClient("us-east-1", "default@example.com", "access-key", "secret-key")
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
 	client.sendingClients["us-east-1"] = recordingClient
-	_, err = client.Send(context.Background(), platformemail.Message{From: platformemail.Address{Email: "sender@example.com"}, To: []platformemail.Address{{Email: "recipient@example.com"}}, Subject: "Configuration set", Text: "Hello"})
+	route := platformemail.BuiltInDeliveryRoute("marketing")
+	_, err = client.Send(context.Background(), platformemail.Message{
+		Stream:           route.Stream,
+		ConfigurationSet: route.ConfigurationSet,
+		SESTenantName:    route.SESTenantName,
+		From:             platformemail.Address{Email: "sender@example.com"},
+		To:               []platformemail.Address{{Email: "recipient@example.com"}},
+		Subject:          "Configuration set",
+		Text:             "Hello",
+	})
 	if err != nil {
 		t.Fatalf("send email: %v", err)
 	}
-	if got := aws.ToString(recordingClient.input.ConfigurationSetName); got != "dugble-transactional" {
-		t.Fatalf("ConfigurationSetName = %q, want %q", got, "dugble-transactional")
+	if got := aws.ToString(recordingClient.input.ConfigurationSetName); got != "dugble-marketing" {
+		t.Fatalf("ConfigurationSetName = %q, want %q", got, "dugble-marketing")
 	}
 }
 

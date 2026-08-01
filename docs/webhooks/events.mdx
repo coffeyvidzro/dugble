@@ -63,22 +63,26 @@ Treat unknown fields and event types as forward-compatible additions. Do not fai
 
 ## Email events
 
-| Event                | Meaning                                             | Suggested action                                      |
-| -------------------- | --------------------------------------------------- | ----------------------------------------------------- |
-| `email.submitted`    | SES accepted the email for delivery.                | Mark the message submitted and await final outcomes.  |
-| `email.delivered`    | SES delivered the email to the listed recipients.   | Mark those recipients delivered.                      |
-| `email.delayed`      | SES reported a temporary delivery delay.            | Keep waiting or surface a delayed state.              |
-| `email.bounced`      | SES reported a bounce for the listed recipients.    | Suppress permanent failures before retrying.          |
-| `email.complained`   | A recipient reported the email as spam.             | Suppress the recipient and investigate the campaign.  |
-| `email.rejected`     | SES rejected the email before delivery.             | Correct the message or sender configuration.          |
-| `email.failed`       | SES could not render or otherwise send the email.   | Record the failure for operational review.            |
+| Event                                | Meaning                                                   | Suggested action                                      |
+| ------------------------------------ | --------------------------------------------------------- | ----------------------------------------------------- |
+| `email.submitted`                    | SES accepted the email for delivery.                      | Mark the message submitted and await final outcomes.  |
+| `email.delivered`                    | SES delivered the email to the listed recipients.         | Mark those recipients delivered.                      |
+| `email.delayed`                      | SES reported a temporary delivery delay.                  | Keep waiting or surface a delayed state.              |
+| `email.bounced`                      | SES reported a bounce for the listed recipients.          | Suppress permanent failures before retrying.          |
+| `email.complained`                   | A recipient reported the email as spam.                   | Suppress the recipient and investigate the campaign.  |
+| `email.rejected`                     | SES rejected the email before delivery.                   | Correct the message or sender configuration.          |
+| `email.failed`                       | SES could not render or otherwise send the email.         | Record the failure for operational review.            |
+| `email.opened`                       | SES recorded an open-tracking event.                      | Update engagement analytics without changing delivery.|
+| `email.clicked`                      | SES recorded a tracked-link click.                        | Update engagement analytics and campaign attribution. |
+| `email.subscription_changed`         | SES recorded a contact-list subscription preference change.| Synchronize the recipient's subscription preferences. |
 
 Email events include the affected recipient list from the provider event. A single
 email can therefore produce different lifecycle events for different recipients.
 
 The `status` field is the current aggregate email status after applying the provider
-event. `provider_event_id` identifies the durable normalized provider event that
-caused the webhook.
+event. Engagement and subscription events do not change delivery status.
+`provider_event_id` identifies the durable normalized provider event that caused
+the webhook.
 
 `diagnostics` contains event-level SES details when available, including:
 
@@ -87,6 +91,9 @@ caused the webhook.
 - delivery SMTP response, reporting MTA, remote MTA IP, and processing time
 - delivery-delay type and expiration time
 - rejection or rendering-failure reason
+- open and click IP address and user agent
+- clicked URL and link tags
+- contact-list subscription source and old/new topic preferences
 
 `recipient_details` contains the current state for each affected recipient. Bounce
 and delay events can include SMTP `action`, enhanced status code, and diagnostic

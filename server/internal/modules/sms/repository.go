@@ -9,12 +9,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/coffeyvidzro/dugble/server/internal/database"
 	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
 	platformwebhook "github.com/coffeyvidzro/dugble/server/internal/platform/webhook"
+	"github.com/coffeyvidzro/dugble/server/pkg/pgconv"
 )
 
 var ErrMessageNotFound = errors.New("sms message not found")
@@ -83,7 +83,7 @@ func (r *Repository) Create(ctx context.Context, params createMessageParams) (Me
 		Segments:           params.Segments,
 		Metadata:           ensureMetadata(params.Metadata),
 		Tags:               tags,
-		ScheduledAt:        timestamptz(params.ScheduledAt),
+		ScheduledAt:        pgconv.NullableTimestamptz(params.ScheduledAt),
 		DestinationCountry: params.DestinationCountry,
 	})
 	if err != nil {
@@ -319,7 +319,7 @@ func messageFromSQLC(row dbsqlc.SmsMessage) Message {
 		ErrorMessage:       row.ErrorMessage,
 		Metadata:           ensureMetadata(row.Metadata),
 		Tags:               decodeTags(row.Tags),
-		ScheduledAt:        optionalTimestamptz(row.ScheduledAt),
+		ScheduledAt:        pgconv.TimestamptzToTimePtr(row.ScheduledAt),
 		CreatedAt:          row.CreatedAt.Time,
 		UpdatedAt:          row.UpdatedAt.Time,
 		DestinationCountry: row.DestinationCountry,
@@ -335,20 +335,6 @@ func messageFromSQLC(row dbsqlc.SmsMessage) Message {
 		message.DeliveredAt = &row.DeliveredAt.Time
 	}
 	return message
-}
-
-func optionalTimestamptz(value pgtype.Timestamptz) *time.Time {
-	if !value.Valid {
-		return nil
-	}
-	return &value.Time
-}
-
-func timestamptz(value *time.Time) pgtype.Timestamptz {
-	if value == nil {
-		return pgtype.Timestamptz{}
-	}
-	return pgtype.Timestamptz{Time: *value, Valid: true}
 }
 
 func decodeTags(value []byte) []Tag {

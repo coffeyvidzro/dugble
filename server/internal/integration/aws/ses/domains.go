@@ -7,11 +7,14 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 	sesv2types "github.com/aws/aws-sdk-go-v2/service/sesv2/types"
+	"github.com/aws/smithy-go"
 
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 )
@@ -41,6 +44,10 @@ func (c *Client) ProvisionDomain(ctx context.Context, req platformemail.DomainPr
 		BehaviorOnMxFailure: sesv2types.BehaviorOnMxFailureRejectMessage,
 	})
 	if err != nil {
+		cleanupErr := c.deleteDomainWithClient(ctx, client, req.Domain)
+		if cleanupErr != nil {
+			return nil, errors.Join(fmt.Errorf("configure SES MAIL FROM domain: %w", err), fmt.Errorf("roll back SES email identity: %w", cleanupErr))
+		}
 		return nil, fmt.Errorf("configure SES MAIL FROM domain: %w", err)
 	}
 	return mapVerificationRecords(req, selector, publicKey), nil
@@ -63,6 +70,30 @@ func (c *Client) GetDomainStatus(ctx context.Context, domainName, region string)
 		status.MailFromVerified = output.MailFromAttributes.MailFromDomainStatus == sesv2types.MailFromDomainStatusSuccess
 	}
 	return status, nil
+}
+
+func (c *Client) DeleteDomain(ctx context.Context, domainName, region string) error {
+	client, err := c.identityClient(region)
+	if err != nil {
+		return err
+	}
+	if err := c.deleteDomainWithClient(ctx, client, domainName); err != nil {
+		return fmt.Errorf("delete SES email identity: %w", err)
+	}
+	return nil
+}
+
+func (c *Client) deleteDomainWithClient(ctx context.Context, client sesIdentityAPI, domainName string) error {
+	_, err := client.DeleteEmailIdentity(ctx, &sesv2.DeleteEmailIdentityInput{EmailIdentity: aws.String(strings.TrimSpace(domainName))})
+	if err == nil || isSESIdentityNotFound(err) {
+		return nil
+	}
+	return err
+}
+
+func isSESIdentityNotFound(err error) bool {
+	var apiError smithy.APIError
+	return errors.As(err, &apiError) && strings.EqualFold(strings.TrimSpace(apiError.ErrorCode()), "NotFoundException")
 }
 
 func mapVerificationRecords(req platformemail.DomainProvisionRequest, selector, publicKey string) []platformemail.VerificationRecord {
