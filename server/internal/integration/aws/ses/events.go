@@ -214,6 +214,9 @@ func normalizeRecipientDiagnostics(envelope feedbackEnvelope) []RecipientDiagnos
 		if email == "" {
 			continue
 		}
+		if _, exists := seen[email]; exists {
+			continue
+		}
 		seen[email] = struct{}{}
 		result = append(result, RecipientDiagnostics{
 			Email:          email,
@@ -230,6 +233,7 @@ func normalizeRecipientDiagnostics(envelope feedbackEnvelope) []RecipientDiagnos
 		if _, exists := seen[email]; exists {
 			continue
 		}
+		seen[email] = struct{}{}
 		result = append(result, RecipientDiagnostics{
 			Email:          email,
 			StatusCode:     strings.TrimSpace(recipient.Status),
