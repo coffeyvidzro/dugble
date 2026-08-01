@@ -1,6 +1,10 @@
 package emailtenant
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 const (
 	ProviderAWSSES = "aws_ses"
@@ -23,8 +27,8 @@ const (
 // Tenant is the provider-neutral record that binds a Dugble team to an email
 // provider's regional tenant or reputation-isolation boundary.
 type Tenant struct {
-	ID               string    `json:"id"`
-	TeamID           string    `json:"team_id"`
+	ID               uuid.UUID `json:"id"`
+	TeamID           uuid.UUID `json:"team_id"`
 	Provider         string    `json:"provider"`
 	Region           string    `json:"region"`
 	ExternalName     string    `json:"external_name"`
@@ -40,7 +44,7 @@ type Tenant struct {
 // CreateParams contains server-owned values used to reserve an email tenant
 // before asynchronous provider provisioning begins.
 type CreateParams struct {
-	TeamID           string
+	TeamID           uuid.UUID
 	Provider         string
 	Region           string
 	ExternalName     string
