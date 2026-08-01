@@ -74,7 +74,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	audit.SetSink(auditRepository)
 	sessionRepository := session.NewRepository(deps.DB)
 	authRepository := auth.NewRepository(deps.DB)
-	mfaCipher, err := authnz.NewSecretCipherKeyring(cfg.EncryptionKeys, cfg.MFAEncryptionKey)
+	mfaCipher, err := authnz.NewSecretCipherKeyring(cfg.EncryptionKeys)
 	if err != nil {
 		return nil, err
 	}

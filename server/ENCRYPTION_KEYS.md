@@ -17,5 +17,3 @@ key and the remaining entries are decrypt-only fallback keys.
 6. Remove retired keys from every instance and secret store.
 
 Application reads also lazily rewrap TOTP secrets with the primary key.
-`MFA_ENCRYPTION_KEY` remains a temporary legacy fallback for
-existing deployments; new deployments should use only `ENCRYPTION_KEYS`.

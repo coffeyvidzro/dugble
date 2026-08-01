@@ -62,7 +62,7 @@ func (f *fakeStore) ConsumeLoginRecoveryCode(context.Context, string, uuid.UUID,
 
 func TestBeginAndCompleteLoginTOTP(t *testing.T) {
 	key := make([]byte, 32)
-	cipher, err := authnz.NewSecretCipher(base64.StdEncoding.EncodeToString(key))
+	cipher, err := authnz.NewSecretCipherKeyring([]string{"test:" + base64.StdEncoding.EncodeToString(key)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestCompleteLoginPreservesChallengeLookupErrors(t *testing.T) {
 
 func TestEnrollAndConfirm(t *testing.T) {
 	key := make([]byte, 32)
-	cipher, err := authnz.NewSecretCipher(base64.StdEncoding.EncodeToString(key))
+	cipher, err := authnz.NewSecretCipherKeyring([]string{"test:" + base64.StdEncoding.EncodeToString(key)})
 	if err != nil {
 		t.Fatal(err)
 	}
