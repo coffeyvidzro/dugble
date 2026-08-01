@@ -10,8 +10,9 @@ const (
 	internalConfigurationSetHeader = "X-Dugble-Internal-SES-Configuration-Set"
 	internalSESTenantHeader        = "X-Dugble-Internal-SES-Tenant"
 
-	SystemSESTenantName       = "dugble-system"
-	CustomerOnboardingIdentity = "onboarding@dugble.me"
+	SystemSESTenantName          = "dugble-system"
+	CustomerOnboardingIdentity   = "onboarding@runnage.dev"
+	CustomerOnboardingSESIdentity = "runnage.dev"
 )
 
 // DeliveryRoute is the immutable provider route selected when a message is
