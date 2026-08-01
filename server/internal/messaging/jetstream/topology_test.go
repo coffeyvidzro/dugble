@@ -20,8 +20,8 @@ func TestStreamConfigs(t *testing.T) {
 		if config.Storage != natsjs.FileStorage {
 			t.Errorf("stream %s must use file storage", config.Name)
 		}
-		if config.Replicas != 1 {
-			t.Errorf("stream %s must start with one replica", config.Name)
+		if config.Replicas != 3 {
+			t.Errorf("stream %s must use three replicas", config.Name)
 		}
 		if config.MaxBytes <= 0 || config.MaxAge <= 0 || config.MaxMsgSize <= 0 {
 			t.Errorf("stream %s must have explicit limits", config.Name)
