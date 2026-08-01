@@ -4,26 +4,40 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
     tenant_name TEXT;
-    configuration_set TEXT;
+    expected_configuration_set TEXT;
+    persisted_stream TEXT;
+    persisted_configuration_set TEXT;
+    persisted_tenant TEXT;
 BEGIN
-    IF NEW.sender_domain_id IS NULL THEN
-        RAISE EXCEPTION 'customer email requires a verified sender domain'
-            USING ERRCODE = '23514';
-    END IF;
+    IF lower(NEW.from_email) = 'onboarding@dugble.me' THEN
+        IF NEW.message_type <> 'transactional' THEN
+            RAISE EXCEPTION 'onboarding identity supports transactional email only'
+                USING ERRCODE = '23514';
+        END IF;
+        IF NEW.sender_domain_id IS NOT NULL THEN
+            RAISE EXCEPTION 'onboarding identity must not reference a sender domain'
+                USING ERRCODE = '23514';
+        END IF;
+    ELSE
+        IF NEW.sender_domain_id IS NULL THEN
+            RAISE EXCEPTION 'customer email requires a verified sender domain'
+                USING ERRCODE = '23514';
+        END IF;
 
-    IF NOT EXISTS (
-        SELECT 1
-        FROM sender_domains AS domain
-        WHERE domain.id = NEW.sender_domain_id
-          AND domain.team_id = NEW.team_id
-          AND domain.provider = NEW.delivery_provider
-          AND domain.provider_region = NEW.provider_region
-          AND domain.status = 'verified'
-          AND domain.disabled_at IS NULL
-          AND domain.health_status <> 'degraded'
-    ) THEN
-        RAISE EXCEPTION 'customer sender domain is not verified, enabled, and healthy'
-            USING ERRCODE = '23514';
+        IF NOT EXISTS (
+            SELECT 1
+            FROM sender_domains AS domain
+            WHERE domain.id = NEW.sender_domain_id
+              AND domain.team_id = NEW.team_id
+              AND domain.provider = NEW.delivery_provider
+              AND domain.provider_region = NEW.provider_region
+              AND domain.status = 'verified'
+              AND domain.disabled_at IS NULL
+              AND domain.health_status <> 'degraded'
+        ) THEN
+            RAISE EXCEPTION 'customer sender domain is not verified, enabled, and healthy'
+                USING ERRCODE = '23514';
+        END IF;
     END IF;
 
     SELECT external_name
@@ -39,27 +53,30 @@ BEGIN
             USING ERRCODE = '23514';
     END IF;
 
-    configuration_set := CASE NEW.message_type
+    expected_configuration_set := CASE NEW.message_type
         WHEN 'marketing' THEN 'dugble-marketing'
         ELSE 'dugble-transactional'
     END;
+    persisted_stream := trim(COALESCE(NEW.headers ->> 'X-Dugble-Internal-Email-Stream', ''));
+    persisted_configuration_set := trim(COALESCE(NEW.headers ->> 'X-Dugble-Internal-SES-Configuration-Set', ''));
+    persisted_tenant := trim(COALESCE(NEW.headers ->> 'X-Dugble-Internal-SES-Tenant', ''));
 
-    NEW.headers := jsonb_set(
-        jsonb_set(
-            jsonb_set(
-                COALESCE(NEW.headers, '{}'::jsonb),
-                '{X-Dugble-Internal-Email-Stream}',
-                to_jsonb(NEW.message_type),
-                true
-            ),
-            '{X-Dugble-Internal-SES-Configuration-Set}',
-            to_jsonb(configuration_set),
-            true
-        ),
-        '{X-Dugble-Internal-SES-Tenant}',
-        to_jsonb(tenant_name),
-        true
-    );
+    IF persisted_stream <> NEW.message_type THEN
+        RAISE EXCEPTION 'persisted customer email stream does not match message stream'
+            USING ERRCODE = '23514';
+    END IF;
+    IF persisted_configuration_set <> expected_configuration_set THEN
+        RAISE EXCEPTION 'persisted customer configuration set is invalid'
+            USING ERRCODE = '23514';
+    END IF;
+    IF lower(persisted_tenant) = 'dugble-system' THEN
+        RAISE EXCEPTION 'customer email cannot use the system SES tenant'
+            USING ERRCODE = '23514';
+    END IF;
+    IF persisted_tenant <> tenant_name THEN
+        RAISE EXCEPTION 'persisted customer SES tenant does not belong to the message team'
+            USING ERRCODE = '23514';
+    END IF;
 
     RETURN NEW;
 END;
