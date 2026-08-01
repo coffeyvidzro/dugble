@@ -16,8 +16,6 @@ import (
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 )
 
-const maxSESRawMessageBytes = 10 << 20
-
 func buildMIME(message platformemail.Message) ([]byte, error) {
 	if strings.TrimSpace(message.From.Email) == "" || len(message.To)+len(message.CC)+len(message.BCC) == 0 {
 		return nil, errors.New("email requires a sender and at least one recipient")
@@ -103,8 +101,8 @@ func buildMIME(message platformemail.Message) ([]byte, error) {
 	if err := mixed.Close(); err != nil {
 		return nil, fmt.Errorf("close MIME message: %w", err)
 	}
-	if output.Len() > maxSESRawMessageBytes {
-		return nil, fmt.Errorf("%w: encoded message is %d bytes; maximum is %d bytes", ErrMessageTooLarge, output.Len(), maxSESRawMessageBytes)
+	if output.Len() > platformemail.MaxRawMessageBytes {
+		return nil, fmt.Errorf("%w: encoded message is %d bytes; maximum is %d bytes", ErrMessageTooLarge, output.Len(), platformemail.MaxRawMessageBytes)
 	}
 	return output.Bytes(), nil
 }
