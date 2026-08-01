@@ -52,9 +52,17 @@ func (c *Client) Send(ctx context.Context, message platformemail.Message) (platf
 		RawMessage:   &sestypes.RawMessage{Data: raw},
 		Tags:         deliveryTags(message),
 	}
+	stream := strings.TrimSpace(message.Stream)
 	configurationSet := strings.TrimSpace(message.ConfigurationSet)
-	if configurationSet == "" {
+	if configurationSet == "" && stream == "" {
 		configurationSet = c.configurationSet
+	}
+	if configurationSet == "" && stream != "" {
+		return platformemail.Result{}, platformemail.NewSendError(
+			"missing_configuration_set",
+			false,
+			fmt.Errorf("SES configuration set is required for %s email stream", stream),
+		)
 	}
 	if configurationSet != "" {
 		input.ConfigurationSetName = aws.String(configurationSet)
