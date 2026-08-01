@@ -1,9 +1,9 @@
 name: Temporary email sqlc generation
 
 on:
-  push:
+  pull_request:
     branches:
-      - feat/sns-integration
+      - main
     paths:
       - ".github/workflows/temporary-email-sqlc.yml"
       - "server/internal/database/queries/email_provider_events.sql"
@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   generate:
-    if: github.actor != 'github-actions[bot]'
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: feat/sns-integration
+          ref: ${{ github.event.pull_request.head.ref }}
 
       - uses: actions/setup-go@v7
         with:
@@ -49,4 +49,4 @@ jobs:
             exit 0
           fi
           git commit -m "generate email sqlc queries"
-          git push origin HEAD:feat/sns-integration
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
