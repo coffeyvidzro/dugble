@@ -14,18 +14,18 @@ import (
 )
 
 // NewClient creates an SES client using the AWS SDK default credential chain.
-// accessKey and secretKey are optional local-development overrides; production
-// workloads should leave them empty and use an ECS task role, EKS pod identity,
-// EC2 instance profile, Lambda execution role, or another workload identity.
-func NewClient(region, defaultFrom, accessKey, secretKey string, configurationSet ...string) (*Client, error) {
-	return newClient(context.Background(), region, defaultFrom, accessKey, secretKey, configurationSet...)
+// Deployments outside AWS may pass a tightly scoped access-key pair from their
+// secret manager. AWS-hosted deployments may leave both values empty and use a
+// workload role.
+func NewClient(region, defaultFrom, accessKey, secretKey string) (*Client, error) {
+	return newClient(context.Background(), region, defaultFrom, accessKey, secretKey)
 }
 
-func NewSESSender(ctx context.Context, region, defaultFrom, accessKey, secretKey string, configurationSet ...string) (*Client, error) {
-	return newClient(ctx, region, defaultFrom, accessKey, secretKey, configurationSet...)
+func NewSESSender(ctx context.Context, region, defaultFrom, accessKey, secretKey string) (*Client, error) {
+	return newClient(ctx, region, defaultFrom, accessKey, secretKey)
 }
 
-func newClient(ctx context.Context, region, defaultFrom, accessKey, secretKey string, configurationSet ...string) (*Client, error) {
+func newClient(ctx context.Context, region, defaultFrom, accessKey, secretKey string) (*Client, error) {
 	region = strings.TrimSpace(region)
 	accessKey = strings.TrimSpace(accessKey)
 	secretKey = strings.TrimSpace(secretKey)
@@ -34,10 +34,6 @@ func newClient(ctx context.Context, region, defaultFrom, accessKey, secretKey st
 	}
 	if (accessKey == "") != (secretKey == "") {
 		return nil, errors.New("AWS access key and secret key must be configured together")
-	}
-	configuredSet := ""
-	if len(configurationSet) > 0 {
-		configuredSet = strings.TrimSpace(configurationSet[0])
 	}
 
 	options := []func(*awsconfig.LoadOptions) error{awsconfig.WithRegion(region)}
@@ -51,12 +47,11 @@ func newClient(ctx context.Context, region, defaultFrom, accessKey, secretKey st
 		return nil, fmt.Errorf("load AWS configuration: %w", err)
 	}
 	return &Client{
-		defaultRegion:    region,
-		defaultFrom:      strings.TrimSpace(defaultFrom),
-		configurationSet: configuredSet,
-		awsConfig:        resolved,
-		sendingClients:   make(map[string]sesAPI),
-		identityClients:  make(map[string]sesIdentityAPI),
+		defaultRegion:   region,
+		defaultFrom:     strings.TrimSpace(defaultFrom),
+		awsConfig:       resolved,
+		sendingClients:  make(map[string]sesAPI),
+		identityClients: make(map[string]sesIdentityAPI),
 	}, nil
 }
 
