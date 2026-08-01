@@ -37,12 +37,12 @@ func TestIdentityARN(t *testing.T) {
 func TestOnboardingIdentityARN(t *testing.T) {
 	got, err := identityARN(
 		"arn:aws:ses:eu-north-1:123456789012:tenant/dugble-t-example/tn-123",
-		platformemail.CustomerOnboardingIdentity,
+		platformemail.CustomerOnboardingSESIdentity,
 	)
 	if err != nil {
 		t.Fatalf("identityARN() error = %v", err)
 	}
-	want := "arn:aws:ses:eu-north-1:123456789012:identity/onboarding@dugble.me"
+	want := "arn:aws:ses:eu-north-1:123456789012:identity/runnage.dev"
 	if got != want {
 		t.Fatalf("identityARN() = %q, want %q", got, want)
 	}
