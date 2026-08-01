@@ -132,7 +132,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	smsmodule.RegisterRoutes(router, smsmodule.NewHandler(smsService), tenantAccess)
 	emailRepository := emailmodule.NewRepository(deps.DB)
 	emailServiceAPI := emailmodule.NewService(emailRepository, deps.EmailDelivery, emailmodule.ServiceConfig{
-		DefaultFromEmail: cfg.AWS.FromEmail,
+		DefaultFromEmail: platformemail.CustomerOnboardingIdentity,
 		DefaultProvider:  domain.DefaultProvider,
 		DefaultRegion:    cfg.AWS.Region,
 	})
