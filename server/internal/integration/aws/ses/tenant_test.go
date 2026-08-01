@@ -1,6 +1,10 @@
 package ses
 
-import "testing"
+import (
+	"testing"
+
+	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
+)
 
 func TestConfigurationSetARN(t *testing.T) {
 	got, err := configurationSetARN(
@@ -25,6 +29,20 @@ func TestIdentityARN(t *testing.T) {
 		t.Fatalf("identityARN() error = %v", err)
 	}
 	want := "arn:aws:ses:eu-north-1:123456789012:identity/example.com"
+	if got != want {
+		t.Fatalf("identityARN() = %q, want %q", got, want)
+	}
+}
+
+func TestOnboardingIdentityARN(t *testing.T) {
+	got, err := identityARN(
+		"arn:aws:ses:eu-north-1:123456789012:tenant/dugble-t-example/tn-123",
+		platformemail.CustomerOnboardingIdentity,
+	)
+	if err != nil {
+		t.Fatalf("identityARN() error = %v", err)
+	}
+	want := "arn:aws:ses:eu-north-1:123456789012:identity/onboarding@dugble.me"
 	if got != want {
 		t.Fatalf("identityARN() = %q, want %q", got, want)
 	}
