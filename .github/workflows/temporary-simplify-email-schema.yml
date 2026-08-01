@@ -34,14 +34,13 @@ jobs:
           \t\treturn err
           \t}
           '''
-          if obsolete not in text:
-              raise SystemExit("recipient event persistence block not found")
-          path.write_text(text.replace(obsolete, "", 1))
+          if obsolete in text:
+              path.write_text(text.replace(obsolete, "", 1))
           PY
 
-          rm server/migrations/025_create_email_recipient_events.sql
-          rm server/migrations/028_add_email_provider_event_reconciliation.sql
-          rm server/migrations/029_persist_email_feedback_diagnostics.sql
+          rm -f server/migrations/025_create_email_recipient_events.sql
+          rm -f server/migrations/028_add_email_provider_event_reconciliation.sql
+          rm -f server/migrations/029_persist_email_feedback_diagnostics.sql
 
       - name: Regenerate sqlc
         working-directory: server
