@@ -4,13 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
+	"github.com/coffeyvidzro/dugble/server/pkg/pgconv"
 )
 
 var ErrAlreadyExists = errors.New("idempotency key already exists")
@@ -30,8 +29,8 @@ func (r *Repository) CreateProcessing(ctx context.Context, record Record) (Recor
 		Method:         record.Method,
 		Path:           record.Path,
 		RequestHash:    record.RequestHash,
-		LockedUntil:    timestamptz(record.LockedUntil),
-		ExpiresAt:      timestamptz(record.ExpiresAt),
+		LockedUntil:    pgconv.NullableTimestamptz(&record.LockedUntil),
+		ExpiresAt:      pgconv.NullableTimestamptz(&record.ExpiresAt),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -93,23 +92,11 @@ func recordFromSQLC(row dbsqlc.IdempotencyKey) Record {
 		ResponseContentType: row.ResponseContentType,
 		ResponseHeaders:     row.ResponseHeaders,
 		LockedUntil:         row.LockedUntil.Time,
-		CompletedAt:         timePtr(row.CompletedAt),
+		CompletedAt:         pgconv.TimestamptzToTimePtr(row.CompletedAt),
 		ExpiresAt:           row.ExpiresAt.Time,
 		CreatedAt:           row.CreatedAt.Time,
 		UpdatedAt:           row.UpdatedAt.Time,
 	}
-}
-
-func timestamptz(t time.Time) pgtype.Timestamptz {
-	return pgtype.Timestamptz{Time: t, Valid: !t.IsZero()}
-}
-
-func timePtr(t pgtype.Timestamptz) *time.Time {
-	if !t.Valid {
-		return nil
-	}
-
-	return &t.Time
 }
 
 func optionalString(value string) *string {
