@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	awsses "github.com/aws/aws-sdk-go-v2/service/ses"
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 )
@@ -25,8 +26,7 @@ type Client struct {
 	defaultRegion    string
 	defaultFrom      string
 	configurationSet string
-	accessKey        string
-	secretKey        string
+	awsConfig        aws.Config
 
 	mu              sync.Mutex
 	sendingClients  map[string]sesAPI

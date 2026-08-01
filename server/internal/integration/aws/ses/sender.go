@@ -3,6 +3,7 @@ package ses
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -16,6 +17,7 @@ import (
 const (
 	messageIDTagName = "dugble_message_id"
 	attemptIDTagName = "dugble_attempt_id"
+	streamTagName    = "dugble_stream"
 )
 
 func (c *Client) Send(ctx context.Context, message platformemail.Message) (platformemail.Result, error) {
@@ -39,13 +41,31 @@ func (c *Client) Send(ctx context.Context, message platformemail.Message) (platf
 		}
 		return platformemail.Result{}, platformemail.NewSendError(code, false, err)
 	}
+	if tenantName := strings.TrimSpace(message.SESTenantName); tenantName != "" {
+		raw, err = addInternalHeader(raw, "X-SES-TENANT", tenantName)
+		if err != nil {
+			return platformemail.Result{}, platformemail.NewSendError("invalid_ses_tenant", false, err)
+		}
+	}
 	input := &awsses.SendRawEmailInput{
 		Destinations: envelopeDestinations(message),
 		RawMessage:   &sestypes.RawMessage{Data: raw},
 		Tags:         deliveryTags(message),
 	}
-	if c.configurationSet != "" {
-		input.ConfigurationSetName = aws.String(c.configurationSet)
+	stream := strings.TrimSpace(message.Stream)
+	configurationSet := strings.TrimSpace(message.ConfigurationSet)
+	if configurationSet == "" && stream == "" {
+		configurationSet = c.configurationSet
+	}
+	if configurationSet == "" && stream != "" {
+		return platformemail.Result{}, platformemail.NewSendError(
+			"missing_configuration_set",
+			false,
+			fmt.Errorf("SES configuration set is required for %s email stream", stream),
+		)
+	}
+	if configurationSet != "" {
+		input.ConfigurationSetName = aws.String(configurationSet)
 	}
 	output, err := client.SendRawEmail(ctx, input)
 	if err != nil {
@@ -60,13 +80,29 @@ func (c *Client) Send(ctx context.Context, message platformemail.Message) (platf
 	return platformemail.Result{Provider: ProviderSES, MessageID: strings.TrimSpace(*output.MessageId)}, nil
 }
 
+func addInternalHeader(raw []byte, name, value string) ([]byte, error) {
+	name = strings.TrimSpace(name)
+	value = strings.TrimSpace(value)
+	if name == "" || value == "" || strings.ContainsAny(name+value, "\r\n") {
+		return nil, fmt.Errorf("invalid internal SES header")
+	}
+	header := []byte(name + ": " + value + "\r\n")
+	result := make([]byte, 0, len(header)+len(raw))
+	result = append(result, header...)
+	result = append(result, raw...)
+	return result, nil
+}
+
 func deliveryTags(message platformemail.Message) []sestypes.MessageTag {
-	tags := make([]sestypes.MessageTag, 0, 2)
+	tags := make([]sestypes.MessageTag, 0, 3)
 	if value := strings.TrimSpace(message.MessageID); value != "" {
 		tags = append(tags, sestypes.MessageTag{Name: aws.String(messageIDTagName), Value: aws.String(value)})
 	}
 	if value := strings.TrimSpace(message.AttemptID); value != "" {
 		tags = append(tags, sestypes.MessageTag{Name: aws.String(attemptIDTagName), Value: aws.String(value)})
+	}
+	if value := strings.TrimSpace(message.Stream); value != "" {
+		tags = append(tags, sestypes.MessageTag{Name: aws.String(streamTagName), Value: aws.String(value)})
 	}
 	return tags
 }

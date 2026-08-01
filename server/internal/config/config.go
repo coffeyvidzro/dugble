@@ -13,12 +13,22 @@ type ProviderConfig struct {
 }
 
 type AWSConfig struct {
-	FromEmail           string   `env:"FROM_EMAIL,required,notEmpty"`
-	Region              string   `env:"REGION,required,notEmpty"`
-	AccessKey           string   `env:"ACCESS_KEY_ID,required,notEmpty"`
-	SecretKey           string   `env:"SECRET_ACCESS_KEY,required,notEmpty"`
-	SESConfigurationSet string   `env:"SES_CONFIGURATION_SET"`
-	SNSTopicARNs        []string `env:"SNS_TOPIC_ARNS" envSeparator:","`
+	FromEmail string `env:"FROM_EMAIL,required,notEmpty"`
+	Region    string `env:"REGION,required,notEmpty"`
+
+	// AccessKey and SecretKey are optional local-development overrides. In
+	// production, the AWS SDK default credential chain should resolve workload
+	// role credentials from ECS, EKS, EC2, Lambda, or another runtime provider.
+	AccessKey string `env:"ACCESS_KEY_ID"`
+	SecretKey string `env:"SECRET_ACCESS_KEY"`
+
+	// SESConfigurationSet remains as a compatibility fallback for deployments
+	// that have not split transactional and marketing streams yet.
+	SESConfigurationSet              string   `env:"SES_CONFIGURATION_SET"`
+	SESTransactionalConfigurationSet string   `env:"SES_TRANSACTIONAL_CONFIGURATION_SET"`
+	SESMarketingConfigurationSet     string   `env:"SES_MARKETING_CONFIGURATION_SET"`
+	SESTenantName                    string   `env:"SES_TENANT_NAME"`
+	SNSTopicARNs                     []string `env:"SNS_TOPIC_ARNS" envSeparator:","`
 }
 
 type BackofficeConfig struct {
@@ -99,6 +109,15 @@ func (c *Config) normalize() {
 	c.AWS.AccessKey = strings.TrimSpace(c.AWS.AccessKey)
 	c.AWS.SecretKey = strings.TrimSpace(c.AWS.SecretKey)
 	c.AWS.SESConfigurationSet = strings.TrimSpace(c.AWS.SESConfigurationSet)
+	c.AWS.SESTransactionalConfigurationSet = strings.TrimSpace(c.AWS.SESTransactionalConfigurationSet)
+	c.AWS.SESMarketingConfigurationSet = strings.TrimSpace(c.AWS.SESMarketingConfigurationSet)
+	c.AWS.SESTenantName = strings.TrimSpace(c.AWS.SESTenantName)
+	if c.AWS.SESTransactionalConfigurationSet == "" {
+		c.AWS.SESTransactionalConfigurationSet = c.AWS.SESConfigurationSet
+	}
+	if c.AWS.SESConfigurationSet == "" {
+		c.AWS.SESConfigurationSet = c.AWS.SESTransactionalConfigurationSet
+	}
 	c.AWS.SNSTopicARNs = normalizeStrings(c.AWS.SNSTopicARNs)
 	c.NATSURL = strings.TrimSpace(c.NATSURL)
 	c.Arkesel.APIKey = strings.TrimSpace(c.Arkesel.APIKey)
