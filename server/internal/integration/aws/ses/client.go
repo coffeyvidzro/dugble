@@ -52,6 +52,7 @@ func newClient(ctx context.Context, region, defaultFrom, accessKey, secretKey st
 		awsConfig:       resolved,
 		sendingClients:  make(map[string]sesAPI),
 		identityClients: make(map[string]sesIdentityAPI),
+		tenantClients:   make(map[string]sesTenantAPI),
 	}, nil
 }
 
@@ -94,5 +95,23 @@ func (c *Client) identityClient(region string) (sesIdentityAPI, error) {
 	}
 	client := sesv2.NewFromConfig(c.regionalConfig(region))
 	c.identityClients[region] = client
+	return client, nil
+}
+
+func (c *Client) tenantClient(region string) (sesTenantAPI, error) {
+	if c == nil {
+		return nil, errors.New("SES client is not configured")
+	}
+	region = strings.TrimSpace(region)
+	if region == "" {
+		region = c.defaultRegion
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if client, ok := c.tenantClients[region]; ok {
+		return client, nil
+	}
+	client := sesv2.NewFromConfig(c.regionalConfig(region))
+	c.tenantClients[region] = client
 	return client, nil
 }
