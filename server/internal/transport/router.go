@@ -57,7 +57,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	router.Use(middlewares.AuditRequestContext)
 	router.Use(middleware.RequestLogger())
 	router.Use(middleware.Recover())
-	router.Use(middleware.BodyLimit(12 << 20))
+	router.Use(middleware.BodyLimit(platformemail.MaxHTTPRequestBytes))
 	router.Use(middlewares.NewCORS(cfg.CORSOrigins, cfg.IsDevelopment()))
 	router.Use(middlewares.NewSecure(cfg.IsDevelopment()))
 	router.Use(middlewares.Arcjet(deps.Arcjet))
@@ -123,11 +123,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	domain.RegisterRoutes(router, domain.NewHandler(domain.NewService(domainRepository, deps.DomainProvider, deps.DNSVerifier)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	smsService := smsmodule.NewService(smsRepository, deps.SMSSender, deps.SMSDelivery)
 	smsmodule.RegisterRoutes(router, smsmodule.NewHandler(smsService), tenantAccess)
-	emailRepository := emailmodule.NewRepository(deps.DB, emailmodule.RouteConfig{
-		TransactionalConfigurationSet: cfg.AWS.SESTransactionalConfigurationSet,
-		MarketingConfigurationSet:     cfg.AWS.SESMarketingConfigurationSet,
-		SESTenantName:                 cfg.AWS.SESTenantName,
-	})
+	emailRepository := emailmodule.NewRepository(deps.DB)
 	emailServiceAPI := emailmodule.NewService(emailRepository, deps.EmailDelivery, emailmodule.ServiceConfig{
 		DefaultFromEmail: cfg.AWS.FromEmail,
 		DefaultProvider:  domain.DefaultProvider,
