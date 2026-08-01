@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS email_tenants (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE RESTRICT,
     provider TEXT NOT NULL DEFAULT 'aws_ses',
     region TEXT NOT NULL,
     external_name TEXT NOT NULL,
