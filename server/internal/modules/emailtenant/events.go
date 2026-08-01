@@ -18,15 +18,15 @@ const (
 )
 
 type ProvisionCommand struct {
-	EventID           uuid.UUID `json:"event_id"`
-	TenantID          uuid.UUID `json:"tenant_id"`
-	TeamID            uuid.UUID `json:"team_id"`
-	Provider          string    `json:"provider"`
-	Region            string    `json:"region"`
-	ExternalName      string    `json:"external_name"`
-	SuppressionScope  string    `json:"suppression_scope"`
-	ReputationPolicy  string    `json:"reputation_policy"`
-	SchemaVersion     int       `json:"schema_version"`
+	EventID          uuid.UUID `json:"event_id"`
+	TenantID         uuid.UUID `json:"tenant_id"`
+	TeamID           uuid.UUID `json:"team_id"`
+	Provider         string    `json:"provider"`
+	Region           string    `json:"region"`
+	ExternalName     string    `json:"external_name"`
+	SuppressionScope string    `json:"suppression_scope"`
+	ReputationPolicy string    `json:"reputation_policy"`
+	SchemaVersion    int       `json:"schema_version"`
 }
 
 type outboxStore interface {
