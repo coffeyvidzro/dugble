@@ -85,12 +85,24 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("initialize email renderer: %w", err)
 	}
-	emailClient, err := awsses.NewClient(cfg.AWS.Region, cfg.AWS.FromEmail, cfg.AWS.AccessKey, cfg.AWS.SecretKey, cfg.AWS.SESConfigurationSet)
+	emailClient, err := awsses.NewClient(
+		cfg.AWS.Region,
+		cfg.AWS.FromEmail,
+		cfg.AWS.AccessKey,
+		cfg.AWS.SecretKey,
+		cfg.AWS.SESTransactionalConfigurationSet,
+	)
 	if err != nil {
 		return fmt.Errorf("initialize SES email client: %w", err)
 	}
 	outboxRepository := outbox.NewRepository(db)
-	systemEmailQueue := systememail.NewQueue(outboxRepository)
+	systemEmailQueue := systememail.NewQueue(outboxRepository, platformemail.Message{
+		Provider:         awsses.ProviderSES,
+		Region:           cfg.AWS.Region,
+		Stream:           "transactional",
+		ConfigurationSet: cfg.AWS.SESTransactionalConfigurationSet,
+		SESTenantName:    cfg.AWS.SESTenantName,
+	})
 
 	var snsHandler *providersns.Handler
 	if len(cfg.AWS.SNSTopicARNs) > 0 {
