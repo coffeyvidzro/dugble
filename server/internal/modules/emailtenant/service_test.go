@@ -178,3 +178,14 @@ func TestProvisioningStatusReadsWithoutEnqueueing(t *testing.T) {
 		t.Fatalf("queue calls = %d, want 0", queue.calls)
 	}
 }
+
+func TestRequestProvisioningRejectsUnsupportedRegionBeforeTransaction(t *testing.T) {
+	store := &fakeTenantStore{}
+	_, err := NewService(store, &fakeProvisionQueue{}).RequestProvisioning(context.Background(), uuid.New(), "eu-west-1")
+	if err == nil {
+		t.Fatal("RequestProvisioning() error = nil, want unsupported region")
+	}
+	if store.tx != nil {
+		t.Fatal("transaction began for unsupported region")
+	}
+}
