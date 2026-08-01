@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/coffeyvidzro/dugble/server/internal/database"
 	awssns "github.com/coffeyvidzro/dugble/server/internal/integration/aws/sns"
@@ -169,7 +170,7 @@ func TestHostedPostgresReconcilesInitiallyUnlinkedEvent(t *testing.T) {
 	}
 }
 
-func hostedDependencies(t *testing.T) (*database.Pool, *jetstreammessaging.Client) {
+func hostedDependencies(t *testing.T) (*pgxpool.Pool, *jetstreammessaging.Client) {
 	t.Helper()
 	databaseURL := strings.TrimSpace(os.Getenv("INTEGRATION_DATABASE_URL"))
 	natsURL := strings.TrimSpace(os.Getenv("INTEGRATION_NATS_URL"))
@@ -194,7 +195,7 @@ func hostedDependencies(t *testing.T) (*database.Pool, *jetstreammessaging.Clien
 	return db, client
 }
 
-func resetHostedFeedbackData(t *testing.T, db *database.Pool) {
+func resetHostedFeedbackData(t *testing.T, db *pgxpool.Pool) {
 	t.Helper()
 	if _, err := db.Exec(context.Background(), `
 		TRUNCATE TABLE
@@ -209,7 +210,7 @@ func resetHostedFeedbackData(t *testing.T, db *database.Pool) {
 	}
 }
 
-func insertHostedMessage(t *testing.T, db *database.Pool, teamID, messageID uuid.UUID, providerMessageID, status string) {
+func insertHostedMessage(t *testing.T, db *pgxpool.Pool, teamID, messageID uuid.UUID, providerMessageID, status string) {
 	t.Helper()
 	if _, err := db.Exec(context.Background(), `INSERT INTO teams (id, name) VALUES ($1, 'Hosted Integration')`, teamID); err != nil {
 		t.Fatalf("insert hosted team: %v", err)
