@@ -16,10 +16,19 @@ x-app-env: &app-env
   AWS_REGION: ${AWS_REGION:-us-east-1}
   AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID}
   AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?set AWS_SECRET_ACCESS_KEY}
+  AWS_SES_CONFIGURATION_SET: ${AWS_SES_CONFIGURATION_SET:-}
+  AWS_SNS_TOPIC_ARNS: ${AWS_SNS_TOPIC_ARNS:-}
   ARKESEL_BASE_URL: ${ARKESEL_BASE_URL:-https://sms.arkesel.com}
   ARKESEL_API_KEY: ${ARKESEL_API_KEY:-}
   MNOTIFY_BASE_URL: ${MNOTIFY_BASE_URL:-https://api.mnotify.com}
   MNOTIFY_API_KEY: ${MNOTIFY_API_KEY:-}
+  NEW_RELIC_LICENSE_KEY: ${NEW_RELIC_LICENSE_KEY:-}
+  NEW_RELIC_DISTRIBUTED_TRACING_ENABLED: ${NEW_RELIC_DISTRIBUTED_TRACING_ENABLED:-true}
+  NEW_RELIC_LOG_ENABLED: ${NEW_RELIC_LOG_ENABLED:-true}
+  SENTRY_DSN: ${SENTRY_DSN:-}
+  SENTRY_RELEASE: ${SENTRY_RELEASE:-}
+  SENTRY_ERROR_SAMPLE_RATE: ${SENTRY_ERROR_SAMPLE_RATE:-1}
+  SENTRY_DEBUG: ${SENTRY_DEBUG:-false}
 
 x-app-build: &app-build
   build:
@@ -44,7 +53,11 @@ services:
     networks:
       - dugble-network
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:2019/config/ || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null http://127.0.0.1:2019/config/ || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -130,7 +143,11 @@ services:
     networks:
       - dugble-network
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null 'http://127.0.0.1:8222/healthz?js-enabled-only=true' || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null 'http://127.0.0.1:8222/healthz?js-enabled-only=true' || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -149,7 +166,11 @@ services:
     networks:
       - dugble-network
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ready || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null http://127.0.0.1:8080/ready || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -172,7 +193,11 @@ services:
     networks:
       - dugble-network
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8082/ready || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null http://127.0.0.1:8082/ready || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -199,7 +224,11 @@ services:
     networks:
       - dugble-network
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8081/ready || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null http://127.0.0.1:8081/ready || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
