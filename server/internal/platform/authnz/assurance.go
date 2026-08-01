@@ -6,7 +6,6 @@ type AuthenticationMethod string
 
 const (
 	AuthenticationMethodPassword     AuthenticationMethod = "password"
-	AuthenticationMethodPasskey      AuthenticationMethod = "passkey"
 	AuthenticationMethodTOTP         AuthenticationMethod = "totp"
 	AuthenticationMethodRecoveryCode AuthenticationMethod = "recovery_code"
 )

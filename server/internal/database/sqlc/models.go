@@ -189,21 +189,6 @@ type OutboxEvent struct {
 	UpdatedAt     pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
-type PasskeyCredential struct {
-	ID             uuid.UUID          `db:"id" json:"id"`
-	UserID         uuid.UUID          `db:"user_id" json:"user_id"`
-	CredentialID   []byte             `db:"credential_id" json:"credential_id"`
-	PublicKey      []byte             `db:"public_key" json:"public_key"`
-	SignCount      int64              `db:"sign_count" json:"sign_count"`
-	Transports     []string           `db:"transports" json:"transports"`
-	BackupEligible bool               `db:"backup_eligible" json:"backup_eligible"`
-	BackupState    bool               `db:"backup_state" json:"backup_state"`
-	Name           string             `db:"name" json:"name"`
-	CreatedAt      pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	LastUsedAt     pgtype.Timestamptz `db:"last_used_at" json:"last_used_at"`
-	RevokedAt      pgtype.Timestamptz `db:"revoked_at" json:"revoked_at"`
-}
-
 type ProcessedEvent struct {
 	ConsumerName string             `db:"consumer_name" json:"consumer_name"`
 	EventID      uuid.UUID          `db:"event_id" json:"event_id"`
