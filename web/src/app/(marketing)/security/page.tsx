@@ -1,5 +1,4 @@
 import { Mail, ShieldCheck } from "lucide-react";
-import type { Metadata } from "next";
 import Link from "next/link";
 import { AnimatedGrid } from "@/components/marketing/hero/animated-grid";
 import { FloatingOrbs } from "@/components/marketing/hero/floating-orbs";
@@ -9,19 +8,14 @@ import { SecurityControls } from "@/components/marketing/security/security-contr
 import { SecurityLifecycle } from "@/components/marketing/security/security-lifecycle";
 import { SecurityRoadmap } from "@/components/marketing/security/security-roadmap";
 import { Separator } from "@/components/ui/separator";
+import { constructMetadata } from "@/utils/metadata";
 
-export const metadata: Metadata = {
+export const metadata = constructMetadata({
   title: "Security Infrastructure",
   description:
     "Learn how Dugble protects A2P messaging workflows with server-side keys, signed webhooks, CSRF tokens, and session checks.",
-  openGraph: {
-    title: "Security Infrastructure",
-    description:
-      "Learn how Dugble protects A2P messaging workflows with server-side keys, signed webhooks, CSRF tokens, and session checks.",
-    url: "/security",
-    type: "website",
-  },
-};
+  path: "/security",
+});
 
 export default function Page() {
   return (

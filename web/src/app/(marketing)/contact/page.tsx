@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactChannels } from "@/components/marketing/contact-channels";
 import { ContactForm } from "@/components/marketing/contact-form";
@@ -6,18 +5,14 @@ import { AnimatedGrid } from "@/components/marketing/hero/animated-grid";
 import { FloatingOrbs } from "@/components/marketing/hero/floating-orbs";
 import { Reveal } from "@/components/marketing/reveal";
 import { buttonVariants } from "@/components/ui/button";
+import { constructMetadata } from "@/utils/metadata";
 
-export const metadata: Metadata = {
+export const metadata = constructMetadata({
   title: "Contact Us",
   description:
     "Reach out to Dugble for early access, product feedback, volume SMS, partnerships, or support.",
-  openGraph: {
-    title: "Contact Us",
-    description:
-      "Reach out to Dugble for early access, product feedback, volume SMS, partnerships, or support.",
-    url: "/contact",
-  },
-};
+  path: "/contact",
+});
 
 const reasons = [
   "Early access",

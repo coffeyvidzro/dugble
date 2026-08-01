@@ -1,23 +1,17 @@
-import type { Metadata } from "next";
 import { Cta } from "@/components/marketing/cta";
 import { WebhookContract } from "@/components/marketing/webhooks/webhook-contract";
 import { WebhookEvents } from "@/components/marketing/webhooks/webhook-events";
 import { WebhookHero } from "@/components/marketing/webhooks/webhook-hero";
 import { WebhookPractices } from "@/components/marketing/webhooks/webhook-practices";
 import { Separator } from "@/components/ui/separator";
+import { constructMetadata } from "@/utils/metadata";
 
-export const metadata: Metadata = {
+export const metadata = constructMetadata({
   title: "Webhooks",
   description:
     "Trace your message lifecycle with real-time delivery events, automated retries, and secure cryptographic signatures.",
-  openGraph: {
-    title: "Webhooks",
-    description:
-      "Trace your message lifecycle with real-time delivery events, automated retries, and secure cryptographic signatures.",
-    url: "/features/webhooks",
-    type: "website",
-  },
-};
+  path: "/features/webhooks",
+});
 
 export default function Page() {
   return (
