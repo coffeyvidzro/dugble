@@ -17,6 +17,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/database"
 	"github.com/coffeyvidzro/dugble/server/internal/delivery/email/feedback"
 	emaildelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/email/send"
+	systememail "github.com/coffeyvidzro/dugble/server/internal/delivery/email/system"
 	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
 	awsses "github.com/coffeyvidzro/dugble/server/internal/integration/aws/ses"
 	awssns "github.com/coffeyvidzro/dugble/server/internal/integration/aws/sns"
@@ -43,48 +44,31 @@ func main() {
 }
 
 func run() error {
-	ctx, stop := signal.NotifyContext(
-		context.Background(),
-		os.Interrupt,
-		syscall.SIGTERM,
-	)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("load configuration: %w", err)
 	}
-
 	if err := monitoring.InitSentry(cfg.Sentry, cfg.AppEnv); err != nil {
 		return fmt.Errorf("initialize Sentry: %w", err)
 	}
 	defer monitoring.FlushSentry(5 * time.Second)
-
 	newRelic, err := monitoring.NewRelic("dugble-api", cfg.AppEnv, cfg.NewRelic)
 	if err != nil {
 		return fmt.Errorf("initialize New Relic: %w", err)
 	}
 	defer monitoring.Shutdown(newRelic, 5*time.Second)
 
-	startupCtx, cancelStartup := context.WithTimeout(
-		ctx,
-		15*time.Second,
-	)
+	startupCtx, cancelStartup := context.WithTimeout(ctx, 15*time.Second)
 	defer cancelStartup()
-
-	db, err := database.NewPostgres(
-		startupCtx,
-		cfg.DatabaseURL,
-	)
+	db, err := database.NewPostgres(startupCtx, cfg.DatabaseURL)
 	if err != nil {
 		return fmt.Errorf("initialize PostgreSQL: %w", err)
 	}
 	defer db.Close()
-
-	redisClient, err := cache.NewRedis(
-		startupCtx,
-		cfg.RedisURL,
-	)
+	redisClient, err := cache.NewRedis(startupCtx, cfg.RedisURL)
 	if err != nil {
 		return fmt.Errorf("initialize Redis: %w", err)
 	}
@@ -93,29 +77,20 @@ func run() error {
 			slog.Warn("close Redis client", "error", err)
 		}
 	}()
-
 	arcjetClient, err := security.NewClient(cfg.ArcjetKey)
 	if err != nil {
 		return fmt.Errorf("initialize Arcjet: %w", err)
 	}
-
 	renderer, err := notifications.NewRenderer()
 	if err != nil {
 		return fmt.Errorf("initialize email renderer: %w", err)
 	}
-
-	emailClient, err := awsses.NewClient(
-		cfg.AWS.Region,
-		cfg.AWS.FromEmail,
-		cfg.AWS.AccessKey,
-		cfg.AWS.SecretKey,
-		cfg.AWS.SESConfigurationSet,
-	)
+	emailClient, err := awsses.NewClient(cfg.AWS.Region, cfg.AWS.FromEmail, cfg.AWS.AccessKey, cfg.AWS.SecretKey, cfg.AWS.SESConfigurationSet)
 	if err != nil {
 		return fmt.Errorf("initialize SES email client: %w", err)
 	}
-
 	outboxRepository := outbox.NewRepository(db)
+	systemEmailQueue := systememail.NewQueue(outboxRepository)
 
 	var snsHandler *providersns.Handler
 	if len(cfg.AWS.SNSTopicARNs) > 0 {
@@ -127,79 +102,48 @@ func run() error {
 	}
 
 	smsRouter, err := routing.NewService(
-		routing.DefaultConfig(),
-		routing.NewPriorityStrategy(),
+		routing.DefaultConfig(), routing.NewPriorityStrategy(),
 		arkesel.NewProvider(arkesel.NewClient(cfg.Arkesel)),
 		mnotify.NewProvider(mnotify.NewClient(cfg.MNotify)),
 	)
 	if err != nil {
 		return fmt.Errorf("initialize SMS router: %w", err)
 	}
-
 	smsSender, err := smsintegration.NewService(smsRouter)
 	if err != nil {
 		return fmt.Errorf("initialize SMS sender: %w", err)
 	}
 
-	router, err := transport.NewRouter(
-		cfg,
-		transport.Dependencies{
-			DB:             db,
-			Redis:          redisClient,
-			Arcjet:         arcjetClient,
-			Sender:         emailClient,
-			DomainProvider: emailClient,
-			DNSVerifier:    platformemail.NewNetDNSVerifier(),
-			Renderer:       renderer,
-			SMSSender:      smsSender,
-			SMSDelivery:    smsdelivery.NewQueue(outboxRepository),
-			EmailDelivery:  emaildelivery.NewQueue(outboxRepository),
-			SNSHandler:     snsHandler,
-		},
-	)
+	router, err := transport.NewRouter(cfg, transport.Dependencies{
+		DB: db, Redis: redisClient, Arcjet: arcjetClient,
+		Sender: systemEmailQueue, DomainProvider: emailClient, DNSVerifier: platformemail.NewNetDNSVerifier(), Renderer: renderer,
+		SMSSender: smsSender, SMSDelivery: smsdelivery.NewQueue(outboxRepository), EmailDelivery: emaildelivery.NewQueue(outboxRepository),
+		SNSHandler: snsHandler,
+	})
 	if err != nil {
 		return fmt.Errorf("create HTTP router: %w", err)
 	}
 	router.Use(middlewares.NewRelic())
-	router.Use(sentryecho.New(sentryecho.Options{
-		Repanic:         true,
-		WaitForDelivery: false,
-	}))
+	router.Use(sentryecho.New(sentryecho.Options{Repanic: true, WaitForDelivery: false}))
 	router.Use(middlewares.SentryErrors())
 
 	server := echo.StartConfig{
-		Address:         ":" + cfg.HTTPPort,
-		HideBanner:      true,
-		HidePort:        true,
-		GracefulTimeout: 15 * time.Second,
-
+		Address: ":" + cfg.HTTPPort, HideBanner: true, HidePort: true, GracefulTimeout: 15 * time.Second,
 		BeforeServeFunc: func(httpServer *http.Server) error {
 			httpServer.ReadHeaderTimeout = 5 * time.Second
 			httpServer.ReadTimeout = 15 * time.Second
 			httpServer.WriteTimeout = 30 * time.Second
 			httpServer.IdleTimeout = 60 * time.Second
-
 			return nil
 		},
-
 		OnShutdownError: func(err error) {
-			slog.Error(
-				"HTTP server graceful shutdown failed",
-				"error", err,
-			)
+			slog.Error("HTTP server graceful shutdown failed", "error", err)
 		},
 	}
-
-	slog.Info(
-		"starting HTTP server",
-		"address", server.Address,
-	)
-
+	slog.Info("starting HTTP server", "address", server.Address)
 	if err := server.Start(ctx, monitoring.WrapHTTP(newRelic, router)); err != nil {
 		return fmt.Errorf("run HTTP server: %w", err)
 	}
-
 	slog.Info("HTTP server stopped")
-
 	return nil
 }
