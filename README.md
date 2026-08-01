@@ -81,6 +81,8 @@ Deployment assets live in `deploy/`. `compose.yaml` defines the runtime stack, w
 
 Customer email jobs are partitioned by their persisted SES region. The primary `worker` consumes `dugble.job.email.send.v1.${AWS_REGION}`, while `worker-secondary` consumes `dugble.job.email.send.v1.${AWS_SECONDARY_REGION}`. Configure and provision SES identities, tenants, and configuration sets in both regions before enabling the secondary worker.
 
+Set `AWS_REGIONS` to the comma-separated regions available for new customer email. Dugble uses a stable team-based selection so a team remains on the same region while traffic is distributed across the configured regions. A verified custom sender domain retains its explicitly provisioned region.
+
 ### Run individual services
 
 ```sh

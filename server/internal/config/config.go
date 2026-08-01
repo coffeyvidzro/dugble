@@ -13,8 +13,9 @@ type ProviderConfig struct {
 }
 
 type AWSConfig struct {
-	FromEmail string `env:"FROM_EMAIL,required,notEmpty"`
-	Region    string `env:"REGION,required,notEmpty"`
+	FromEmail string   `env:"FROM_EMAIL,required,notEmpty"`
+	Region    string   `env:"REGION,required,notEmpty"`
+	Regions   []string `env:"REGIONS" envSeparator:","`
 
 	// Deployments outside AWS provide a tightly scoped access-key pair through
 	// their secret manager. AWS-hosted deployments may leave these empty and use
@@ -106,6 +107,10 @@ func (c *Config) normalize() {
 
 	c.AWS.FromEmail = strings.TrimSpace(c.AWS.FromEmail)
 	c.AWS.Region = strings.TrimSpace(c.AWS.Region)
+	c.AWS.Regions = normalizeStrings(c.AWS.Regions)
+	if len(c.AWS.Regions) == 0 {
+		c.AWS.Regions = []string{c.AWS.Region}
+	}
 	c.AWS.AccessKey = strings.TrimSpace(c.AWS.AccessKey)
 	c.AWS.SecretKey = strings.TrimSpace(c.AWS.SecretKey)
 	c.AWS.SESConfigurationSet = "dugble-transactional"

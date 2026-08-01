@@ -167,6 +167,29 @@ func TestAuthorizeSenderUsesOnboardingIdentityWithoutSystemFallback(t *testing.T
 	}
 }
 
+func TestDeliveryRegionSelectionIsStableAndNormalized(t *testing.T) {
+	regions := normalizeDeliveryRegions("ignored", []string{" US-EAST-1 ", "eu-north-1", "us-east-1", ""})
+	if len(regions) != 2 || regions[0] != "us-east-1" || regions[1] != "eu-north-1" {
+		t.Fatalf("normalized regions = %v", regions)
+	}
+	teamID := uuid.MustParse("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
+	first := selectDeliveryRegion(teamID, regions)
+	second := selectDeliveryRegion(teamID, regions)
+	if first != second {
+		t.Fatalf("region selection changed: %q != %q", first, second)
+	}
+	if first != regions[0] && first != regions[1] {
+		t.Fatalf("selected unconfigured region %q", first)
+	}
+}
+
+func TestDeliveryRegionSelectionFallsBackToDefault(t *testing.T) {
+	regions := normalizeDeliveryRegions("EU-NORTH-1", nil)
+	if len(regions) != 1 || selectDeliveryRegion(uuid.New(), regions) != "eu-north-1" {
+		t.Fatalf("default regions = %v", regions)
+	}
+}
+
 func TestAuthorizeSenderRejectsOnboardingMarketing(t *testing.T) {
 	service := NewService(nil, nil, testServiceConfig)
 	err := service.authorizeSender(context.Background(), uuid.New(), &validatedSend{

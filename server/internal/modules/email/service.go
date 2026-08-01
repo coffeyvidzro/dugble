@@ -3,6 +3,7 @@ package email
 import (
 	"context"
 	"errors"
+	"hash/fnv"
 	"strings"
 	"time"
 
@@ -125,9 +126,11 @@ type ServiceConfig struct {
 	DefaultFromName  string
 	DefaultProvider  string
 	DefaultRegion    string
+	DeliveryRegions  []string
 }
 
 func NewService(repository *Repository, delivery DeliveryQueue, config ServiceConfig, dependencies ...any) *Service {
+	config.DeliveryRegions = normalizeDeliveryRegions(config.DefaultRegion, config.DeliveryRegions)
 	service := &Service{repository: repository, delivery: delivery, config: config, senderDomains: repository, routes: repository}
 	for _, dependency := range dependencies {
 		if resolver, ok := dependency.(senderDomainResolver); ok {
@@ -294,7 +297,7 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 
 func (s *Service) authorizeSender(ctx context.Context, teamID uuid.UUID, message *validatedSend) error {
 	provider := strings.TrimSpace(s.config.DefaultProvider)
-	region := strings.TrimSpace(s.config.DefaultRegion)
+	region := selectDeliveryRegion(teamID, s.config.DeliveryRegions)
 	if provider == "" || region == "" {
 		return apperrors.NewInternal("Email delivery route is not configured", nil)
 	}
@@ -332,6 +335,35 @@ func (s *Service) authorizeSender(ctx context.Context, teamID uuid.UUID, message
 	message.Provider = route.Provider
 	message.ProviderRegion = route.Region
 	return nil
+}
+
+func normalizeDeliveryRegions(defaultRegion string, regions []string) []string {
+	if len(regions) == 0 {
+		regions = []string{defaultRegion}
+	}
+	result := make([]string, 0, len(regions))
+	seen := make(map[string]struct{}, len(regions))
+	for _, region := range regions {
+		region = strings.ToLower(strings.TrimSpace(region))
+		if region == "" {
+			continue
+		}
+		if _, exists := seen[region]; exists {
+			continue
+		}
+		seen[region] = struct{}{}
+		result = append(result, region)
+	}
+	return result
+}
+
+func selectDeliveryRegion(teamID uuid.UUID, regions []string) string {
+	if len(regions) == 0 {
+		return ""
+	}
+	hash := fnv.New32a()
+	_, _ = hash.Write(teamID[:])
+	return regions[int(hash.Sum32()%uint32(len(regions)))]
 }
 
 func enqueueDelivery(ctx context.Context, queue DeliveryQueue, tx pgx.Tx, messageID, teamID uuid.UUID, region string, scheduledAt *time.Time) error {
