@@ -173,12 +173,6 @@ export const dashboardPortals: DashboardPortal[] = [
                         description: "Balance and top-ups.",
                     },
                     {
-                        title: "Invoices",
-                        href: "/dashboard/billing/invoices",
-                        icon: Receipt,
-                        description: "Billing history and receipts.",
-                    },
-                    {
                         title: "Transactions",
                         href: "/dashboard/billing/transactions",
                         icon: ArrowLeftRight,
@@ -201,18 +195,6 @@ export const dashboardPortals: DashboardPortal[] = [
                         href: "/dashboard/settings/profile",
                         icon: UserCircle,
                         description: "Your name, email, and avatar.",
-                    },
-                    // {
-                    //     title: "Workspace",
-                    //     href: "/dashboard/create-workspace",
-                    //     icon: FolderPlus,
-                    //     description: "Create a new workspace.",
-                    // },
-                    {
-                        title: "Business",
-                        href: "/dashboard/settings/business",
-                        icon: Building2,
-                        description: "Company details and billing address.",
                     },
                     {
                         title: "Team",
