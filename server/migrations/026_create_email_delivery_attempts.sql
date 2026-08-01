@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS email_delivery_attempts (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email_message_id UUID NOT NULL REFERENCES email_messages(id) ON DELETE CASCADE,
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     attempt_number INTEGER NOT NULL,
