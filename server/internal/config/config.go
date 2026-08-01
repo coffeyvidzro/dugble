@@ -26,6 +26,19 @@ type BackofficeConfig struct {
 	AdminEmails []string `env:"ADMIN_EMAILS" envSeparator:","`
 }
 
+type NewRelicConfig struct {
+	LicenseKey                string `env:"LICENSE_KEY"`
+	DistributedTracingEnabled bool   `env:"DISTRIBUTED_TRACING_ENABLED" envDefault:"true"`
+	LogEnabled                bool   `env:"LOG_ENABLED" envDefault:"true"`
+}
+
+type SentryConfig struct {
+	DSN             string  `env:"DSN"`
+	Release         string  `env:"RELEASE"`
+	ErrorSampleRate float64 `env:"ERROR_SAMPLE_RATE" envDefault:"1"`
+	Debug           bool    `env:"DEBUG" envDefault:"false"`
+}
+
 type Config struct {
 	AppEnv           string           `env:"APP_ENV"   envDefault:"development"`
 	HTTPPort         string           `env:"HTTP_PORT" envDefault:"8080"`
@@ -43,6 +56,8 @@ type Config struct {
 	Arkesel          ProviderConfig   `envPrefix:"ARKESEL_"`
 	MNotify          ProviderConfig   `envPrefix:"MNOTIFY_"`
 	Backoffice       BackofficeConfig `envPrefix:"BACKOFFICE_"`
+	NewRelic         NewRelicConfig   `envPrefix:"NEW_RELIC_"`
+	Sentry           SentryConfig     `envPrefix:"SENTRY_"`
 }
 
 func Load() (*Config, error) {
@@ -91,6 +106,9 @@ func (c *Config) normalize() {
 	c.MNotify.APIKey = strings.TrimSpace(c.MNotify.APIKey)
 	c.MNotify.BaseURL = strings.TrimRight(strings.TrimSpace(c.MNotify.BaseURL), "/")
 	c.Backoffice.HTTPPort = strings.TrimSpace(c.Backoffice.HTTPPort)
+	c.NewRelic.LicenseKey = strings.TrimSpace(c.NewRelic.LicenseKey)
+	c.Sentry.DSN = strings.TrimSpace(c.Sentry.DSN)
+	c.Sentry.Release = strings.TrimSpace(c.Sentry.Release)
 
 	origins := make([]string, 0, len(c.CORSOrigins))
 	for _, origin := range c.CORSOrigins {

@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/getsentry/sentry-go/echo"
 	"github.com/labstack/echo/v5"
 
 	"github.com/coffeyvidzro/dugble/server/internal/config"
@@ -25,10 +26,12 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/mnotify"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/routing"
 	"github.com/coffeyvidzro/dugble/server/internal/messaging/outbox"
+	"github.com/coffeyvidzro/dugble/server/internal/monitoring"
 	"github.com/coffeyvidzro/dugble/server/internal/notifications"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/cache"
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 	"github.com/coffeyvidzro/dugble/server/internal/transport"
+	"github.com/coffeyvidzro/dugble/server/internal/transport/middlewares"
 	providersns "github.com/coffeyvidzro/dugble/server/internal/transport/provider/sns"
 )
 
@@ -51,6 +54,17 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("load configuration: %w", err)
 	}
+
+	if err := monitoring.InitSentry(cfg.Sentry, cfg.AppEnv); err != nil {
+		return fmt.Errorf("initialize Sentry: %w", err)
+	}
+	defer monitoring.FlushSentry(5 * time.Second)
+
+	newRelic, err := monitoring.NewRelic("dugble-api", cfg.AppEnv, cfg.NewRelic)
+	if err != nil {
+		return fmt.Errorf("initialize New Relic: %w", err)
+	}
+	defer monitoring.Shutdown(newRelic, 5*time.Second)
 
 	startupCtx, cancelStartup := context.WithTimeout(
 		ctx,
@@ -146,6 +160,12 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("create HTTP router: %w", err)
 	}
+	router.Use(middlewares.NewRelic())
+	router.Use(sentryecho.New(sentryecho.Options{
+		Repanic:         true,
+		WaitForDelivery: false,
+	}))
+	router.Use(middlewares.SentryErrors())
 
 	server := echo.StartConfig{
 		Address:         ":" + cfg.HTTPPort,
@@ -175,7 +195,7 @@ func run() error {
 		"address", server.Address,
 	)
 
-	if err := server.Start(ctx, router); err != nil {
+	if err := server.Start(ctx, monitoring.WrapHTTP(newRelic, router)); err != nil {
 		return fmt.Errorf("run HTTP server: %w", err)
 	}
 

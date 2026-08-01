@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	nrredis "github.com/newrelic/go-agent/v3/integrations/nrredis-v9"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -29,6 +30,7 @@ func NewRedis(
 	options.ConnMaxIdleTime = 5 * time.Minute
 
 	client := redis.NewClient(options)
+	client.AddHook(nrredis.NewHook(options))
 
 	pingContext, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()

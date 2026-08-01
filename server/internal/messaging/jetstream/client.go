@@ -4,19 +4,28 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strings"
 	"time"
 
 	"github.com/nats-io/nats.go"
 	natsjs "github.com/nats-io/nats.go/jetstream"
+	"github.com/newrelic/go-agent/v3/integrations/nrnats"
+	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
 type Client struct {
 	connection *nats.Conn
 	jetStream  natsjs.JetStream
+	monitoring *newrelic.Application
 }
 
-func New(ctx context.Context, url string, name string) (*Client, error) {
+func New(
+	ctx context.Context,
+	url string,
+	name string,
+	applications ...*newrelic.Application,
+) (*Client, error) {
 	url = strings.TrimSpace(url)
 	if url == "" {
 		return nil, fmt.Errorf("NATS URL is required")
@@ -24,6 +33,11 @@ func New(ctx context.Context, url string, name string) (*Client, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		name = "dugble"
+	}
+
+	var monitoring *newrelic.Application
+	if len(applications) > 0 {
+		monitoring = applications[0]
 	}
 
 	connection, err := nats.Connect(
@@ -61,7 +75,11 @@ func New(ctx context.Context, url string, name string) (*Client, error) {
 		return nil, fmt.Errorf("verify JetStream account: %w", err)
 	}
 
-	return &Client{connection: connection, jetStream: jetStream}, nil
+	return &Client{
+		connection: connection,
+		jetStream:  jetStream,
+		monitoring: monitoring,
+	}, nil
 }
 
 func (c *Client) Provision(ctx context.Context, limits StreamLimits) error {
@@ -105,7 +123,7 @@ func (c *Client) Publish(
 	headers map[string]string,
 	messageID string,
 ) error {
-	if c == nil || c.jetStream == nil {
+	if c == nil || c.jetStream == nil || c.connection == nil {
 		return fmt.Errorf("JetStream client is not configured")
 	}
 
@@ -118,13 +136,34 @@ func (c *Client) Publish(
 		message.Header.Set(key, value)
 	}
 
+	txn := newrelic.FromContext(ctx)
+	ownsTransaction := false
+	if txn == nil && c.monitoring != nil {
+		txn = c.monitoring.StartTransaction("NATS publish " + message.Subject)
+		ctx = newrelic.NewContext(ctx, txn)
+		ownsTransaction = true
+	}
+	if ownsTransaction {
+		defer txn.End()
+	}
+	if txn != nil {
+		txn.AddAttribute("messaging.system", "nats")
+		txn.AddAttribute("messaging.destination", message.Subject)
+		txn.InsertDistributedTraceHeaders(http.Header(message.Header))
+		defer nrnats.StartPublishSegment(txn, c.connection, message.Subject).End()
+	}
+
 	options := make([]natsjs.PublishOpt, 0, 1)
 	if messageID = strings.TrimSpace(messageID); messageID != "" {
 		options = append(options, natsjs.WithMsgID(messageID))
 	}
 
 	if _, err := c.jetStream.PublishMsg(ctx, message, options...); err != nil {
-		return fmt.Errorf("publish JetStream message to %s: %w", message.Subject, err)
+		wrappedErr := fmt.Errorf("publish JetStream message to %s: %w", message.Subject, err)
+		if txn != nil {
+			txn.NoticeError(wrappedErr)
+		}
+		return wrappedErr
 	}
 
 	return nil
