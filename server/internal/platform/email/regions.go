@@ -6,11 +6,8 @@ import (
 )
 
 var supportedSESRegions = map[string]struct{}{
-	"us-east-1":      {},
-	"ap-northeast-1": {},
-	"eu-north-1":     {},
-	"sa-east-1":      {},
-	"af-south-1":     {},
+	"us-east-1":  {},
+	"eu-north-1": {},
 }
 
 // NormalizeSESRegion returns a canonical supported SES region and reports

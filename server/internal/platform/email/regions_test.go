@@ -10,15 +10,18 @@ func TestNormalizeSESRegion(t *testing.T) {
 	if !ok || region != "eu-north-1" {
 		t.Fatalf("NormalizeSESRegion() = %q, %v", region, ok)
 	}
-	if region, ok := NormalizeSESRegion("eu-west-1"); ok || region != "eu-west-1" {
-		t.Fatalf("unsupported region = %q, %v", region, ok)
+	for _, unsupported := range []string{"eu-west-1", "ap-northeast-1", "sa-east-1", "af-south-1"} {
+		if region, ok := NormalizeSESRegion(unsupported); ok || region != unsupported {
+			t.Fatalf("unsupported region = %q, %v", region, ok)
+		}
 	}
 }
 
 func TestSupportedSESRegionsReturnsSortedCopy(t *testing.T) {
 	regions := SupportedSESRegions()
-	if !slices.IsSorted(regions) || !slices.Contains(regions, "eu-north-1") {
-		t.Fatalf("regions = %v", regions)
+	want := []string{"eu-north-1", "us-east-1"}
+	if !slices.Equal(regions, want) {
+		t.Fatalf("regions = %v, want %v", regions, want)
 	}
 	regions[0] = "modified"
 	if slices.Contains(SupportedSESRegions(), "modified") {
