@@ -17,13 +17,32 @@ func TestEmailLifecycleWebhookEvent(t *testing.T) {
 	messageID := uuid.New()
 	teamID := uuid.New()
 	occurredAt := time.Date(2026, time.July, 31, 12, 0, 0, 0, time.UTC)
+	recipientDetails := []emailLifecycleRecipient{{
+		Email:          "a@example.com",
+		Status:         "bounced",
+		Action:         "failed",
+		StatusCode:     "5.1.1",
+		DiagnosticCode: "smtp; 550 user unknown",
+	}}
 
-	event, ok, err := emailLifecycleWebhookEvent(providerEventID, messageID, teamID, awsses.FeedbackEvent{
-		EventType:         "bounce",
-		ProviderMessageID: "ses-message-id",
-		OccurredAt:        occurredAt,
-		Recipients:        []string{" A@Example.com ", "a@example.com", "b@example.com"},
-	})
+	event, ok, err := emailLifecycleWebhookEvent(
+		providerEventID,
+		messageID,
+		teamID,
+		"partially_failed",
+		recipientDetails,
+		awsses.FeedbackEvent{
+			EventType:         "bounce",
+			ProviderMessageID: "ses-message-id",
+			OccurredAt:        occurredAt,
+			Recipients:        []string{" A@Example.com ", "a@example.com", "b@example.com"},
+			Diagnostics: awsses.EventDiagnostics{
+				BounceType:    "Permanent",
+				BounceSubType: "General",
+				ReportingMTA:  "dsn; example.com",
+			},
+		},
+	)
 	if err != nil {
 		t.Fatalf("create email lifecycle webhook: %v", err)
 	}
@@ -47,11 +66,20 @@ func TestEmailLifecycleWebhookEvent(t *testing.T) {
 	if payload.Object != "email" || payload.ID != messageID.String() || payload.Provider != ProviderSES {
 		t.Fatalf("unexpected email webhook payload: %+v", payload)
 	}
+	if payload.Status != "partially_failed" || payload.ProviderEventID != providerEventID.String() {
+		t.Fatalf("unexpected status or provider event identity: %+v", payload)
+	}
 	if payload.ProviderMessageID != "ses-message-id" || payload.LastEvent != "bounce" {
 		t.Fatalf("unexpected provider payload fields: %+v", payload)
 	}
 	if want := []string{"a@example.com", "b@example.com"}; !reflect.DeepEqual(payload.Recipients, want) {
 		t.Fatalf("recipients = %v, want %v", payload.Recipients, want)
+	}
+	if !reflect.DeepEqual(payload.RecipientDetails, recipientDetails) {
+		t.Fatalf("recipient details = %#v, want %#v", payload.RecipientDetails, recipientDetails)
+	}
+	if payload.Diagnostics.BounceType != "Permanent" || payload.Diagnostics.ReportingMTA != "dsn; example.com" {
+		t.Fatalf("diagnostics = %#v", payload.Diagnostics)
 	}
 }
 
