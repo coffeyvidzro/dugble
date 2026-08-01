@@ -1,11 +1,17 @@
 package email
 
-import "strings"
+import (
+	"errors"
+	"strings"
+)
 
 const (
 	internalStreamHeader           = "X-Dugble-Internal-Email-Stream"
 	internalConfigurationSetHeader = "X-Dugble-Internal-SES-Configuration-Set"
 	internalSESTenantHeader        = "X-Dugble-Internal-SES-Tenant"
+
+	SystemSESTenantName       = "dugble-system"
+	CustomerOnboardingIdentity = "onboarding@dugble.me"
 )
 
 // DeliveryRoute is the immutable provider route selected when a message is
@@ -23,23 +29,34 @@ func SystemDeliveryRoute() DeliveryRoute {
 	return DeliveryRoute{
 		Stream:           "transactional",
 		ConfigurationSet: "dugble-transactional",
-		SESTenantName:    "dugble-system",
+		SESTenantName:    SystemSESTenantName,
 	}
 }
 
-// CustomerDeliveryRoute selects the shared product configuration set while
-// preserving the customer-specific SES tenant selected by the application.
-func CustomerDeliveryRoute(stream, tenantName string) DeliveryRoute {
-	route := DeliveryRoute{SESTenantName: strings.TrimSpace(tenantName)}
+// CustomerDeliveryRoute selects a shared product configuration set and binds
+// it to one explicit customer SES tenant. Customer routes can never target the
+// system tenant or silently omit tenant isolation.
+func CustomerDeliveryRoute(stream, tenantName string) (DeliveryRoute, error) {
+	tenantName = strings.TrimSpace(tenantName)
+	if tenantName == "" {
+		return DeliveryRoute{}, errors.New("customer SES tenant is required")
+	}
+	if strings.EqualFold(tenantName, SystemSESTenantName) {
+		return DeliveryRoute{}, errors.New("dugble-system is reserved for platform email")
+	}
+
+	route := DeliveryRoute{SESTenantName: tenantName}
 	switch strings.ToLower(strings.TrimSpace(stream)) {
+	case "transactional":
+		route.Stream = "transactional"
+		route.ConfigurationSet = "dugble-transactional"
 	case "marketing":
 		route.Stream = "marketing"
 		route.ConfigurationSet = "dugble-marketing"
 	default:
-		route.Stream = "transactional"
-		route.ConfigurationSet = "dugble-transactional"
+		return DeliveryRoute{}, errors.New("customer email stream must be transactional or marketing")
 	}
-	return route
+	return route, nil
 }
 
 // BuiltInDeliveryRoute remains as a compatibility helper for Dugble-owned
@@ -49,7 +66,7 @@ func BuiltInDeliveryRoute(stream string) DeliveryRoute {
 		return DeliveryRoute{
 			Stream:           "marketing",
 			ConfigurationSet: "dugble-marketing",
-			SESTenantName:    "dugble-system",
+			SESTenantName:    SystemSESTenantName,
 		}
 	}
 	return SystemDeliveryRoute()
