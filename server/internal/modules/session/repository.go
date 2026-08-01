@@ -76,6 +76,14 @@ func (r *Repository) ListByUserID(ctx context.Context, userID uuid.UUID) ([]Reco
 	return sessions, nil
 }
 
+func (r *Repository) HasKnownFingerprint(ctx context.Context, userID uuid.UUID, userAgent, ipAddress *string) (bool, error) {
+	known, err := r.queries.HasKnownSessionFingerprint(ctx, dbsqlc.HasKnownSessionFingerprintParams{UserID: userID, UserAgent: userAgent, IpAddress: ipAddress})
+	if err != nil {
+		return false, fmt.Errorf("check known session fingerprint: %w", err)
+	}
+	return known, nil
+}
+
 func (r *Repository) Revoke(ctx context.Context, userID uuid.UUID, id string) error {
 	return r.queries.RevokeSession(ctx, dbsqlc.RevokeSessionParams{ID: id, UserID: userID})
 }

@@ -40,6 +40,15 @@ FROM sessions
 WHERE user_id = sqlc.arg(user_id)
 ORDER BY last_seen_at DESC;
 
+-- name: HasKnownSessionFingerprint :one
+SELECT EXISTS (
+    SELECT 1
+    FROM sessions
+    WHERE user_id = sqlc.arg(user_id)
+      AND user_agent IS NOT DISTINCT FROM sqlc.narg(user_agent)
+      AND ip_address IS NOT DISTINCT FROM sqlc.narg(ip_address)
+);
+
 -- name: TouchSession :exec
 UPDATE sessions
 SET last_seen_at = now()

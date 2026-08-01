@@ -16,29 +16,6 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower_unique ON users (lower(email));
 
-CREATE TABLE IF NOT EXISTS passkey_credentials (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    credential_id BYTEA NOT NULL UNIQUE,
-    public_key BYTEA NOT NULL,
-    sign_count BIGINT NOT NULL DEFAULT 0,
-    transports TEXT[] NOT NULL DEFAULT '{}',
-    backup_eligible BOOLEAN NOT NULL DEFAULT false,
-    backup_state BOOLEAN NOT NULL DEFAULT false,
-    name TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    last_used_at TIMESTAMPTZ,
-    revoked_at TIMESTAMPTZ,
-    CONSTRAINT chk_passkey_credential_present CHECK (octet_length(credential_id) > 0),
-    CONSTRAINT chk_passkey_public_key_present CHECK (octet_length(public_key) > 0),
-    CONSTRAINT chk_passkey_sign_count CHECK (sign_count >= 0),
-    CONSTRAINT chk_passkey_name_present CHECK (length(trim(name)) > 0)
-);
-
-CREATE INDEX IF NOT EXISTS idx_passkey_credentials_user_active
-    ON passkey_credentials (user_id, created_at)
-    WHERE revoked_at IS NULL;
-
 CREATE TABLE IF NOT EXISTS totp_credentials (
     user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     secret_ciphertext BYTEA NOT NULL,
@@ -71,7 +48,7 @@ CREATE TABLE IF NOT EXISTS authentication_challenges (
     consumed_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT chk_authentication_challenge_purpose CHECK (
-        purpose IN ('passkey_registration', 'passkey_authentication', 'mfa_login')
+        purpose = 'mfa_login'
     ),
     CONSTRAINT chk_authentication_challenge_state CHECK (jsonb_typeof(state) = 'object')
 );

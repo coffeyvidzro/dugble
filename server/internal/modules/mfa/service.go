@@ -3,12 +3,14 @@ package mfa
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/coffeyvidzro/dugble/server/internal/notifications"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/audit"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
@@ -38,10 +40,33 @@ type Service struct {
 	cipher     *authnz.SecretCipher
 	issuer     string
 	now        func() time.Time
+	notifier   SecurityNotifier
+	recipients RecipientStore
+}
+
+type SecurityNotifier interface {
+	SendMFAEnabled(context.Context, notifications.SendSecurityEventInput) error
+	SendMFADisabled(context.Context, notifications.SendSecurityEventInput) error
+	SendRecoveryCodeUsed(context.Context, notifications.SendSecurityEventInput) error
+	SendMFALoginFailed(context.Context, notifications.SendSecurityEventInput) error
+}
+
+type RecipientStore interface {
+	GetNotificationRecipient(context.Context, uuid.UUID) (notifications.Recipient, error)
 }
 
 func NewService(repository store, cipher *authnz.SecretCipher, issuer string) *Service {
 	return &Service{repository: repository, cipher: cipher, issuer: issuer, now: time.Now}
+}
+
+func (s *Service) WithNotifier(notifier SecurityNotifier) *Service {
+	s.notifier = notifier
+	return s
+}
+
+func (s *Service) WithRecipientStore(recipients RecipientStore) *Service {
+	s.recipients = recipients
+	return s
 }
 
 func (s *Service) Enroll(ctx context.Context) (EnrollResponse, error) {
@@ -87,6 +112,7 @@ func (s *Service) Confirm(ctx context.Context, code string) (ConfirmResponse, er
 		return ConfirmResponse{}, apperrors.NewInternal("Unable to confirm MFA enrollment", err)
 	}
 	audit.RecordIdentity(ctx, principal.UserID, audit.Event{Action: "identity.mfa_enabled", ResourceType: "user", ResourceID: principal.UserID.String()})
+	s.notify(ctx, principal, "enabled")
 	return ConfirmResponse{RecoveryCodes: codes}, nil
 }
 
@@ -121,10 +147,11 @@ func (s *Service) Recover(ctx context.Context, code string) error {
 	if err != nil {
 		return err
 	}
-	hash := authnz.HashRecoveryCode(code)
-	if strings.TrimSpace(code) == "" {
-		return apperrors.NewBadRequest("Recovery code is required")
+	code, err = validateRecoveryCode(code)
+	if err != nil {
+		return err
 	}
+	hash := authnz.HashRecoveryCode(code)
 	if err := s.repository.UseRecoveryCode(ctx, principal.UserID, principal.SessionID, hash); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return apperrors.NewUnauthorized("Invalid or used recovery code")
@@ -132,6 +159,7 @@ func (s *Service) Recover(ctx context.Context, code string) error {
 		return apperrors.NewInternal("Unable to use recovery code", err)
 	}
 	audit.RecordIdentity(ctx, principal.UserID, audit.Event{Action: "identity.recovery_code_used", ResourceType: "session", ResourceID: principal.SessionID})
+	s.notify(ctx, principal, "recovery")
 	return nil
 }
 
@@ -144,7 +172,27 @@ func (s *Service) Disable(ctx context.Context) error {
 		return apperrors.NewInternal("Unable to disable MFA", err)
 	}
 	audit.RecordIdentity(ctx, principal.UserID, audit.Event{Action: "identity.mfa_disabled", ResourceType: "user", ResourceID: principal.UserID.String()})
+	s.notify(ctx, principal, "disabled")
 	return nil
+}
+
+func (s *Service) notify(ctx context.Context, principal authnz.Principal, event string) {
+	if s.notifier == nil || strings.TrimSpace(principal.Email) == "" {
+		return
+	}
+	input := notifications.SendSecurityEventInput{ToEmail: principal.Email, Name: principal.Name}
+	var err error
+	switch event {
+	case "enabled":
+		err = s.notifier.SendMFAEnabled(ctx, input)
+	case "disabled":
+		err = s.notifier.SendMFADisabled(ctx, input)
+	case "recovery":
+		err = s.notifier.SendRecoveryCodeUsed(ctx, input)
+	}
+	if err != nil {
+		slog.Warn("failed to send MFA security notification", "error", err, "event", event, "user_id", principal.UserID)
+	}
 }
 
 func (s *Service) Status(ctx context.Context) (StatusResponse, error) {
@@ -167,7 +215,7 @@ func (s *Service) validateCredential(ctx context.Context, userID uuid.UUID, cred
 	if rotated {
 		_ = s.repository.RotateSecretCiphertext(ctx, userID, credential.SecretCiphertext, replacement)
 	}
-	return authnz.ValidateTOTP(string(secret), strings.TrimSpace(code), s.now().UTC())
+	return authnz.ValidateTOTP(string(secret), normalizeAuthenticationCode(code), s.now().UTC())
 }
 
 func principalFromContext(ctx context.Context) (authnz.Principal, error) {
@@ -209,7 +257,7 @@ func (s *Service) BeginLogin(ctx context.Context, userID uuid.UUID, credentialVe
 }
 
 func (s *Service) CompleteLoginTOTP(ctx context.Context, challengeToken, code string) (uuid.UUID, error) {
-	tokenHash, err := loginChallengeHash(challengeToken)
+	tokenHash, err := validateLoginChallengeToken(challengeToken)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -222,17 +270,25 @@ func (s *Service) CompleteLoginTOTP(ctx context.Context, challengeToken, code st
 	}
 	step, ok := s.validateCredential(ctx, userID, credential, code)
 	if !ok || (credential.LastUsedStep != nil && step <= *credential.LastUsedStep) {
+		s.notifyFailedLogin(ctx, userID)
 		return uuid.Nil, pgx.ErrNoRows
 	}
 	if err := s.repository.ConsumeLoginTOTP(ctx, tokenHash, userID, step); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			s.notifyFailedLogin(ctx, userID)
+		}
 		return uuid.Nil, err
 	}
 	return userID, nil
 }
 
 func (s *Service) CompleteLoginRecovery(ctx context.Context, challengeToken, code string) (uuid.UUID, error) {
-	tokenHash, err := loginChallengeHash(challengeToken)
-	if err != nil || strings.TrimSpace(code) == "" {
+	tokenHash, err := validateLoginChallengeToken(challengeToken)
+	if err != nil {
+		return uuid.Nil, pgx.ErrNoRows
+	}
+	code, err = validateRecoveryCode(code)
+	if err != nil {
 		return uuid.Nil, pgx.ErrNoRows
 	}
 	userID, _, err := s.repository.GetLoginChallenge(ctx, tokenHash)
@@ -243,15 +299,24 @@ func (s *Service) CompleteLoginRecovery(ctx context.Context, challengeToken, cod
 		return uuid.Nil, err
 	}
 	if err := s.repository.ConsumeLoginRecoveryCode(ctx, tokenHash, userID, authnz.HashRecoveryCode(code)); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			s.notifyFailedLogin(ctx, userID)
+		}
 		return uuid.Nil, err
 	}
 	return userID, nil
 }
 
-func loginChallengeHash(token string) (string, error) {
-	token = strings.TrimSpace(token)
-	if !strings.HasPrefix(token, loginChallengePrefix) {
-		return "", pgx.ErrNoRows
+func (s *Service) notifyFailedLogin(ctx context.Context, userID uuid.UUID) {
+	if s.notifier == nil || s.recipients == nil {
+		return
 	}
-	return authnz.HashSessionToken(token), nil
+	recipient, err := s.recipients.GetNotificationRecipient(ctx, userID)
+	if err != nil {
+		slog.Warn("failed to resolve failed MFA notification recipient", "error", err, "user_id", userID)
+		return
+	}
+	if err := s.notifier.SendMFALoginFailed(ctx, notifications.SendSecurityEventInput{ToEmail: recipient.Email, Name: recipient.Name}); err != nil {
+		slog.Warn("failed to send failed MFA notification", "error", err, "user_id", userID)
+	}
 }

@@ -31,27 +31,11 @@ type SecretCipher struct {
 	ordered []cipherKey
 }
 
-func NewSecretCipher(encodedKey string) (*SecretCipher, error) {
-	return NewSecretCipherKeyring(nil, encodedKey)
-}
-func NewSecretCipherKeyring(specs []string, legacyKey string) (*SecretCipher, error) {
-	entries := make([]string, 0, len(specs)+1)
+func NewSecretCipherKeyring(specs []string) (*SecretCipher, error) {
+	entries := make([]string, 0, len(specs))
 	for _, s := range specs {
 		if strings.TrimSpace(s) != "" {
 			entries = append(entries, strings.TrimSpace(s))
-		}
-	}
-	legacyKey = strings.TrimSpace(legacyKey)
-	if legacyKey != "" {
-		hasLegacy := false
-		for _, entry := range entries {
-			if strings.HasPrefix(entry, "legacy:") {
-				hasLegacy = true
-				break
-			}
-		}
-		if !hasLegacy {
-			entries = append(entries, "legacy:"+legacyKey)
 		}
 	}
 	if len(entries) == 0 {

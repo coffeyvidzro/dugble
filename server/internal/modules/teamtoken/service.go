@@ -2,11 +2,11 @@ package teamtoken
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
-
+	"github.com/coffeyvidzro/dugble/server/internal/notifications"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/audit"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
@@ -34,9 +34,20 @@ var allowedPermissions = map[tenant.Permission]struct{}{
 
 type Service struct {
 	repository *Repository
+	notifier   AdministrativeNotifier
 }
 
 func NewService(repository *Repository) *Service { return &Service{repository: repository} }
+
+type AdministrativeNotifier interface {
+	SendTeamTokenCreated(context.Context, notifications.SendTeamTokenChangedInput) error
+	SendTeamTokenRevoked(context.Context, notifications.SendTeamTokenChangedInput) error
+}
+
+func (s *Service) WithNotifier(notifier AdministrativeNotifier) *Service {
+	s.notifier = notifier
+	return s
+}
 
 func (s *Service) List(ctx context.Context) ([]Token, error) {
 	tenantContext, err := requireTenantPermission(ctx, tenant.PermissionTeamTokensRead)
@@ -80,6 +91,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (CreatedToken, 
 		return CreatedToken{}, apperrors.NewInternal("Unable to create team token", err)
 	}
 	audit.Record(ctx, tenantContext, audit.Event{Action: "team_token.created", ResourceType: "team_token", ResourceID: token.ID, Metadata: map[string]any{"token_prefix": token.TokenPrefix}})
+	s.notify(ctx, tenantContext, token, "created")
 	return CreatedToken{Token: token, Secret: secret}, nil
 }
 
@@ -91,9 +103,9 @@ func (s *Service) Update(ctx context.Context, tokenID string, req UpdateRequest)
 	if err := requireOwner(tenantContext); err != nil {
 		return Token{}, err
 	}
-	parsedTokenID, err := uuid.Parse(strings.TrimSpace(tokenID))
+	parsedTokenID, err := validateTokenID(tokenID)
 	if err != nil {
-		return Token{}, apperrors.NewBadRequest("Token id must be a valid UUID")
+		return Token{}, err
 	}
 	name, permissions, expiresAt, err := validateMutation(req.Name, req.Permissions, req.ExpiresAt)
 	if err != nil {
@@ -122,16 +134,37 @@ func (s *Service) Revoke(ctx context.Context, tokenID string) (Token, error) {
 	if err := requireOwner(tenantContext); err != nil {
 		return Token{}, err
 	}
-	parsedTokenID, err := uuid.Parse(strings.TrimSpace(tokenID))
+	parsedTokenID, err := validateTokenID(tokenID)
 	if err != nil {
-		return Token{}, apperrors.NewBadRequest("Token id must be a valid UUID")
+		return Token{}, err
 	}
 	token, err := s.repository.Revoke(ctx, parsedTokenID, tenantContext.Scope.TeamID)
 	if err != nil {
 		return Token{}, apperrors.NewNotFound("Team token not found")
 	}
 	audit.Record(ctx, tenantContext, audit.Event{Action: "team_token.revoked", ResourceType: "team_token", ResourceID: token.ID, Metadata: map[string]any{"token_prefix": token.TokenPrefix}})
+	s.notify(ctx, tenantContext, token, "revoked")
 	return token, nil
+}
+
+func (s *Service) notify(ctx context.Context, access tenant.AccessContext, token Token, event string) {
+	if s.notifier == nil {
+		return
+	}
+	principal, ok := authnz.PrincipalFromContext(ctx)
+	if !ok || strings.TrimSpace(principal.Email) == "" {
+		return
+	}
+	input := notifications.SendTeamTokenChangedInput{ToEmail: principal.Email, Name: principal.Name, TeamID: access.Scope.TeamID.String(), TokenName: token.Name, TokenPrefix: token.TokenPrefix}
+	var err error
+	if event == "created" {
+		err = s.notifier.SendTeamTokenCreated(ctx, input)
+	} else {
+		err = s.notifier.SendTeamTokenRevoked(ctx, input)
+	}
+	if err != nil {
+		slog.Warn("failed to send team token notification", "error", err, "event", event, "team_id", access.Scope.TeamID, "token_id", token.ID)
+	}
 }
 
 func requireTenantPermission(
@@ -150,76 +183,6 @@ func requireOwner(tenantContext tenant.AccessContext) error {
 		return apperrors.NewForbidden("Team owner role is required")
 	}
 	return nil
-}
-
-func validateMutation(
-	name string,
-	permissions []string,
-	expiresAt *time.Time,
-) (string, []string, *time.Time, error) {
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return "", nil, nil, apperrors.NewBadRequest("Token name is required")
-	}
-	if len(name) > maxNameLength {
-		return "", nil, nil, apperrors.NewBadRequest("Token name is too long")
-	}
-	expiresAt, err := normalizeExpiresAt(expiresAt)
-	if err != nil {
-		return "", nil, nil, err
-	}
-	validated, err := validatePermissions(permissions)
-	if err != nil {
-		return "", nil, nil, err
-	}
-	return name, validated, expiresAt, nil
-}
-
-func normalizeExpiresAt(expiresAt *time.Time) (*time.Time, error) {
-	now := time.Now().UTC()
-	if expiresAt == nil {
-		value := now.Add(defaultTokenTTL)
-		return &value, nil
-	}
-	value := expiresAt.UTC()
-	if !value.After(now) {
-		return nil, apperrors.NewBadRequest("Token expiration must be in the future")
-	}
-	if value.After(now.Add(maxTokenTTL)) {
-		return nil, apperrors.NewBadRequest(
-			"Token expiration cannot be more than 365 days in the future",
-		)
-	}
-	return &value, nil
-}
-
-func validatePermissions(values []string) ([]string, error) {
-	seen := map[string]struct{}{}
-	permissions := make([]string, 0, len(values))
-	for _, value := range values {
-		permission := tenant.Permission(strings.TrimSpace(value))
-		if permission == "" {
-			continue
-		}
-		if !IsAllowedPermission(permission) {
-			return nil, apperrors.NewBadRequest("Unsupported token permission")
-		}
-		key := string(permission)
-		if _, ok := seen[key]; ok {
-			continue
-		}
-		seen[key] = struct{}{}
-		permissions = append(permissions, key)
-	}
-	if len(permissions) == 0 {
-		return nil, apperrors.NewBadRequest("At least one token permission is required")
-	}
-	return permissions, nil
-}
-
-func IsAllowedPermission(permission tenant.Permission) bool {
-	_, ok := allowedPermissions[permission]
-	return ok
 }
 
 func newTeamTokenSecret() (string, error) {

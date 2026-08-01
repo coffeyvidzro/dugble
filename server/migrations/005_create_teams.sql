@@ -36,15 +36,3 @@ CREATE INDEX IF NOT EXISTS idx_team_members_team_id_status
 
 CREATE INDEX IF NOT EXISTS idx_team_members_user_id_status
     ON team_members (user_id, status);
-
-CREATE TABLE IF NOT EXISTS team_identity_policies (
-    team_id UUID PRIMARY KEY REFERENCES teams(id) ON DELETE CASCADE,
-    require_mfa BOOLEAN NOT NULL DEFAULT false,
-    session_max_age_minutes INTEGER NOT NULL DEFAULT 43200,
-    updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT chk_team_identity_policy_session_age CHECK (
-        session_max_age_minutes BETWEEN 15 AND 43200
-    )
-);

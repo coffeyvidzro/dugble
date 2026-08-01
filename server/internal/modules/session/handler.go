@@ -24,12 +24,16 @@ func (h *Handler) List(c *echo.Context) error {
 }
 
 func (h *Handler) Get(c *echo.Context) error {
+	id, err := validateSessionID(c.Param("id"))
+	if err != nil {
+		return httputil.Error(c, err)
+	}
 	sessions, err := h.service.List(c.Request().Context())
 	if err != nil {
 		return httputil.Error(c, err)
 	}
 	for _, session := range sessions {
-		if session.ID == c.Param("id") {
+		if session.ID == id {
 			return httputil.OK(c, session)
 		}
 	}

@@ -3,7 +3,7 @@ package team
 import (
 	"context"
 	"errors"
-	"net/mail"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -19,10 +19,17 @@ import (
 type Service struct {
 	repository *Repository
 	notifier   InvitationNotifier
+	recipients MemberRecipientStore
 }
 
 type InvitationNotifier interface {
 	SendTeamInvitation(ctx context.Context, input notifications.SendTeamInvitationInput) error
+	SendTeamMemberRemoved(ctx context.Context, input notifications.SendTeamMemberChangedInput) error
+	SendTeamMemberRoleChanged(ctx context.Context, input notifications.SendTeamMemberChangedInput) error
+}
+
+type MemberRecipientStore interface {
+	GetNotificationRecipient(context.Context, uuid.UUID) (notifications.Recipient, error)
 }
 
 func NewService(repository *Repository, notifiers ...InvitationNotifier) *Service {
@@ -31,6 +38,11 @@ func NewService(repository *Repository, notifiers ...InvitationNotifier) *Servic
 		service.notifier = notifiers[0]
 	}
 	return service
+}
+
+func (s *Service) WithRecipientStore(recipients MemberRecipientStore) *Service {
+	s.recipients = recipients
+	return s
 }
 
 const teamInvitationTTL = 7 * 24 * time.Hour
@@ -52,9 +64,9 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Team, error) {
 	if !ok {
 		return Team{}, apperrors.NewUnauthorized("Authentication is required")
 	}
-	name := strings.TrimSpace(req.Name)
-	if name == "" {
-		return Team{}, apperrors.NewBadRequest("Team name is required")
+	name, err := validateTeamName(req.Name)
+	if err != nil {
+		return Team{}, err
 	}
 	team, err := s.repository.CreateWithOwner(ctx, name, principal.UserID)
 	if err != nil {
@@ -88,9 +100,9 @@ func (s *Service) Update(ctx context.Context, teamID string, req UpdateRequest) 
 	if err != nil {
 		return Team{}, err
 	}
-	name := strings.TrimSpace(req.Name)
-	if name == "" {
-		return Team{}, apperrors.NewBadRequest("Team name is required")
+	name, err := validateTeamName(req.Name)
+	if err != nil {
+		return Team{}, err
 	}
 	team, err := s.repository.Update(ctx, tenantContext.Scope.TeamID, name)
 	if err != nil {
@@ -149,9 +161,9 @@ func (s *Service) RemoveMember(ctx context.Context, teamID string, userID string
 	if err != nil {
 		return err
 	}
-	parsedUserID, err := uuid.Parse(strings.TrimSpace(userID))
+	parsedUserID, err := validateMemberID(userID)
 	if err != nil {
-		return apperrors.NewBadRequest("User id must be a valid UUID")
+		return err
 	}
 	member, err := s.repository.GetMember(ctx, tenantContext.Scope.TeamID, parsedUserID)
 	if err != nil {
@@ -164,6 +176,7 @@ func (s *Service) RemoveMember(ctx context.Context, teamID string, userID string
 		return apperrors.NewInternal("Unable to remove team member", err)
 	}
 	audit.Record(ctx, tenantContext, audit.Event{Action: "team_member.removed", ResourceType: "team_member", ResourceID: parsedUserID.String()})
+	s.notifyMemberChange(ctx, tenantContext.Scope.TeamID, parsedUserID, member.Role, "removed")
 	return nil
 }
 
@@ -177,13 +190,13 @@ func (s *Service) UpdateMemberRole(
 	if err != nil {
 		return Member{}, err
 	}
-	parsedUserID, err := uuid.Parse(strings.TrimSpace(userID))
+	parsedUserID, err := validateMemberID(userID)
 	if err != nil {
-		return Member{}, apperrors.NewBadRequest("User id must be a valid UUID")
+		return Member{}, err
 	}
-	role := strings.TrimSpace(req.Role)
-	if role != RoleAdmin && role != RoleMember {
-		return Member{}, apperrors.NewBadRequest("Role must be admin or member")
+	role, err := validateMemberRole(req.Role)
+	if err != nil {
+		return Member{}, err
 	}
 	existing, err := s.repository.GetMember(ctx, tenantContext.Scope.TeamID, parsedUserID)
 	if err != nil {
@@ -197,7 +210,33 @@ func (s *Service) UpdateMemberRole(
 		return Member{}, apperrors.NewInternal("Unable to update team member role", err)
 	}
 	audit.Record(ctx, tenantContext, audit.Event{Action: "team_member.role_updated", ResourceType: "team_member", ResourceID: parsedUserID.String(), Metadata: map[string]any{"role": role}})
+	s.notifyMemberChange(ctx, tenantContext.Scope.TeamID, parsedUserID, role, "role_changed")
 	return member, nil
+}
+
+func (s *Service) notifyMemberChange(ctx context.Context, teamID, userID uuid.UUID, role, event string) {
+	if s.notifier == nil || s.recipients == nil {
+		return
+	}
+	recipient, err := s.recipients.GetNotificationRecipient(ctx, userID)
+	if err != nil {
+		slog.Warn("failed to resolve team member notification recipient", "error", err, "user_id", userID)
+		return
+	}
+	teamRecord, err := s.repository.Get(ctx, teamID)
+	if err != nil {
+		slog.Warn("failed to resolve team notification context", "error", err, "team_id", teamID)
+		return
+	}
+	input := notifications.SendTeamMemberChangedInput{ToEmail: recipient.Email, Name: recipient.Name, Team: teamRecord.Name, Role: role}
+	if event == "removed" {
+		err = s.notifier.SendTeamMemberRemoved(ctx, input)
+	} else {
+		err = s.notifier.SendTeamMemberRoleChanged(ctx, input)
+	}
+	if err != nil {
+		slog.Warn("failed to send team member notification", "error", err, "event", event, "user_id", userID, "team_id", teamID)
+	}
 }
 
 func (s *Service) InviteMember(
@@ -217,12 +256,9 @@ func (s *Service) InviteMember(
 	if err != nil {
 		return Invitation{}, err
 	}
-	role := strings.TrimSpace(req.Role)
-	if role == "" {
-		role = RoleMember
-	}
-	if role != RoleAdmin && role != RoleMember {
-		return Invitation{}, apperrors.NewBadRequest("Role must be admin or member")
+	role, err := validateInvitationRole(req.Role)
+	if err != nil {
+		return Invitation{}, err
 	}
 	token, err := authnz.NewSessionToken()
 	if err != nil {
@@ -318,7 +354,7 @@ func (s *Service) AcceptInvitation(ctx context.Context, token string) (Invitatio
 	}
 	accepted, err := s.repository.AcceptInvitationAndCreateMember(
 		ctx,
-		authnz.HashSessionToken(strings.TrimSpace(token)),
+		authnz.HashSessionToken(normalizeInvitationToken(token)),
 		teamID,
 		principal.UserID,
 		invitation.Role,
@@ -353,7 +389,7 @@ func (s *Service) DeclineInvitation(ctx context.Context, token string) (Invitati
 	}
 	declined, err := s.repository.DeclineInvitation(
 		ctx,
-		authnz.HashSessionToken(strings.TrimSpace(token)),
+		authnz.HashSessionToken(normalizeInvitationToken(token)),
 	)
 	if err != nil {
 		return Invitation{}, apperrors.NewBadRequest("Invitation token is invalid or expired")
@@ -376,11 +412,9 @@ func (s *Service) invitationForPrincipal(
 			"Authentication is required",
 		)
 	}
-	token = strings.TrimSpace(token)
-	if token == "" {
-		return authnz.Principal{}, Invitation{}, apperrors.NewBadRequest(
-			"Invitation token is required",
-		)
+	token, err := validateInvitationToken(token)
+	if err != nil {
+		return authnz.Principal{}, Invitation{}, err
 	}
 	invitation, err := s.repository.GetInvitationByTokenHash(ctx, authnz.HashSessionToken(token))
 	if err != nil {
@@ -389,14 +423,6 @@ func (s *Service) invitationForPrincipal(
 		)
 	}
 	return principal, invitation, nil
-}
-
-func normalizeInvitationEmail(value string) (string, error) {
-	email := strings.ToLower(strings.TrimSpace(value))
-	if _, err := mail.ParseAddress(email); err != nil {
-		return "", apperrors.NewBadRequest("A valid invitee email is required")
-	}
-	return email, nil
 }
 
 func requireTenantPermission(
@@ -408,9 +434,9 @@ func requireTenantPermission(
 	if !decision.Allowed {
 		return tenant.AccessContext{}, apperrors.NewForbidden(decision.Reason)
 	}
-	parsedTeamID, err := uuid.Parse(strings.TrimSpace(teamID))
+	parsedTeamID, err := validateTeamID(teamID)
 	if err != nil {
-		return tenant.AccessContext{}, apperrors.NewBadRequest("Team id must be a valid UUID")
+		return tenant.AccessContext{}, err
 	}
 	if tenantContext.Scope.TeamID != parsedTeamID {
 		return tenant.AccessContext{}, apperrors.NewForbidden("Team context does not match route")

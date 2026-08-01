@@ -2,7 +2,6 @@ package middlewares
 
 import (
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
@@ -23,7 +22,6 @@ type TenantConfig struct {
 	ParamName   string
 	HeaderName  string
 	Required    tenant.Permission
-	Policies    tenant.IdentityPolicyStore
 }
 
 func Tenant(config TenantConfig) echo.MiddlewareFunc {
@@ -65,23 +63,6 @@ func Tenant(config TenantConfig) echo.MiddlewareFunc {
 					c,
 					apperrors.NewForbidden("Active team membership is required"),
 				)
-			}
-			if config.Policies != nil {
-				policy, err := config.Policies.GetTenantIdentityPolicy(c.Request().Context(), teamID)
-				if err != nil {
-					return httputil.Error(c, apperrors.NewInternal("Unable to resolve team identity policy", err))
-				}
-				if policy.RequireMFA && !principal.AssuranceLevel.Meets(authnz.AssuranceLevelTwo) {
-					return httputil.Error(c, apperrors.NewStepUpRequired("This team requires multi-factor authentication"))
-				}
-				maxAge := policy.SessionMaxAge
-				if maxAge <= 0 {
-					maxAge = tenant.DefaultSessionMaxAge
-				}
-				age := time.Since(principal.AuthenticatedAt)
-				if principal.AuthenticatedAt.IsZero() || age < 0 || age > maxAge {
-					return httputil.Error(c, apperrors.NewStepUpRequired("Your organization requires you to authenticate again"))
-				}
 			}
 			access := tenant.AccessContext{
 				Actor: tenant.Actor{

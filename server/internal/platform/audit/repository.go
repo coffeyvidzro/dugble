@@ -22,8 +22,7 @@ func (r *Repository) Record(ctx context.Context, entry Entry) error {
 	_, err = r.queries.CreateAuditEvent(ctx, dbsqlc.CreateAuditEventParams{
 		TeamID: uuidPointer(entry.TeamID), ActorType: entry.ActorType,
 		ActorUserID: uuidPointer(entry.ActorUserID), ActorSessionID: stringPointer(entry.ActorSessionID),
-		ActorTokenID: uuidPointer(entry.ActorTokenID), ActorWorkloadID: uuidPointer(entry.ActorWorkloadID),
-		ActorCredentialID: uuidPointer(entry.ActorCredentialID), Action: entry.Action,
+		ActorTokenID: uuidPointer(entry.ActorTokenID), Action: entry.Action,
 		ResourceType: entry.ResourceType, ResourceID: entry.ResourceID, Outcome: entry.Outcome,
 		Metadata: metadata, RequestID: stringPointer(entry.Request.RequestID),
 		IpAddress: stringPointer(entry.Request.IPAddress), UserAgent: stringPointer(entry.Request.UserAgent),
@@ -50,12 +49,6 @@ func (r *Repository) ListTeam(ctx context.Context, teamID uuid.UUID, beforeID *u
 		}
 		if row.ActorTokenID != nil {
 			entry.ActorTokenID = *row.ActorTokenID
-		}
-		if row.ActorWorkloadID != nil {
-			entry.ActorWorkloadID = *row.ActorWorkloadID
-		}
-		if row.ActorCredentialID != nil {
-			entry.ActorCredentialID = *row.ActorCredentialID
 		}
 		if err := json.Unmarshal(row.Metadata, &entry.Metadata); err != nil {
 			return nil, err

@@ -13,11 +13,7 @@ key and the remaining entries are decrypt-only fallback keys.
    `ENCRYPTION_KEYS`. The command exits non-zero if any persisted secret cannot
    be decrypted. It is idempotent and uses compare-and-swap updates.
 4. Run the command again and confirm `rotated=0` before removing an old key.
-5. Keep the immediately previous key deployed for at least the maximum OIDC
-   login-state lifetime (10 minutes), because those ephemeral PKCE verifiers
-   are not included in the bulk rotation.
+5. Keep the immediately previous key deployed until a successful rotation run completes.
 6. Remove retired keys from every instance and secret store.
 
-Application reads also lazily rewrap TOTP and OIDC client secrets with the
-primary key. `MFA_ENCRYPTION_KEY` remains a temporary legacy fallback for
-existing deployments; new deployments should use only `ENCRYPTION_KEYS`.
+Application reads also lazily rewrap TOTP secrets with the primary key.

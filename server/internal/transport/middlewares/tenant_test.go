@@ -6,97 +6,18 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
 
-	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 )
 
 type tenantMembershipStoreFunc func(context.Context, uuid.UUID, uuid.UUID) (tenant.Membership, error)
-type tenantIdentityPolicyStoreFunc func(context.Context, uuid.UUID) (tenant.IdentityPolicy, error)
 
 func (f tenantMembershipStoreFunc) GetTenantMembership(ctx context.Context, teamID uuid.UUID, userID uuid.UUID) (tenant.Membership, error) {
 	return f(ctx, teamID, userID)
-}
-
-func (f tenantIdentityPolicyStoreFunc) GetTenantIdentityPolicy(ctx context.Context, teamID uuid.UUID) (tenant.IdentityPolicy, error) {
-	return f(ctx, teamID)
-}
-
-func TestTenantEnforcesIdentityPolicy(t *testing.T) {
-	t.Parallel()
-	teamID, userID := uuid.New(), uuid.New()
-	tests := []struct {
-		name       string
-		principal  authnz.Principal
-		policy     tenant.IdentityPolicy
-		wantStatus int
-	}{
-		{name: "MFA required", principal: authnz.Principal{AssuranceLevel: authnz.AssuranceLevelOne, AuthenticatedAt: time.Now()}, policy: tenant.IdentityPolicy{RequireMFA: true, SessionMaxAge: time.Hour}, wantStatus: http.StatusForbidden},
-		{name: "session too old", principal: authnz.Principal{AssuranceLevel: authnz.AssuranceLevelTwo, AuthenticatedAt: time.Now().Add(-2 * time.Hour)}, policy: tenant.IdentityPolicy{RequireMFA: true, SessionMaxAge: time.Hour}, wantStatus: http.StatusForbidden},
-		{name: "policy satisfied", principal: authnz.Principal{AssuranceLevel: authnz.AssuranceLevelTwo, AuthenticatedAt: time.Now()}, policy: tenant.IdentityPolicy{RequireMFA: true, SessionMaxAge: time.Hour}, wantStatus: http.StatusNoContent},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodGet, "/messages", nil)
-			request.Header.Set(defaultTenantHeader, teamID.String())
-			principal := test.principal
-			principal.UserID = userID
-			request = request.WithContext(authnz.ContextWithPrincipal(request.Context(), principal))
-			response := httptest.NewRecorder()
-			ctx := echo.New().NewContext(request, response)
-			handler := Tenant(TenantConfig{
-				Memberships: tenantMembershipStoreFunc(func(context.Context, uuid.UUID, uuid.UUID) (tenant.Membership, error) {
-					return tenant.Membership{TeamID: teamID, UserID: userID, Role: tenant.RoleOwner, Status: tenant.StatusActive, TeamStatus: tenant.StatusActive}, nil
-				}),
-				Policies: tenantIdentityPolicyStoreFunc(func(context.Context, uuid.UUID) (tenant.IdentityPolicy, error) { return test.policy, nil }),
-				Required: tenant.PermissionSMSRead,
-			})(func(c *echo.Context) error { return c.NoContent(http.StatusNoContent) })
-			if err := handler(ctx); err != nil {
-				t.Fatal(err)
-			}
-			if response.Code != test.wantStatus {
-				t.Fatalf("status = %d, want %d", response.Code, test.wantStatus)
-			}
-		})
-	}
-}
-
-func TestTenantAccessSessionEnforcesIdentityPolicy(t *testing.T) {
-	t.Parallel()
-
-	teamID := uuid.New()
-	userID := uuid.New()
-	request := httptest.NewRequest(http.MethodGet, "/messages", nil)
-	request.Header.Set(defaultTenantHeader, teamID.String())
-	request.AddCookie(&http.Cookie{Name: authnz.SessionCookieName, Value: "secret"})
-	response := httptest.NewRecorder()
-	ctx := echo.New().NewContext(request, response)
-	handler := TenantAccess(TenantAccessConfig{
-		Sessions: sessionStoreStub{record: session.Record{ID: "session-id", UserID: userID, ExpiresAt: time.Now().Add(time.Hour), Authentication: session.Authentication{Assurance: authnz.AssuranceLevelOne, AuthenticatedAt: time.Now(), CredentialVersion: 1}}},
-		Users:    principalRepositoryStub{principal: authnz.Principal{UserID: userID, CredentialVersion: 1}},
-		Memberships: tenantMembershipStoreFunc(func(context.Context, uuid.UUID, uuid.UUID) (tenant.Membership, error) {
-			return tenant.Membership{TeamID: teamID, UserID: userID, Role: tenant.RoleOwner, Status: tenant.StatusActive, TeamStatus: tenant.StatusActive}, nil
-		}),
-		Policies: tenantIdentityPolicyStoreFunc(func(context.Context, uuid.UUID) (tenant.IdentityPolicy, error) {
-			return tenant.IdentityPolicy{RequireMFA: true, SessionMaxAge: time.Hour}, nil
-		}),
-		Required: tenant.PermissionSMSRead,
-	})(func(c *echo.Context) error {
-		t.Fatal("next handler must not run when tenant policy requires MFA")
-		return nil
-	})
-
-	if err := handler(ctx); err != nil {
-		t.Fatal(err)
-	}
-	if response.Code != http.StatusForbidden {
-		t.Fatalf("status = %d, want %d", response.Code, http.StatusForbidden)
-	}
 }
 
 func TestTenantRejectsDisabledTeam(t *testing.T) {

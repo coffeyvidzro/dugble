@@ -24,6 +24,40 @@ type SendPasswordChangedInput struct {
 	Name    string
 }
 
+type SendEmailChangedInput struct {
+	ToEmail string
+	Name    string
+	Email   string
+}
+
+type SendSecurityEventInput struct {
+	ToEmail string
+	Name    string
+}
+
+type SendNewLoginInput struct {
+	ToEmail   string
+	Name      string
+	IPAddress string
+	UserAgent string
+	Method    string
+}
+
+type SendTeamMemberChangedInput struct {
+	ToEmail string
+	Name    string
+	Team    string
+	Role    string
+}
+
+type SendTeamTokenChangedInput struct {
+	ToEmail     string
+	Name        string
+	TeamID      string
+	TokenName   string
+	TokenPrefix string
+}
+
 type SendTeamInvitationInput struct {
 	ToEmail     string
 	Name        string

@@ -21,7 +21,7 @@ func main() {
 func run() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
-	cipher, err := authnz.NewSecretCipherKeyring(strings.Split(os.Getenv("ENCRYPTION_KEYS"), ","), os.Getenv("MFA_ENCRYPTION_KEY"))
+	cipher, err := authnz.NewSecretCipherKeyring(strings.Split(os.Getenv("ENCRYPTION_KEYS"), ","))
 	if err != nil {
 		return fmt.Errorf("load encryption keyring: %w", err)
 	}

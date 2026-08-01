@@ -40,7 +40,7 @@ func TestTOTPValidationRejectsMalformedInput(t *testing.T) {
 func TestSecretCipher(t *testing.T) {
 	key := make([]byte, 32)
 	_, _ = rand.Read(key)
-	c, err := NewSecretCipher(base64.StdEncoding.EncodeToString(key))
+	c, err := NewSecretCipherKeyring([]string{"test:" + base64.StdEncoding.EncodeToString(key)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,11 +67,11 @@ func TestRecoveryCodeHashNormalization(t *testing.T) {
 func TestSecretCipherKeyRotation(t *testing.T) {
 	newKey := bytes.Repeat([]byte{1}, 32)
 	oldKey := bytes.Repeat([]byte{2}, 32)
-	keyring, err := NewSecretCipherKeyring([]string{"2026-07:" + base64.StdEncoding.EncodeToString(newKey), "2026-01:" + base64.StdEncoding.EncodeToString(oldKey)}, "")
+	keyring, err := NewSecretCipherKeyring([]string{"2026-07:" + base64.StdEncoding.EncodeToString(newKey), "2026-01:" + base64.StdEncoding.EncodeToString(oldKey)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	oldOnly, err := NewSecretCipherKeyring([]string{"2026-01:" + base64.StdEncoding.EncodeToString(oldKey)}, "")
+	oldOnly, err := NewSecretCipherKeyring([]string{"2026-01:" + base64.StdEncoding.EncodeToString(oldKey)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,8 +89,8 @@ func TestSecretCipherKeyRotation(t *testing.T) {
 	}
 }
 func TestSecretCipherRejectsMissingKey(t *testing.T) {
-	first, _ := NewSecretCipherKeyring([]string{"first:" + base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{3}, 32))}, "")
-	second, _ := NewSecretCipherKeyring([]string{"second:" + base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{4}, 32))}, "")
+	first, _ := NewSecretCipherKeyring([]string{"first:" + base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{3}, 32))})
+	second, _ := NewSecretCipherKeyring([]string{"second:" + base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{4}, 32))})
 	ciphertext, _ := first.Encrypt([]byte("secret"))
 	if _, err := second.Decrypt(ciphertext); err == nil {
 		t.Fatal("decrypted ciphertext without its key")
@@ -112,7 +112,7 @@ func TestSecretCipherRotatesLegacyCiphertext(t *testing.T) {
 		t.Fatal(err)
 	}
 	legacy := aead.Seal(nonce, nonce, []byte("legacy-secret"), nil)
-	keyring, err := NewSecretCipherKeyring([]string{"current:" + base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{6}, 32)), "previous:" + base64.StdEncoding.EncodeToString(oldKey)}, "")
+	keyring, err := NewSecretCipherKeyring([]string{"current:" + base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{6}, 32)), "previous:" + base64.StdEncoding.EncodeToString(oldKey)})
 	if err != nil {
 		t.Fatal(err)
 	}

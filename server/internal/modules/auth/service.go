@@ -3,8 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
-	"net/mail"
-	"strings"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -105,12 +104,9 @@ func (s *Service) Login(
 	userAgent *string,
 	ipAddress *string,
 ) (LoginResponse, string, time.Time, error) {
-	email := normalizeEmail(req.Email)
-	password := strings.TrimSpace(req.Password)
-	if email == "" || password == "" {
-		return LoginResponse{}, "", time.Time{}, apperrors.NewBadRequest(
-			"Email and password are required",
-		)
+	email, password, validationErr := validateLoginRequest(req)
+	if validationErr != nil {
+		return LoginResponse{}, "", time.Time{}, validationErr
 	}
 
 	user, err := s.repository.GetUserByEmail(ctx, email)
@@ -181,10 +177,9 @@ func (s *Service) CompleteMFALogin(ctx context.Context, request MFALoginRequest,
 }
 
 func (s *Service) VerifyEmail(ctx context.Context, req VerifyEmailRequest) error {
-	email := normalizeEmail(req.Email)
-	token := strings.TrimSpace(req.Token)
-	if email == "" || token == "" {
-		return apperrors.NewBadRequest("Email and token are required")
+	email, token, err := validateEmailToken(req.Email, req.Token)
+	if err != nil {
+		return err
 	}
 
 	identifier := emailVerificationIdentifier(email)
@@ -201,9 +196,9 @@ func (s *Service) VerifyEmail(ctx context.Context, req VerifyEmailRequest) error
 }
 
 func (s *Service) ResendEmail(ctx context.Context, req ResendEmailRequest) error {
-	email := normalizeEmail(req.Email)
-	if _, err := mail.ParseAddress(email); err != nil {
-		return apperrors.NewBadRequest("A valid email is required")
+	email, err := validateEmail(req.Email)
+	if err != nil {
+		return err
 	}
 	user, err := s.repository.GetUserByEmail(ctx, email)
 	if err != nil {
@@ -213,9 +208,9 @@ func (s *Service) ResendEmail(ctx context.Context, req ResendEmailRequest) error
 }
 
 func (s *Service) ForgotPassword(ctx context.Context, req ForgotPasswordRequest) error {
-	email := normalizeEmail(req.Email)
-	if _, err := mail.ParseAddress(email); err != nil {
-		return apperrors.NewBadRequest("A valid email is required")
+	email, err := validateEmail(req.Email)
+	if err != nil {
+		return err
 	}
 	user, err := s.repository.GetUserByEmail(ctx, email)
 	if err != nil {
@@ -225,14 +220,9 @@ func (s *Service) ForgotPassword(ctx context.Context, req ForgotPasswordRequest)
 }
 
 func (s *Service) ResetPassword(ctx context.Context, req ResetPasswordRequest) error {
-	email := normalizeEmail(req.Email)
-	token := strings.TrimSpace(req.Token)
-	password := strings.TrimSpace(req.Password)
-	if email == "" || token == "" {
-		return apperrors.NewBadRequest("Email and token are required")
-	}
-	if len(password) < 12 {
-		return apperrors.NewBadRequest("Password must be at least 12 characters")
+	email, token, password, err := validateResetPasswordRequest(req)
+	if err != nil {
+		return err
 	}
 
 	identifier := passwordResetIdentifier(email)
@@ -249,6 +239,13 @@ func (s *Service) ResetPassword(ctx context.Context, req ResetPasswordRequest) e
 		return apperrors.NewInternal("Unable to reset password", err)
 	}
 	audit.RecordIdentity(ctx, user.ID, audit.Event{Action: "identity.password_reset", ResourceType: "user", ResourceID: user.ID.String()})
+	if notifier, ok := s.notifier.(interface {
+		SendPasswordChanged(context.Context, notifications.SendPasswordChangedInput) error
+	}); ok {
+		if err := notifier.SendPasswordChanged(ctx, notifications.SendPasswordChangedInput{ToEmail: user.Email, Name: user.Name}); err != nil {
+			slog.Warn("failed to send password changed notification", "error", err, "user_id", user.ID)
+		}
+	}
 	return nil
 }
 
@@ -263,26 +260,6 @@ func (s *Service) Logout(ctx context.Context) error {
 	return nil
 }
 
-func validateCredentials(
-	emailValue string,
-	nameValue string,
-	passwordValue string,
-) (string, string, string, error) {
-	email := normalizeEmail(emailValue)
-	name := strings.TrimSpace(nameValue)
-	password := strings.TrimSpace(passwordValue)
-	if _, err := mail.ParseAddress(email); err != nil {
-		return "", "", "", apperrors.NewBadRequest("A valid email is required")
-	}
-	if name == "" {
-		return "", "", "", apperrors.NewBadRequest("Name is required")
-	}
-	if len(password) < 12 {
-		return "", "", "", apperrors.NewBadRequest("Password must be at least 12 characters")
-	}
-	return email, name, password, nil
-}
-
 func (s *Service) createSession(
 	ctx context.Context,
 	user UserRecord,
@@ -292,6 +269,10 @@ func (s *Service) createSession(
 	assurance authnz.AssuranceLevel,
 	mfaCompletedAt *time.Time,
 ) (AuthResponse, string, time.Time, error) {
+	knownFingerprint, fingerprintErr := s.sessions.HasKnownFingerprint(ctx, user.ID, userAgent, ipAddress)
+	if fingerprintErr != nil {
+		slog.Warn("failed to evaluate session fingerprint", "error", fingerprintErr, "user_id", user.ID)
+	}
 	token, err := authnz.NewSessionToken()
 	if err != nil {
 		return AuthResponse{}, "", time.Time{}, apperrors.NewInternal(
@@ -321,7 +302,30 @@ func (s *Service) createSession(
 			err,
 		)
 	}
+	if fingerprintErr == nil && !knownFingerprint {
+		s.notifyNewLogin(ctx, user, userAgent, ipAddress, method)
+	}
 	return AuthResponse{User: authenticatedUserFromRecord(user)}, token, expiresAt, nil
+}
+
+func (s *Service) notifyNewLogin(ctx context.Context, user UserRecord, userAgent, ipAddress *string, method authnz.AuthenticationMethod) {
+	notifier, ok := s.notifier.(interface {
+		SendNewLogin(context.Context, notifications.SendNewLoginInput) error
+	})
+	if !ok {
+		return
+	}
+	input := notifications.SendNewLoginInput{ToEmail: user.Email, Name: user.Name, Method: string(method), UserAgent: optionalString(userAgent), IPAddress: optionalString(ipAddress)}
+	if err := notifier.SendNewLogin(ctx, input); err != nil {
+		slog.Warn("failed to send new login notification", "error", err, "user_id", user.ID)
+	}
+}
+
+func optionalString(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func (s *Service) issueEmailVerificationToken(ctx context.Context, email string, name string) error {
@@ -379,24 +383,6 @@ func (s *Service) issueVerificationToken(
 		}
 	}
 	return nil
-}
-
-func normalizeEmail(email string) string {
-	value := strings.TrimSpace(strings.ToLower(email))
-	address, err := mail.ParseAddress(value)
-	if err != nil {
-		return value
-	}
-
-	return strings.TrimSpace(strings.ToLower(address.Address))
-}
-
-func emailVerificationIdentifier(email string) string {
-	return "email.verify:" + normalizeEmail(email)
-}
-
-func passwordResetIdentifier(email string) string {
-	return "password.reset:" + normalizeEmail(email)
 }
 
 func authenticatedUserFromRecord(user UserRecord) AuthenticatedUser {
