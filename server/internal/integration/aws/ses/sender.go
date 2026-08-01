@@ -49,13 +49,7 @@ func (c *Client) Send(ctx context.Context, message platformemail.Message) (platf
 	}
 	output, err := client.SendRawEmail(ctx, input)
 	if err != nil {
-		if c.configurationSet != "" && shouldRetryWithoutConfigurationSet(err) {
-			input.ConfigurationSetName = nil
-			output, err = client.SendRawEmail(ctx, input)
-		}
-		if err != nil {
-			return platformemail.Result{}, classifySESFailure(err)
-		}
+		return platformemail.Result{}, classifySESFailure(err)
 	}
 	if output.MessageId == nil || strings.TrimSpace(*output.MessageId) == "" {
 		return platformemail.Result{}, platformemail.NewSubmissionUnknownError(
@@ -98,16 +92,6 @@ func envelopeDestinations(message platformemail.Message) []string {
 		destinations = append(destinations, email)
 	}
 	return destinations
-}
-
-func shouldRetryWithoutConfigurationSet(err error) bool {
-	var apiError smithy.APIError
-	if !errors.As(err, &apiError) {
-		return false
-	}
-	code := strings.ToLower(strings.TrimSpace(apiError.ErrorCode()))
-	message := strings.ToLower(strings.TrimSpace(apiError.ErrorMessage()))
-	return code == "accessdenied" && strings.Contains(message, "configuration-set")
 }
 
 func classifySESFailure(err error) error {
