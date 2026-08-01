@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	awsses "github.com/aws/aws-sdk-go-v2/service/ses"
-	sestypes "github.com/aws/aws-sdk-go-v2/service/ses/types"
+	"github.com/aws/aws-sdk-go-v2/service/sesv2"
+	sestypes "github.com/aws/aws-sdk-go-v2/service/sesv2/types"
 	"github.com/aws/smithy-go"
 
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
@@ -21,7 +21,7 @@ const (
 )
 
 func (c *Client) Send(ctx context.Context, message platformemail.Message) (platformemail.Result, error) {
-	client, err := c.sendingClient(message.Region)
+	client, err := c.v2SendingClient(message.Region)
 	if err != nil {
 		return platformemail.Result{}, err
 	}
@@ -41,12 +41,7 @@ func (c *Client) Send(ctx context.Context, message platformemail.Message) (platf
 		}
 		return platformemail.Result{}, platformemail.NewSendError(code, false, err)
 	}
-	if tenantName := strings.TrimSpace(message.SESTenantName); tenantName != "" {
-		raw, err = addInternalHeader(raw, "X-SES-TENANT", tenantName)
-		if err != nil {
-			return platformemail.Result{}, platformemail.NewSendError("invalid_ses_tenant", false, err)
-		}
-	}
+
 	configurationSet := strings.TrimSpace(message.ConfigurationSet)
 	if configurationSet == "" {
 		return platformemail.Result{}, platformemail.NewSendError(
@@ -55,13 +50,26 @@ func (c *Client) Send(ctx context.Context, message platformemail.Message) (platf
 			fmt.Errorf("SES configuration set is required for %s email stream", strings.TrimSpace(message.Stream)),
 		)
 	}
-	input := &awsses.SendRawEmailInput{
-		ConfigurationSetName: aws.String(configurationSet),
-		Destinations:         envelopeDestinations(message),
-		RawMessage:           &sestypes.RawMessage{Data: raw},
-		Tags:                 deliveryTags(message),
+	tenantName := strings.TrimSpace(message.SESTenantName)
+	if tenantName == "" {
+		return platformemail.Result{}, platformemail.NewSendError(
+			"missing_ses_tenant",
+			false,
+			errors.New("SES tenant name is required"),
+		)
 	}
-	output, err := client.SendRawEmail(ctx, input)
+
+	input := &sesv2.SendEmailInput{
+		ConfigurationSetName: aws.String(configurationSet),
+		TenantName:           aws.String(tenantName),
+		FromEmailAddress:     aws.String(strings.TrimSpace(message.From.Email)),
+		Destination:          destination(message),
+		Content: &sestypes.EmailContent{
+			Raw: &sestypes.RawMessage{Data: raw},
+		},
+		EmailTags: deliveryTags(message),
+	}
+	output, err := client.SendEmail(ctx, input)
 	if err != nil {
 		return platformemail.Result{}, classifySESFailure(err)
 	}
@@ -72,19 +80,6 @@ func (c *Client) Send(ctx context.Context, message platformemail.Message) (platf
 		)
 	}
 	return platformemail.Result{Provider: ProviderSES, MessageID: strings.TrimSpace(*output.MessageId)}, nil
-}
-
-func addInternalHeader(raw []byte, name, value string) ([]byte, error) {
-	name = strings.TrimSpace(name)
-	value = strings.TrimSpace(value)
-	if name == "" || value == "" || strings.ContainsAny(name+value, "\r\n") {
-		return nil, fmt.Errorf("invalid internal SES header")
-	}
-	header := []byte(name + ": " + value + "\r\n")
-	result := make([]byte, 0, len(header)+len(raw))
-	result = append(result, header...)
-	result = append(result, raw...)
-	return result, nil
 }
 
 func deliveryTags(message platformemail.Message) []sestypes.MessageTag {
@@ -101,13 +96,16 @@ func deliveryTags(message platformemail.Message) []sestypes.MessageTag {
 	return tags
 }
 
-func envelopeDestinations(message platformemail.Message) []string {
-	addresses := make([]platformemail.Address, 0, len(message.To)+len(message.CC)+len(message.BCC))
-	addresses = append(addresses, message.To...)
-	addresses = append(addresses, message.CC...)
-	addresses = append(addresses, message.BCC...)
+func destination(message platformemail.Message) *sestypes.Destination {
+	return &sestypes.Destination{
+		ToAddresses:  addressValues(message.To),
+		CcAddresses:  addressValues(message.CC),
+		BccAddresses: addressValues(message.BCC),
+	}
+}
 
-	destinations := make([]string, 0, len(addresses))
+func addressValues(addresses []platformemail.Address) []string {
+	values := make([]string, 0, len(addresses))
 	seen := make(map[string]struct{}, len(addresses))
 	for _, address := range addresses {
 		email := strings.TrimSpace(address.Email)
@@ -119,9 +117,9 @@ func envelopeDestinations(message platformemail.Message) []string {
 			continue
 		}
 		seen[key] = struct{}{}
-		destinations = append(destinations, email)
+		values = append(values, email)
 	}
-	return destinations
+	return values
 }
 
 func classifySESFailure(err error) error {
