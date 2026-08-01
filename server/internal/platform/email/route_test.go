@@ -4,9 +4,9 @@ import "testing"
 
 func TestPersistAndExtractDeliveryRoute(t *testing.T) {
 	headers := PersistDeliveryRoute(map[string]string{
-		"X-Customer":                          "value",
-		"x-dugble-internal-email-stream":      "spoofed",
-		"X-Dugble-Internal-SES-Tenant":        "spoofed",
+		"X-Customer":                              "value",
+		"x-dugble-internal-email-stream":          "spoofed",
+		"X-Dugble-Internal-SES-Tenant":            "spoofed",
 		"X-Dugble-Internal-SES-Configuration-Set": "spoofed",
 	}, DeliveryRoute{
 		Stream:           "transactional",
