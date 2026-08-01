@@ -23,12 +23,16 @@ const (
 	StatusCanceled   = "canceled"
 )
 
-const MessageTypeTransactional = "transactional"
+const (
+	MessageTypeTransactional = "transactional"
+	MessageTypeMarketing     = "marketing"
+)
 
 type Message struct {
 	ID                string            `json:"id"`
 	TeamID            string            `json:"team_id"`
 	MessageType       string            `json:"message_type"`
+	Stream            string            `json:"stream"`
 	FromEmail         string            `json:"from_email"`
 	FromName          *string           `json:"from_name,omitempty"`
 	ReplyToEmail      *string           `json:"reply_to_email,omitempty"`
@@ -61,6 +65,7 @@ type Message struct {
 }
 
 type SendRequest struct {
+	Stream      string            `json:"stream,omitempty"`
 	From        *EmailAddress     `json:"from,omitempty"`
 	ReplyTo     EmailAddressList  `json:"reply_to,omitempty"`
 	To          EmailAddressList  `json:"to"`
@@ -179,6 +184,7 @@ type RetrieveResponse struct {
 	Object      string     `json:"object"`
 	ID          string     `json:"id"`
 	MessageID   *string    `json:"message_id"`
+	Stream      string     `json:"stream"`
 	To          []string   `json:"to"`
 	From        string     `json:"from"`
 	CreatedAt   time.Time  `json:"created_at"`
@@ -203,7 +209,7 @@ func (m Message) RetrieveResponse() RetrieveResponse {
 		replyTo = []string{*m.ReplyToEmail}
 	}
 	return RetrieveResponse{
-		Object: "email", ID: m.ID, MessageID: m.ProviderMessageID,
+		Object: "email", ID: m.ID, MessageID: m.ProviderMessageID, Stream: m.Stream,
 		To: to, From: formatEmailAddress(EmailAddress{Email: m.FromEmail, Name: pointerValue(m.FromName)}),
 		CreatedAt: m.CreatedAt, Subject: m.Subject, HTML: m.HTMLBody, Text: m.TextBody,
 		BCC: addressStrings(m.BCC), CC: addressStrings(m.CC), ReplyTo: replyTo,
