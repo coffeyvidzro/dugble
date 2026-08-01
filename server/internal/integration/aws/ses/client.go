@@ -15,13 +15,13 @@ import (
 
 // NewClient creates an SES client using the AWS SDK default credential chain.
 // Deployments outside AWS may pass a tightly scoped access-key pair from their
-// secret manager. AWS-hosted deployments may leave both values empty and use a
-// workload role.
-func NewClient(region, defaultFrom, accessKey, secretKey string) (*Client, error) {
+// secret manager. Any extra argument is ignored for source compatibility; SES
+// routing is persisted per message and never configured on the client.
+func NewClient(region, defaultFrom, accessKey, secretKey string, _ ...string) (*Client, error) {
 	return newClient(context.Background(), region, defaultFrom, accessKey, secretKey)
 }
 
-func NewSESSender(ctx context.Context, region, defaultFrom, accessKey, secretKey string) (*Client, error) {
+func NewSESSender(ctx context.Context, region, defaultFrom, accessKey, secretKey string, _ ...string) (*Client, error) {
 	return newClient(ctx, region, defaultFrom, accessKey, secretKey)
 }
 
