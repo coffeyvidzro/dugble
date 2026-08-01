@@ -210,9 +210,6 @@ func (r *Repository) processClaimed(ctx context.Context, claim ReconcileClaim) e
 	if err := tx.QueryRow(ctx, `SELECT team_id FROM email_messages WHERE id = $1`, messageID).Scan(&teamID); err != nil {
 		return fmt.Errorf("load team for email message %s: %w", messageID, err)
 	}
-	if err := persistRecipientEvents(ctx, tx, claim.EventID, messageID, providerEvent); err != nil {
-		return err
-	}
 	if err := applyRecipientCurrentState(ctx, tx, messageID, providerEvent); err != nil {
 		return err
 	}

@@ -105,14 +105,12 @@ type EmailProviderEvent struct {
 	NormalizedPayload      []byte             `db:"normalized_payload" json:"normalized_payload"`
 	ProviderPayload        []byte             `db:"provider_payload" json:"provider_payload"`
 	ProcessedAt            pgtype.Timestamptz `db:"processed_at" json:"processed_at"`
-	CreatedAt              pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	AttemptCount           int32              `db:"attempt_count" json:"attempt_count"`
 	NextAttemptAt          pgtype.Timestamptz `db:"next_attempt_at" json:"next_attempt_at"`
 	LastAttemptAt          pgtype.Timestamptz `db:"last_attempt_at" json:"last_attempt_at"`
 	LastError              *string            `db:"last_error" json:"last_error"`
 	DeadLetteredAt         pgtype.Timestamptz `db:"dead_lettered_at" json:"dead_lettered_at"`
-	Diagnostics            []byte             `db:"diagnostics" json:"diagnostics"`
-	RecipientDiagnostics   []byte             `db:"recipient_diagnostics" json:"recipient_diagnostics"`
+	CreatedAt              pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
 type EmailRecipient struct {
@@ -123,28 +121,15 @@ type EmailRecipient struct {
 	Status             string             `db:"status" json:"status"`
 	LastEventType      *string            `db:"last_event_type" json:"last_event_type"`
 	LastEventAt        pgtype.Timestamptz `db:"last_event_at" json:"last_event_at"`
+	LastAction         *string            `db:"last_action" json:"last_action"`
+	LastStatusCode     *string            `db:"last_status_code" json:"last_status_code"`
+	LastDiagnosticCode *string            `db:"last_diagnostic_code" json:"last_diagnostic_code"`
 	DeliveredAt        pgtype.Timestamptz `db:"delivered_at" json:"delivered_at"`
 	FailedAt           pgtype.Timestamptz `db:"failed_at" json:"failed_at"`
 	ErrorCode          *string            `db:"error_code" json:"error_code"`
 	ErrorMessage       *string            `db:"error_message" json:"error_message"`
 	CreatedAt          pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	UpdatedAt          pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-	LastAction         *string            `db:"last_action" json:"last_action"`
-	LastStatusCode     *string            `db:"last_status_code" json:"last_status_code"`
-	LastDiagnosticCode *string            `db:"last_diagnostic_code" json:"last_diagnostic_code"`
-}
-
-type EmailRecipientEvent struct {
-	ID                   uuid.UUID          `db:"id" json:"id"`
-	EmailProviderEventID uuid.UUID          `db:"email_provider_event_id" json:"email_provider_event_id"`
-	EmailMessageID       uuid.UUID          `db:"email_message_id" json:"email_message_id"`
-	RecipientEmail       string             `db:"recipient_email" json:"recipient_email"`
-	EventType            string             `db:"event_type" json:"event_type"`
-	OccurredAt           pgtype.Timestamptz `db:"occurred_at" json:"occurred_at"`
-	CreatedAt            pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	Action               *string            `db:"action" json:"action"`
-	StatusCode           *string            `db:"status_code" json:"status_code"`
-	DiagnosticCode       *string            `db:"diagnostic_code" json:"diagnostic_code"`
 }
 
 type ExternalIdentity struct {
