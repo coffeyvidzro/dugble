@@ -47,25 +47,19 @@ func (c *Client) Send(ctx context.Context, message platformemail.Message) (platf
 			return platformemail.Result{}, platformemail.NewSendError("invalid_ses_tenant", false, err)
 		}
 	}
-	input := &awsses.SendRawEmailInput{
-		Destinations: envelopeDestinations(message),
-		RawMessage:   &sestypes.RawMessage{Data: raw},
-		Tags:         deliveryTags(message),
-	}
-	stream := strings.TrimSpace(message.Stream)
 	configurationSet := strings.TrimSpace(message.ConfigurationSet)
-	if configurationSet == "" && stream == "" {
-		configurationSet = c.configurationSet
-	}
-	if configurationSet == "" && stream != "" {
+	if configurationSet == "" {
 		return platformemail.Result{}, platformemail.NewSendError(
 			"missing_configuration_set",
 			false,
-			fmt.Errorf("SES configuration set is required for %s email stream", stream),
+			fmt.Errorf("SES configuration set is required for %s email stream", strings.TrimSpace(message.Stream)),
 		)
 	}
-	if configurationSet != "" {
-		input.ConfigurationSetName = aws.String(configurationSet)
+	input := &awsses.SendRawEmailInput{
+		ConfigurationSetName: aws.String(configurationSet),
+		Destinations:         envelopeDestinations(message),
+		RawMessage:           &sestypes.RawMessage{Data: raw},
+		Tags:                 deliveryTags(message),
 	}
 	output, err := client.SendRawEmail(ctx, input)
 	if err != nil {
