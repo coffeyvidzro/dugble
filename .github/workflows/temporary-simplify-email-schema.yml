@@ -1,0 +1,69 @@
+name: Temporary simplify email schema
+
+on:
+  push:
+    branches:
+      - feat/sns-integration
+
+permissions:
+  contents: write
+
+jobs:
+  simplify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/sns-integration
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      - name: Remove recipient event persistence
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("server/internal/delivery/email/feedback/repository.go")
+          text = path.read_text()
+          obsolete = '''\tif err := persistRecipientEvents(ctx, tx, claim.EventID, messageID, providerEvent); err != nil {
+          \t\treturn err
+          \t}
+          '''
+          if obsolete not in text:
+              raise SystemExit("recipient event persistence block not found")
+          path.write_text(text.replace(obsolete, "", 1))
+          PY
+
+          rm server/migrations/025_create_email_recipient_events.sql
+          rm server/migrations/028_add_email_provider_event_reconciliation.sql
+          rm server/migrations/029_persist_email_feedback_diagnostics.sql
+
+      - name: Regenerate sqlc
+        working-directory: server
+        run: go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
+
+      - name: Format Go code
+        run: gofmt -w server
+
+      - name: Rebuild Atlas checksum
+        run: |
+          docker run --rm \
+            --volume "$PWD/server/migrations:/migrations" \
+            arigaio/atlas:1.2.3-community-alpine \
+            migrate hash --dir file:///migrations
+
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "simplify email feedback persistence"
+          git push origin HEAD:feat/sns-integration
