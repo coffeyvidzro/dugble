@@ -87,13 +87,15 @@ func run() error {
 	emailConsumer := emaildelivery.NewConsumer(messagingClient, processedEvents, emaildelivery.NewHandler(emaildelivery.NewRepository(db), emailSender), emaildelivery.ConsumerConfig{
 		Concurrency: 5, AckWait: 2 * time.Minute, HandlerTimeout: 45 * time.Second, MaxDeliver: 6, RetryPolicy: emaildelivery.DefaultRetryPolicy(),
 	})
+	feedbackMetrics := emailfeedback.DefaultMetrics
 	emailFeedbackRepository := emailfeedback.NewRepositoryWithWebhookEmitter(db, webhookEmitter)
-	emailFeedbackConsumer := emailfeedback.NewConsumer(messagingClient, processedEvents, emailfeedback.NewHandler(emailFeedbackRepository), emailfeedback.ConsumerConfig{
+	emailFeedbackConsumer := emailfeedback.NewConsumer(messagingClient, processedEvents, emailfeedback.NewHandlerWithMetrics(emailFeedbackRepository, feedbackMetrics), emailfeedback.ConsumerConfig{
 		Concurrency: 5, AckWait: time.Minute, HandlerTimeout: 30 * time.Second, MaxDeliver: 6, RetryPolicy: emailfeedback.DefaultRetryPolicy(),
 	})
-	emailFeedbackReconciler := emailfeedback.NewReconciler(emailFeedbackRepository, emailfeedback.ReconcilerConfig{
+	emailFeedbackReconciler := emailfeedback.NewObservedReconciler(emailFeedbackRepository, emailfeedback.ReconcilerConfig{
 		PollInterval: 5 * time.Second, BatchSize: 25, Concurrency: 5, LeaseDuration: 2 * time.Minute, HandleTimeout: 30 * time.Second,
-	})
+	}, feedbackMetrics)
+	emailFeedbackMetricsCollector := emailfeedback.NewMetricsCollector(db, feedbackMetrics, 15*time.Second)
 	domainRepository := domainmodule.NewRepository(db)
 	domainService := domainmodule.NewService(domainRepository, emailSender, platformemail.NewNetDNSVerifier())
 	domainWorkerID := "sender-domain-reconciliation-" + uuid.NewString()
@@ -141,6 +143,7 @@ func run() error {
 		{Name: "email JetStream consumer", Run: emailConsumer.Run},
 		{Name: "email feedback JetStream consumer", Run: emailFeedbackConsumer.Run},
 		{Name: "email feedback database reconciler", Run: emailFeedbackReconciler.Run},
+		{Name: "email feedback metrics collector", Run: emailFeedbackMetricsCollector.Run},
 		{Name: "SMS JetStream consumer", Run: smsConsumer.Run},
 		{Name: "webhook delivery consumer", Run: webhookConsumer.Run},
 		{Name: "sender domain reconciliation consumer", Run: domainConsumer.Run},
@@ -149,8 +152,11 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("create worker supervisor: %w", err)
 	}
-	healthServer.Handler = workerhealth.NewHandler(db, messagingClient, supervisor).Routes()
-	slog.Info("worker starting", "failure_policy", supervisor.Policy(), "health_address", healthServer.Addr)
+	healthMux := http.NewServeMux()
+	healthMux.Handle("/", workerhealth.NewHandler(db, messagingClient, supervisor).Routes())
+	healthMux.Handle("GET /metrics", feedbackMetrics)
+	healthServer.Handler = healthMux
+	slog.Info("worker starting", "failure_policy", supervisor.Policy(), "health_address", healthServer.Addr, "metrics_path", "/metrics")
 	if err := supervisor.Run(ctx, 30*time.Second); err != nil {
 		return err
 	}
