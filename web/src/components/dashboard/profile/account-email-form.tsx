@@ -75,7 +75,7 @@ export function AccountEmailForm({ initialEmail }: { initialEmail: string }) {
                             setError(null);
                         }}
                         disabled={!!pendingEmail}
-                        className="bg-background transition-shadow focus-visible:ring-primary/50 disabled:opacity-70"
+                        className="border-border bg-muted/20 text-foreground shadow-sm transition-shadow focus-visible:border-primary focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-70"
                     />
                     {error && (
                         <p className="text-xs font-medium text-danger animate-fade-up">
