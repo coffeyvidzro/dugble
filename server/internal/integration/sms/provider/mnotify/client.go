@@ -27,60 +27,43 @@ type Client struct {
 	HTTPClient *http.Client
 }
 
-// APIError represents a non-2xx response from mNotify.
-//
-// The routing layer can inspect StatusCode, but it should not blindly retry
-// timeouts or 5xx responses because mNotify may have accepted the campaign
-// before Dugble received the response.
+// APIError represents a definitive mNotify rejection or a non-2xx response.
 type APIError struct {
 	StatusCode int
+	Status     string
+	Code       ResponseCode
+	Message    string
 	Body       string
+	Definitive bool
 }
 
+// SafeToFallback is retained for the delivery worker's existing provider-error
+// classification contract. SMS routing no longer performs provider fallback.
 func (e *APIError) SafeToFallback() bool {
 	if e == nil {
 		return false
 	}
-
-	// These responses indicate mNotify did not accept the campaign. Retrying the
-	// next provider is safe from a duplicate-delivery perspective. 401/403 and
-	// 5xx responses remain non-fallback because they are either configuration
-	// problems or ambiguous upstream outcomes.
-	switch e.StatusCode {
-	case http.StatusBadRequest,
-		http.StatusNotFound,
-		http.StatusMethodNotAllowed,
-		http.StatusConflict,
-		http.StatusGone,
-		http.StatusLengthRequired,
-		http.StatusPreconditionFailed,
-		http.StatusRequestEntityTooLarge,
-		http.StatusRequestURITooLong,
-		http.StatusUnsupportedMediaType,
-		http.StatusRequestedRangeNotSatisfiable,
-		http.StatusExpectationFailed,
-		http.StatusTeapot,
-		http.StatusMisdirectedRequest,
-		http.StatusUnprocessableEntity,
-		http.StatusLocked,
-		http.StatusFailedDependency,
-		http.StatusTooEarly,
-		http.StatusUpgradeRequired,
-		http.StatusPreconditionRequired,
-		http.StatusTooManyRequests,
-		http.StatusRequestHeaderFieldsTooLarge,
-		http.StatusUnavailableForLegalReasons:
+	if e.Definitive {
 		return true
-	default:
-		return false
 	}
+	return e.StatusCode >= http.StatusBadRequest && e.StatusCode < http.StatusInternalServerError
 }
 
 func (e *APIError) Error() string {
-	if strings.TrimSpace(e.Body) == "" {
-		return fmt.Sprintf("mnotify api returned status %d", e.StatusCode)
+	if e == nil {
+		return "mnotify api error"
 	}
-	return fmt.Sprintf("mnotify api returned status %d: %s", e.StatusCode, e.Body)
+
+	code := e.Code.String()
+	message := strings.TrimSpace(e.Message)
+	status := strings.TrimSpace(e.Status)
+	if code != "" || message != "" || status != "" {
+		return fmt.Sprintf("mnotify api error: status %q code %q message %q", status, code, message)
+	}
+	if strings.TrimSpace(e.Body) != "" {
+		return fmt.Sprintf("mnotify api returned status %d: %s", e.StatusCode, strings.TrimSpace(e.Body))
+	}
+	return fmt.Sprintf("mnotify api returned status %d", e.StatusCode)
 }
 
 func NewClient(cfg config.ProviderConfig) *Client {

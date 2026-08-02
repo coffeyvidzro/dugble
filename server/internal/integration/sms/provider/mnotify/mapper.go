@@ -11,7 +11,7 @@ const providerID = "mnotify"
 
 func FromInternal(req sms.SendRequest) *SendRequest {
 	return &SendRequest{
-		Recipient:    []string{strings.TrimSpace(req.To)},
+		Recipient:    []string{strings.TrimPrefix(strings.TrimSpace(req.To), "+")},
 		Sender:       strings.TrimSpace(req.From),
 		Message:      req.Message,
 		IsSchedule:   false,
@@ -24,13 +24,13 @@ func ToInternal(resp *SendResponse) (*sms.SendResponse, error) {
 		return nil, fmt.Errorf("mnotify send response is nil")
 	}
 
-	if !success(resp.Status) || strings.TrimSpace(resp.Code) != "2000" {
-		return nil, fmt.Errorf(
-			"mnotify send response failed: status %q code %q message %q",
-			resp.Status,
-			resp.Code,
-			resp.Message,
-		)
+	if !success(resp.Status) || resp.Code.String() != "2000" {
+		return nil, &APIError{
+			Status:     resp.Status,
+			Code:       resp.Code,
+			Message:    resp.Message,
+			Definitive: true,
+		}
 	}
 
 	campaignID := strings.TrimSpace(resp.Summary.ID)
@@ -38,17 +38,18 @@ func ToInternal(resp *SendResponse) (*sms.SendResponse, error) {
 		return nil, fmt.Errorf("mnotify send response contains empty campaign id")
 	}
 	if resp.Summary.TotalSent <= 0 {
-		return nil, fmt.Errorf(
-			"mnotify accepted no recipients: contacts %d rejected %d",
-			resp.Summary.Contacts,
-			resp.Summary.TotalRejected,
-		)
+		return nil, &APIError{
+			Status:     resp.Status,
+			Code:       resp.Code,
+			Message:    fmt.Sprintf("accepted no recipients: contacts %d rejected %d", resp.Summary.Contacts, resp.Summary.TotalRejected),
+			Definitive: true,
+		}
 	}
 
 	return &sms.SendResponse{
 		ProviderID:    providerID,
 		ProviderMsgID: campaignID,
-		Status:        "submitted",
+		Status:        sms.StatusSubmitted,
 	}, nil
 }
 
@@ -60,7 +61,11 @@ func CampaignStatusToInternal(
 		return nil, fmt.Errorf("mnotify campaign status response is nil")
 	}
 	if !success(resp.Status) {
-		return nil, fmt.Errorf("mnotify campaign status response failed: status %q", resp.Status)
+		return nil, &APIError{
+			Status:     resp.Status,
+			Message:    "campaign status request failed",
+			Definitive: true,
+		}
 	}
 
 	campaignID = strings.TrimSpace(campaignID)
@@ -71,13 +76,13 @@ func CampaignStatusToInternal(
 		return &sms.StatusResponse{
 			ProviderID:    providerID,
 			ProviderMsgID: campaignID,
-			Status:        "unknown",
+			Status:        sms.StatusUnknown,
 		}, nil
 	}
 
-	// Dugble currently sends one recipient per provider request. If batching is
-	// introduced, the internal response model should represent recipient-level
-	// statuses instead of collapsing a whole campaign to one value.
+	// Dugble sends one recipient per provider request, so one report entry is
+	// expected for the campaign. Multi-recipient campaigns require a different
+	// internal status model rather than collapsing recipient-level outcomes.
 	report := resp.Report[0]
 	if report.CampaignID != "" && !strings.EqualFold(strings.TrimSpace(report.CampaignID), campaignID) {
 		return nil, fmt.Errorf(
@@ -97,21 +102,21 @@ func CampaignStatusToInternal(
 func NormalizeStatus(status string) string {
 	switch strings.ToUpper(strings.TrimSpace(status)) {
 	case "SUCCESS", "2000", "QUEUED", "PENDING", "SUBMITTED":
-		return "submitted"
+		return sms.StatusSubmitted
 	case "SENT":
-		return "sent"
+		return sms.StatusSent
 	case "DELIVERED", "DELIVRD":
-		return "delivered"
+		return sms.StatusDelivered
 	case "UNDELIVERED", "UNDELIV":
-		return "undelivered"
+		return sms.StatusUndelivered
 	case "REJECTED", "REJECTD":
-		return "rejected"
+		return sms.StatusRejected
 	case "FAILED", "FAILURE", "ERROR":
-		return "failed"
+		return sms.StatusFailed
 	case "EXPIRED":
-		return "expired"
+		return sms.StatusExpired
 	default:
-		return "unknown"
+		return sms.StatusUnknown
 	}
 }
 

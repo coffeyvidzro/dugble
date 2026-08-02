@@ -24,6 +24,7 @@ import (
 	awsses "github.com/coffeyvidzro/dugble/server/internal/integration/aws/ses"
 	smsintegration "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/arkesel"
+	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/celcom"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/mnotify"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/routing"
 	"github.com/coffeyvidzro/dugble/server/internal/messaging/inbox"
@@ -110,7 +111,12 @@ func run() error {
 		CheckTimeout: 20 * time.Second, HealthCheckInterval: 24 * time.Hour, HealthRetryInterval: time.Hour, HealthFailureThreshold: 3,
 	}, domainWorkerID)
 
-	smsRouter, err := routing.NewService(routing.DefaultConfig(), routing.NewPriorityStrategy(), arkesel.NewProvider(arkesel.NewClient(cfg.Arkesel)), mnotify.NewProvider(mnotify.NewClient(cfg.MNotify)))
+	smsRouter, err := routing.NewService(
+		routing.DefaultConfig(),
+		arkesel.NewProvider(arkesel.NewClient(cfg.Arkesel)),
+		celcom.NewProvider(celcom.NewClient(cfg.Celcom)),
+		mnotify.NewProvider(mnotify.NewClient(cfg.MNotify)),
+	)
 	if err != nil {
 		return fmt.Errorf("initialize SMS router: %w", err)
 	}

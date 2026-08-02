@@ -1,5 +1,12 @@
 package mnotify
 
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"strings"
+)
+
 type SendRequest struct {
 	Recipient    []string `json:"recipient"`
 	Sender       string   `json:"sender"`
@@ -8,10 +15,44 @@ type SendRequest struct {
 	ScheduleDate string   `json:"schedule_date"`
 }
 
+type ResponseCode string
+
+func (c *ResponseCode) UnmarshalJSON(data []byte) error {
+	if c == nil {
+		return fmt.Errorf("mnotify response code is nil")
+	}
+
+	data = bytes.TrimSpace(data)
+	if len(data) == 0 || bytes.Equal(data, []byte("null")) {
+		*c = ""
+		return nil
+	}
+
+	if data[0] == '"' {
+		var value string
+		if err := json.Unmarshal(data, &value); err != nil {
+			return err
+		}
+		*c = ResponseCode(strings.TrimSpace(value))
+		return nil
+	}
+
+	var number json.Number
+	if err := json.Unmarshal(data, &number); err != nil {
+		return fmt.Errorf("mnotify response code must be a string or number: %w", err)
+	}
+	*c = ResponseCode(number.String())
+	return nil
+}
+
+func (c ResponseCode) String() string {
+	return strings.TrimSpace(string(c))
+}
+
 type SendResponse struct {
-	Status  string `json:"status"`
-	Code    string `json:"code"`
-	Message string `json:"message"`
+	Status  string       `json:"status"`
+	Code    ResponseCode `json:"code"`
+	Message string       `json:"message"`
 	Summary struct {
 		ID            string   `json:"_id"`
 		Type          string   `json:"type"`

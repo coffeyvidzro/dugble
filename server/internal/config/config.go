@@ -12,24 +12,21 @@ type ProviderConfig struct {
 	APIKey  string `env:"API_KEY"`
 }
 
+type CelcomConfig struct {
+	BaseURL   string `env:"BASE_URL"`
+	APIKey    string `env:"API_KEY"`
+	PartnerID string `env:"PARTNER_ID"`
+}
+
 type AWSConfig struct {
 	FromEmail string `env:"FROM_EMAIL,required,notEmpty"`
 	Region    string `env:"REGION,required,notEmpty"`
-
-	// Deployments outside AWS provide a tightly scoped access-key pair through
-	// their secret manager. AWS-hosted deployments may leave these empty and use
-	// the SDK default credential chain with an IAM role.
 	AccessKey string `env:"ACCESS_KEY_ID"`
 	SecretKey string `env:"SECRET_ACCESS_KEY"`
-
-	// These values are internal compatibility fields for bootstrap wiring. They
-	// are not environment configuration; message routing is resolved by the
-	// platform email policy and persisted per message.
 	SESConfigurationSet              string
 	SESTransactionalConfigurationSet string
 	SESMarketingConfigurationSet     string
 	SESTenantName                    string
-
 	SNSTopicARNs []string `env:"SNS_TOPIC_ARNS" envSeparator:","`
 }
 
@@ -66,6 +63,7 @@ type Config struct {
 	NATSURL        string           `env:"NATS_URL" envDefault:"nats://localhost:4222"`
 	Arkesel        ProviderConfig   `envPrefix:"ARKESEL_"`
 	MNotify        ProviderConfig   `envPrefix:"MNOTIFY_"`
+	Celcom         CelcomConfig     `envPrefix:"CELCOM_"`
 	Backoffice     BackofficeConfig `envPrefix:"BACKOFFICE_"`
 	NewRelic       NewRelicConfig   `envPrefix:"NEW_RELIC_"`
 	Sentry         SentryConfig     `envPrefix:"SENTRY_"`
@@ -73,19 +71,15 @@ type Config struct {
 
 func Load() (*Config, error) {
 	_ = godotenv.Load()
-
 	cfg := &Config{}
 	if err := env.Parse(cfg); err != nil {
 		return nil, err
 	}
-
 	cfg.normalize()
 	return cfg, nil
 }
 
-func (c *Config) IsDevelopment() bool {
-	return strings.EqualFold(c.AppEnv, "development")
-}
+func (c *Config) IsDevelopment() bool { return strings.EqualFold(c.AppEnv, "development") }
 
 func (c *Config) normalize() {
 	c.AppEnv = strings.TrimSpace(c.AppEnv)
@@ -96,14 +90,7 @@ func (c *Config) normalize() {
 	c.FrontendURL = strings.TrimRight(strings.TrimSpace(c.FrontendURL), "/")
 	c.BackendURL = strings.TrimRight(strings.TrimSpace(c.BackendURL), "/")
 	c.CookieDomain = strings.TrimSpace(c.CookieDomain)
-	keys := make([]string, 0, len(c.EncryptionKeys))
-	for _, key := range c.EncryptionKeys {
-		if key = strings.TrimSpace(key); key != "" {
-			keys = append(keys, key)
-		}
-	}
-	c.EncryptionKeys = keys
-
+	c.EncryptionKeys = normalizeStrings(c.EncryptionKeys)
 	c.AWS.FromEmail = strings.TrimSpace(c.AWS.FromEmail)
 	c.AWS.Region = strings.TrimSpace(c.AWS.Region)
 	c.AWS.AccessKey = strings.TrimSpace(c.AWS.AccessKey)
@@ -118,24 +105,17 @@ func (c *Config) normalize() {
 	c.Arkesel.BaseURL = strings.TrimRight(strings.TrimSpace(c.Arkesel.BaseURL), "/")
 	c.MNotify.APIKey = strings.TrimSpace(c.MNotify.APIKey)
 	c.MNotify.BaseURL = strings.TrimRight(strings.TrimSpace(c.MNotify.BaseURL), "/")
+	c.Celcom.APIKey = strings.TrimSpace(c.Celcom.APIKey)
+	c.Celcom.PartnerID = strings.TrimSpace(c.Celcom.PartnerID)
+	c.Celcom.BaseURL = strings.TrimRight(strings.TrimSpace(c.Celcom.BaseURL), "/")
 	c.Backoffice.HTTPPort = strings.TrimSpace(c.Backoffice.HTTPPort)
 	c.NewRelic.LicenseKey = strings.TrimSpace(c.NewRelic.LicenseKey)
 	c.Sentry.DSN = strings.TrimSpace(c.Sentry.DSN)
 	c.Sentry.Release = strings.TrimSpace(c.Sentry.Release)
-
-	origins := make([]string, 0, len(c.CORSOrigins))
-	for _, origin := range c.CORSOrigins {
-		origin = strings.TrimSpace(origin)
-		if origin != "" {
-			origins = append(origins, origin)
-		}
-	}
-	c.CORSOrigins = origins
-
+	c.CORSOrigins = normalizeStrings(c.CORSOrigins)
 	adminEmails := make([]string, 0, len(c.Backoffice.AdminEmails))
 	for _, email := range c.Backoffice.AdminEmails {
-		email = strings.ToLower(strings.TrimSpace(email))
-		if email != "" {
+		if email = strings.ToLower(strings.TrimSpace(email)); email != "" {
 			adminEmails = append(adminEmails, email)
 		}
 	}
