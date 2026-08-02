@@ -8,6 +8,7 @@ import (
 )
 
 var namedQueryPattern = regexp.MustCompile(`(?m)^-- name: ([A-Za-z0-9_]+) :[a-z]+(?:\r?\n|$)`)
+var activeTeamPredicatePattern = regexp.MustCompile(`(?i)\b(?:team|t)\.status\s*=\s*'active'`)
 
 func TestTenantOwnedQueriesDeclareTenantScope(t *testing.T) {
 	t.Parallel()
@@ -57,6 +58,48 @@ func TestTenantOwnedQueriesDeclareTenantScope(t *testing.T) {
 				}
 				if !strings.Contains(strings.ToLower(statement), "sqlc.arg(team_id)") {
 					t.Errorf("query %s must accept team_id or receive an explicit trusted-query exemption", name)
+				}
+			}
+		})
+	}
+}
+
+func TestTenantAPIQueriesRequireActiveTeam(t *testing.T) {
+	t.Parallel()
+
+	required := map[string]map[string]struct{}{
+		"email_messages.sql": querySet("CreateEmailMessage", "GetEmailMessage", "ListEmailMessages"),
+		"sender_ids.sql": querySet("CreateSenderID", "ListSenderIDs", "GetSenderID", "DeleteSenderID"),
+		"team_invitations.sql": querySet(
+			"CreateTeamInvitation", "GetTeamInvitationByTokenHash", "ListPendingTeamInvitations",
+			"AcceptTeamInvitation", "DeclineTeamInvitation",
+		),
+		"team_tokens.sql": querySet(
+			"CreateTeamToken", "GetActiveTeamTokenByHash", "ListTeamTokens", "UpdateTeamToken", "RevokeTeamToken",
+		),
+		"webhook_endpoints.sql": querySet(
+			"CreateWebhookEndpoint", "ListWebhookEndpoints", "GetWebhookEndpoint", "UpdateWebhookEndpoint",
+			"DisableWebhookEndpoint", "RotateWebhookEndpointSecret", "ListSubscribedWebhookEndpoints",
+		),
+	}
+
+	for file, names := range required {
+		file, names := file, names
+		t.Run(file, func(t *testing.T) {
+			t.Parallel()
+			contents, err := os.ReadFile("queries/" + file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			queries := splitNamedQueries(string(contents))
+			for name := range names {
+				statement, ok := queries[name]
+				if !ok {
+					t.Errorf("required query %s not found", name)
+					continue
+				}
+				if !activeTeamPredicatePattern.MatchString(statement) {
+					t.Errorf("query %s must require an active team", name)
 				}
 			}
 		})
