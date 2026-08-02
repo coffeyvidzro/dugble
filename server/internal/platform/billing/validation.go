@@ -30,3 +30,13 @@ func validateSMSAuthorization(input SMSAuthorizationInput) (SMSAuthorizationInpu
 	}
 	return input, nil
 }
+
+func validateEmailAuthorization(input EmailAuthorizationInput) error {
+	if input.TeamID == uuid.Nil {
+		return ErrInvalidTeamID
+	}
+	if input.MessageID == uuid.Nil {
+		return ErrInvalidMessageID
+	}
+	return nil
+}

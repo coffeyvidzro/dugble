@@ -216,3 +216,155 @@ SELECT
         (SELECT balance_units FROM resolved_rate),
         0
     )::bigint AS balance_units;
+
+-- name: AuthorizeEmailCharge :one
+WITH billing_account AS MATERIALIZED (
+    SELECT
+        team.id AS team_id,
+        team.market_code,
+        wallet.currency,
+        wallet.tier,
+        wallet.balance_units,
+        wallet.free_email_allowance
+    FROM teams AS team
+    JOIN team_wallets AS wallet ON wallet.team_id = team.id
+    WHERE team.id = sqlc.arg(team_id)
+      AND team.status = 'active'
+      AND team.market_code IN ('GH', 'KE')
+    FOR UPDATE OF wallet
+),
+existing_allowance_usage AS MATERIALIZED (
+    SELECT usage.reference_id
+    FROM email_allowance_usage AS usage
+    JOIN billing_account AS account ON account.team_id = usage.team_id
+    WHERE usage.reference_id = sqlc.arg(reference_id)
+),
+existing_ledger AS MATERIALIZED (
+    SELECT ledger.id
+    FROM wallet_ledger AS ledger
+    JOIN billing_account AS account ON account.team_id = ledger.team_id
+    WHERE ledger.transaction_type = 'usage_email'
+      AND ledger.reference_id = sqlc.arg(reference_id)
+),
+inserted_allowance_usage AS (
+    INSERT INTO email_allowance_usage (team_id, reference_id)
+    SELECT account.team_id, sqlc.arg(reference_id)
+    FROM billing_account AS account
+    WHERE account.free_email_allowance > 0
+      AND NOT EXISTS (SELECT 1 FROM existing_allowance_usage)
+      AND NOT EXISTS (SELECT 1 FROM existing_ledger)
+    ON CONFLICT (team_id, reference_id) DO NOTHING
+    RETURNING team_id
+),
+updated_allowance AS (
+    UPDATE team_wallets AS wallet
+    SET free_email_allowance = wallet.free_email_allowance - 1,
+        updated_at = now()
+    FROM inserted_allowance_usage AS usage
+    WHERE wallet.team_id = usage.team_id
+    RETURNING wallet.balance_units, wallet.free_email_allowance
+),
+resolved_rate AS MATERIALIZED (
+    SELECT
+        account.*,
+        rate.cost_units,
+        rate.currency AS rate_currency
+    FROM billing_account AS account
+    JOIN product_rates AS rate
+      ON rate.market_code = account.market_code
+     AND rate.product = 'email'
+     AND rate.tier = account.tier
+     AND rate.is_active = true
+    WHERE account.free_email_allowance = 0
+),
+inserted_ledger AS (
+    INSERT INTO wallet_ledger (
+        team_id,
+        amount_units,
+        transaction_type,
+        reference_id
+    )
+    SELECT
+        rate.team_id,
+        -rate.cost_units,
+        'usage_email',
+        sqlc.arg(reference_id)
+    FROM resolved_rate AS rate
+    WHERE rate.currency = rate.rate_currency
+      AND rate.currency = CASE rate.market_code
+          WHEN 'GH' THEN 'GHS'
+          WHEN 'KE' THEN 'KES'
+      END
+      AND rate.balance_units >= rate.cost_units
+      AND NOT EXISTS (SELECT 1 FROM existing_ledger)
+      AND NOT EXISTS (SELECT 1 FROM existing_allowance_usage)
+    ON CONFLICT (team_id, transaction_type, reference_id) DO NOTHING
+    RETURNING team_id, amount_units
+),
+updated_wallet AS (
+    UPDATE team_wallets AS wallet
+    SET balance_units = wallet.balance_units + ledger.amount_units,
+        updated_at = now()
+    FROM inserted_ledger AS ledger
+    WHERE wallet.team_id = ledger.team_id
+    RETURNING wallet.balance_units
+)
+SELECT
+    CASE
+        WHEN NOT EXISTS (SELECT 1 FROM billing_account) THEN 'account_not_found'
+        WHEN EXISTS (SELECT 1 FROM existing_allowance_usage) THEN 'already_applied'
+        WHEN EXISTS (SELECT 1 FROM existing_ledger) THEN 'already_applied'
+        WHEN EXISTS (SELECT 1 FROM updated_allowance) THEN 'allowance_applied'
+        WHEN NOT EXISTS (SELECT 1 FROM resolved_rate) THEN 'rate_not_found'
+        WHEN EXISTS (
+            SELECT 1
+            FROM resolved_rate
+            WHERE currency <> rate_currency
+               OR currency <> CASE market_code
+                   WHEN 'GH' THEN 'GHS'
+                   WHEN 'KE' THEN 'KES'
+               END
+        ) THEN 'currency_mismatch'
+        WHEN EXISTS (SELECT 1 FROM updated_wallet) THEN 'applied'
+        WHEN EXISTS (
+            SELECT 1 FROM resolved_rate
+            WHERE balance_units < cost_units
+        ) THEN 'insufficient_balance'
+        ELSE 'already_applied'
+    END AS outcome,
+    COALESCE(
+        (SELECT market_code FROM resolved_rate),
+        (SELECT market_code FROM billing_account),
+        ''
+    )::text AS market_code,
+    COALESCE(
+        (SELECT currency FROM resolved_rate),
+        (SELECT currency FROM billing_account),
+        ''
+    )::text AS currency,
+    COALESCE(
+        (SELECT tier FROM resolved_rate),
+        (SELECT tier FROM billing_account),
+        ''
+    )::text AS tier,
+    'email'::text AS product,
+    COALESCE((SELECT cost_units FROM resolved_rate), 0)::bigint AS unit_cost_units,
+    1::bigint AS quantity,
+    COALESCE((SELECT cost_units FROM resolved_rate), 0)::bigint AS amount_units,
+    COALESCE(
+        (SELECT balance_units FROM updated_wallet),
+        (SELECT balance_units FROM updated_allowance),
+        (SELECT balance_units FROM billing_account),
+        0
+    )::bigint AS balance_units,
+    CASE
+        WHEN EXISTS (SELECT 1 FROM updated_allowance)
+          OR EXISTS (SELECT 1 FROM existing_allowance_usage)
+        THEN true
+        ELSE false
+    END AS covered_by_allowance,
+    COALESCE(
+        (SELECT free_email_allowance FROM updated_allowance),
+        (SELECT free_email_allowance FROM billing_account),
+        0
+    )::integer AS remaining_allowance;

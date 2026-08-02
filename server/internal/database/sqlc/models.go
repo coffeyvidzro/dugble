@@ -37,6 +37,12 @@ type AuthenticationChallenge struct {
 	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
+type EmailAllowanceUsage struct {
+	TeamID      uuid.UUID          `db:"team_id" json:"team_id"`
+	ReferenceID string             `db:"reference_id" json:"reference_id"`
+	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
 type EmailDeliveryAttempt struct {
 	ID                uuid.UUID          `db:"id" json:"id"`
 	EmailMessageID    uuid.UUID          `db:"email_message_id" json:"email_message_id"`

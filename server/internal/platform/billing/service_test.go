@@ -26,6 +26,16 @@ func (f *fakeAuthorizationRepository) AuthorizeSMS(
 	return f.result, f.err
 }
 
+func (f *fakeAuthorizationRepository) AuthorizeEmail(
+	_ context.Context,
+	_ pgx.Tx,
+	input EmailAuthorizationInput,
+) (Authorization, error) {
+	f.calls++
+	f.input = SMSAuthorizationInput{TeamID: input.TeamID, MessageID: input.MessageID}
+	return f.result, f.err
+}
+
 func TestAuthorizeSMSNormalizesAndReturnsAppliedCharge(t *testing.T) {
 	repository := &fakeAuthorizationRepository{result: Authorization{
 		Outcome: OutcomeApplied, MarketCode: "GH", Currency: "GHS", Tier: "growth",
@@ -101,5 +111,36 @@ func TestProductForDestination(t *testing.T) {
 	}
 	if got := productForDestination("GH", "NG"); got != ProductSMSIntl {
 		t.Fatalf("productForDestination(GH, NG) = %s", got)
+	}
+}
+
+func TestAuthorizeEmailSupportsAllowanceAndPaidOutcomes(t *testing.T) {
+	for _, result := range []Authorization{
+		{Outcome: OutcomeAllowanceApplied, Product: ProductEmail, CoveredByAllowance: true, RemainingAllowance: 999},
+		{Outcome: OutcomeApplied, Product: ProductEmail, AmountUnits: 936, RemainingBalance: 9064},
+		{Outcome: OutcomeAlreadyApplied, Product: ProductEmail},
+	} {
+		repository := &fakeAuthorizationRepository{result: result}
+		got, err := NewService(repository).AuthorizeEmail(context.Background(), nil, EmailAuthorizationInput{
+			TeamID: uuid.New(), MessageID: uuid.New(),
+		})
+		if err != nil {
+			t.Fatalf("AuthorizeEmail(%s) error = %v", result.Outcome, err)
+		}
+		if got.Outcome != result.Outcome || got.Product != ProductEmail {
+			t.Fatalf("AuthorizeEmail() = %+v", got)
+		}
+	}
+}
+
+func TestAuthorizeEmailRejectsInvalidInput(t *testing.T) {
+	for _, input := range []EmailAuthorizationInput{{MessageID: uuid.New()}, {TeamID: uuid.New()}} {
+		repository := &fakeAuthorizationRepository{}
+		if _, err := NewService(repository).AuthorizeEmail(context.Background(), nil, input); err == nil {
+			t.Fatalf("AuthorizeEmail(%+v) accepted invalid input", input)
+		}
+		if repository.calls != 0 {
+			t.Fatalf("AuthorizeEmail(%+v) called repository", input)
+		}
 	}
 }

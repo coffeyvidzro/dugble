@@ -19,6 +19,18 @@ func validateAuthorization(result Authorization, destinationCountry string) erro
 	return nil
 }
 
+func validateEmailAuthorizationResult(result Authorization) error {
+	if result.Outcome != OutcomeApplied &&
+		result.Outcome != OutcomeAlreadyApplied &&
+		result.Outcome != OutcomeAllowanceApplied {
+		return outcomeError(result.Outcome)
+	}
+	if result.Product != ProductEmail {
+		return fmt.Errorf("email billing product resolution mismatch: %s", result.Product)
+	}
+	return nil
+}
+
 func outcomeError(outcome Outcome) error {
 	switch outcome {
 	case OutcomeAccountNotFound:

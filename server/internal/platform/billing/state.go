@@ -7,6 +7,7 @@ type Outcome string
 const (
 	OutcomeApplied             Outcome = "applied"
 	OutcomeAlreadyApplied      Outcome = "already_applied"
+	OutcomeAllowanceApplied    Outcome = "allowance_applied"
 	OutcomeInsufficientBalance Outcome = "insufficient_balance"
 	OutcomeAccountNotFound     Outcome = "account_not_found"
 	OutcomeRateNotFound        Outcome = "rate_not_found"

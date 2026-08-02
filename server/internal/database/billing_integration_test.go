@@ -98,6 +98,71 @@ func TestAuthorizeSMSChargeAppliesOnceAndChecksBalance(t *testing.T) {
 	assertBillingState(t, db, teamID, 7000, 1, -13000)
 }
 
+func TestAuthorizeEmailChargeUsesAllowanceIdempotently(t *testing.T) {
+	db := billingTestDatabase(t)
+	teamID := insertBillingTestTeam(t, db, 0)
+	queries := dbsqlc.New(db)
+	params := dbsqlc.AuthorizeEmailChargeParams{TeamID: teamID, ReferenceID: uuid.NewString()}
+
+	first, err := queries.AuthorizeEmailCharge(context.Background(), params)
+	if err != nil {
+		t.Fatalf("authorize allowance email: %v", err)
+	}
+	if first.Outcome != "allowance_applied" || !first.CoveredByAllowance || first.RemainingAllowance != 999 || first.AmountUnits != 0 {
+		t.Fatalf("allowance authorization = %+v", first)
+	}
+
+	replay, err := queries.AuthorizeEmailCharge(context.Background(), params)
+	if err != nil {
+		t.Fatalf("authorize replayed allowance email: %v", err)
+	}
+	if replay.Outcome != "already_applied" || !replay.CoveredByAllowance || replay.RemainingAllowance != 999 {
+		t.Fatalf("replayed allowance authorization = %+v", replay)
+	}
+
+	assertEmailBillingState(t, db, teamID, 0, 999, 0, 1)
+}
+
+func TestAuthorizeEmailChargeDebitsAfterAllowanceIsExhausted(t *testing.T) {
+	db := billingTestDatabase(t)
+	teamID := insertBillingTestTeam(t, db, 1000)
+	if _, err := db.Exec(context.Background(), `
+		UPDATE team_wallets SET free_email_allowance = 0 WHERE team_id = $1
+	`, teamID); err != nil {
+		t.Fatalf("exhaust email allowance: %v", err)
+	}
+	queries := dbsqlc.New(db)
+	params := dbsqlc.AuthorizeEmailChargeParams{TeamID: teamID, ReferenceID: uuid.NewString()}
+
+	first, err := queries.AuthorizeEmailCharge(context.Background(), params)
+	if err != nil {
+		t.Fatalf("authorize paid email: %v", err)
+	}
+	if first.Outcome != "applied" || first.CoveredByAllowance || first.AmountUnits != 936 || first.BalanceUnits != 64 {
+		t.Fatalf("paid email authorization = %+v", first)
+	}
+
+	replay, err := queries.AuthorizeEmailCharge(context.Background(), params)
+	if err != nil {
+		t.Fatalf("authorize replayed paid email: %v", err)
+	}
+	if replay.Outcome != "already_applied" || replay.BalanceUnits != 64 {
+		t.Fatalf("replayed paid authorization = %+v", replay)
+	}
+
+	insufficient, err := queries.AuthorizeEmailCharge(context.Background(), dbsqlc.AuthorizeEmailChargeParams{
+		TeamID: teamID, ReferenceID: uuid.NewString(),
+	})
+	if err != nil {
+		t.Fatalf("authorize insufficient email: %v", err)
+	}
+	if insufficient.Outcome != "insufficient_balance" || insufficient.BalanceUnits != 64 {
+		t.Fatalf("insufficient email authorization = %+v", insufficient)
+	}
+
+	assertEmailBillingState(t, db, teamID, 64, 0, 1, 0)
+}
+
 func runConcurrentWalletMutations(
 	t *testing.T,
 	count int,
@@ -170,9 +235,43 @@ func insertBillingTestTeam(t *testing.T, db *pgxpool.Pool, balance int64) uuid.U
 	}
 	t.Cleanup(func() {
 		_, _ = db.Exec(context.Background(), `DELETE FROM wallet_ledger WHERE team_id = $1`, teamID)
+		_, _ = db.Exec(context.Background(), `DELETE FROM email_allowance_usage WHERE team_id = $1`, teamID)
 		_, _ = db.Exec(context.Background(), `DELETE FROM teams WHERE id = $1`, teamID)
 	})
 	return teamID
+}
+
+func assertEmailBillingState(
+	t *testing.T,
+	db *pgxpool.Pool,
+	teamID uuid.UUID,
+	wantBalance int64,
+	wantAllowance int32,
+	wantLedgerCount int,
+	wantAllowanceUsageCount int,
+) {
+	t.Helper()
+	var balance int64
+	var allowance int32
+	var ledgerCount, allowanceUsageCount int
+	if err := db.QueryRow(context.Background(), `
+		SELECT
+			wallet.balance_units,
+			wallet.free_email_allowance,
+			(SELECT count(*) FROM wallet_ledger WHERE team_id = wallet.team_id),
+			(SELECT count(*) FROM email_allowance_usage WHERE team_id = wallet.team_id)
+		FROM team_wallets AS wallet
+		WHERE wallet.team_id = $1
+	`, teamID).Scan(&balance, &allowance, &ledgerCount, &allowanceUsageCount); err != nil {
+		t.Fatalf("read email billing state: %v", err)
+	}
+	if balance != wantBalance || allowance != wantAllowance || ledgerCount != wantLedgerCount || allowanceUsageCount != wantAllowanceUsageCount {
+		t.Fatalf(
+			"email billing state: balance=%d allowance=%d ledger=%d allowance_usage=%d; want %d, %d, %d, %d",
+			balance, allowance, ledgerCount, allowanceUsageCount,
+			wantBalance, wantAllowance, wantLedgerCount, wantAllowanceUsageCount,
+		)
+	}
 }
 
 func assertBillingState(

@@ -126,7 +126,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		DefaultFromEmail: platformemail.CustomerOnboardingIdentity,
 		DefaultProvider:  domain.DefaultProvider,
 		DefaultRegion:    cfg.AWS.Region,
-	})
+	}, billingService)
 	emailmodule.RegisterRoutes(router, emailmodule.NewHandler(emailServiceAPI), tenantAccess)
 	webhookService := webhooks.NewService(webhookRepository, webhookEmitter)
 	webhooks.RegisterRoutes(router, webhooks.NewHandler(webhookService), authMiddleware, csrfMiddleware, tenantMiddleware)

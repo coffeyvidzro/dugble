@@ -36,3 +36,22 @@ func (r *Repository) AuthorizeSMS(
 		Quantity: row.Quantity, AmountUnits: row.AmountUnits, RemainingBalance: row.BalanceUnits,
 	}, nil
 }
+
+func (r *Repository) AuthorizeEmail(
+	ctx context.Context,
+	tx pgx.Tx,
+	input EmailAuthorizationInput,
+) (Authorization, error) {
+	row, err := r.queries.WithTx(tx).AuthorizeEmailCharge(ctx, dbsqlc.AuthorizeEmailChargeParams{
+		TeamID: input.TeamID, ReferenceID: input.MessageID.String(),
+	})
+	if err != nil {
+		return Authorization{}, fmt.Errorf("authorize email charge: %w", err)
+	}
+	return Authorization{
+		Outcome: Outcome(row.Outcome), MarketCode: row.MarketCode, Currency: row.Currency,
+		Tier: row.Tier, Product: Product(row.Product), UnitCostUnits: row.UnitCostUnits,
+		Quantity: row.Quantity, AmountUnits: row.AmountUnits, RemainingBalance: row.BalanceUnits,
+		CoveredByAllowance: row.CoveredByAllowance, RemainingAllowance: row.RemainingAllowance,
+	}, nil
+}

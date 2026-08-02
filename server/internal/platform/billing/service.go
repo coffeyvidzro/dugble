@@ -9,6 +9,25 @@ import (
 
 type authorizationRepository interface {
 	AuthorizeSMS(context.Context, pgx.Tx, SMSAuthorizationInput) (Authorization, error)
+	AuthorizeEmail(context.Context, pgx.Tx, EmailAuthorizationInput) (Authorization, error)
+}
+
+func (s *Service) AuthorizeEmail(
+	ctx context.Context,
+	tx pgx.Tx,
+	input EmailAuthorizationInput,
+) (Authorization, error) {
+	if err := validateEmailAuthorization(input); err != nil {
+		return Authorization{}, err
+	}
+	result, err := s.repository.AuthorizeEmail(ctx, tx, input)
+	if err != nil {
+		return Authorization{}, err
+	}
+	if err := validateEmailAuthorizationResult(result); err != nil {
+		return Authorization{}, fmt.Errorf("authorize email billing: %w", err)
+	}
+	return result, nil
 }
 
 type Service struct {
