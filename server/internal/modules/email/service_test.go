@@ -148,9 +148,9 @@ func TestBatchSendValidatesEntireBatchBeforeStartingTransaction(t *testing.T) {
 	}
 }
 
-func TestBatchSendRejectsMoreThanOneHundredEmails(t *testing.T) {
+func TestBatchSendRejectsMoreThanMaximumEmails(t *testing.T) {
 	service := NewService(nil, configuredDeliveryQueue{}, testServiceConfig, testEmailBilling)
-	messages := make([]SendRequest, 101)
+	messages := make([]SendRequest, maxBatchSize+1)
 	_, err := service.BatchSend(context.Background(), BatchSendRequest{Messages: messages})
 	if err == nil {
 		t.Fatal("expected oversized batch to be rejected")

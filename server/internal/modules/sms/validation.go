@@ -16,7 +16,7 @@ import (
 
 const (
 	maxBodyCharacters       = 1600
-	maxBatchMessages        = 100
+	maxBatchMessages        = 50
 	minimumScheduleLeadTime = 30 * time.Second
 	scheduleMutationCutoff  = 15 * time.Second
 )

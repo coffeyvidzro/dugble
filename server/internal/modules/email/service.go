@@ -3,6 +3,7 @@ package email
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -16,7 +17,7 @@ import (
 )
 
 const (
-	maxBatchSize         = 100
+	maxBatchSize         = 50
 	maxBatchPayloadBytes = 10 << 20
 )
 
@@ -255,7 +256,7 @@ func (s *Service) List(ctx context.Context, req ListRequest) ([]MessageSummary, 
 
 func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Message, error) {
 	if len(req.Messages) == 0 || len(req.Messages) > maxBatchSize {
-		return nil, apperrors.NewBadRequest("batch must contain between 1 and 100 emails")
+		return nil, apperrors.NewBadRequest(fmt.Sprintf("batch must contain between 1 and %d emails", maxBatchSize))
 	}
 	tc, err := requireTenant(ctx, tenant.PermissionEmailSend)
 	if err != nil {
