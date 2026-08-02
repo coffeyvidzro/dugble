@@ -19,34 +19,37 @@ INSERT INTO sender_ids (
     purpose,
     provider,
     created_by
-) VALUES (
+)
+SELECT
+    team.id,
     $1,
     $2,
     $3,
     $4,
-    $5,
-    $6
-)
+    $5
+FROM teams AS team
+WHERE team.id = $6
+  AND team.status = 'active'
 RETURNING id, team_id, name, country_code, purpose, status, provider, rejection_reason, approved_at, rejected_at, suspended_at, created_by, created_at, updated_at
 `
 
 type CreateSenderIDParams struct {
-	TeamID      uuid.UUID  `db:"team_id" json:"team_id"`
 	Name        string     `db:"name" json:"name"`
 	CountryCode string     `db:"country_code" json:"country_code"`
 	Purpose     string     `db:"purpose" json:"purpose"`
 	Provider    *string    `db:"provider" json:"provider"`
 	CreatedBy   *uuid.UUID `db:"created_by" json:"created_by"`
+	TeamID      uuid.UUID  `db:"team_id" json:"team_id"`
 }
 
 func (q *Queries) CreateSenderID(ctx context.Context, arg CreateSenderIDParams) (SenderID, error) {
 	row := q.db.QueryRow(ctx, createSenderID,
-		arg.TeamID,
 		arg.Name,
 		arg.CountryCode,
 		arg.Purpose,
 		arg.Provider,
 		arg.CreatedBy,
+		arg.TeamID,
 	)
 	var i SenderID
 	err := row.Scan(
@@ -69,10 +72,13 @@ func (q *Queries) CreateSenderID(ctx context.Context, arg CreateSenderIDParams) 
 }
 
 const deleteSenderID = `-- name: DeleteSenderID :one
-DELETE FROM sender_ids
-WHERE id = $1
-  AND team_id = $2
-RETURNING id, team_id, name, country_code, purpose, status, provider, rejection_reason, approved_at, rejected_at, suspended_at, created_by, created_at, updated_at
+DELETE FROM sender_ids AS sender
+USING teams AS team
+WHERE sender.id = $1
+  AND sender.team_id = $2
+  AND team.id = sender.team_id
+  AND team.status = 'active'
+RETURNING sender.id, sender.team_id, sender.name, sender.country_code, sender.purpose, sender.status, sender.provider, sender.rejection_reason, sender.approved_at, sender.rejected_at, sender.suspended_at, sender.created_by, sender.created_at, sender.updated_at
 `
 
 type DeleteSenderIDParams struct {
@@ -103,10 +109,12 @@ func (q *Queries) DeleteSenderID(ctx context.Context, arg DeleteSenderIDParams) 
 }
 
 const getSenderID = `-- name: GetSenderID :one
-SELECT id, team_id, name, country_code, purpose, status, provider, rejection_reason, approved_at, rejected_at, suspended_at, created_by, created_at, updated_at
-FROM sender_ids
-WHERE id = $1
-  AND team_id = $2
+SELECT sender.id, sender.team_id, sender.name, sender.country_code, sender.purpose, sender.status, sender.provider, sender.rejection_reason, sender.approved_at, sender.rejected_at, sender.suspended_at, sender.created_by, sender.created_at, sender.updated_at
+FROM sender_ids AS sender
+JOIN teams AS team ON team.id = sender.team_id
+WHERE sender.id = $1
+  AND sender.team_id = $2
+  AND team.status = 'active'
 `
 
 type GetSenderIDParams struct {
@@ -137,10 +145,12 @@ func (q *Queries) GetSenderID(ctx context.Context, arg GetSenderIDParams) (Sende
 }
 
 const listSenderIDs = `-- name: ListSenderIDs :many
-SELECT id, team_id, name, country_code, purpose, status, provider, rejection_reason, approved_at, rejected_at, suspended_at, created_by, created_at, updated_at
-FROM sender_ids
-WHERE team_id = $1
-ORDER BY created_at DESC
+SELECT sender.id, sender.team_id, sender.name, sender.country_code, sender.purpose, sender.status, sender.provider, sender.rejection_reason, sender.approved_at, sender.rejected_at, sender.suspended_at, sender.created_by, sender.created_at, sender.updated_at
+FROM sender_ids AS sender
+JOIN teams AS team ON team.id = sender.team_id
+WHERE sender.team_id = $1
+  AND team.status = 'active'
+ORDER BY sender.created_at DESC
 `
 
 type ListSenderIDsParams struct {

@@ -34,7 +34,9 @@ INSERT INTO email_messages (
     attachments,
     tags,
     scheduled_at
-) VALUES (
+)
+SELECT
+    team.id,
     $1,
     $2,
     $3,
@@ -47,20 +49,20 @@ INSERT INTO email_messages (
     $10,
     $11,
     $12,
-    $13,
     'queued',
+    $13,
     $14,
     $15,
     $16,
     $17,
-    $18,
-    $19
-)
+    $18
+FROM teams AS team
+WHERE team.id = $19
+  AND team.status = 'active'
 RETURNING id, team_id, sender_domain_id, delivery_provider, provider_region, message_type, from_email, from_name, reply_to_email, to_email, to_name, subject, html_body, text_body, status, provider, provider_message_id, error_code, error_message, metadata, recipients, headers, attachments, tags, scheduled_at, queued_at, processing_at, submitted_at, delivered_at, failed_at, created_at, updated_at, current_delivery_attempt_id
 `
 
 type CreateEmailMessageParams struct {
-	TeamID           uuid.UUID          `db:"team_id" json:"team_id"`
 	SenderDomainID   *uuid.UUID         `db:"sender_domain_id" json:"sender_domain_id"`
 	DeliveryProvider string             `db:"delivery_provider" json:"delivery_provider"`
 	ProviderRegion   string             `db:"provider_region" json:"provider_region"`
@@ -79,11 +81,11 @@ type CreateEmailMessageParams struct {
 	Attachments      []byte             `db:"attachments" json:"attachments"`
 	Tags             []byte             `db:"tags" json:"tags"`
 	ScheduledAt      pgtype.Timestamptz `db:"scheduled_at" json:"scheduled_at"`
+	TeamID           uuid.UUID          `db:"team_id" json:"team_id"`
 }
 
 func (q *Queries) CreateEmailMessage(ctx context.Context, arg CreateEmailMessageParams) (EmailMessage, error) {
 	row := q.db.QueryRow(ctx, createEmailMessage,
-		arg.TeamID,
 		arg.SenderDomainID,
 		arg.DeliveryProvider,
 		arg.ProviderRegion,
@@ -102,6 +104,7 @@ func (q *Queries) CreateEmailMessage(ctx context.Context, arg CreateEmailMessage
 		arg.Attachments,
 		arg.Tags,
 		arg.ScheduledAt,
+		arg.TeamID,
 	)
 	var i EmailMessage
 	err := row.Scan(
@@ -143,10 +146,12 @@ func (q *Queries) CreateEmailMessage(ctx context.Context, arg CreateEmailMessage
 }
 
 const getEmailMessage = `-- name: GetEmailMessage :one
-SELECT id, team_id, sender_domain_id, delivery_provider, provider_region, message_type, from_email, from_name, reply_to_email, to_email, to_name, subject, html_body, text_body, status, provider, provider_message_id, error_code, error_message, metadata, recipients, headers, attachments, tags, scheduled_at, queued_at, processing_at, submitted_at, delivered_at, failed_at, created_at, updated_at, current_delivery_attempt_id
-FROM email_messages
-WHERE id = $1
-  AND team_id = $2
+SELECT message.id, message.team_id, message.sender_domain_id, message.delivery_provider, message.provider_region, message.message_type, message.from_email, message.from_name, message.reply_to_email, message.to_email, message.to_name, message.subject, message.html_body, message.text_body, message.status, message.provider, message.provider_message_id, message.error_code, message.error_message, message.metadata, message.recipients, message.headers, message.attachments, message.tags, message.scheduled_at, message.queued_at, message.processing_at, message.submitted_at, message.delivered_at, message.failed_at, message.created_at, message.updated_at, message.current_delivery_attempt_id
+FROM email_messages AS message
+JOIN teams AS team ON team.id = message.team_id
+WHERE message.id = $1
+  AND message.team_id = $2
+  AND team.status = 'active'
 `
 
 type GetEmailMessageParams struct {
@@ -197,20 +202,22 @@ func (q *Queries) GetEmailMessage(ctx context.Context, arg GetEmailMessageParams
 
 const listEmailMessages = `-- name: ListEmailMessages :many
 SELECT
-    id,
-    team_id,
-    to_email,
-    to_name,
-    subject,
-    status,
-    provider,
-    queued_at,
-    submitted_at,
-    delivered_at,
-    created_at
-FROM email_messages
-WHERE team_id = $1
-ORDER BY created_at DESC
+    message.id,
+    message.team_id,
+    message.to_email,
+    message.to_name,
+    message.subject,
+    message.status,
+    message.provider,
+    message.queued_at,
+    message.submitted_at,
+    message.delivered_at,
+    message.created_at
+FROM email_messages AS message
+JOIN teams AS team ON team.id = message.team_id
+WHERE message.team_id = $1
+  AND team.status = 'active'
+ORDER BY message.created_at DESC
 LIMIT $3
 OFFSET $2
 `

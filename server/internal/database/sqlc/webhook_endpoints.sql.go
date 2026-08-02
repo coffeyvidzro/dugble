@@ -18,29 +18,32 @@ INSERT INTO webhook_endpoints (
     signing_secret,
     enabled,
     subscribed_events
-) VALUES (
+)
+SELECT
+    team.id,
     $1,
     $2,
-    $3,
     true,
-    $4
-)
+    $3
+FROM teams AS team
+WHERE team.id = $4
+  AND team.status = 'active'
 RETURNING id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at, consecutive_failures, last_failure_at, disabled_reason
 `
 
 type CreateWebhookEndpointParams struct {
-	TeamID           uuid.UUID `db:"team_id" json:"team_id"`
 	Url              string    `db:"url" json:"url"`
 	SigningSecret    []byte    `db:"signing_secret" json:"signing_secret"`
 	SubscribedEvents []string  `db:"subscribed_events" json:"subscribed_events"`
+	TeamID           uuid.UUID `db:"team_id" json:"team_id"`
 }
 
 func (q *Queries) CreateWebhookEndpoint(ctx context.Context, arg CreateWebhookEndpointParams) (WebhookEndpoint, error) {
 	row := q.db.QueryRow(ctx, createWebhookEndpoint,
-		arg.TeamID,
 		arg.Url,
 		arg.SigningSecret,
 		arg.SubscribedEvents,
+		arg.TeamID,
 	)
 	var i WebhookEndpoint
 	err := row.Scan(
@@ -61,14 +64,17 @@ func (q *Queries) CreateWebhookEndpoint(ctx context.Context, arg CreateWebhookEn
 }
 
 const disableWebhookEndpoint = `-- name: DisableWebhookEndpoint :one
-UPDATE webhook_endpoints
+UPDATE webhook_endpoints AS endpoint
 SET enabled = false,
-    disabled_at = COALESCE(disabled_at, now()),
+    disabled_at = COALESCE(endpoint.disabled_at, now()),
     disabled_reason = 'manual',
     updated_at = now()
-WHERE id = $1
-  AND team_id = $2
-RETURNING id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at, consecutive_failures, last_failure_at, disabled_reason
+FROM teams AS team
+WHERE endpoint.id = $1
+  AND endpoint.team_id = $2
+  AND team.id = endpoint.team_id
+  AND team.status = 'active'
+RETURNING endpoint.id, endpoint.team_id, endpoint.url, endpoint.signing_secret, endpoint.enabled, endpoint.subscribed_events, endpoint.created_at, endpoint.updated_at, endpoint.disabled_at, endpoint.consecutive_failures, endpoint.last_failure_at, endpoint.disabled_reason
 `
 
 type DisableWebhookEndpointParams struct {
@@ -97,10 +103,12 @@ func (q *Queries) DisableWebhookEndpoint(ctx context.Context, arg DisableWebhook
 }
 
 const getWebhookEndpoint = `-- name: GetWebhookEndpoint :one
-SELECT id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at, consecutive_failures, last_failure_at, disabled_reason
-FROM webhook_endpoints
-WHERE id = $1
-  AND team_id = $2
+SELECT endpoint.id, endpoint.team_id, endpoint.url, endpoint.signing_secret, endpoint.enabled, endpoint.subscribed_events, endpoint.created_at, endpoint.updated_at, endpoint.disabled_at, endpoint.consecutive_failures, endpoint.last_failure_at, endpoint.disabled_reason
+FROM webhook_endpoints AS endpoint
+JOIN teams AS team ON team.id = endpoint.team_id
+WHERE endpoint.id = $1
+  AND endpoint.team_id = $2
+  AND team.status = 'active'
 `
 
 type GetWebhookEndpointParams struct {
@@ -129,13 +137,15 @@ func (q *Queries) GetWebhookEndpoint(ctx context.Context, arg GetWebhookEndpoint
 }
 
 const listSubscribedWebhookEndpoints = `-- name: ListSubscribedWebhookEndpoints :many
-SELECT id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at, consecutive_failures, last_failure_at, disabled_reason
-FROM webhook_endpoints
-WHERE team_id = $1
-  AND enabled = true
-  AND disabled_at IS NULL
-  AND $2::text = ANY(subscribed_events)
-ORDER BY created_at, id
+SELECT endpoint.id, endpoint.team_id, endpoint.url, endpoint.signing_secret, endpoint.enabled, endpoint.subscribed_events, endpoint.created_at, endpoint.updated_at, endpoint.disabled_at, endpoint.consecutive_failures, endpoint.last_failure_at, endpoint.disabled_reason
+FROM webhook_endpoints AS endpoint
+JOIN teams AS team ON team.id = endpoint.team_id
+WHERE endpoint.team_id = $1
+  AND endpoint.enabled = true
+  AND endpoint.disabled_at IS NULL
+  AND $2::text = ANY(endpoint.subscribed_events)
+  AND team.status = 'active'
+ORDER BY endpoint.created_at, endpoint.id
 `
 
 type ListSubscribedWebhookEndpointsParams struct {
@@ -177,10 +187,12 @@ func (q *Queries) ListSubscribedWebhookEndpoints(ctx context.Context, arg ListSu
 }
 
 const listWebhookEndpoints = `-- name: ListWebhookEndpoints :many
-SELECT id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at, consecutive_failures, last_failure_at, disabled_reason
-FROM webhook_endpoints
-WHERE team_id = $1
-ORDER BY created_at DESC
+SELECT endpoint.id, endpoint.team_id, endpoint.url, endpoint.signing_secret, endpoint.enabled, endpoint.subscribed_events, endpoint.created_at, endpoint.updated_at, endpoint.disabled_at, endpoint.consecutive_failures, endpoint.last_failure_at, endpoint.disabled_reason
+FROM webhook_endpoints AS endpoint
+JOIN teams AS team ON team.id = endpoint.team_id
+WHERE endpoint.team_id = $1
+  AND team.status = 'active'
+ORDER BY endpoint.created_at DESC
 LIMIT $3
 OFFSET $2
 `
@@ -225,12 +237,15 @@ func (q *Queries) ListWebhookEndpoints(ctx context.Context, arg ListWebhookEndpo
 }
 
 const rotateWebhookEndpointSecret = `-- name: RotateWebhookEndpointSecret :one
-UPDATE webhook_endpoints
+UPDATE webhook_endpoints AS endpoint
 SET signing_secret = $1,
     updated_at = now()
-WHERE id = $2
-  AND team_id = $3
-RETURNING id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at, consecutive_failures, last_failure_at, disabled_reason
+FROM teams AS team
+WHERE endpoint.id = $2
+  AND endpoint.team_id = $3
+  AND team.id = endpoint.team_id
+  AND team.status = 'active'
+RETURNING endpoint.id, endpoint.team_id, endpoint.url, endpoint.signing_secret, endpoint.enabled, endpoint.subscribed_events, endpoint.created_at, endpoint.updated_at, endpoint.disabled_at, endpoint.consecutive_failures, endpoint.last_failure_at, endpoint.disabled_reason
 `
 
 type RotateWebhookEndpointSecretParams struct {
@@ -260,21 +275,24 @@ func (q *Queries) RotateWebhookEndpointSecret(ctx context.Context, arg RotateWeb
 }
 
 const updateWebhookEndpoint = `-- name: UpdateWebhookEndpoint :one
-UPDATE webhook_endpoints
+UPDATE webhook_endpoints AS endpoint
 SET url = $1,
     enabled = $2,
     subscribed_events = $3,
     disabled_at = CASE
         WHEN $2::boolean THEN NULL
-        ELSE COALESCE(disabled_at, now())
+        ELSE COALESCE(endpoint.disabled_at, now())
     END,
-    consecutive_failures = CASE WHEN $2::boolean THEN 0 ELSE consecutive_failures END,
-    last_failure_at = CASE WHEN $2::boolean THEN NULL ELSE last_failure_at END,
-    disabled_reason = CASE WHEN $2::boolean THEN NULL ELSE COALESCE(disabled_reason, 'manual') END,
+    consecutive_failures = CASE WHEN $2::boolean THEN 0 ELSE endpoint.consecutive_failures END,
+    last_failure_at = CASE WHEN $2::boolean THEN NULL ELSE endpoint.last_failure_at END,
+    disabled_reason = CASE WHEN $2::boolean THEN NULL ELSE COALESCE(endpoint.disabled_reason, 'manual') END,
     updated_at = now()
-WHERE id = $4
-  AND team_id = $5
-RETURNING id, team_id, url, signing_secret, enabled, subscribed_events, created_at, updated_at, disabled_at, consecutive_failures, last_failure_at, disabled_reason
+FROM teams AS team
+WHERE endpoint.id = $4
+  AND endpoint.team_id = $5
+  AND team.id = endpoint.team_id
+  AND team.status = 'active'
+RETURNING endpoint.id, endpoint.team_id, endpoint.url, endpoint.signing_secret, endpoint.enabled, endpoint.subscribed_events, endpoint.created_at, endpoint.updated_at, endpoint.disabled_at, endpoint.consecutive_failures, endpoint.last_failure_at, endpoint.disabled_reason
 `
 
 type UpdateWebhookEndpointParams struct {

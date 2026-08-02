@@ -20,8 +20,9 @@ INSERT INTO email_messages (
     attachments,
     tags,
     scheduled_at
-) VALUES (
-    sqlc.arg(team_id),
+)
+SELECT
+    team.id,
     sqlc.narg(sender_domain_id),
     sqlc.arg(delivery_provider),
     sqlc.arg(provider_region),
@@ -41,30 +42,36 @@ INSERT INTO email_messages (
     sqlc.arg(attachments),
     sqlc.arg(tags),
     sqlc.narg(scheduled_at)
-)
+FROM teams AS team
+WHERE team.id = sqlc.arg(team_id)
+  AND team.status = 'active'
 RETURNING *;
 
 -- name: GetEmailMessage :one
-SELECT *
-FROM email_messages
-WHERE id = sqlc.arg(id)
-  AND team_id = sqlc.arg(team_id);
+SELECT message.*
+FROM email_messages AS message
+JOIN teams AS team ON team.id = message.team_id
+WHERE message.id = sqlc.arg(id)
+  AND message.team_id = sqlc.arg(team_id)
+  AND team.status = 'active';
 
 -- name: ListEmailMessages :many
 SELECT
-    id,
-    team_id,
-    to_email,
-    to_name,
-    subject,
-    status,
-    provider,
-    queued_at,
-    submitted_at,
-    delivered_at,
-    created_at
-FROM email_messages
-WHERE team_id = sqlc.arg(team_id)
-ORDER BY created_at DESC
+    message.id,
+    message.team_id,
+    message.to_email,
+    message.to_name,
+    message.subject,
+    message.status,
+    message.provider,
+    message.queued_at,
+    message.submitted_at,
+    message.delivered_at,
+    message.created_at
+FROM email_messages AS message
+JOIN teams AS team ON team.id = message.team_id
+WHERE message.team_id = sqlc.arg(team_id)
+  AND team.status = 'active'
+ORDER BY message.created_at DESC
 LIMIT sqlc.arg(limit_count)
 OFFSET sqlc.arg(offset_count);

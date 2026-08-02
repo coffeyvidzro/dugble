@@ -21,37 +21,40 @@ INSERT INTO team_tokens (
     permissions,
     created_by,
     expires_at
-) VALUES (
+)
+SELECT
+    team.id,
     $1,
     $2,
     $3,
     $4,
     $5,
-    $6,
-    $7
-)
+    $6
+FROM teams AS team
+WHERE team.id = $7
+  AND team.status = 'active'
 RETURNING id, team_id, name, token_hash, token_prefix, permissions, created_by, expires_at, revoked_at, last_used_at, created_at, updated_at
 `
 
 type CreateTeamTokenParams struct {
-	TeamID      uuid.UUID          `db:"team_id" json:"team_id"`
 	Name        string             `db:"name" json:"name"`
 	TokenHash   string             `db:"token_hash" json:"token_hash"`
 	TokenPrefix string             `db:"token_prefix" json:"token_prefix"`
 	Permissions []string           `db:"permissions" json:"permissions"`
 	CreatedBy   *uuid.UUID         `db:"created_by" json:"created_by"`
 	ExpiresAt   pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+	TeamID      uuid.UUID          `db:"team_id" json:"team_id"`
 }
 
 func (q *Queries) CreateTeamToken(ctx context.Context, arg CreateTeamTokenParams) (TeamToken, error) {
 	row := q.db.QueryRow(ctx, createTeamToken,
-		arg.TeamID,
 		arg.Name,
 		arg.TokenHash,
 		arg.TokenPrefix,
 		arg.Permissions,
 		arg.CreatedBy,
 		arg.ExpiresAt,
+		arg.TeamID,
 	)
 	var i TeamToken
 	err := row.Scan(
@@ -106,10 +109,12 @@ func (q *Queries) GetActiveTeamTokenByHash(ctx context.Context, arg GetActiveTea
 }
 
 const listTeamTokens = `-- name: ListTeamTokens :many
-SELECT id, team_id, name, token_hash, token_prefix, permissions, created_by, expires_at, revoked_at, last_used_at, created_at, updated_at
-FROM team_tokens
-WHERE team_id = $1
-ORDER BY created_at DESC
+SELECT token.id, token.team_id, token.name, token.token_hash, token.token_prefix, token.permissions, token.created_by, token.expires_at, token.revoked_at, token.last_used_at, token.created_at, token.updated_at
+FROM team_tokens AS token
+JOIN teams AS team ON team.id = token.team_id
+WHERE token.team_id = $1
+  AND team.status = 'active'
+ORDER BY token.created_at DESC
 `
 
 type ListTeamTokensParams struct {
@@ -150,13 +155,16 @@ func (q *Queries) ListTeamTokens(ctx context.Context, arg ListTeamTokensParams) 
 }
 
 const revokeTeamToken = `-- name: RevokeTeamToken :one
-UPDATE team_tokens
+UPDATE team_tokens AS token
 SET revoked_at = now(),
     updated_at = now()
-WHERE id = $1
-  AND team_id = $2
-  AND revoked_at IS NULL
-RETURNING id, team_id, name, token_hash, token_prefix, permissions, created_by, expires_at, revoked_at, last_used_at, created_at, updated_at
+FROM teams AS team
+WHERE token.id = $1
+  AND token.team_id = $2
+  AND team.id = token.team_id
+  AND team.status = 'active'
+  AND token.revoked_at IS NULL
+RETURNING token.id, token.team_id, token.name, token.token_hash, token.token_prefix, token.permissions, token.created_by, token.expires_at, token.revoked_at, token.last_used_at, token.created_at, token.updated_at
 `
 
 type RevokeTeamTokenParams struct {
@@ -201,15 +209,18 @@ func (q *Queries) TouchTeamToken(ctx context.Context, arg TouchTeamTokenParams) 
 }
 
 const updateTeamToken = `-- name: UpdateTeamToken :one
-UPDATE team_tokens
+UPDATE team_tokens AS token
 SET name = $1,
     permissions = $2,
     expires_at = $3,
     updated_at = now()
-WHERE id = $4
-  AND team_id = $5
-  AND revoked_at IS NULL
-RETURNING id, team_id, name, token_hash, token_prefix, permissions, created_by, expires_at, revoked_at, last_used_at, created_at, updated_at
+FROM teams AS team
+WHERE token.id = $4
+  AND token.team_id = $5
+  AND team.id = token.team_id
+  AND team.status = 'active'
+  AND token.revoked_at IS NULL
+RETURNING token.id, token.team_id, token.name, token.token_hash, token.token_prefix, token.permissions, token.created_by, token.expires_at, token.revoked_at, token.last_used_at, token.created_at, token.updated_at
 `
 
 type UpdateTeamTokenParams struct {
