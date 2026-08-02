@@ -41,6 +41,14 @@ func NewBadRequest(message string) *AppError {
 	}
 }
 
+func NewPaymentRequired(message string) *AppError {
+	return &AppError{
+		Code:    "PAYMENT_REQUIRED",
+		Message: message,
+		Status:  http.StatusPaymentRequired,
+	}
+}
+
 func NewPayloadTooLarge(message string) *AppError {
 	return &AppError{
 		Code:    "PAYLOAD_TOO_LARGE",

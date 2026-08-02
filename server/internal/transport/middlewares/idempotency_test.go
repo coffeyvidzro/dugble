@@ -1,6 +1,8 @@
 package middlewares
 
 import (
+	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,7 +13,78 @@ import (
 	"github.com/labstack/echo/v5"
 
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
+	"github.com/coffeyvidzro/dugble/server/internal/platform/idempotency"
 )
+
+type memoryIdempotencyRepository struct {
+	records map[string]idempotency.Record
+}
+
+func (r *memoryIdempotencyRepository) recordKey(scope, key string) string { return scope + "\n" + key }
+
+func (r *memoryIdempotencyRepository) CreateProcessing(_ context.Context, record idempotency.Record) (idempotency.Record, error) {
+	key := r.recordKey(record.Scope, record.Key)
+	if _, exists := r.records[key]; exists {
+		return idempotency.Record{}, idempotency.ErrAlreadyExists
+	}
+	record.Status = idempotency.StatusProcessing
+	r.records[key] = record
+	return record, nil
+}
+
+func (r *memoryIdempotencyRepository) Get(_ context.Context, scope, key string) (idempotency.Record, error) {
+	record, exists := r.records[r.recordKey(scope, key)]
+	if !exists {
+		return idempotency.Record{}, errors.New("record not found")
+	}
+	return record, nil
+}
+
+func (r *memoryIdempotencyRepository) Complete(_ context.Context, scope, key string, status int, body []byte, contentType string, headers []byte) error {
+	record := r.records[r.recordKey(scope, key)]
+	responseStatus := int32(status)
+	record.Status, record.ResponseStatus = idempotency.StatusCompleted, &responseStatus
+	record.ResponseBody, record.ResponseContentType, record.ResponseHeaders = append([]byte(nil), body...), &contentType, append([]byte(nil), headers...)
+	r.records[r.recordKey(scope, key)] = record
+	return nil
+}
+
+func (r *memoryIdempotencyRepository) Delete(_ context.Context, scope, key string) error {
+	delete(r.records, r.recordKey(scope, key))
+	return nil
+}
+
+func TestIdempotencyReplaysCompletedSingleSend(t *testing.T) {
+	repository := &memoryIdempotencyRepository{records: make(map[string]idempotency.Record)}
+	router := echo.New()
+	router.Use(Idempotency(IdempotencyConfig{Repository: repository}))
+	calls := 0
+	router.POST("/sms", func(c *echo.Context) error {
+		calls++
+		c.Response().Header().Set("Location", "/sms/message-1")
+		return c.JSON(http.StatusAccepted, map[string]string{"id": "message-1"})
+	})
+
+	send := func() *httptest.ResponseRecorder {
+		request := httptest.NewRequest(http.MethodPost, "/sms", strings.NewReader(`{"to":"+233241234567"}`))
+		request.Header.Set(echo.HeaderAuthorization, "Bearer team-token")
+		request.Header.Set(idempotency.Header, "send-1")
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, request)
+		return response
+	}
+
+	first, replay := send(), send()
+	if calls != 1 {
+		t.Fatalf("single-send handler calls = %d, want 1", calls)
+	}
+	if first.Code != http.StatusAccepted || replay.Code != first.Code || replay.Body.String() != first.Body.String() {
+		t.Fatalf("replayed response = (%d, %q), want (%d, %q)", replay.Code, replay.Body.String(), first.Code, first.Body.String())
+	}
+	if replay.Header().Get("Location") != "/sms/message-1" {
+		t.Fatalf("replayed Location = %q", replay.Header().Get("Location"))
+	}
+}
 
 func TestCanonicalTeamIDNormalizesHeader(t *testing.T) {
 	t.Parallel()

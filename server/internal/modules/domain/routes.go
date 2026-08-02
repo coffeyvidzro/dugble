@@ -6,20 +6,13 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 )
 
-type TenantMiddleware func(permission tenant.Permission) echo.MiddlewareFunc
+type AccessMiddleware func(permission tenant.Permission) echo.MiddlewareFunc
 
-func RegisterRoutes(
-	router *echo.Echo,
-	handler *Handler,
-	authMiddleware echo.MiddlewareFunc,
-	csrfMiddleware echo.MiddlewareFunc,
-	tenantMiddleware TenantMiddleware,
-) {
+func RegisterRoutes(router *echo.Echo, handler *Handler, accessMiddleware AccessMiddleware) {
 	domains := router.Group("/domains")
-	domains.Use(authMiddleware, csrfMiddleware)
-	domains.GET("", handler.List, tenantMiddleware(tenant.PermissionSenderDomainsRead))
-	domains.POST("", handler.Create, tenantMiddleware(tenant.PermissionSenderDomainsCreate))
-	domains.GET("/:domain_id", handler.Get, tenantMiddleware(tenant.PermissionSenderDomainsRead))
-	domains.POST("/:domain_id/verify", handler.Verify, tenantMiddleware(tenant.PermissionSenderDomainsCreate))
-	domains.DELETE("/:domain_id", handler.Delete, tenantMiddleware(tenant.PermissionSenderDomainsDelete))
+	domains.GET("", handler.List, accessMiddleware(tenant.PermissionSenderDomainsRead))
+	domains.POST("", handler.Create, accessMiddleware(tenant.PermissionSenderDomainsCreate))
+	domains.GET("/:domain_id", handler.Get, accessMiddleware(tenant.PermissionSenderDomainsRead))
+	domains.POST("/:domain_id/verify", handler.Verify, accessMiddleware(tenant.PermissionSenderDomainsCreate))
+	domains.DELETE("/:domain_id", handler.Delete, accessMiddleware(tenant.PermissionSenderDomainsDelete))
 }

@@ -212,7 +212,7 @@ func resetHostedFeedbackData(t *testing.T, db *pgxpool.Pool) {
 
 func insertHostedMessage(t *testing.T, db *pgxpool.Pool, teamID, messageID uuid.UUID, providerMessageID, status string) {
 	t.Helper()
-	if _, err := db.Exec(context.Background(), `INSERT INTO teams (id, name) VALUES ($1, 'Hosted Integration')`, teamID); err != nil {
+	if _, err := db.Exec(context.Background(), `INSERT INTO teams (id, name, market_code) VALUES ($1, 'Hosted Integration', 'GH')`, teamID); err != nil {
 		t.Fatalf("insert hosted team: %v", err)
 	}
 	var provider any

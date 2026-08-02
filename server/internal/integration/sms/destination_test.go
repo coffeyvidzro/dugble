@@ -12,6 +12,7 @@ func TestResolveDestinationCountry(t *testing.T) {
 	}{
 		{number: "+233241234567", want: CountryGhana},
 		{number: "+2348012345678", want: CountryNigeria},
+		{number: "+254712345678", want: CountryKenya},
 	}
 	for _, test := range tests {
 		t.Run(test.want, func(t *testing.T) {

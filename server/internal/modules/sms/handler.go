@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v5"
 
+	"github.com/coffeyvidzro/dugble/server/internal/platform/idempotency"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 	"github.com/coffeyvidzro/dugble/server/pkg/httputil"
 )
@@ -31,6 +32,9 @@ func (h *Handler) Get(c *echo.Context) error {
 }
 
 func (h *Handler) Send(c *echo.Context) error {
+	if _, err := idempotency.ValidateKey(c.Request().Header.Get(idempotency.Header)); err != nil {
+		return httputil.Error(c, apperrors.NewBadRequest("Idempotency-Key is required and must be at most 256 characters"))
+	}
 	var req SendRequest
 	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 		return httputil.Error(c, apperrors.NewBadRequest("Invalid JSON request body"))

@@ -11,6 +11,9 @@ func TestTeamValidationNormalizesValidInput(t *testing.T) {
 	if got, err := validateTeamName(" Example "); err != nil || got != "Example" {
 		t.Fatalf("validateTeamName() = %q, %v", got, err)
 	}
+	if got, err := validateMarketCode(" gh "); err != nil || got != "GH" {
+		t.Fatalf("validateMarketCode() = %q, %v", got, err)
+	}
 	if got, err := validateTeamID(" " + id.String() + " "); err != nil || got != id {
 		t.Fatalf("validateTeamID() = %s, %v", got, err)
 	}
@@ -31,6 +34,8 @@ func TestTeamValidationNormalizesValidInput(t *testing.T) {
 func TestTeamValidationRejectsInvalidInput(t *testing.T) {
 	checks := []func() error{
 		func() error { _, err := validateTeamName(" "); return err },
+		func() error { _, err := validateMarketCode("NG"); return err },
+		func() error { _, err := validateMarketCode("US"); return err },
 		func() error { _, err := validateTeamID("invalid"); return err },
 		func() error { _, err := validateMemberID("invalid"); return err },
 		func() error { _, err := validateMemberRole(RoleOwner); return err },

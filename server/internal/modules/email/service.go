@@ -3,19 +3,21 @@ package email
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	platformbilling "github.com/coffeyvidzro/dugble/server/internal/platform/billing"
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
 const (
-	maxBatchSize         = 100
+	maxBatchSize         = 50
 	maxBatchPayloadBytes = 10 << 20
 )
 
@@ -110,6 +112,7 @@ type Service struct {
 	config        ServiceConfig
 	senderDomains senderDomainResolver
 	routes        customerRouteResolver
+	billing       platformbilling.EmailBilling
 }
 
 type senderDomainResolver interface {
@@ -127,8 +130,17 @@ type ServiceConfig struct {
 	DefaultRegion    string
 }
 
-func NewService(repository *Repository, delivery DeliveryQueue, config ServiceConfig, dependencies ...any) *Service {
-	service := &Service{repository: repository, delivery: delivery, config: config, senderDomains: repository, routes: repository}
+func NewService(
+	repository *Repository,
+	delivery DeliveryQueue,
+	config ServiceConfig,
+	billing platformbilling.EmailBilling,
+	dependencies ...any,
+) *Service {
+	service := &Service{
+		repository: repository, delivery: delivery, config: config,
+		senderDomains: repository, routes: repository, billing: billing,
+	}
 	for _, dependency := range dependencies {
 		if resolver, ok := dependency.(senderDomainResolver); ok {
 			service.senderDomains = resolver
@@ -166,6 +178,9 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	if s.repository == nil || s.routes == nil {
 		return Message{}, apperrors.NewInternal("Customer email routing is not configured", nil)
 	}
+	if s.billing == nil {
+		return Message{}, apperrors.NewInternal("Email billing authorization is not configured", nil)
+	}
 	tx, err := s.repository.BeginTx(ctx)
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to begin email transaction", err)
@@ -182,12 +197,23 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to create email message", err)
 	}
-	if err := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(m.ID), tc.Scope.TeamID, validated.ScheduledAt); err != nil {
+	messageID := uuid.MustParse(m.ID)
+	authorization, err := s.billing.AuthorizeEmail(ctx, tx, platformbilling.EmailAuthorizationInput{
+		TeamID: tc.Scope.TeamID, MessageID: messageID,
+	})
+	if err != nil {
+		return Message{}, emailBillingError(err)
+	}
+	if err := enqueueDelivery(ctx, s.delivery, tx, messageID, tc.Scope.TeamID, validated.ScheduledAt); err != nil {
 		return Message{}, apperrors.NewInternal("Unable to enqueue email delivery", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return Message{}, apperrors.NewInternal("Unable to commit email transaction", err)
 	}
+	s.billing.ObserveCommitted(ctx, platformbilling.CommittedAuthorization{
+		Authorization: authorization, Channel: platformbilling.ChannelEmail,
+		TeamID: tc.Scope.TeamID, MessageID: messageID,
+	})
 	return m, nil
 }
 
@@ -230,7 +256,7 @@ func (s *Service) List(ctx context.Context, req ListRequest) ([]MessageSummary, 
 
 func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Message, error) {
 	if len(req.Messages) == 0 || len(req.Messages) > maxBatchSize {
-		return nil, apperrors.NewBadRequest("batch must contain between 1 and 100 emails")
+		return nil, apperrors.NewBadRequest(fmt.Sprintf("batch must contain between 1 and %d emails", maxBatchSize))
 	}
 	tc, err := requireTenant(ctx, tenant.PermissionEmailSend)
 	if err != nil {
@@ -241,6 +267,9 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 	}
 	if s.repository == nil || s.routes == nil {
 		return nil, apperrors.NewInternal("Customer email routing is not configured", nil)
+	}
+	if s.billing == nil {
+		return nil, apperrors.NewInternal("Email billing authorization is not configured", nil)
 	}
 
 	validated := make([]validatedSend, len(req.Messages))
@@ -269,6 +298,7 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	result := make([]Message, 0, len(validated))
+	committedAuthorizations := make([]platformbilling.CommittedAuthorization, 0, len(validated))
 	for index := range validated {
 		validated[index].DeliveryRoute, err = s.routes.ResolveActiveCustomerRouteTx(ctx, tx, tc.Scope.TeamID, validated[index].Provider, validated[index].ProviderRegion, validated[index].MessageType)
 		if errors.Is(err, ErrActiveEmailTenantNotFound) {
@@ -281,15 +311,52 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 		if createErr != nil {
 			return nil, apperrors.NewInternal("Unable to create email message", createErr)
 		}
-		if enqueueErr := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(message.ID), tc.Scope.TeamID, validated[index].ScheduledAt); enqueueErr != nil {
+		messageID := uuid.MustParse(message.ID)
+		authorization, billingErr := s.billing.AuthorizeEmail(ctx, tx, platformbilling.EmailAuthorizationInput{
+			TeamID: tc.Scope.TeamID, MessageID: messageID,
+		})
+		if billingErr != nil {
+			return nil, emailBillingError(billingErr)
+		}
+		if enqueueErr := enqueueDelivery(ctx, s.delivery, tx, messageID, tc.Scope.TeamID, validated[index].ScheduledAt); enqueueErr != nil {
 			return nil, apperrors.NewInternal("Unable to enqueue email delivery", enqueueErr)
 		}
 		result = append(result, message)
+		committedAuthorizations = append(committedAuthorizations, platformbilling.CommittedAuthorization{
+			Authorization: authorization, Channel: platformbilling.ChannelEmail,
+			TeamID: tc.Scope.TeamID, MessageID: messageID,
+		})
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, apperrors.NewInternal("Unable to commit email batch transaction", err)
 	}
+	for _, authorization := range committedAuthorizations {
+		s.billing.ObserveCommitted(ctx, authorization)
+	}
 	return result, nil
+}
+
+func emailBillingError(err error) error {
+	switch {
+	case errors.Is(err, platformbilling.ErrInsufficientBalance):
+		return apperrors.NewPaymentRequired("Insufficient wallet balance")
+	case errors.Is(err, platformbilling.ErrTeamNotFound):
+		return apperrors.NewNotFound("Billing team not found")
+	case errors.Is(err, platformbilling.ErrTeamInactive):
+		return apperrors.NewConflict("Team is not active for billing")
+	case errors.Is(err, platformbilling.ErrUnsupportedMarket):
+		return apperrors.NewConflict("Team market is not supported for billing")
+	case errors.Is(err, platformbilling.ErrWalletNotFound):
+		return apperrors.NewConflict("Team wallet is not initialized")
+	case errors.Is(err, platformbilling.ErrRateNotFound):
+		return apperrors.NewServiceUnavailable("Email pricing is unavailable", err)
+	case errors.Is(err, platformbilling.ErrCurrencyMismatch):
+		return apperrors.NewConflict("Wallet currency does not match the team market")
+	case errors.Is(err, platformbilling.ErrAmountOverflow):
+		return apperrors.NewInternal("Email charge amount exceeds the supported range", err)
+	default:
+		return apperrors.NewInternal("Unable to authorize email billing", err)
+	}
 }
 
 func (s *Service) authorizeSender(ctx context.Context, teamID uuid.UUID, message *validatedSend) error {
