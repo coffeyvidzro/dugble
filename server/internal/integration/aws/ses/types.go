@@ -5,15 +5,10 @@ import (
 	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	awsses "github.com/aws/aws-sdk-go-v2/service/ses"
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 )
 
 const ProviderSES = "ses"
-
-type sesAPI interface {
-	SendRawEmail(context.Context, *awsses.SendRawEmailInput, ...func(*awsses.Options)) (*awsses.SendRawEmailOutput, error)
-}
 
 type sesV2SendAPI interface {
 	SendEmail(context.Context, *sesv2.SendEmailInput, ...func(*sesv2.Options)) (*sesv2.SendEmailOutput, error)
@@ -42,7 +37,6 @@ type Client struct {
 	awsConfig     aws.Config
 
 	mu               sync.Mutex
-	sendingClients   map[string]sesAPI
 	v2SendingClients map[string]sesV2SendAPI
 	identityClients  map[string]sesIdentityAPI
 	tenantClients    map[string]sesTenantAPI

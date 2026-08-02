@@ -68,6 +68,19 @@ func TestNormalizeAttachmentsUsesExactDecodedSize(t *testing.T) {
 	}
 }
 
+func TestNormalizeAttachmentsReturnsEmptyNonNilSlice(t *testing.T) {
+	attachments, err := normalizeAttachments(nil)
+	if err != nil {
+		t.Fatalf("normalize attachments: %v", err)
+	}
+	if attachments == nil {
+		t.Fatal("attachments must be a non-nil empty slice")
+	}
+	if len(attachments) != 0 {
+		t.Fatalf("attachments length = %d, want 0", len(attachments))
+	}
+}
+
 func TestNormalizeAttachmentsRejectsPaths(t *testing.T) {
 	_, err := normalizeAttachments([]Attachment{{
 		Filename: "invoice.pdf",
@@ -78,6 +91,19 @@ func TestNormalizeAttachmentsRejectsPaths(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "Attachment paths are not supported") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestNormalizeTagsReturnsEmptyNonNilSlice(t *testing.T) {
+	tags, err := normalizeTags(nil)
+	if err != nil {
+		t.Fatalf("normalize tags: %v", err)
+	}
+	if tags == nil {
+		t.Fatal("tags must be a non-nil empty slice")
+	}
+	if len(tags) != 0 {
+		t.Fatalf("tags length = %d, want 0", len(tags))
 	}
 }
 
