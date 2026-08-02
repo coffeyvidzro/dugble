@@ -1,10 +1,9 @@
 import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+import { trendTone, type EmailStat } from "./types";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-
-import { trendTone, type EmailStat } from "./types";
 
 function buildSparklinePoints(
     values: number[],
@@ -75,7 +74,7 @@ export function StatCard({
               : TrendingDown;
 
     return (
-        <Card className="overflow-hidden border-border/40 shadow-sm transition-shadow hover:shadow-md">
+        <Card className="overflow-hidden border-border/40 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">
             <div className="flex items-center justify-between p-4 pb-0">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                     <Icon className="size-4" />
