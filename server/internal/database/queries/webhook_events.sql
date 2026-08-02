@@ -21,25 +21,31 @@ SET id = EXCLUDED.id
 RETURNING *;
 
 -- name: GetWebhookEvent :one
-SELECT *
-FROM webhook_events
-WHERE id = sqlc.arg(id)
-  AND team_id = sqlc.arg(team_id);
+SELECT event.*
+FROM webhook_events AS event
+JOIN teams AS team ON team.id = event.team_id
+WHERE event.id = sqlc.arg(id)
+  AND event.team_id = sqlc.arg(team_id)
+  AND team.status = 'active';
 
 -- name: ListWebhookEvents :many
-SELECT *
-FROM webhook_events
-WHERE team_id = sqlc.arg(team_id)
-ORDER BY created_at DESC
+SELECT event.*
+FROM webhook_events AS event
+JOIN teams AS team ON team.id = event.team_id
+WHERE event.team_id = sqlc.arg(team_id)
+  AND team.status = 'active'
+ORDER BY event.created_at DESC
 LIMIT sqlc.arg(limit_count)
 OFFSET sqlc.arg(offset_count);
 
 -- name: ListWebhookEventsForObject :many
-SELECT *
-FROM webhook_events
-WHERE team_id = sqlc.arg(team_id)
-  AND object_type = sqlc.arg(object_type)
-  AND object_id IS NOT DISTINCT FROM sqlc.narg(object_id)
-ORDER BY occurred_at DESC, created_at DESC
+SELECT event.*
+FROM webhook_events AS event
+JOIN teams AS team ON team.id = event.team_id
+WHERE event.team_id = sqlc.arg(team_id)
+  AND event.object_type = sqlc.arg(object_type)
+  AND event.object_id IS NOT DISTINCT FROM sqlc.narg(object_id)
+  AND team.status = 'active'
+ORDER BY event.occurred_at DESC, event.created_at DESC
 LIMIT sqlc.arg(limit_count)
 OFFSET sqlc.arg(offset_count);
