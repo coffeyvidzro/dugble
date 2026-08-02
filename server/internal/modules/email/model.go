@@ -32,7 +32,6 @@ type Message struct {
 	ID                string            `json:"id"`
 	TeamID            string            `json:"team_id"`
 	MessageType       string            `json:"message_type"`
-	Stream            string            `json:"stream"`
 	FromEmail         string            `json:"from_email"`
 	FromName          *string           `json:"from_name,omitempty"`
 	ReplyToEmail      *string           `json:"reply_to_email,omitempty"`
@@ -209,7 +208,7 @@ func (m Message) RetrieveResponse() RetrieveResponse {
 		replyTo = []string{*m.ReplyToEmail}
 	}
 	return RetrieveResponse{
-		Object: "email", ID: m.ID, MessageID: m.ProviderMessageID, Stream: m.Stream,
+		Object: "email", ID: m.ID, MessageID: m.ProviderMessageID, Stream: m.MessageType,
 		To: to, From: formatEmailAddress(EmailAddress{Email: m.FromEmail, Name: pointerValue(m.FromName)}),
 		CreatedAt: m.CreatedAt, Subject: m.Subject, HTML: m.HTMLBody, Text: m.TextBody,
 		BCC: addressStrings(m.BCC), CC: addressStrings(m.CC), ReplyTo: replyTo,
@@ -226,10 +225,15 @@ func addressStrings(addresses []EmailAddress) []string {
 }
 
 func formatEmailAddress(address EmailAddress) string {
-	if address.Name != "" && isSimpleDisplayName(address.Name) {
-		return address.Name + " <" + address.Email + ">"
+	email := strings.TrimSpace(address.Email)
+	name := strings.TrimSpace(address.Name)
+	if name == "" {
+		return email
 	}
-	return (&mail.Address{Name: address.Name, Address: address.Email}).String()
+	if isSimpleDisplayName(name) {
+		return name + " <" + email + ">"
+	}
+	return (&mail.Address{Name: name, Address: email}).String()
 }
 
 func isSimpleDisplayName(name string) bool {
