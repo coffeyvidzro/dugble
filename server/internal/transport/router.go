@@ -112,7 +112,7 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		return middlewares.TenantAccess(middlewares.TenantAccessConfig{Sessions: sessionRepository, Users: authRepository, Memberships: teamRepository, Tokens: teamTokenRepository, CSRF: csrfConfig, Required: permission})
 	}
 	team.RegisterRoutes(router, team.NewHandler(teamService), authMiddleware, csrfMiddleware, tenantMiddleware)
-	wallet.RegisterRoutes(router, wallet.NewHandler(wallet.NewService(wallet.NewRepository(deps.DB))), authMiddleware, csrfMiddleware, tenantMiddleware)
+	wallet.RegisterRoutes(router, wallet.NewHandler(wallet.NewService(wallet.NewRepository(deps.DB))), tenantAccess)
 	auditevent.RegisterRoutes(router, auditevent.NewHandler(auditevent.NewService(auditRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	teamtoken.RegisterRoutes(router, teamtoken.NewHandler(teamtoken.NewService(teamTokenRepository).WithNotifier(emailService)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	senderid.RegisterRoutes(router, senderid.NewHandler(senderid.NewService(senderIDRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)

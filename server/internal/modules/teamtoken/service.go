@@ -30,6 +30,8 @@ var allowedPermissions = map[tenant.Permission]struct{}{
 	tenant.PermissionSMSSend:           {},
 	tenant.PermissionEmailRead:         {},
 	tenant.PermissionEmailSend:         {},
+	tenant.PermissionWalletRead:        {},
+	tenant.PermissionWalletLedgerRead:  {},
 }
 
 type Service struct {
