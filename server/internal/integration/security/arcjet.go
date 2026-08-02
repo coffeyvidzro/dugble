@@ -8,10 +8,11 @@ import (
 
 func NewClient(arcjetKey string) (*arcjet.Client, error) {
 	client, err := arcjet.NewClient(arcjet.Config{
-		Key: arcjetKey,
+		Key:      arcjetKey,
+		Platform: arcjet.PlatformCloudflare,
 		Rules: []arcjet.Rule{
 			arcjet.Shield(arcjet.ShieldOptions{
-				Mode: arcjet.ModeLive,
+				Mode: arcjet.ModeDryRun,
 			}),
 			arcjet.DetectBot(arcjet.BotOptions{
 				Mode:  arcjet.ModeDryRun,
