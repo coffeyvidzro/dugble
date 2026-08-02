@@ -40,6 +40,12 @@ func DefaultConfig() Config {
 				Enabled:            true,
 			},
 			{
+				ProviderID:         "celcom",
+				DestinationCountry: sms.CountryKenya,
+				Priority:           1,
+				Enabled:            true,
+			},
+			{
 				ProviderID:         "arkesel",
 				DestinationCountry: sms.CountryNigeria,
 				Priority:           1,
@@ -81,7 +87,6 @@ func (c Config) Validate() error {
 		if existingProvider, exists := priorities[priorityKey]; exists {
 			return fmt.Errorf(
 				"%w: providers %q and %q both use priority %d for country %q",
-				ErrDuplicatePriority,
 				existingProvider,
 				providerID,
 				route.Priority,
@@ -101,8 +106,6 @@ func (c Config) Validate() error {
 	return nil
 }
 
-// enabledRoutes returns a normalized, sorted copy. The caller can safely retain
-// or modify the returned slice without mutating Config.
 func (c Config) enabledRoutes() []Route {
 	routes := make([]Route, 0, len(c.Routes))
 	for _, route := range c.Routes {
