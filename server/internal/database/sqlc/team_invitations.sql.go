@@ -13,14 +13,17 @@ import (
 )
 
 const acceptTeamInvitation = `-- name: AcceptTeamInvitation :one
-UPDATE team_invitations
+UPDATE team_invitations AS invitation
 SET status = 'accepted',
     accepted_at = now(),
     updated_at = now()
-WHERE token_hash = $1
-  AND status = 'pending'
-  AND expires_at > now()
-RETURNING id, team_id, email, role, status, token_hash, invited_by, expires_at, accepted_at, declined_at, created_at, updated_at
+FROM teams AS team
+WHERE invitation.token_hash = $1
+  AND invitation.status = 'pending'
+  AND invitation.expires_at > now()
+  AND team.id = invitation.team_id
+  AND team.status = 'active'
+RETURNING invitation.id, invitation.team_id, invitation.email, invitation.role, invitation.status, invitation.token_hash, invitation.invited_by, invitation.expires_at, invitation.accepted_at, invitation.declined_at, invitation.created_at, invitation.updated_at
 `
 
 type AcceptTeamInvitationParams struct {
@@ -55,34 +58,37 @@ INSERT INTO team_invitations (
     token_hash,
     invited_by,
     expires_at
-) VALUES (
+)
+SELECT
+    team.id,
     $1,
     $2,
     $3,
     $4,
-    $5,
-    $6
-)
+    $5
+FROM teams AS team
+WHERE team.id = $6
+  AND team.status = 'active'
 RETURNING id, team_id, email, role, status, token_hash, invited_by, expires_at, accepted_at, declined_at, created_at, updated_at
 `
 
 type CreateTeamInvitationParams struct {
-	TeamID    uuid.UUID          `db:"team_id" json:"team_id"`
 	Email     string             `db:"email" json:"email"`
 	Role      string             `db:"role" json:"role"`
 	TokenHash string             `db:"token_hash" json:"token_hash"`
 	InvitedBy *uuid.UUID         `db:"invited_by" json:"invited_by"`
 	ExpiresAt pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+	TeamID    uuid.UUID          `db:"team_id" json:"team_id"`
 }
 
 func (q *Queries) CreateTeamInvitation(ctx context.Context, arg CreateTeamInvitationParams) (TeamInvitation, error) {
 	row := q.db.QueryRow(ctx, createTeamInvitation,
-		arg.TeamID,
 		arg.Email,
 		arg.Role,
 		arg.TokenHash,
 		arg.InvitedBy,
 		arg.ExpiresAt,
+		arg.TeamID,
 	)
 	var i TeamInvitation
 	err := row.Scan(
@@ -103,14 +109,17 @@ func (q *Queries) CreateTeamInvitation(ctx context.Context, arg CreateTeamInvita
 }
 
 const declineTeamInvitation = `-- name: DeclineTeamInvitation :one
-UPDATE team_invitations
+UPDATE team_invitations AS invitation
 SET status = 'declined',
     declined_at = now(),
     updated_at = now()
-WHERE token_hash = $1
-  AND status = 'pending'
-  AND expires_at > now()
-RETURNING id, team_id, email, role, status, token_hash, invited_by, expires_at, accepted_at, declined_at, created_at, updated_at
+FROM teams AS team
+WHERE invitation.token_hash = $1
+  AND invitation.status = 'pending'
+  AND invitation.expires_at > now()
+  AND team.id = invitation.team_id
+  AND team.status = 'active'
+RETURNING invitation.id, invitation.team_id, invitation.email, invitation.role, invitation.status, invitation.token_hash, invitation.invited_by, invitation.expires_at, invitation.accepted_at, invitation.declined_at, invitation.created_at, invitation.updated_at
 `
 
 type DeclineTeamInvitationParams struct {
@@ -138,11 +147,13 @@ func (q *Queries) DeclineTeamInvitation(ctx context.Context, arg DeclineTeamInvi
 }
 
 const getTeamInvitationByTokenHash = `-- name: GetTeamInvitationByTokenHash :one
-SELECT id, team_id, email, role, status, token_hash, invited_by, expires_at, accepted_at, declined_at, created_at, updated_at
-FROM team_invitations
-WHERE token_hash = $1
-  AND status = 'pending'
-  AND expires_at > now()
+SELECT invitation.id, invitation.team_id, invitation.email, invitation.role, invitation.status, invitation.token_hash, invitation.invited_by, invitation.expires_at, invitation.accepted_at, invitation.declined_at, invitation.created_at, invitation.updated_at
+FROM team_invitations AS invitation
+JOIN teams AS team ON team.id = invitation.team_id
+WHERE invitation.token_hash = $1
+  AND invitation.status = 'pending'
+  AND invitation.expires_at > now()
+  AND team.status = 'active'
 `
 
 type GetTeamInvitationByTokenHashParams struct {
@@ -170,12 +181,14 @@ func (q *Queries) GetTeamInvitationByTokenHash(ctx context.Context, arg GetTeamI
 }
 
 const listPendingTeamInvitations = `-- name: ListPendingTeamInvitations :many
-SELECT id, team_id, email, role, status, token_hash, invited_by, expires_at, accepted_at, declined_at, created_at, updated_at
-FROM team_invitations
-WHERE team_id = $1
-  AND status = 'pending'
-  AND expires_at > now()
-ORDER BY created_at DESC
+SELECT invitation.id, invitation.team_id, invitation.email, invitation.role, invitation.status, invitation.token_hash, invitation.invited_by, invitation.expires_at, invitation.accepted_at, invitation.declined_at, invitation.created_at, invitation.updated_at
+FROM team_invitations AS invitation
+JOIN teams AS team ON team.id = invitation.team_id
+WHERE invitation.team_id = $1
+  AND invitation.status = 'pending'
+  AND invitation.expires_at > now()
+  AND team.status = 'active'
+ORDER BY invitation.created_at DESC
 `
 
 type ListPendingTeamInvitationsParams struct {
