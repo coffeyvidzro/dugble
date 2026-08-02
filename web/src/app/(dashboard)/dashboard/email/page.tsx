@@ -1,6 +1,6 @@
-import { LayoutTemplate } from "lucide-react";
-import { PlaceholderPage } from "@/components/dashboard/placeholder-page";
+import { EmailOverview } from "@/components/dashboard/email/email-dashboard/email-overview";
 import { constructMetadata } from "@/utils/metadata";
+
 export const metadata = constructMetadata({
     title: "Email",
     description:
@@ -11,10 +11,8 @@ export const metadata = constructMetadata({
 
 export default function Page() {
     return (
-        <PlaceholderPage
-            title="Templates"
-            description="Reusable HTML templates."
-            icon={LayoutTemplate}
-        />
+        <div className="flex-1 w-full bg-background min-h-screen pt-8 pb-16 px-4 md:px-8">
+            <EmailOverview />
+        </div>
     );
 }
