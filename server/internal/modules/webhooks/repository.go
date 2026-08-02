@@ -62,19 +62,46 @@ func (r *Repository) GetEndpoint(ctx context.Context, id, teamID uuid.UUID) (End
 }
 
 func (r *Repository) UpdateEndpoint(ctx context.Context, id, teamID uuid.UUID, endpoint validatedEndpoint) (Endpoint, error) {
-	row, err := r.queries.UpdateWebhookEndpoint(ctx, dbsqlc.UpdateWebhookEndpointParams{
-		ID: id, TeamID: teamID, Url: endpoint.URL, Enabled: endpoint.Enabled, SubscribedEvents: endpoint.SubscribedEvents,
+	var row dbsqlc.WebhookEndpoint
+	err := r.InTransaction(ctx, func(tx pgx.Tx) error {
+		queries := r.queries.WithTx(tx)
+		updated, err := queries.UpdateWebhookEndpoint(ctx, dbsqlc.UpdateWebhookEndpointParams{
+			ID: id, TeamID: teamID, Url: endpoint.URL, Enabled: endpoint.Enabled, SubscribedEvents: endpoint.SubscribedEvents,
+		})
+		if err != nil {
+			return fmt.Errorf("update webhook endpoint: %w", err)
+		}
+		row = updated
+		if endpoint.Enabled {
+			return nil
+		}
+		if _, err := queries.CancelWebhookDeliveriesForEndpoint(ctx, dbsqlc.CancelWebhookDeliveriesForEndpointParams{EndpointID: id}); err != nil {
+			return fmt.Errorf("cancel webhook endpoint deliveries: %w", err)
+		}
+		return nil
 	})
 	if err != nil {
-		return Endpoint{}, fmt.Errorf("update webhook endpoint: %w", err)
+		return Endpoint{}, err
 	}
 	return endpointFromSQLC(row), nil
 }
 
 func (r *Repository) DisableEndpoint(ctx context.Context, id, teamID uuid.UUID) (Endpoint, error) {
-	row, err := r.queries.DisableWebhookEndpoint(ctx, dbsqlc.DisableWebhookEndpointParams{ID: id, TeamID: teamID})
+	var row dbsqlc.WebhookEndpoint
+	err := r.InTransaction(ctx, func(tx pgx.Tx) error {
+		queries := r.queries.WithTx(tx)
+		disabled, err := queries.DisableWebhookEndpoint(ctx, dbsqlc.DisableWebhookEndpointParams{ID: id, TeamID: teamID})
+		if err != nil {
+			return fmt.Errorf("disable webhook endpoint: %w", err)
+		}
+		row = disabled
+		if _, err := queries.CancelWebhookDeliveriesForEndpoint(ctx, dbsqlc.CancelWebhookDeliveriesForEndpointParams{EndpointID: id}); err != nil {
+			return fmt.Errorf("cancel webhook endpoint deliveries: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
-		return Endpoint{}, fmt.Errorf("disable webhook endpoint: %w", err)
+		return Endpoint{}, err
 	}
 	return endpointFromSQLC(row), nil
 }
