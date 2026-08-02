@@ -70,28 +70,11 @@ WHERE id = sqlc.arg(id)
 RETURNING *;
 
 -- name: DisableTeam :one
-WITH disabled_team AS (
-    UPDATE teams AS team
-    SET status = 'disabled',
-        updated_at = now()
-    WHERE team.id = sqlc.arg(id)
-    RETURNING team.id
-), canceled_webhook_deliveries AS (
-    UPDATE webhook_deliveries AS delivery
-    SET status = 'canceled',
-        last_error = 'Team disabled before webhook delivery',
-        locked_at = NULL,
-        locked_by = NULL,
-        updated_at = now()
-    FROM webhook_events AS event
-    WHERE event.id = delivery.event_id
-      AND event.team_id = (SELECT disabled_team.id FROM disabled_team)
-      AND delivery.status IN ('pending', 'retrying')
-    RETURNING delivery.id
-)
-SELECT team.*
-FROM teams AS team
-JOIN disabled_team ON disabled_team.id = team.id;
+UPDATE teams
+SET status = 'disabled',
+    updated_at = now()
+WHERE id = sqlc.arg(id)
+RETURNING *;
 
 -- name: CreateTeamMember :one
 INSERT INTO team_members (
