@@ -1,13 +1,16 @@
 name: Temporary Webhook SQLC Generation
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - fix/webhook-delivery-lifecycle
 
 permissions:
   contents: write
 
 jobs:
   generate:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     defaults:
       run:
