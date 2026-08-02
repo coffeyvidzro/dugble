@@ -52,28 +52,23 @@ func ToInternal(resp *SendResponse) (*sms.SendResponse, error) {
 	}, nil
 }
 
-func StatusToInternal(messageID string, resp *SendResponse) (*sms.StatusResponse, error) {
+func StatusToInternal(messageID string, resp *DeliveryReportResponse) (*sms.StatusResponse, error) {
 	if resp == nil {
 		return nil, fmt.Errorf("celcom delivery report response is nil")
 	}
-	if len(resp.Responses) == 0 {
-		return nil, fmt.Errorf("celcom delivery report response contains no results")
-	}
-
-	result := resp.Responses[0]
-	if result.ResponseCode != 200 {
-		if result.ResponseCode == 1008 {
+	if resp.ResponseCode != 200 {
+		if resp.ResponseCode == 1008 {
 			return &sms.StatusResponse{
 				ProviderID: providerID, ProviderMsgID: strings.TrimSpace(messageID), Status: sms.StatusUnknown,
 			}, nil
 		}
-		return nil, &APIError{Code: result.ResponseCode, Description: result.ResponseDescription}
+		return nil, &APIError{Code: resp.ResponseCode, Description: resp.ResponseDescription}
 	}
 
 	return &sms.StatusResponse{
 		ProviderID:    providerID,
 		ProviderMsgID: strings.TrimSpace(messageID),
-		Status:        NormalizeStatus(result.ResponseDescription),
+		Status:        NormalizeStatus(resp.ResponseDescription),
 	}, nil
 }
 

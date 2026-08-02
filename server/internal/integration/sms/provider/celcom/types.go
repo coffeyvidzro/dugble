@@ -35,6 +35,33 @@ type SendResult struct {
 	NetworkID           string
 }
 
+// DeliveryReportResponse is the flat response returned by the getdlr endpoint.
+// Unlike SendResponse, it is not wrapped in a "responses" array.
+type DeliveryReportResponse struct {
+	ResponseCode        int
+	ResponseDescription string
+	Mobile              string
+	MessageID           string
+	NetworkID           string
+}
+
+func (r *DeliveryReportResponse) UnmarshalJSON(data []byte) error {
+	if r == nil {
+		return fmt.Errorf("celcom delivery report response is nil")
+	}
+
+	var result SendResult
+	if err := json.Unmarshal(data, &result); err != nil {
+		return err
+	}
+	r.ResponseCode = result.ResponseCode
+	r.ResponseDescription = result.ResponseDescription
+	r.Mobile = result.Mobile
+	r.MessageID = result.MessageID
+	r.NetworkID = result.NetworkID
+	return nil
+}
+
 func (r *SendResult) UnmarshalJSON(data []byte) error {
 	if r == nil {
 		return fmt.Errorf("celcom send result is nil")
