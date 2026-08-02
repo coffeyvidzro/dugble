@@ -75,7 +75,7 @@ WITH disabled_team AS (
     SET status = 'disabled',
         updated_at = now()
     WHERE team.id = sqlc.arg(id)
-    RETURNING team.*
+    RETURNING team.id
 ), canceled_webhook_deliveries AS (
     UPDATE webhook_deliveries AS delivery
     SET status = 'canceled',
@@ -89,7 +89,9 @@ WITH disabled_team AS (
       AND delivery.status IN ('pending', 'retrying')
     RETURNING delivery.id
 )
-SELECT disabled_team.* FROM disabled_team;
+SELECT team.*
+FROM teams AS team
+JOIN disabled_team ON disabled_team.id = team.id;
 
 -- name: CreateTeamMember :one
 INSERT INTO team_members (
