@@ -7,15 +7,18 @@ INSERT INTO team_tokens (
     permissions,
     created_by,
     expires_at
-) VALUES (
-    sqlc.arg(team_id),
+)
+SELECT
+    team.id,
     sqlc.arg(name),
     sqlc.arg(token_hash),
     sqlc.arg(token_prefix),
     sqlc.arg(permissions),
     sqlc.narg(created_by),
     sqlc.narg(expires_at)
-)
+FROM teams AS team
+WHERE team.id = sqlc.arg(team_id)
+  AND team.status = 'active'
 RETURNING *;
 
 -- name: GetActiveTeamTokenByHash :one
@@ -28,30 +31,38 @@ WHERE tt.token_hash = sqlc.arg(token_hash)
   AND t.status = 'active';
 
 -- name: ListTeamTokens :many
-SELECT *
-FROM team_tokens
-WHERE team_id = sqlc.arg(team_id)
-ORDER BY created_at DESC;
+SELECT token.*
+FROM team_tokens AS token
+JOIN teams AS team ON team.id = token.team_id
+WHERE token.team_id = sqlc.arg(team_id)
+  AND team.status = 'active'
+ORDER BY token.created_at DESC;
 
 -- name: UpdateTeamToken :one
-UPDATE team_tokens
+UPDATE team_tokens AS token
 SET name = sqlc.arg(name),
     permissions = sqlc.arg(permissions),
     expires_at = sqlc.narg(expires_at),
     updated_at = now()
-WHERE id = sqlc.arg(id)
-  AND team_id = sqlc.arg(team_id)
-  AND revoked_at IS NULL
-RETURNING *;
+FROM teams AS team
+WHERE token.id = sqlc.arg(id)
+  AND token.team_id = sqlc.arg(team_id)
+  AND team.id = token.team_id
+  AND team.status = 'active'
+  AND token.revoked_at IS NULL
+RETURNING token.*;
 
 -- name: RevokeTeamToken :one
-UPDATE team_tokens
+UPDATE team_tokens AS token
 SET revoked_at = now(),
     updated_at = now()
-WHERE id = sqlc.arg(id)
-  AND team_id = sqlc.arg(team_id)
-  AND revoked_at IS NULL
-RETURNING *;
+FROM teams AS team
+WHERE token.id = sqlc.arg(id)
+  AND token.team_id = sqlc.arg(team_id)
+  AND team.id = token.team_id
+  AND team.status = 'active'
+  AND token.revoked_at IS NULL
+RETURNING token.*;
 
 -- name: TouchTeamToken :exec
 UPDATE team_tokens
