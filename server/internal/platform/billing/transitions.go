@@ -47,6 +47,8 @@ func outcomeError(outcome Outcome) error {
 		return ErrCurrencyMismatch
 	case OutcomeInsufficientBalance:
 		return ErrInsufficientBalance
+	case OutcomeAmountOverflow:
+		return ErrAmountOverflow
 	default:
 		return fmt.Errorf("unknown billing authorization outcome: %s", outcome)
 	}

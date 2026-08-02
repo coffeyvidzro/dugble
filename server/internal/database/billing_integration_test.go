@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
+	platformbilling "github.com/coffeyvidzro/dugble/server/internal/platform/billing"
 )
 
 func TestCreditTeamWalletIsIdempotentUnderConcurrency(t *testing.T) {
@@ -142,6 +143,96 @@ func TestAuthorizeSMSChargeReturnsSpecificAccountOutcomes(t *testing.T) {
 	if got := authorize(unsupportedTeamID).Outcome; got != "unsupported_market" {
 		t.Fatalf("unsupported market outcome = %q", got)
 	}
+}
+
+func TestAuthorizeSMSChargeRejectsAmountOverflow(t *testing.T) {
+	db := billingTestDatabase(t)
+	teamID := insertBillingTestTeam(t, db, 1)
+	if _, err := db.Exec(context.Background(), `
+		UPDATE product_rates
+		SET cost_units = 5000000000000000000
+		WHERE market_code = 'GH' AND product = 'sms_local' AND tier = 'growth'
+	`); err != nil {
+		t.Fatalf("set overflowing SMS rate: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = db.Exec(context.Background(), `
+			UPDATE product_rates
+			SET cost_units = 6500
+			WHERE market_code = 'GH' AND product = 'sms_local' AND tier = 'growth'
+		`)
+	})
+
+	result, err := dbsqlc.New(db).AuthorizeSMSCharge(context.Background(), dbsqlc.AuthorizeSMSChargeParams{
+		TeamID: teamID, ReferenceID: uuid.NewString(), DestinationCountry: "GH", Segments: 2,
+	})
+	if err != nil {
+		t.Fatalf("authorize overflowing SMS charge: %v", err)
+	}
+	if result.Outcome != "amount_overflow" {
+		t.Fatalf("overflow outcome = %q, want amount_overflow", result.Outcome)
+	}
+	assertBillingState(t, db, teamID, 1, 0, 0)
+}
+
+func TestAuthorizeSMSIsIdempotentUnderConcurrency(t *testing.T) {
+	db := billingTestDatabase(t)
+	teamID := insertBillingTestTeam(t, db, 6500)
+	service := platformbilling.NewService(platformbilling.NewRepository(db))
+	messageID := uuid.New()
+	const workers = 10
+	start := make(chan struct{})
+	results := make(chan platformbilling.Outcome, workers)
+	errorsChannel := make(chan error, workers)
+	var group sync.WaitGroup
+	for range workers {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			<-start
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			tx, err := db.Begin(ctx)
+			if err != nil {
+				errorsChannel <- err
+				return
+			}
+			defer func() { _ = tx.Rollback(ctx) }()
+			result, err := service.AuthorizeSMS(ctx, tx, platformbilling.SMSAuthorizationInput{
+				TeamID: teamID, MessageID: messageID, DestinationNumber: "+233241234567", Segments: 1,
+			})
+			if err == nil {
+				err = tx.Commit(ctx)
+			}
+			if err != nil {
+				errorsChannel <- err
+				return
+			}
+			results <- result.Outcome
+		}()
+	}
+	close(start)
+	group.Wait()
+	close(results)
+	close(errorsChannel)
+	for err := range errorsChannel {
+		t.Fatalf("concurrent SMS authorization: %v", err)
+	}
+	applied, replayed := 0, 0
+	for outcome := range results {
+		switch outcome {
+		case platformbilling.OutcomeApplied:
+			applied++
+		case platformbilling.OutcomeAlreadyApplied:
+			replayed++
+		default:
+			t.Fatalf("concurrent SMS outcome = %q", outcome)
+		}
+	}
+	if applied != 1 || replayed != workers-1 {
+		t.Fatalf("concurrent outcomes: applied=%d replayed=%d", applied, replayed)
+	}
+	assertBillingState(t, db, teamID, 0, 1, -6500)
 }
 
 func TestAuthorizeEmailChargeUsesAllowanceIdempotently(t *testing.T) {

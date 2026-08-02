@@ -15,6 +15,7 @@ const (
 	OutcomeWalletNotFound      Outcome = "wallet_not_found"
 	OutcomeRateNotFound        Outcome = "rate_not_found"
 	OutcomeCurrencyMismatch    Outcome = "currency_mismatch"
+	OutcomeAmountOverflow      Outcome = "amount_overflow"
 )
 
 var (
@@ -25,4 +26,5 @@ var (
 	ErrRateNotFound        = errors.New("active product rate not found")
 	ErrCurrencyMismatch    = errors.New("billing currency does not match team market")
 	ErrInsufficientBalance = errors.New("insufficient wallet balance")
+	ErrAmountOverflow      = errors.New("billing amount exceeds supported range")
 )

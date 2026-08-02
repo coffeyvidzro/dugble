@@ -78,6 +78,7 @@ func TestAuthorizeSMSMapsAuthorizationOutcomes(t *testing.T) {
 		{OutcomeRateNotFound, ErrRateNotFound},
 		{OutcomeCurrencyMismatch, ErrCurrencyMismatch},
 		{OutcomeInsufficientBalance, ErrInsufficientBalance},
+		{OutcomeAmountOverflow, ErrAmountOverflow},
 	}
 	for _, test := range tests {
 		repository := &fakeAuthorizationRepository{result: Authorization{Outcome: test.outcome}}

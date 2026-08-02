@@ -2,8 +2,10 @@ package billing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -23,6 +25,9 @@ func (r *Repository) AuthorizeSMS(
 	tx pgx.Tx,
 	input SMSAuthorizationInput,
 ) (Authorization, error) {
+	if err := lockTeamBilling(ctx, tx, input.TeamID); err != nil {
+		return Authorization{}, err
+	}
 	row, err := r.queries.WithTx(tx).AuthorizeSMSCharge(ctx, dbsqlc.AuthorizeSMSChargeParams{
 		TeamID: input.TeamID, ReferenceID: input.MessageID.String(),
 		DestinationCountry: input.destinationCountry, Segments: int64(input.Segments),
@@ -42,6 +47,9 @@ func (r *Repository) AuthorizeEmail(
 	tx pgx.Tx,
 	input EmailAuthorizationInput,
 ) (Authorization, error) {
+	if err := lockTeamBilling(ctx, tx, input.TeamID); err != nil {
+		return Authorization{}, err
+	}
 	row, err := r.queries.WithTx(tx).AuthorizeEmailCharge(ctx, dbsqlc.AuthorizeEmailChargeParams{
 		TeamID: input.TeamID, ReferenceID: input.MessageID.String(),
 	})
@@ -54,4 +62,14 @@ func (r *Repository) AuthorizeEmail(
 		Quantity: row.Quantity, AmountUnits: row.AmountUnits, RemainingBalance: row.BalanceUnits,
 		CoveredByAllowance: row.CoveredByAllowance, RemainingAllowance: row.RemainingAllowance,
 	}, nil
+}
+
+func lockTeamBilling(ctx context.Context, tx pgx.Tx, teamID uuid.UUID) error {
+	if tx == nil {
+		return errors.New("billing transaction is required")
+	}
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))`, teamID); err != nil {
+		return fmt.Errorf("lock team billing: %w", err)
+	}
+	return nil
 }

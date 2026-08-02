@@ -243,18 +243,25 @@ billing_account AS MATERIALIZED (
     WHERE team.status = 'active'
       AND team.market_code IN ('GH', 'KE')
 ),
-resolved_rate AS MATERIALIZED (
+active_rate AS MATERIALIZED (
     SELECT
         account.team_id, account.market_code, account.currency, account.tier, account.balance_units, account.product,
         rate.cost_units,
-        rate.currency AS rate_currency,
-        rate.cost_units * $1::bigint AS amount_units
+        rate.currency AS rate_currency
     FROM billing_account AS account
     JOIN product_rates AS rate
       ON rate.market_code = account.market_code
      AND rate.product = account.product
      AND rate.tier = account.tier
      AND rate.is_active = true
+),
+resolved_rate AS MATERIALIZED (
+    SELECT
+        rate.team_id, rate.market_code, rate.currency, rate.tier, rate.balance_units, rate.product, rate.cost_units, rate.rate_currency,
+        rate.cost_units * $1::bigint AS amount_units
+    FROM active_rate AS rate
+    WHERE $1::bigint > 0
+      AND rate.cost_units <= 9223372036854775807 / NULLIF($1::bigint, 0)
 ),
 existing_ledger AS MATERIALIZED (
     SELECT ledger.id
@@ -299,7 +306,8 @@ SELECT
         WHEN EXISTS (SELECT 1 FROM team_record WHERE status <> 'active') THEN 'team_inactive'
         WHEN EXISTS (SELECT 1 FROM team_record WHERE market_code NOT IN ('GH', 'KE')) THEN 'unsupported_market'
         WHEN NOT EXISTS (SELECT 1 FROM wallet_record) THEN 'wallet_not_found'
-        WHEN NOT EXISTS (SELECT 1 FROM resolved_rate) THEN 'rate_not_found'
+        WHEN NOT EXISTS (SELECT 1 FROM active_rate) THEN 'rate_not_found'
+        WHEN NOT EXISTS (SELECT 1 FROM resolved_rate) THEN 'amount_overflow'
         WHEN EXISTS (
             SELECT 1
             FROM resolved_rate
