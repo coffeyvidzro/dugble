@@ -9,13 +9,19 @@ const (
 	OutcomeAlreadyApplied      Outcome = "already_applied"
 	OutcomeAllowanceApplied    Outcome = "allowance_applied"
 	OutcomeInsufficientBalance Outcome = "insufficient_balance"
-	OutcomeAccountNotFound     Outcome = "account_not_found"
+	OutcomeTeamNotFound        Outcome = "team_not_found"
+	OutcomeTeamInactive        Outcome = "team_inactive"
+	OutcomeUnsupportedMarket   Outcome = "unsupported_market"
+	OutcomeWalletNotFound      Outcome = "wallet_not_found"
 	OutcomeRateNotFound        Outcome = "rate_not_found"
 	OutcomeCurrencyMismatch    Outcome = "currency_mismatch"
 )
 
 var (
-	ErrAccountNotFound     = errors.New("active team wallet not found")
+	ErrTeamNotFound        = errors.New("billing team not found")
+	ErrTeamInactive        = errors.New("billing team is not active")
+	ErrUnsupportedMarket   = errors.New("billing market is not supported")
+	ErrWalletNotFound      = errors.New("team wallet not found")
 	ErrRateNotFound        = errors.New("active product rate not found")
 	ErrCurrencyMismatch    = errors.New("billing currency does not match team market")
 	ErrInsufficientBalance = errors.New("insufficient wallet balance")

@@ -98,6 +98,52 @@ func TestAuthorizeSMSChargeAppliesOnceAndChecksBalance(t *testing.T) {
 	assertBillingState(t, db, teamID, 7000, 1, -13000)
 }
 
+func TestAuthorizeSMSChargeReturnsSpecificAccountOutcomes(t *testing.T) {
+	db := billingTestDatabase(t)
+	queries := dbsqlc.New(db)
+	authorize := func(teamID uuid.UUID) dbsqlc.AuthorizeSMSChargeRow {
+		t.Helper()
+		result, err := queries.AuthorizeSMSCharge(context.Background(), dbsqlc.AuthorizeSMSChargeParams{
+			TeamID: teamID, ReferenceID: uuid.NewString(), DestinationCountry: "GH", Segments: 1,
+		})
+		if err != nil {
+			t.Fatalf("authorize SMS account outcome: %v", err)
+		}
+		return result
+	}
+
+	if got := authorize(uuid.New()).Outcome; got != "team_not_found" {
+		t.Fatalf("missing team outcome = %q", got)
+	}
+
+	walletMissingTeamID := uuid.New()
+	if _, err := db.Exec(context.Background(), `
+		INSERT INTO teams (id, name, market_code) VALUES ($1, 'Missing Wallet', 'GH')
+	`, walletMissingTeamID); err != nil {
+		t.Fatalf("insert wallet-missing team: %v", err)
+	}
+	t.Cleanup(func() { _, _ = db.Exec(context.Background(), `DELETE FROM teams WHERE id = $1`, walletMissingTeamID) })
+	if got := authorize(walletMissingTeamID).Outcome; got != "wallet_not_found" {
+		t.Fatalf("missing wallet outcome = %q", got)
+	}
+
+	inactiveTeamID := insertBillingTestTeam(t, db, 10000)
+	if _, err := db.Exec(context.Background(), `UPDATE teams SET status = 'disabled' WHERE id = $1`, inactiveTeamID); err != nil {
+		t.Fatalf("disable billing team: %v", err)
+	}
+	if got := authorize(inactiveTeamID).Outcome; got != "team_inactive" {
+		t.Fatalf("inactive team outcome = %q", got)
+	}
+
+	unsupportedTeamID := insertBillingTestTeam(t, db, 10000)
+	if _, err := db.Exec(context.Background(), `UPDATE teams SET market_code = 'NG' WHERE id = $1`, unsupportedTeamID); err != nil {
+		t.Fatalf("set unsupported billing market: %v", err)
+	}
+	if got := authorize(unsupportedTeamID).Outcome; got != "unsupported_market" {
+		t.Fatalf("unsupported market outcome = %q", got)
+	}
+}
+
 func TestAuthorizeEmailChargeUsesAllowanceIdempotently(t *testing.T) {
 	db := billingTestDatabase(t)
 	teamID := insertBillingTestTeam(t, db, 0)

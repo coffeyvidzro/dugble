@@ -18,8 +18,9 @@ const (
 type SMSAuthorizationInput struct {
 	TeamID             uuid.UUID
 	MessageID          uuid.UUID
-	DestinationCountry string
+	DestinationNumber  string
 	Segments           int32
+	destinationCountry string
 }
 
 type Authorization struct {

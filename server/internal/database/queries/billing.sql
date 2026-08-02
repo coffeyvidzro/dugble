@@ -115,7 +115,18 @@ WHERE team_id = sqlc.arg(team_id)
 RETURNING *;
 
 -- name: AuthorizeSMSCharge :one
-WITH billing_account AS MATERIALIZED (
+WITH team_record AS MATERIALIZED (
+    SELECT team.id, team.status, team.market_code
+    FROM teams AS team
+    WHERE team.id = sqlc.arg(team_id)
+),
+wallet_record AS MATERIALIZED (
+    SELECT wallet.*
+    FROM team_wallets AS wallet
+    JOIN team_record AS team ON team.id = wallet.team_id
+    FOR UPDATE OF wallet
+),
+billing_account AS MATERIALIZED (
     SELECT
         team.id AS team_id,
         team.market_code,
@@ -126,12 +137,10 @@ WITH billing_account AS MATERIALIZED (
             WHEN team.market_code = sqlc.arg(destination_country) THEN 'sms_local'
             ELSE 'sms_intl'
         END AS product
-    FROM teams AS team
-    JOIN team_wallets AS wallet ON wallet.team_id = team.id
-    WHERE team.id = sqlc.arg(team_id)
-      AND team.status = 'active'
+    FROM team_record AS team
+    JOIN wallet_record AS wallet ON wallet.team_id = team.id
+    WHERE team.status = 'active'
       AND team.market_code IN ('GH', 'KE')
-    FOR UPDATE OF wallet
 ),
 resolved_rate AS MATERIALIZED (
     SELECT
@@ -185,7 +194,10 @@ updated_wallet AS (
 )
 SELECT
     CASE
-        WHEN NOT EXISTS (SELECT 1 FROM billing_account) THEN 'account_not_found'
+        WHEN NOT EXISTS (SELECT 1 FROM team_record) THEN 'team_not_found'
+        WHEN EXISTS (SELECT 1 FROM team_record WHERE status <> 'active') THEN 'team_inactive'
+        WHEN EXISTS (SELECT 1 FROM team_record WHERE market_code NOT IN ('GH', 'KE')) THEN 'unsupported_market'
+        WHEN NOT EXISTS (SELECT 1 FROM wallet_record) THEN 'wallet_not_found'
         WHEN NOT EXISTS (SELECT 1 FROM resolved_rate) THEN 'rate_not_found'
         WHEN EXISTS (
             SELECT 1
@@ -218,7 +230,18 @@ SELECT
     )::bigint AS balance_units;
 
 -- name: AuthorizeEmailCharge :one
-WITH billing_account AS MATERIALIZED (
+WITH team_record AS MATERIALIZED (
+    SELECT team.id, team.status, team.market_code
+    FROM teams AS team
+    WHERE team.id = sqlc.arg(team_id)
+),
+wallet_record AS MATERIALIZED (
+    SELECT wallet.*
+    FROM team_wallets AS wallet
+    JOIN team_record AS team ON team.id = wallet.team_id
+    FOR UPDATE OF wallet
+),
+billing_account AS MATERIALIZED (
     SELECT
         team.id AS team_id,
         team.market_code,
@@ -226,12 +249,10 @@ WITH billing_account AS MATERIALIZED (
         wallet.tier,
         wallet.balance_units,
         wallet.free_email_allowance
-    FROM teams AS team
-    JOIN team_wallets AS wallet ON wallet.team_id = team.id
-    WHERE team.id = sqlc.arg(team_id)
-      AND team.status = 'active'
+    FROM team_record AS team
+    JOIN wallet_record AS wallet ON wallet.team_id = team.id
+    WHERE team.status = 'active'
       AND team.market_code IN ('GH', 'KE')
-    FOR UPDATE OF wallet
 ),
 existing_allowance_usage AS MATERIALIZED (
     SELECT usage.reference_id
@@ -311,7 +332,10 @@ updated_wallet AS (
 )
 SELECT
     CASE
-        WHEN NOT EXISTS (SELECT 1 FROM billing_account) THEN 'account_not_found'
+        WHEN NOT EXISTS (SELECT 1 FROM team_record) THEN 'team_not_found'
+        WHEN EXISTS (SELECT 1 FROM team_record WHERE status <> 'active') THEN 'team_inactive'
+        WHEN EXISTS (SELECT 1 FROM team_record WHERE market_code NOT IN ('GH', 'KE')) THEN 'unsupported_market'
+        WHEN NOT EXISTS (SELECT 1 FROM wallet_record) THEN 'wallet_not_found'
         WHEN EXISTS (SELECT 1 FROM existing_allowance_usage) THEN 'already_applied'
         WHEN EXISTS (SELECT 1 FROM existing_ledger) THEN 'already_applied'
         WHEN EXISTS (SELECT 1 FROM updated_allowance) THEN 'allowance_applied'

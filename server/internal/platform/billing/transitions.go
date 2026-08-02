@@ -33,8 +33,14 @@ func validateEmailAuthorizationResult(result Authorization) error {
 
 func outcomeError(outcome Outcome) error {
 	switch outcome {
-	case OutcomeAccountNotFound:
-		return ErrAccountNotFound
+	case OutcomeTeamNotFound:
+		return ErrTeamNotFound
+	case OutcomeTeamInactive:
+		return ErrTeamInactive
+	case OutcomeUnsupportedMarket:
+		return ErrUnsupportedMarket
+	case OutcomeWalletNotFound:
+		return ErrWalletNotFound
 	case OutcomeRateNotFound:
 		return ErrRateNotFound
 	case OutcomeCurrencyMismatch:

@@ -5,12 +5,14 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+
+	"github.com/coffeyvidzro/dugble/server/internal/platform/phone"
 )
 
 var (
 	ErrInvalidTeamID      = errors.New("billing team id is required")
 	ErrInvalidMessageID   = errors.New("billing message id is required")
-	ErrInvalidDestination = errors.New("billing destination country is required")
+	ErrInvalidDestination = errors.New("billing destination must be a supported E.164 phone number")
 	ErrInvalidSegments    = errors.New("billing segments must be greater than zero")
 )
 
@@ -21,10 +23,12 @@ func validateSMSAuthorization(input SMSAuthorizationInput) (SMSAuthorizationInpu
 	if input.MessageID == uuid.Nil {
 		return SMSAuthorizationInput{}, ErrInvalidMessageID
 	}
-	input.DestinationCountry = strings.ToUpper(strings.TrimSpace(input.DestinationCountry))
-	if len(input.DestinationCountry) != 2 {
+	input.DestinationNumber = strings.TrimSpace(input.DestinationNumber)
+	destinationCountry, err := phone.ResolveDestinationCountry(input.DestinationNumber)
+	if err != nil {
 		return SMSAuthorizationInput{}, ErrInvalidDestination
 	}
+	input.destinationCountry = destinationCountry
 	if input.Segments <= 0 {
 		return SMSAuthorizationInput{}, ErrInvalidSegments
 	}

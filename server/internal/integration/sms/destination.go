@@ -1,39 +1,21 @@
 package sms
 
 import (
-	"errors"
 	"strings"
+
+	"github.com/coffeyvidzro/dugble/server/internal/platform/phone"
 )
 
 const (
-	CountryGhana   = "GH"
-	CountryKenya   = "KE"
-	CountryNigeria = "NG"
+	CountryGhana   = phone.CountryGhana
+	CountryKenya   = phone.CountryKenya
+	CountryNigeria = phone.CountryNigeria
 )
 
-var ErrUnsupportedDestination = errors.New("unsupported SMS destination country")
-
-type destinationPrefix struct {
-	Prefix      string
-	CountryCode string
-}
-
-// Keep this list ordered from the longest calling code to the shortest when
-// additional markets are introduced.
-var destinationPrefixes = []destinationPrefix{
-	{Prefix: "+233", CountryCode: CountryGhana},
-	{Prefix: "+234", CountryCode: CountryNigeria},
-	{Prefix: "+254", CountryCode: CountryKenya},
-}
+var ErrUnsupportedDestination = phone.ErrUnsupportedDestination
 
 func ResolveDestinationCountry(number string) (string, error) {
-	number = strings.TrimSpace(number)
-	for _, candidate := range destinationPrefixes {
-		if strings.HasPrefix(number, candidate.Prefix) {
-			return candidate.CountryCode, nil
-		}
-	}
-	return "", ErrUnsupportedDestination
+	return phone.ResolveDestinationCountry(number)
 }
 
 func NormalizeCountryCode(value string) string {

@@ -13,7 +13,18 @@ import (
 )
 
 const authorizeEmailCharge = `-- name: AuthorizeEmailCharge :one
-WITH billing_account AS MATERIALIZED (
+WITH team_record AS MATERIALIZED (
+    SELECT team.id, team.status, team.market_code
+    FROM teams AS team
+    WHERE team.id = $1
+),
+wallet_record AS MATERIALIZED (
+    SELECT wallet.team_id, wallet.currency, wallet.balance_units, wallet.tier, wallet.free_email_allowance, wallet.last_allowance_reset, wallet.created_at, wallet.updated_at
+    FROM team_wallets AS wallet
+    JOIN team_record AS team ON team.id = wallet.team_id
+    FOR UPDATE OF wallet
+),
+billing_account AS MATERIALIZED (
     SELECT
         team.id AS team_id,
         team.market_code,
@@ -21,12 +32,10 @@ WITH billing_account AS MATERIALIZED (
         wallet.tier,
         wallet.balance_units,
         wallet.free_email_allowance
-    FROM teams AS team
-    JOIN team_wallets AS wallet ON wallet.team_id = team.id
-    WHERE team.id = $1
-      AND team.status = 'active'
+    FROM team_record AS team
+    JOIN wallet_record AS wallet ON wallet.team_id = team.id
+    WHERE team.status = 'active'
       AND team.market_code IN ('GH', 'KE')
-    FOR UPDATE OF wallet
 ),
 existing_allowance_usage AS MATERIALIZED (
     SELECT usage.reference_id
@@ -106,7 +115,10 @@ updated_wallet AS (
 )
 SELECT
     CASE
-        WHEN NOT EXISTS (SELECT 1 FROM billing_account) THEN 'account_not_found'
+        WHEN NOT EXISTS (SELECT 1 FROM team_record) THEN 'team_not_found'
+        WHEN EXISTS (SELECT 1 FROM team_record WHERE status <> 'active') THEN 'team_inactive'
+        WHEN EXISTS (SELECT 1 FROM team_record WHERE market_code NOT IN ('GH', 'KE')) THEN 'unsupported_market'
+        WHEN NOT EXISTS (SELECT 1 FROM wallet_record) THEN 'wallet_not_found'
         WHEN EXISTS (SELECT 1 FROM existing_allowance_usage) THEN 'already_applied'
         WHEN EXISTS (SELECT 1 FROM existing_ledger) THEN 'already_applied'
         WHEN EXISTS (SELECT 1 FROM updated_allowance) THEN 'allowance_applied'
@@ -204,7 +216,18 @@ func (q *Queries) AuthorizeEmailCharge(ctx context.Context, arg AuthorizeEmailCh
 }
 
 const authorizeSMSCharge = `-- name: AuthorizeSMSCharge :one
-WITH billing_account AS MATERIALIZED (
+WITH team_record AS MATERIALIZED (
+    SELECT team.id, team.status, team.market_code
+    FROM teams AS team
+    WHERE team.id = $2
+),
+wallet_record AS MATERIALIZED (
+    SELECT wallet.team_id, wallet.currency, wallet.balance_units, wallet.tier, wallet.free_email_allowance, wallet.last_allowance_reset, wallet.created_at, wallet.updated_at
+    FROM team_wallets AS wallet
+    JOIN team_record AS team ON team.id = wallet.team_id
+    FOR UPDATE OF wallet
+),
+billing_account AS MATERIALIZED (
     SELECT
         team.id AS team_id,
         team.market_code,
@@ -212,15 +235,13 @@ WITH billing_account AS MATERIALIZED (
         wallet.tier,
         wallet.balance_units,
         CASE
-            WHEN team.market_code = $2 THEN 'sms_local'
+            WHEN team.market_code = $3 THEN 'sms_local'
             ELSE 'sms_intl'
         END AS product
-    FROM teams AS team
-    JOIN team_wallets AS wallet ON wallet.team_id = team.id
-    WHERE team.id = $3
-      AND team.status = 'active'
+    FROM team_record AS team
+    JOIN wallet_record AS wallet ON wallet.team_id = team.id
+    WHERE team.status = 'active'
       AND team.market_code IN ('GH', 'KE')
-    FOR UPDATE OF wallet
 ),
 resolved_rate AS MATERIALIZED (
     SELECT
@@ -274,7 +295,10 @@ updated_wallet AS (
 )
 SELECT
     CASE
-        WHEN NOT EXISTS (SELECT 1 FROM billing_account) THEN 'account_not_found'
+        WHEN NOT EXISTS (SELECT 1 FROM team_record) THEN 'team_not_found'
+        WHEN EXISTS (SELECT 1 FROM team_record WHERE status <> 'active') THEN 'team_inactive'
+        WHEN EXISTS (SELECT 1 FROM team_record WHERE market_code NOT IN ('GH', 'KE')) THEN 'unsupported_market'
+        WHEN NOT EXISTS (SELECT 1 FROM wallet_record) THEN 'wallet_not_found'
         WHEN NOT EXISTS (SELECT 1 FROM resolved_rate) THEN 'rate_not_found'
         WHEN EXISTS (
             SELECT 1
@@ -309,8 +333,8 @@ SELECT
 
 type AuthorizeSMSChargeParams struct {
 	Segments           int64     `db:"segments" json:"segments"`
-	DestinationCountry string    `db:"destination_country" json:"destination_country"`
 	TeamID             uuid.UUID `db:"team_id" json:"team_id"`
+	DestinationCountry string    `db:"destination_country" json:"destination_country"`
 	ReferenceID        string    `db:"reference_id" json:"reference_id"`
 }
 
@@ -329,8 +353,8 @@ type AuthorizeSMSChargeRow struct {
 func (q *Queries) AuthorizeSMSCharge(ctx context.Context, arg AuthorizeSMSChargeParams) (AuthorizeSMSChargeRow, error) {
 	row := q.db.QueryRow(ctx, authorizeSMSCharge,
 		arg.Segments,
-		arg.DestinationCountry,
 		arg.TeamID,
+		arg.DestinationCountry,
 		arg.ReferenceID,
 	)
 	var i AuthorizeSMSChargeRow

@@ -51,7 +51,7 @@ func (s *Service) AuthorizeSMS(
 	if err != nil {
 		return Authorization{}, err
 	}
-	if err := validateAuthorization(result, input.DestinationCountry); err != nil {
+	if err := validateAuthorization(result, input.destinationCountry); err != nil {
 		return Authorization{}, fmt.Errorf("authorize SMS billing: %w", err)
 	}
 	return result, nil

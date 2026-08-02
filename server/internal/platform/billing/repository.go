@@ -25,7 +25,7 @@ func (r *Repository) AuthorizeSMS(
 ) (Authorization, error) {
 	row, err := r.queries.WithTx(tx).AuthorizeSMSCharge(ctx, dbsqlc.AuthorizeSMSChargeParams{
 		TeamID: input.TeamID, ReferenceID: input.MessageID.String(),
-		DestinationCountry: input.DestinationCountry, Segments: int64(input.Segments),
+		DestinationCountry: input.destinationCountry, Segments: int64(input.Segments),
 	})
 	if err != nil {
 		return Authorization{}, fmt.Errorf("authorize SMS charge: %w", err)

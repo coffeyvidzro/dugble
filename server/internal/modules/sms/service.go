@@ -141,7 +141,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	messageID := uuid.MustParse(created.ID)
 	if _, err := s.billing.AuthorizeSMS(ctx, tx, platformbilling.SMSAuthorizationInput{
 		TeamID: tenantContext.Scope.TeamID, MessageID: messageID,
-		DestinationCountry: normalized.DestinationCountry, Segments: segments,
+		DestinationNumber: normalized.To, Segments: segments,
 	}); err != nil {
 		return Message{}, smsBillingError(err)
 	}
@@ -219,7 +219,7 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 		messageID := uuid.MustParse(created.ID)
 		if _, err := s.billing.AuthorizeSMS(ctx, tx, platformbilling.SMSAuthorizationInput{
 			TeamID: tenantContext.Scope.TeamID, MessageID: messageID,
-			DestinationCountry: item.request.DestinationCountry, Segments: item.segments,
+			DestinationNumber: item.request.To, Segments: item.segments,
 		}); err != nil {
 			return nil, smsBillingError(err)
 		}

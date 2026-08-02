@@ -43,13 +43,13 @@ func TestAuthorizeSMSNormalizesAndReturnsAppliedCharge(t *testing.T) {
 		AmountUnits: 35188, RemainingBalance: 64812,
 	}}
 	input := SMSAuthorizationInput{
-		TeamID: uuid.New(), MessageID: uuid.New(), DestinationCountry: " ng ", Segments: 2,
+		TeamID: uuid.New(), MessageID: uuid.New(), DestinationNumber: " +2348012345678 ", Segments: 2,
 	}
 	result, err := NewService(repository).AuthorizeSMS(context.Background(), nil, input)
 	if err != nil {
 		t.Fatalf("AuthorizeSMS() error = %v", err)
 	}
-	if repository.input.DestinationCountry != "NG" || result.Product != ProductSMSIntl || result.AmountUnits != 35188 {
+	if repository.input.destinationCountry != "NG" || result.Product != ProductSMSIntl || result.AmountUnits != 35188 {
 		t.Fatalf("AuthorizeSMS() input/result = %+v/%+v", repository.input, result)
 	}
 }
@@ -59,7 +59,7 @@ func TestAuthorizeSMSAcceptsIdempotentReplay(t *testing.T) {
 		Outcome: OutcomeAlreadyApplied, MarketCode: "KE", Product: ProductSMSLocal,
 	}}
 	_, err := NewService(repository).AuthorizeSMS(context.Background(), nil, SMSAuthorizationInput{
-		TeamID: uuid.New(), MessageID: uuid.New(), DestinationCountry: "KE", Segments: 1,
+		TeamID: uuid.New(), MessageID: uuid.New(), DestinationNumber: "+254712345678", Segments: 1,
 	})
 	if err != nil {
 		t.Fatalf("AuthorizeSMS() replay error = %v", err)
@@ -71,7 +71,10 @@ func TestAuthorizeSMSMapsAuthorizationOutcomes(t *testing.T) {
 		outcome Outcome
 		want    error
 	}{
-		{OutcomeAccountNotFound, ErrAccountNotFound},
+		{OutcomeTeamNotFound, ErrTeamNotFound},
+		{OutcomeTeamInactive, ErrTeamInactive},
+		{OutcomeUnsupportedMarket, ErrUnsupportedMarket},
+		{OutcomeWalletNotFound, ErrWalletNotFound},
 		{OutcomeRateNotFound, ErrRateNotFound},
 		{OutcomeCurrencyMismatch, ErrCurrencyMismatch},
 		{OutcomeInsufficientBalance, ErrInsufficientBalance},
@@ -79,7 +82,7 @@ func TestAuthorizeSMSMapsAuthorizationOutcomes(t *testing.T) {
 	for _, test := range tests {
 		repository := &fakeAuthorizationRepository{result: Authorization{Outcome: test.outcome}}
 		_, err := NewService(repository).AuthorizeSMS(context.Background(), nil, SMSAuthorizationInput{
-			TeamID: uuid.New(), MessageID: uuid.New(), DestinationCountry: "GH", Segments: 1,
+			TeamID: uuid.New(), MessageID: uuid.New(), DestinationNumber: "+233241234567", Segments: 1,
 		})
 		if !errors.Is(err, test.want) {
 			t.Fatalf("AuthorizeSMS(%s) error = %v, want %v", test.outcome, err, test.want)
@@ -89,10 +92,10 @@ func TestAuthorizeSMSMapsAuthorizationOutcomes(t *testing.T) {
 
 func TestAuthorizeSMSRejectsInvalidInputBeforeRepositoryCall(t *testing.T) {
 	tests := []SMSAuthorizationInput{
-		{MessageID: uuid.New(), DestinationCountry: "GH", Segments: 1},
-		{TeamID: uuid.New(), DestinationCountry: "GH", Segments: 1},
+		{MessageID: uuid.New(), DestinationNumber: "+233241234567", Segments: 1},
+		{TeamID: uuid.New(), DestinationNumber: "+233241234567", Segments: 1},
 		{TeamID: uuid.New(), MessageID: uuid.New(), Segments: 1},
-		{TeamID: uuid.New(), MessageID: uuid.New(), DestinationCountry: "GH"},
+		{TeamID: uuid.New(), MessageID: uuid.New(), DestinationNumber: "+233241234567"},
 	}
 	for _, input := range tests {
 		repository := &fakeAuthorizationRepository{}
