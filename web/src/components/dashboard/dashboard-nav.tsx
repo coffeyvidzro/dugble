@@ -173,12 +173,6 @@ export const dashboardPortals: DashboardPortal[] = [
                         description: "Balance and top-ups.",
                     },
                     {
-                        title: "Invoices",
-                        href: "/dashboard/billing/invoices",
-                        icon: Receipt,
-                        description: "Billing history and receipts.",
-                    },
-                    {
                         title: "Transactions",
                         href: "/dashboard/billing/transactions",
                         icon: ArrowLeftRight,
