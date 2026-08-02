@@ -1,15 +1,17 @@
-name: Cleanup closed PR caches
+name: Cleanup PR caches
 
 on:
   pull_request_target:
     types: [closed]
+  workflow_dispatch:
 
 permissions:
   actions: write
   contents: read
 
 jobs:
-  cleanup:
+  cleanup-closed-pr:
+    if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
 
     steps:
@@ -23,3 +25,30 @@ jobs:
             --all \
             --ref "$PR_REF" \
             --succeed-on-no-caches
+
+  cleanup-existing-pr-caches:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Delete all existing pull-request caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mapfile -t cache_ids < <(
+            gh cache list \
+              --limit 10000 \
+              --json id,ref \
+              --jq '.[] | select(.ref | startswith("refs/pull/")) | .id'
+          )
+
+          if (( ${#cache_ids[@]} == 0 )); then
+            echo "No pull-request caches found."
+            exit 0
+          fi
+
+          echo "Deleting ${#cache_ids[@]} pull-request cache(s)."
+          for cache_id in "${cache_ids[@]}"; do
+            gh cache delete "$cache_id"
+          done
