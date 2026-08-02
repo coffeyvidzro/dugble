@@ -59,7 +59,8 @@ func TestRetrieveResponseMatchesSentEmailShape(t *testing.T) {
 	providerMessageID := "<provider-message@example.com>"
 	createdAt := time.Date(2026, time.April, 3, 22, 13, 42, 0, time.UTC)
 	message := Message{
-		ID: "email-id", FromEmail: "sender@example.com", FromName: &fromName,
+		ID: "email-id", MessageType: MessageTypeTransactional,
+		FromEmail: "sender@example.com", FromName: &fromName,
 		To: []EmailAddress{{Email: "ada@example.com", Name: "Ada"}}, CC: []EmailAddress{}, BCC: []EmailAddress{},
 		Subject: "Hello", HTMLBody: &html, Status: StatusDelivered, ProviderMessageID: &providerMessageID,
 		Tags: []Tag{{Name: "category", Value: "confirm_email"}}, CreatedAt: createdAt,
@@ -70,8 +71,9 @@ func TestRetrieveResponseMatchesSentEmailShape(t *testing.T) {
 		t.Fatalf("marshal retrieve response: %v", err)
 	}
 	response := message.RetrieveResponse()
-	if response.Object != "email" || response.From != "Acme <sender@example.com>" ||
-		len(response.To) != 1 || response.To[0] != "Ada <ada@example.com>" || response.LastEvent != StatusDelivered {
+	if response.Object != "email" || response.Stream != MessageTypeTransactional ||
+		response.From != "Acme <sender@example.com>" || len(response.To) != 1 ||
+		response.To[0] != "Ada <ada@example.com>" || response.LastEvent != StatusDelivered {
 		t.Fatalf("unexpected retrieve response: %#v", response)
 	}
 	if response.CC == nil || response.BCC == nil || response.ReplyTo == nil {
@@ -81,5 +83,25 @@ func TestRetrieveResponseMatchesSentEmailShape(t *testing.T) {
 		if bytes.Contains(encoded, forbidden) {
 			t.Fatalf("retrieve response contains internal field %s: %s", forbidden, encoded)
 		}
+	}
+}
+
+func TestRetrieveResponseUsesPersistedMarketingStream(t *testing.T) {
+	response := (Message{MessageType: MessageTypeMarketing}).RetrieveResponse()
+	if response.Stream != MessageTypeMarketing {
+		t.Fatalf("stream = %q, want %q", response.Stream, MessageTypeMarketing)
+	}
+}
+
+func TestFormatEmailAddressWithoutNameReturnsBareAddress(t *testing.T) {
+	if got := formatEmailAddress(EmailAddress{Email: " recipient@example.com "}); got != "recipient@example.com" {
+		t.Fatalf("formatEmailAddress() = %q, want bare address", got)
+	}
+}
+
+func TestFormatEmailAddressQuotesComplexDisplayName(t *testing.T) {
+	got := formatEmailAddress(EmailAddress{Email: "recipient@example.com", Name: "Doe, Ada"})
+	if got != `"Doe, Ada" <recipient@example.com>` {
+		t.Fatalf("formatEmailAddress() = %q", got)
 	}
 }
