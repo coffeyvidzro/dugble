@@ -1,4 +1,4 @@
-COMPOSE := docker compose -f deploy/compose.yaml
+COMPOSE := docker compose --env-file .env -f deploy/compose.yaml
 
 .PHONY: help
 help:
