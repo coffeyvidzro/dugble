@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	smsapi "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
+	platformbilling "github.com/coffeyvidzro/dugble/server/internal/platform/billing"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
@@ -37,10 +38,15 @@ type Service struct {
 	repository *Repository
 	sender     Sender
 	delivery   DeliveryQueue
+	billing    platformbilling.SMSAuthorizer
 }
 
-func NewService(repository *Repository, sender Sender, delivery DeliveryQueue) *Service {
-	return &Service{repository: repository, sender: sender, delivery: delivery}
+func NewService(repository *Repository, sender Sender, delivery DeliveryQueue, authorizers ...platformbilling.SMSAuthorizer) *Service {
+	service := &Service{repository: repository, sender: sender, delivery: delivery}
+	if len(authorizers) > 0 {
+		service.billing = authorizers[0]
+	}
+	return service
 }
 
 func (s *Service) List(ctx context.Context, req ListRequest) ([]Message, error) {
@@ -89,6 +95,9 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	if s.delivery == nil {
 		return Message{}, apperrors.NewInternal("SMS delivery queue is not configured", nil)
 	}
+	if s.billing == nil {
+		return Message{}, apperrors.NewInternal("SMS billing authorization is not configured", nil)
+	}
 
 	normalized, err := validateSend(req)
 	if err != nil {
@@ -130,6 +139,12 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	}
 
 	messageID := uuid.MustParse(created.ID)
+	if _, err := s.billing.AuthorizeSMS(ctx, tx, platformbilling.SMSAuthorizationInput{
+		TeamID: tenantContext.Scope.TeamID, MessageID: messageID,
+		DestinationCountry: normalized.DestinationCountry, Segments: segments,
+	}); err != nil {
+		return Message{}, smsBillingError(err)
+	}
 	if err := enqueueSMSDelivery(ctx, s.delivery, tx, messageID, tenantContext.Scope.TeamID, created.ScheduledAt); err != nil {
 		return Message{}, apperrors.NewInternal("Unable to enqueue SMS delivery", err)
 	}
@@ -150,6 +165,9 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 	}
 	if s.delivery == nil {
 		return nil, apperrors.NewInternal("SMS delivery queue is not configured", nil)
+	}
+	if s.billing == nil {
+		return nil, apperrors.NewInternal("SMS billing authorization is not configured", nil)
 	}
 
 	type preparedMessage struct {
@@ -199,6 +217,12 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 			return nil, apperrors.NewInternal("Unable to create SMS batch message", err)
 		}
 		messageID := uuid.MustParse(created.ID)
+		if _, err := s.billing.AuthorizeSMS(ctx, tx, platformbilling.SMSAuthorizationInput{
+			TeamID: tenantContext.Scope.TeamID, MessageID: messageID,
+			DestinationCountry: item.request.DestinationCountry, Segments: item.segments,
+		}); err != nil {
+			return nil, smsBillingError(err)
+		}
 		if err := enqueueSMSDelivery(ctx, s.delivery, tx, messageID, tenantContext.Scope.TeamID, created.ScheduledAt); err != nil {
 			return nil, apperrors.NewInternal("Unable to enqueue SMS batch delivery", err)
 		}
@@ -208,6 +232,13 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 		return nil, apperrors.NewInternal("Unable to commit SMS batch transaction", err)
 	}
 	return result, nil
+}
+
+func smsBillingError(err error) error {
+	if errors.Is(err, platformbilling.ErrInsufficientBalance) {
+		return apperrors.NewPaymentRequired("Insufficient wallet balance")
+	}
+	return apperrors.NewInternal("Unable to authorize SMS billing", err)
 }
 
 func (s *Service) Cancel(ctx context.Context, value string) (SendResponse, error) {

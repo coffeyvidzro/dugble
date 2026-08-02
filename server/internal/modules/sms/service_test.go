@@ -34,6 +34,16 @@ func TestValidateSendResolvesDestinationCountry(t *testing.T) {
 	}
 }
 
+func TestValidateSendResolvesKenyaDestination(t *testing.T) {
+	req, err := validateSend(SendRequest{To: "+254712345678", From: "DUGBLE", Body: "hello"})
+	if err != nil {
+		t.Fatalf("validateSend returned error: %v", err)
+	}
+	if req.DestinationCountry != "KE" {
+		t.Fatalf("DestinationCountry = %q, want KE", req.DestinationCountry)
+	}
+}
+
 func TestValidateSendRejectsUnsupportedDestination(t *testing.T) {
 	_, err := validateSend(SendRequest{To: "+12025550123", From: "DUGBLE", Body: "hello"})
 	if err == nil {

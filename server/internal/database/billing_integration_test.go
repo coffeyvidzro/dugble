@@ -60,6 +60,44 @@ func TestDebitTeamWalletDoesNotOverdrawUnderConcurrency(t *testing.T) {
 	assertBillingState(t, db, teamID, 20, 1, -80)
 }
 
+func TestAuthorizeSMSChargeAppliesOnceAndChecksBalance(t *testing.T) {
+	db := billingTestDatabase(t)
+	teamID := insertBillingTestTeam(t, db, 20000)
+	queries := dbsqlc.New(db)
+	messageID := uuid.New()
+	params := dbsqlc.AuthorizeSMSChargeParams{
+		TeamID: teamID, ReferenceID: messageID.String(), DestinationCountry: "GH", Segments: 2,
+	}
+
+	first, err := queries.AuthorizeSMSCharge(context.Background(), params)
+	if err != nil {
+		t.Fatalf("authorize first SMS charge: %v", err)
+	}
+	if first.Outcome != "applied" || first.Product != "sms_local" || first.AmountUnits != 13000 || first.BalanceUnits != 7000 {
+		t.Fatalf("first authorization = %+v", first)
+	}
+
+	replay, err := queries.AuthorizeSMSCharge(context.Background(), params)
+	if err != nil {
+		t.Fatalf("authorize replayed SMS charge: %v", err)
+	}
+	if replay.Outcome != "already_applied" || replay.BalanceUnits != 7000 {
+		t.Fatalf("replayed authorization = %+v", replay)
+	}
+
+	insufficient, err := queries.AuthorizeSMSCharge(context.Background(), dbsqlc.AuthorizeSMSChargeParams{
+		TeamID: teamID, ReferenceID: uuid.NewString(), DestinationCountry: "GH", Segments: 2,
+	})
+	if err != nil {
+		t.Fatalf("authorize insufficient SMS charge: %v", err)
+	}
+	if insufficient.Outcome != "insufficient_balance" || insufficient.BalanceUnits != 7000 {
+		t.Fatalf("insufficient authorization = %+v", insufficient)
+	}
+
+	assertBillingState(t, db, teamID, 7000, 1, -13000)
+}
+
 func runConcurrentWalletMutations(
 	t *testing.T,
 	count int,

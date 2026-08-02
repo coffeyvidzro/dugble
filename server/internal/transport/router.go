@@ -26,6 +26,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/notifications"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/audit"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
+	platformbilling "github.com/coffeyvidzro/dugble/server/internal/platform/billing"
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/idempotency"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
@@ -117,7 +118,8 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	teamtoken.RegisterRoutes(router, teamtoken.NewHandler(teamtoken.NewService(teamTokenRepository).WithNotifier(emailService)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	senderid.RegisterRoutes(router, senderid.NewHandler(senderid.NewService(senderIDRepository)), tenantAccess)
 	domain.RegisterRoutes(router, domain.NewHandler(domain.NewService(domainRepository, deps.DomainProvider, deps.DNSVerifier, emailTenantService)), tenantAccess)
-	smsService := smsmodule.NewService(smsRepository, deps.SMSSender, deps.SMSDelivery)
+	billingService := platformbilling.NewService(platformbilling.NewRepository(deps.DB))
+	smsService := smsmodule.NewService(smsRepository, deps.SMSSender, deps.SMSDelivery, billingService)
 	smsmodule.RegisterRoutes(router, smsmodule.NewHandler(smsService), tenantAccess)
 	emailRepository := emailmodule.NewRepository(deps.DB)
 	emailServiceAPI := emailmodule.NewService(emailRepository, deps.EmailDelivery, emailmodule.ServiceConfig{

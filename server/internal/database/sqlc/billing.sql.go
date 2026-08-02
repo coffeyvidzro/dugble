@@ -12,6 +12,151 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const authorizeSMSCharge = `-- name: AuthorizeSMSCharge :one
+WITH billing_account AS MATERIALIZED (
+    SELECT
+        team.id AS team_id,
+        team.market_code,
+        wallet.currency,
+        wallet.tier,
+        wallet.balance_units,
+        CASE
+            WHEN team.market_code = $2 THEN 'sms_local'
+            ELSE 'sms_intl'
+        END AS product
+    FROM teams AS team
+    JOIN team_wallets AS wallet ON wallet.team_id = team.id
+    WHERE team.id = $3
+      AND team.status = 'active'
+      AND team.market_code IN ('GH', 'KE')
+    FOR UPDATE OF wallet
+),
+resolved_rate AS MATERIALIZED (
+    SELECT
+        account.team_id, account.market_code, account.currency, account.tier, account.balance_units, account.product,
+        rate.cost_units,
+        rate.currency AS rate_currency,
+        rate.cost_units * $1::bigint AS amount_units
+    FROM billing_account AS account
+    JOIN product_rates AS rate
+      ON rate.market_code = account.market_code
+     AND rate.product = account.product
+     AND rate.tier = account.tier
+     AND rate.is_active = true
+),
+existing_ledger AS MATERIALIZED (
+    SELECT ledger.id
+    FROM wallet_ledger AS ledger
+    JOIN billing_account AS account ON account.team_id = ledger.team_id
+    WHERE ledger.transaction_type = 'usage_sms'
+      AND ledger.reference_id = $4
+),
+inserted_ledger AS (
+    INSERT INTO wallet_ledger (
+        team_id,
+        amount_units,
+        transaction_type,
+        reference_id
+    )
+    SELECT
+        rate.team_id,
+        -rate.amount_units,
+        'usage_sms',
+        $4
+    FROM resolved_rate AS rate
+    WHERE rate.currency = rate.rate_currency
+      AND rate.currency = CASE rate.market_code
+          WHEN 'GH' THEN 'GHS'
+          WHEN 'KE' THEN 'KES'
+      END
+      AND rate.balance_units >= rate.amount_units
+    ON CONFLICT (team_id, transaction_type, reference_id) DO NOTHING
+    RETURNING team_id, amount_units
+),
+updated_wallet AS (
+    UPDATE team_wallets AS wallet
+    SET balance_units = wallet.balance_units + ledger.amount_units,
+        updated_at = now()
+    FROM inserted_ledger AS ledger
+    WHERE wallet.team_id = ledger.team_id
+    RETURNING wallet.balance_units
+)
+SELECT
+    CASE
+        WHEN NOT EXISTS (SELECT 1 FROM billing_account) THEN 'account_not_found'
+        WHEN NOT EXISTS (SELECT 1 FROM resolved_rate) THEN 'rate_not_found'
+        WHEN EXISTS (
+            SELECT 1
+            FROM resolved_rate
+            WHERE currency <> rate_currency
+               OR currency <> CASE market_code
+                   WHEN 'GH' THEN 'GHS'
+                   WHEN 'KE' THEN 'KES'
+               END
+        ) THEN 'currency_mismatch'
+        WHEN EXISTS (SELECT 1 FROM existing_ledger) THEN 'already_applied'
+        WHEN EXISTS (SELECT 1 FROM updated_wallet) THEN 'applied'
+        WHEN EXISTS (
+            SELECT 1 FROM resolved_rate
+            WHERE balance_units < amount_units
+        ) THEN 'insufficient_balance'
+        ELSE 'already_applied'
+    END AS outcome,
+    COALESCE((SELECT market_code FROM resolved_rate), '')::text AS market_code,
+    COALESCE((SELECT currency FROM resolved_rate), '')::text AS currency,
+    COALESCE((SELECT tier FROM resolved_rate), '')::text AS tier,
+    COALESCE((SELECT product FROM resolved_rate), '')::text AS product,
+    COALESCE((SELECT cost_units FROM resolved_rate), 0)::bigint AS unit_cost_units,
+    $1::bigint AS quantity,
+    COALESCE((SELECT amount_units FROM resolved_rate), 0)::bigint AS amount_units,
+    COALESCE(
+        (SELECT balance_units FROM updated_wallet),
+        (SELECT balance_units FROM resolved_rate),
+        0
+    )::bigint AS balance_units
+`
+
+type AuthorizeSMSChargeParams struct {
+	Segments           int64     `db:"segments" json:"segments"`
+	DestinationCountry string    `db:"destination_country" json:"destination_country"`
+	TeamID             uuid.UUID `db:"team_id" json:"team_id"`
+	ReferenceID        string    `db:"reference_id" json:"reference_id"`
+}
+
+type AuthorizeSMSChargeRow struct {
+	Outcome       string `db:"outcome" json:"outcome"`
+	MarketCode    string `db:"market_code" json:"market_code"`
+	Currency      string `db:"currency" json:"currency"`
+	Tier          string `db:"tier" json:"tier"`
+	Product       string `db:"product" json:"product"`
+	UnitCostUnits int64  `db:"unit_cost_units" json:"unit_cost_units"`
+	Quantity      int64  `db:"quantity" json:"quantity"`
+	AmountUnits   int64  `db:"amount_units" json:"amount_units"`
+	BalanceUnits  int64  `db:"balance_units" json:"balance_units"`
+}
+
+func (q *Queries) AuthorizeSMSCharge(ctx context.Context, arg AuthorizeSMSChargeParams) (AuthorizeSMSChargeRow, error) {
+	row := q.db.QueryRow(ctx, authorizeSMSCharge,
+		arg.Segments,
+		arg.DestinationCountry,
+		arg.TeamID,
+		arg.ReferenceID,
+	)
+	var i AuthorizeSMSChargeRow
+	err := row.Scan(
+		&i.Outcome,
+		&i.MarketCode,
+		&i.Currency,
+		&i.Tier,
+		&i.Product,
+		&i.UnitCostUnits,
+		&i.Quantity,
+		&i.AmountUnits,
+		&i.BalanceUnits,
+	)
+	return i, err
+}
+
 const consumeFreeEmailAllowance = `-- name: ConsumeFreeEmailAllowance :one
 UPDATE team_wallets
 SET free_email_allowance = free_email_allowance - 1,

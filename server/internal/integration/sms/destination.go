@@ -7,6 +7,7 @@ import (
 
 const (
 	CountryGhana   = "GH"
+	CountryKenya   = "KE"
 	CountryNigeria = "NG"
 )
 
@@ -22,6 +23,7 @@ type destinationPrefix struct {
 var destinationPrefixes = []destinationPrefix{
 	{Prefix: "+233", CountryCode: CountryGhana},
 	{Prefix: "+234", CountryCode: CountryNigeria},
+	{Prefix: "+254", CountryCode: CountryKenya},
 }
 
 func ResolveDestinationCountry(number string) (string, error) {
