@@ -6,30 +6,40 @@ INSERT INTO sender_ids (
     purpose,
     provider,
     created_by
-) VALUES (
-    sqlc.arg(team_id),
+)
+SELECT
+    team.id,
     sqlc.arg(name),
     sqlc.arg(country_code),
     sqlc.arg(purpose),
     sqlc.narg(provider),
     sqlc.narg(created_by)
-)
+FROM teams AS team
+WHERE team.id = sqlc.arg(team_id)
+  AND team.status = 'active'
 RETURNING *;
 
 -- name: ListSenderIDs :many
-SELECT *
-FROM sender_ids
-WHERE team_id = sqlc.arg(team_id)
-ORDER BY created_at DESC;
+SELECT sender.*
+FROM sender_ids AS sender
+JOIN teams AS team ON team.id = sender.team_id
+WHERE sender.team_id = sqlc.arg(team_id)
+  AND team.status = 'active'
+ORDER BY sender.created_at DESC;
 
 -- name: GetSenderID :one
-SELECT *
-FROM sender_ids
-WHERE id = sqlc.arg(id)
-  AND team_id = sqlc.arg(team_id);
+SELECT sender.*
+FROM sender_ids AS sender
+JOIN teams AS team ON team.id = sender.team_id
+WHERE sender.id = sqlc.arg(id)
+  AND sender.team_id = sqlc.arg(team_id)
+  AND team.status = 'active';
 
 -- name: DeleteSenderID :one
-DELETE FROM sender_ids
-WHERE id = sqlc.arg(id)
-  AND team_id = sqlc.arg(team_id)
-RETURNING *;
+DELETE FROM sender_ids AS sender
+USING teams AS team
+WHERE sender.id = sqlc.arg(id)
+  AND sender.team_id = sqlc.arg(team_id)
+  AND team.id = sender.team_id
+  AND team.status = 'active'
+RETURNING sender.*;
