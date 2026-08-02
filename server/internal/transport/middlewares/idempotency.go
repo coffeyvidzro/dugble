@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
@@ -23,9 +22,8 @@ import (
 )
 
 const (
-	idempotencyHeader = "Idempotency-Key"
-	defaultLockTTL    = 30 * time.Second
-	defaultRecordTTL  = 24 * time.Hour
+	defaultLockTTL   = 30 * time.Second
+	defaultRecordTTL = 24 * time.Hour
 )
 
 var nonReplayableResponseHeaders = map[string]struct{}{
@@ -45,9 +43,16 @@ var nonReplayableResponseHeaders = map[string]struct{}{
 }
 
 type IdempotencyConfig struct {
-	Repository *idempotency.Repository
+	Repository idempotencyRepository
 	LockTTL    time.Duration
 	RecordTTL  time.Duration
+}
+
+type idempotencyRepository interface {
+	CreateProcessing(context.Context, idempotency.Record) (idempotency.Record, error)
+	Get(context.Context, string, string) (idempotency.Record, error)
+	Complete(context.Context, string, string, int, []byte, string, []byte) error
+	Delete(context.Context, string, string) error
 }
 
 func Idempotency(config IdempotencyConfig) echo.MiddlewareFunc {
@@ -72,11 +77,11 @@ func Idempotency(config IdempotencyConfig) echo.MiddlewareFunc {
 				path = c.Request().URL.Path
 			}
 
-			key := strings.TrimSpace(c.Request().Header.Get(idempotencyHeader))
+			key := strings.TrimSpace(c.Request().Header.Get(idempotency.Header))
 			if key == "" || isCookieSessionRoute(path) {
 				return next(c)
 			}
-			if utf8.RuneCountInString(key) > 256 {
+			if _, err := idempotency.ValidateKey(key); errors.Is(err, idempotency.ErrKeyTooLong) {
 				return httputil.Error(c, apperrors.NewBadRequest("Idempotency-Key must be at most 256 characters"))
 			}
 
@@ -180,7 +185,7 @@ func canonicalTeamID(request *http.Request) (string, bool, error) {
 	return teamID.String(), true, nil
 }
 
-func replayOrReject(ctx context.Context, c *echo.Context, repository *idempotency.Repository, scope string, key string, requestHash string, now time.Time) error {
+func replayOrReject(ctx context.Context, c *echo.Context, repository idempotencyRepository, scope string, key string, requestHash string, now time.Time) error {
 	record, err := repository.Get(ctx, scope, key)
 	if err != nil {
 		return httputil.Error(c, apperrors.NewInternal("Unable to load idempotency key", err))
