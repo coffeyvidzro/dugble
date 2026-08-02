@@ -20,18 +20,22 @@ const (
 )
 
 var allowedPermissions = map[tenant.Permission]struct{}{
-	tenant.PermissionTeamRead:          {},
-	tenant.PermissionTeamUpdate:        {},
-	tenant.PermissionTeamMembersRead:   {},
-	tenant.PermissionTeamMemberInvite:  {},
-	tenant.PermissionSenderIDsRead:     {},
-	tenant.PermissionSenderDomainsRead: {},
-	tenant.PermissionSMSRead:           {},
-	tenant.PermissionSMSSend:           {},
-	tenant.PermissionEmailRead:         {},
-	tenant.PermissionEmailSend:         {},
-	tenant.PermissionWalletRead:        {},
-	tenant.PermissionWalletLedgerRead:  {},
+	tenant.PermissionTeamRead:            {},
+	tenant.PermissionTeamUpdate:          {},
+	tenant.PermissionTeamMembersRead:     {},
+	tenant.PermissionTeamMemberInvite:    {},
+	tenant.PermissionSenderIDsRead:       {},
+	tenant.PermissionSenderIDsCreate:     {},
+	tenant.PermissionSenderIDsDelete:     {},
+	tenant.PermissionSenderDomainsRead:   {},
+	tenant.PermissionSenderDomainsCreate: {},
+	tenant.PermissionSenderDomainsDelete: {},
+	tenant.PermissionSMSRead:             {},
+	tenant.PermissionSMSSend:             {},
+	tenant.PermissionEmailRead:           {},
+	tenant.PermissionEmailSend:           {},
+	tenant.PermissionWalletRead:          {},
+	tenant.PermissionWalletLedgerRead:    {},
 }
 
 type Service struct {
