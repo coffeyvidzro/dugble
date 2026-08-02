@@ -45,7 +45,7 @@ export function TableToolbar({
                                 onSearchChange(event.target.value)
                             }
                             placeholder={searchPlaceholder}
-                            className="h-8 w-40 bg-background pl-8 text-sm sm:w-52"
+                            className="h-8 w-40 border-border bg-muted/20 pl-8 text-sm text-foreground shadow-sm focus-visible:border-primary focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-primary/40 sm:w-52"
                         />
                     </div>
                 )}
