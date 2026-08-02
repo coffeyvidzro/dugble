@@ -41,12 +41,8 @@ type Service struct {
 	billing    platformbilling.SMSAuthorizer
 }
 
-func NewService(repository *Repository, sender Sender, delivery DeliveryQueue, authorizers ...platformbilling.SMSAuthorizer) *Service {
-	service := &Service{repository: repository, sender: sender, delivery: delivery}
-	if len(authorizers) > 0 {
-		service.billing = authorizers[0]
-	}
-	return service
+func NewService(repository *Repository, sender Sender, delivery DeliveryQueue, billing platformbilling.SMSAuthorizer) *Service {
+	return &Service{repository: repository, sender: sender, delivery: delivery, billing: billing}
 }
 
 func (s *Service) List(ctx context.Context, req ListRequest) ([]Message, error) {

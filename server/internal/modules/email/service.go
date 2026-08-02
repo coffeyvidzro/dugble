@@ -129,17 +129,23 @@ type ServiceConfig struct {
 	DefaultRegion    string
 }
 
-func NewService(repository *Repository, delivery DeliveryQueue, config ServiceConfig, dependencies ...any) *Service {
-	service := &Service{repository: repository, delivery: delivery, config: config, senderDomains: repository, routes: repository}
+func NewService(
+	repository *Repository,
+	delivery DeliveryQueue,
+	config ServiceConfig,
+	billing platformbilling.EmailAuthorizer,
+	dependencies ...any,
+) *Service {
+	service := &Service{
+		repository: repository, delivery: delivery, config: config,
+		senderDomains: repository, routes: repository, billing: billing,
+	}
 	for _, dependency := range dependencies {
 		if resolver, ok := dependency.(senderDomainResolver); ok {
 			service.senderDomains = resolver
 		}
 		if resolver, ok := dependency.(customerRouteResolver); ok {
 			service.routes = resolver
-		}
-		if authorizer, ok := dependency.(platformbilling.EmailAuthorizer); ok {
-			service.billing = authorizer
 		}
 	}
 	return service

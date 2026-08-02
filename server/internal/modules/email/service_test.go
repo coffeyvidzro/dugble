@@ -54,6 +54,26 @@ func TestEmailBillingErrorMapping(t *testing.T) {
 
 type configuredDeliveryQueue struct{}
 
+type stubEmailBillingAuthorizer struct{}
+
+func (stubEmailBillingAuthorizer) AuthorizeEmail(
+	context.Context,
+	pgx.Tx,
+	platformbilling.EmailAuthorizationInput,
+) (platformbilling.Authorization, error) {
+	return platformbilling.Authorization{}, nil
+}
+
+var testEmailBilling stubEmailBillingAuthorizer
+
+func TestNewServiceRequiresBillingAuthorizer(t *testing.T) {
+	billing := platformbilling.NewService(nil)
+	service := NewService(nil, nil, testServiceConfig, billing)
+	if service.billing != billing {
+		t.Fatal("NewService did not retain the required billing authorizer")
+	}
+}
+
 var testServiceConfig = ServiceConfig{
 	DefaultFromEmail: platformemail.CustomerOnboardingIdentity,
 	DefaultProvider:  "aws_ses",
@@ -110,7 +130,7 @@ func TestEnqueueDeliveryDoesNotSilentlyIgnoreSchedule(t *testing.T) {
 }
 
 func TestBatchSendValidatesEntireBatchBeforeStartingTransaction(t *testing.T) {
-	service := NewService(nil, configuredDeliveryQueue{}, testServiceConfig)
+	service := NewService(nil, configuredDeliveryQueue{}, testServiceConfig, testEmailBilling)
 	ctx := tenant.ContextWithAccess(context.Background(), tenant.AccessContext{
 		Actor: tenant.Actor{Type: tenant.ActorTypeTeamToken, TokenID: uuid.New()},
 		Scope: tenant.Scope{TeamID: uuid.New(), Status: tenant.StatusActive, Permissions: []tenant.Permission{tenant.PermissionEmailSend}},
@@ -126,7 +146,7 @@ func TestBatchSendValidatesEntireBatchBeforeStartingTransaction(t *testing.T) {
 }
 
 func TestBatchSendRejectsMoreThanOneHundredEmails(t *testing.T) {
-	service := NewService(nil, configuredDeliveryQueue{}, testServiceConfig)
+	service := NewService(nil, configuredDeliveryQueue{}, testServiceConfig, testEmailBilling)
 	messages := make([]SendRequest, 101)
 	_, err := service.BatchSend(context.Background(), BatchSendRequest{Messages: messages})
 	if err == nil {
@@ -135,7 +155,7 @@ func TestBatchSendRejectsMoreThanOneHundredEmails(t *testing.T) {
 }
 
 func TestBatchSendRejectsAttachmentsBeforeStartingTransaction(t *testing.T) {
-	service := NewService(nil, configuredDeliveryQueue{}, testServiceConfig)
+	service := NewService(nil, configuredDeliveryQueue{}, testServiceConfig, testEmailBilling)
 	ctx := tenant.ContextWithAccess(context.Background(), tenant.AccessContext{
 		Actor: tenant.Actor{Type: tenant.ActorTypeTeamToken, TokenID: uuid.New()},
 		Scope: tenant.Scope{TeamID: uuid.New(), Status: tenant.StatusActive, Permissions: []tenant.Permission{tenant.PermissionEmailSend}},
@@ -154,7 +174,7 @@ func TestAuthorizeSenderUsesVerifiedTeamDomainRoute(t *testing.T) {
 	resolver := &stubSenderDomainResolver{route: SenderDomainRoute{
 		ID: domainID, Provider: "aws_ses", Region: "eu-west-1", Status: "verified", HealthStatus: "healthy",
 	}}
-	service := NewService(nil, nil, testServiceConfig, resolver)
+	service := NewService(nil, nil, testServiceConfig, testEmailBilling, resolver)
 	message := validatedSend{FromEmail: "Billing@Example.COM", MessageType: MessageTypeTransactional}
 
 	if err := service.authorizeSender(context.Background(), teamID, &message); err != nil {
@@ -170,7 +190,7 @@ func TestAuthorizeSenderUsesVerifiedTeamDomainRoute(t *testing.T) {
 
 func TestAuthorizeSenderRejectsUnauthorizedDomain(t *testing.T) {
 	resolver := &stubSenderDomainResolver{err: ErrSenderDomainNotFound}
-	service := NewService(nil, nil, testServiceConfig, resolver)
+	service := NewService(nil, nil, testServiceConfig, testEmailBilling, resolver)
 	err := service.authorizeSender(context.Background(), uuid.New(), &validatedSend{FromEmail: "sender@other.example", MessageType: MessageTypeTransactional})
 	if err == nil || !strings.Contains(err.Error(), "not authorized") {
 		t.Fatalf("expected unauthorized sender error, got %v", err)
@@ -184,7 +204,7 @@ func TestAuthorizeSenderRejectsUnverifiedDisabledOrDegradedDomain(t *testing.T) 
 		"degraded": {Provider: "aws_ses", Region: "us-east-1", Status: "degraded", HealthStatus: "degraded"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			service := NewService(nil, nil, testServiceConfig, &stubSenderDomainResolver{route: route})
+			service := NewService(nil, nil, testServiceConfig, testEmailBilling, &stubSenderDomainResolver{route: route})
 			if err := service.authorizeSender(context.Background(), uuid.New(), &validatedSend{FromEmail: "sender@example.com.invalid", MessageType: MessageTypeTransactional}); err == nil {
 				t.Fatal("expected unusable sender domain to be rejected")
 			}
@@ -193,7 +213,7 @@ func TestAuthorizeSenderRejectsUnverifiedDisabledOrDegradedDomain(t *testing.T) 
 }
 
 func TestAuthorizeSenderUsesOnboardingIdentityWithoutSystemFallback(t *testing.T) {
-	service := NewService(nil, nil, testServiceConfig)
+	service := NewService(nil, nil, testServiceConfig, testEmailBilling)
 	message := validatedSend{FromEmail: platformemail.CustomerOnboardingIdentity, MessageType: MessageTypeTransactional}
 	if err := service.authorizeSender(context.Background(), uuid.New(), &message); err != nil {
 		t.Fatalf("authorize onboarding sender: %v", err)
@@ -207,7 +227,7 @@ func TestAuthorizeSenderUsesOnboardingIdentityWithoutSystemFallback(t *testing.T
 }
 
 func TestAuthorizeSenderRejectsOnboardingMarketing(t *testing.T) {
-	service := NewService(nil, nil, testServiceConfig)
+	service := NewService(nil, nil, testServiceConfig, testEmailBilling)
 	err := service.authorizeSender(context.Background(), uuid.New(), &validatedSend{
 		FromEmail:   platformemail.CustomerOnboardingIdentity,
 		MessageType: MessageTypeMarketing,

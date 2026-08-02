@@ -13,6 +13,14 @@ import (
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
+func TestNewServiceRequiresBillingAuthorizer(t *testing.T) {
+	billing := platformbilling.NewService(nil)
+	service := NewService(nil, nil, nil, billing)
+	if service.billing != billing {
+		t.Fatal("NewService did not retain the required billing authorizer")
+	}
+}
+
 func TestSMSBillingErrorMapping(t *testing.T) {
 	tests := []struct {
 		name   string
