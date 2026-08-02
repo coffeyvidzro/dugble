@@ -141,7 +141,7 @@ WITH disabled_team AS (
     SET status = 'disabled',
         updated_at = now()
     WHERE team.id = $1
-    RETURNING team.id, team.name, team.market_code, team.status, team.created_by, team.created_at, team.updated_at
+    RETURNING team.id
 ), canceled_webhook_deliveries AS (
     UPDATE webhook_deliveries AS delivery
     SET status = 'canceled',
@@ -155,26 +155,18 @@ WITH disabled_team AS (
       AND delivery.status IN ('pending', 'retrying')
     RETURNING delivery.id
 )
-SELECT disabled_team.id, disabled_team.name, disabled_team.market_code, disabled_team.status, disabled_team.created_by, disabled_team.created_at, disabled_team.updated_at FROM disabled_team
+SELECT team.id, team.name, team.market_code, team.status, team.created_by, team.created_at, team.updated_at
+FROM teams AS team
+JOIN disabled_team ON disabled_team.id = team.id
 `
 
 type DisableTeamParams struct {
 	ID uuid.UUID `db:"id" json:"id"`
 }
 
-type DisableTeamRow struct {
-	ID         uuid.UUID          `db:"id" json:"id"`
-	Name       string             `db:"name" json:"name"`
-	MarketCode string             `db:"market_code" json:"market_code"`
-	Status     string             `db:"status" json:"status"`
-	CreatedBy  *uuid.UUID         `db:"created_by" json:"created_by"`
-	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt  pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
-}
-
-func (q *Queries) DisableTeam(ctx context.Context, arg DisableTeamParams) (DisableTeamRow, error) {
+func (q *Queries) DisableTeam(ctx context.Context, arg DisableTeamParams) (Team, error) {
 	row := q.db.QueryRow(ctx, disableTeam, arg.ID)
-	var i DisableTeamRow
+	var i Team
 	err := row.Scan(
 		&i.ID,
 		&i.Name,

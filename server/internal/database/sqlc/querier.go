@@ -64,7 +64,7 @@ type Querier interface {
 	DeleteUser(ctx context.Context, arg DeleteUserParams) error
 	DeleteVerificationToken(ctx context.Context, arg DeleteVerificationTokenParams) error
 	DeleteVerificationTokensByIdentifier(ctx context.Context, arg DeleteVerificationTokensByIdentifierParams) error
-	DisableTeam(ctx context.Context, arg DisableTeamParams) (DisableTeamRow, error)
+	DisableTeam(ctx context.Context, arg DisableTeamParams) (Team, error)
 	DisableWebhookEndpoint(ctx context.Context, arg DisableWebhookEndpointParams) (WebhookEndpoint, error)
 	DowngradeSessionAfterMFADisable(ctx context.Context, arg DowngradeSessionAfterMFADisableParams) error
 	ElevateSessionAfterMFAEnrollment(ctx context.Context, arg ElevateSessionAfterMFAEnrollmentParams) (int64, error)
