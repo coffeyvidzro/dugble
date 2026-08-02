@@ -109,7 +109,7 @@ export function ProfileSettings({
                     />
                 </div>
 
-                <div
+                {/* <div
                     className="animate-fade-up"
                     style={{
                         animationDelay: "250ms",
@@ -117,7 +117,7 @@ export function ProfileSettings({
                     }}
                 >
                     <TwoFactorAuthPanel />
-                </div>
+                </div> */}
 
                 <div
                     className="animate-fade-up"
