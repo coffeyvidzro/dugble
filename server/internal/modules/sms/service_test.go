@@ -2,10 +2,52 @@ package sms
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	platformbilling "github.com/coffeyvidzro/dugble/server/internal/platform/billing"
+	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
+
+func TestSMSBillingErrorMapping(t *testing.T) {
+	tests := []struct {
+		name   string
+		source error
+		code   string
+		status int
+	}{
+		{name: "insufficient balance", source: platformbilling.ErrInsufficientBalance, code: "PAYMENT_REQUIRED", status: http.StatusPaymentRequired},
+		{name: "invalid destination", source: platformbilling.ErrInvalidDestination, code: "BAD_REQUEST", status: http.StatusBadRequest},
+		{name: "invalid segments", source: platformbilling.ErrInvalidSegments, code: "BAD_REQUEST", status: http.StatusBadRequest},
+		{name: "team not found", source: platformbilling.ErrTeamNotFound, code: "NOT_FOUND", status: http.StatusNotFound},
+		{name: "inactive team", source: platformbilling.ErrTeamInactive, code: "CONFLICT", status: http.StatusConflict},
+		{name: "unsupported market", source: platformbilling.ErrUnsupportedMarket, code: "CONFLICT", status: http.StatusConflict},
+		{name: "wallet not found", source: platformbilling.ErrWalletNotFound, code: "CONFLICT", status: http.StatusConflict},
+		{name: "rate not found", source: platformbilling.ErrRateNotFound, code: "SERVICE_UNAVAILABLE", status: http.StatusServiceUnavailable},
+		{name: "currency mismatch", source: platformbilling.ErrCurrencyMismatch, code: "CONFLICT", status: http.StatusConflict},
+		{name: "amount overflow", source: platformbilling.ErrAmountOverflow, code: "INTERNAL_ERROR", status: http.StatusInternalServerError},
+		{name: "invalid team id", source: platformbilling.ErrInvalidTeamID, code: "INTERNAL_ERROR", status: http.StatusInternalServerError},
+		{name: "invalid message id", source: platformbilling.ErrInvalidMessageID, code: "INTERNAL_ERROR", status: http.StatusInternalServerError},
+		{name: "unknown", source: errors.New("unknown billing error"), code: "INTERNAL_ERROR", status: http.StatusInternalServerError},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			mapped := smsBillingError(fmt.Errorf("authorization failed: %w", test.source))
+			var appErr *apperrors.AppError
+			if !errors.As(mapped, &appErr) {
+				t.Fatalf("smsBillingError() = %T, want *errors.AppError", mapped)
+			}
+			if appErr.Code != test.code || appErr.Status != test.status {
+				t.Fatalf("smsBillingError() = (%s, %d), want (%s, %d)", appErr.Code, appErr.Status, test.code, test.status)
+			}
+		})
+	}
+}
 
 func TestValidateSendRequiresE164Recipient(t *testing.T) {
 	_, err := validateSend(SendRequest{To: "0241234567", From: "DUGBLE", Body: "hello"})

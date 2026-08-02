@@ -132,10 +132,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 		return Message{}, apperrors.NewInternal("Unable to create SMS message", err)
 	}
 	if created.ProviderMessageID != nil || created.Status != StatusQueued {
-		if err := tx.Commit(ctx); err != nil {
-			return Message{}, apperrors.NewInternal("Unable to commit SMS send transaction", err)
-		}
-		return created, nil
+		return Message{}, apperrors.NewInternal("New SMS message is not in a billable queued state", nil)
 	}
 
 	messageID := uuid.MustParse(created.ID)
@@ -235,10 +232,30 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 }
 
 func smsBillingError(err error) error {
-	if errors.Is(err, platformbilling.ErrInsufficientBalance) {
+	switch {
+	case errors.Is(err, platformbilling.ErrInsufficientBalance):
 		return apperrors.NewPaymentRequired("Insufficient wallet balance")
+	case errors.Is(err, platformbilling.ErrInvalidDestination):
+		return apperrors.NewBadRequest("SMS recipient must be a supported E.164 phone number")
+	case errors.Is(err, platformbilling.ErrInvalidSegments):
+		return apperrors.NewBadRequest("SMS segment count is invalid")
+	case errors.Is(err, platformbilling.ErrTeamNotFound):
+		return apperrors.NewNotFound("Billing team not found")
+	case errors.Is(err, platformbilling.ErrTeamInactive):
+		return apperrors.NewConflict("Team is not active for billing")
+	case errors.Is(err, platformbilling.ErrUnsupportedMarket):
+		return apperrors.NewConflict("Team market is not supported for billing")
+	case errors.Is(err, platformbilling.ErrWalletNotFound):
+		return apperrors.NewConflict("Team wallet is not initialized")
+	case errors.Is(err, platformbilling.ErrRateNotFound):
+		return apperrors.NewServiceUnavailable("SMS pricing is unavailable", err)
+	case errors.Is(err, platformbilling.ErrCurrencyMismatch):
+		return apperrors.NewConflict("Wallet currency does not match the team market")
+	case errors.Is(err, platformbilling.ErrAmountOverflow):
+		return apperrors.NewInternal("SMS charge amount exceeds the supported range", err)
+	default:
+		return apperrors.NewInternal("Unable to authorize SMS billing", err)
 	}
-	return apperrors.NewInternal("Unable to authorize SMS billing", err)
 }
 
 func (s *Service) Cancel(ctx context.Context, value string) (SendResponse, error) {

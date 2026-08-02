@@ -314,10 +314,26 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 }
 
 func emailBillingError(err error) error {
-	if errors.Is(err, platformbilling.ErrInsufficientBalance) {
+	switch {
+	case errors.Is(err, platformbilling.ErrInsufficientBalance):
 		return apperrors.NewPaymentRequired("Insufficient wallet balance")
+	case errors.Is(err, platformbilling.ErrTeamNotFound):
+		return apperrors.NewNotFound("Billing team not found")
+	case errors.Is(err, platformbilling.ErrTeamInactive):
+		return apperrors.NewConflict("Team is not active for billing")
+	case errors.Is(err, platformbilling.ErrUnsupportedMarket):
+		return apperrors.NewConflict("Team market is not supported for billing")
+	case errors.Is(err, platformbilling.ErrWalletNotFound):
+		return apperrors.NewConflict("Team wallet is not initialized")
+	case errors.Is(err, platformbilling.ErrRateNotFound):
+		return apperrors.NewServiceUnavailable("Email pricing is unavailable", err)
+	case errors.Is(err, platformbilling.ErrCurrencyMismatch):
+		return apperrors.NewConflict("Wallet currency does not match the team market")
+	case errors.Is(err, platformbilling.ErrAmountOverflow):
+		return apperrors.NewInternal("Email charge amount exceeds the supported range", err)
+	default:
+		return apperrors.NewInternal("Unable to authorize email billing", err)
 	}
-	return apperrors.NewInternal("Unable to authorize email billing", err)
 }
 
 func (s *Service) authorizeSender(ctx context.Context, teamID uuid.UUID, message *validatedSend) error {
