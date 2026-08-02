@@ -7,8 +7,9 @@ import (
 	"strings"
 )
 
-// Service validates provider-neutral SMS requests and coordinates routing and
-// safe provider fallback. Message persistence is handled by the application layer.
+// Service validates provider-neutral SMS requests and sends each message
+// through the single provider configured for its destination country. Message
+// persistence is handled by the application layer.
 type Service struct {
 	router Router
 }
@@ -33,61 +34,31 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (*SendResponse, err
 		return nil, err
 	}
 
-	providers, err := s.router.Route(ctx, req)
+	upstream, err := s.router.Route(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("route SMS request: %w", err)
 	}
-	if len(providers) == 0 {
+	if upstream == nil {
 		return nil, ErrNoProviderAvailable
 	}
 
-	attempts := make([]ProviderAttempt, 0, len(providers))
-
-	for index, upstream := range providers {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		if upstream == nil {
-			attempts = append(attempts, ProviderAttempt{
-				ProviderID: "unknown",
-				Err:        errors.New("routed SMS provider is nil"),
-			})
-			continue
-		}
-
-		providerID := strings.ToLower(strings.TrimSpace(upstream.ID()))
-		if providerID == "" {
-			attempts = append(attempts, ProviderAttempt{
-				ProviderID: "unknown",
-				Err:        errors.New("routed SMS provider has an empty ID"),
-			})
-			continue
-		}
-
-		response, sendErr := upstream.Send(ctx, req)
-		if sendErr == nil {
-			if err := validateSendResponse(providerID, response); err != nil {
-				sendErr = err
-			} else {
-				return response, nil
-			}
-		}
-
-		attempts = append(attempts, ProviderAttempt{
-			ProviderID: providerID,
-			Err:        sendErr,
-		})
-
-		hasNextProvider := index < len(providers)-1
-		if !hasNextProvider || !s.router.ShouldFallback(ctx, providerID, sendErr) {
-			return nil, &SendError{Attempts: attempts}
-		}
+	providerID := strings.ToLower(strings.TrimSpace(upstream.ID()))
+	if providerID == "" {
+		return nil, &SendError{Attempts: []ProviderAttempt{{
+			ProviderID: "unknown",
+			Err:        errors.New("routed SMS provider has an empty ID"),
+		}}}
 	}
 
-	if len(attempts) == 0 {
-		return nil, ErrNoProviderAvailable
+	response, err := upstream.Send(ctx, req)
+	if err != nil {
+		return nil, &SendError{Attempts: []ProviderAttempt{{ProviderID: providerID, Err: err}}}
 	}
-	return nil, &SendError{Attempts: attempts}
+	if err := validateSendResponse(providerID, response); err != nil {
+		return nil, &SendError{Attempts: []ProviderAttempt{{ProviderID: providerID, Err: err}}}
+	}
+
+	return response, nil
 }
 
 func (s *Service) CheckStatus(
