@@ -1,16 +1,13 @@
 name: Temporary Webhook SQLC Generation
 
 on:
-  push:
-    branches:
-      - fix/webhook-delivery-lifecycle
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   generate:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -29,18 +26,24 @@ jobs:
           cache: true
           cache-dependency-path: server/go.sum
 
+      - name: Set up Atlas
+        uses: ariga/setup-atlas@v0
+
       - name: Generate SQLC code
         run: go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
 
-      - name: Commit generated code
+      - name: Hash migrations
+        run: atlas migrate hash --dir file://migrations
+
+      - name: Commit generated files
         working-directory: .
         run: |
-          if git diff --quiet -- server/internal/database/sqlc; then
+          if git diff --quiet -- server/internal/database/sqlc server/migrations/atlas.sum; then
             echo "No generated changes"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add server/internal/database/sqlc
-          git commit -m "chore(sqlc): regenerate webhook lifecycle queries"
+          git add server/internal/database/sqlc server/migrations/atlas.sum
+          git commit -m "chore(generated): refresh webhook SQLC and migration hash"
           git push origin HEAD:fix/webhook-delivery-lifecycle
