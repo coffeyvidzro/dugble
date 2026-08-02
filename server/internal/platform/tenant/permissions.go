@@ -28,6 +28,8 @@ const (
 	PermissionWebhooksRead        Permission = "webhooks:read"
 	PermissionWebhooksWrite       Permission = "webhooks:write"
 	PermissionAuditEventsRead     Permission = "audit_events:read"
+	PermissionWalletRead          Permission = "wallet:read"
+	PermissionWalletLedgerRead    Permission = "wallet_ledger:read"
 )
 
 var permissionsByRole = map[string]map[Permission]struct{}{
@@ -56,6 +58,8 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 		PermissionWebhooksRead:        {},
 		PermissionWebhooksWrite:       {},
 		PermissionAuditEventsRead:     {},
+		PermissionWalletRead:          {},
+		PermissionWalletLedgerRead:    {},
 	},
 	RoleAdmin: {
 		PermissionTeamRead:            {},
@@ -81,6 +85,8 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 		PermissionWebhooksRead:        {},
 		PermissionWebhooksWrite:       {},
 		PermissionAuditEventsRead:     {},
+		PermissionWalletRead:          {},
+		PermissionWalletLedgerRead:    {},
 	},
 	RoleMember: {
 		PermissionTeamRead:          {},
