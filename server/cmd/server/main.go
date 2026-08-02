@@ -24,6 +24,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/integration/security"
 	smsintegration "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/arkesel"
+	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/celcom"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/mnotify"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/routing"
 	"github.com/coffeyvidzro/dugble/server/internal/messaging/outbox"
@@ -114,8 +115,9 @@ func run() error {
 	}
 
 	smsRouter, err := routing.NewService(
-		routing.DefaultConfig(), routing.NewPriorityStrategy(),
+		routing.DefaultConfig(),
 		arkesel.NewProvider(arkesel.NewClient(cfg.Arkesel)),
+		celcom.NewProvider(celcom.NewClient(cfg.Celcom)),
 		mnotify.NewProvider(mnotify.NewClient(cfg.MNotify)),
 	)
 	if err != nil {
