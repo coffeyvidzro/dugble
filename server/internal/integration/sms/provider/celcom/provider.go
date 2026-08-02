@@ -46,7 +46,7 @@ func (p *Provider) CheckStatus(ctx context.Context, messageID string) (*sms.Stat
 		return nil, fmt.Errorf("celcom status check failed: message id is required")
 	}
 
-	var response SendResponse
+	var response DeliveryReportResponse
 	if err := p.client.doRequest(
 		ctx,
 		"/api/services/getdlr/",
