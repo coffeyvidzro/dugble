@@ -61,12 +61,27 @@ func (v *Verifier) Verify(ctx context.Context, envelope Envelope) error {
 	if err != nil {
 		return err
 	}
-	digest := hash.New()
-	_, _ = digest.Write(message)
-	if err := rsa.VerifyPKCS1v15(publicKey, hash, digest.Sum(nil), signature); err != nil {
+	if verifyPKCS1v15(publicKey, hash, message, signature) == nil {
+		return nil
+	}
+
+	// AWS documentation specifies no trailing newline, but SNS has historically
+	// emitted signatures over the same canonical fields with a final newline.
+	// Supporting both forms preserves strict signature verification while
+	// remaining compatible with messages delivered by the service.
+	legacyMessage := make([]byte, len(message)+1)
+	copy(legacyMessage, message)
+	legacyMessage[len(message)] = '\n'
+	if err := verifyPKCS1v15(publicKey, hash, legacyMessage, signature); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidSignature, err)
 	}
 	return nil
+}
+
+func verifyPKCS1v15(publicKey *rsa.PublicKey, hash crypto.Hash, message, signature []byte) error {
+	digest := hash.New()
+	_, _ = digest.Write(message)
+	return rsa.VerifyPKCS1v15(publicKey, hash, digest.Sum(nil), signature)
 }
 
 func canonicalMessage(envelope Envelope) ([]byte, error) {
