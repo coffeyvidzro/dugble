@@ -218,6 +218,9 @@ func normalizeHeaders(headers map[string]string) (map[string]string, error) {
 }
 
 func normalizeAttachments(items []Attachment) ([]Attachment, error) {
+	if items == nil {
+		items = []Attachment{}
+	}
 	total := 0
 	for i := range items {
 		items[i].Filename = strings.TrimSpace(items[i].Filename)
@@ -251,6 +254,9 @@ func attachmentContentSize(content string) (int, error) {
 }
 
 func normalizeTags(tags []Tag) ([]Tag, error) {
+	if tags == nil {
+		tags = []Tag{}
+	}
 	for i := range tags {
 		tags[i].Name, tags[i].Value = strings.TrimSpace(tags[i].Name), strings.TrimSpace(tags[i].Value)
 		if len(tags[i].Name) > 256 || len(tags[i].Value) > 256 || !tagPattern.MatchString(tags[i].Name) || !tagPattern.MatchString(tags[i].Value) {

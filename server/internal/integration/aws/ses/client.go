@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	awsses "github.com/aws/aws-sdk-go-v2/service/ses"
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 )
 
@@ -46,7 +45,6 @@ func newClient(ctx context.Context, region, defaultFrom, accessKey, secretKey st
 		defaultRegion:    region,
 		defaultFrom:      strings.TrimSpace(defaultFrom),
 		awsConfig:        resolved,
-		sendingClients:   make(map[string]sesAPI),
 		v2SendingClients: make(map[string]sesV2SendAPI),
 		identityClients:  make(map[string]sesIdentityAPI),
 		tenantClients:    make(map[string]sesTenantAPI),
@@ -57,24 +55,6 @@ func (c *Client) regionalConfig(region string) aws.Config {
 	config := c.awsConfig
 	config.Region = strings.TrimSpace(region)
 	return config
-}
-
-func (c *Client) sendingClient(region string) (sesAPI, error) {
-	if c == nil {
-		return nil, errors.New("SES client is not configured")
-	}
-	region = strings.TrimSpace(region)
-	if region == "" {
-		region = c.defaultRegion
-	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if client, ok := c.sendingClients[region]; ok {
-		return client, nil
-	}
-	client := awsses.NewFromConfig(c.regionalConfig(region))
-	c.sendingClients[region] = client
-	return client, nil
 }
 
 func (c *Client) v2SendingClient(region string) (sesV2SendAPI, error) {
