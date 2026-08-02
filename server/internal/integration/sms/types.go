@@ -106,12 +106,11 @@ type Provider interface {
 	CheckStatus(ctx context.Context, providerMessageID string) (*StatusResponse, error)
 }
 
-// Router owns provider ordering, provider lookup, and the decision about
-// whether a failed request is safe to retry through the next provider.
+// Router selects exactly one provider for a destination country and supports
+// lookup of the original provider for delivery-status checks.
 type Router interface {
-	Route(ctx context.Context, req SendRequest) ([]Provider, error)
+	Route(ctx context.Context, req SendRequest) (Provider, error)
 	Provider(providerID string) (Provider, bool)
-	ShouldFallback(ctx context.Context, providerID string, err error) bool
 }
 
 type ValidationError struct {
@@ -129,16 +128,14 @@ func (e *ValidationError) Error() string {
 	return fmt.Sprintf("invalid SMS request field %q: %s", e.Field, e.Reason)
 }
 
-// ProviderAttempt records one failed upstream attempt. It intentionally does
-// not expose provider errors in a customer-facing response.
+// ProviderAttempt records a failed upstream submission.
 type ProviderAttempt struct {
 	ProviderID string
 	Err        error
 }
 
-// SendError reports all attempted providers when an SMS could not be
-// submitted. errors.Is/errors.As can still inspect every underlying error via
-// Unwrap.
+// SendError reports the provider submission failure. errors.Is/errors.As can
+// inspect the underlying error through Unwrap.
 type SendError struct {
 	Attempts []ProviderAttempt
 }
