@@ -28,10 +28,10 @@ type Client struct {
 }
 
 type APIError struct {
-	HTTPStatus int
-	Code       int
+	HTTPStatus  int
+	Code        int
 	Description string
-	Body       string
+	Body        string
 }
 
 func (e *APIError) Error() string {
@@ -71,9 +71,9 @@ func NewClient(cfg config.CelcomConfig) *Client {
 		baseURL = defaultBaseURL
 	}
 	return &Client{
-		BaseURL: strings.TrimRight(baseURL, "/"),
-		APIKey: strings.TrimSpace(cfg.APIKey),
-		PartnerID: strings.TrimSpace(cfg.PartnerID),
+		BaseURL:    strings.TrimRight(baseURL, "/"),
+		APIKey:     strings.TrimSpace(cfg.APIKey),
+		PartnerID:  strings.TrimSpace(cfg.PartnerID),
 		HTTPClient: &http.Client{Timeout: defaultClientTimeout},
 	}
 }

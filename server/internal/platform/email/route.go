@@ -10,8 +10,8 @@ const (
 	internalConfigurationSetHeader = "X-Dugble-Internal-SES-Configuration-Set"
 	internalSESTenantHeader        = "X-Dugble-Internal-SES-Tenant"
 
-	SystemSESTenantName          = "dugble-system"
-	CustomerOnboardingIdentity   = "onboarding@runnage.dev"
+	SystemSESTenantName           = "dugble-system"
+	CustomerOnboardingIdentity    = "onboarding@runnage.dev"
 	CustomerOnboardingSESIdentity = "runnage.dev"
 )
 

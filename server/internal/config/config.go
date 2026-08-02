@@ -19,15 +19,15 @@ type CelcomConfig struct {
 }
 
 type AWSConfig struct {
-	FromEmail string `env:"FROM_EMAIL,required,notEmpty"`
-	Region    string `env:"REGION,required,notEmpty"`
-	AccessKey string `env:"ACCESS_KEY_ID"`
-	SecretKey string `env:"SECRET_ACCESS_KEY"`
+	FromEmail                        string `env:"FROM_EMAIL,required,notEmpty"`
+	Region                           string `env:"REGION,required,notEmpty"`
+	AccessKey                        string `env:"ACCESS_KEY_ID"`
+	SecretKey                        string `env:"SECRET_ACCESS_KEY"`
 	SESConfigurationSet              string
 	SESTransactionalConfigurationSet string
 	SESMarketingConfigurationSet     string
 	SESTenantName                    string
-	SNSTopicARNs []string `env:"SNS_TOPIC_ARNS" envSeparator:","`
+	SNSTopicARNs                     []string `env:"SNS_TOPIC_ARNS" envSeparator:","`
 }
 
 type BackofficeConfig struct {
