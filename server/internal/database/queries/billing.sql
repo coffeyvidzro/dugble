@@ -20,7 +20,13 @@ LIMIT sqlc.arg(limit_count)
 OFFSET sqlc.arg(offset_count);
 
 -- name: CreditTeamWallet :one
-WITH inserted_ledger AS (
+WITH locked_wallet AS MATERIALIZED (
+    SELECT wallet.*
+    FROM team_wallets AS wallet
+    WHERE wallet.team_id = sqlc.arg(team_id)
+    FOR UPDATE
+),
+inserted_ledger AS (
     INSERT INTO wallet_ledger (
         team_id,
         amount_units,
@@ -32,9 +38,8 @@ WITH inserted_ledger AS (
         sqlc.arg(amount_units),
         sqlc.arg(transaction_type),
         sqlc.arg(reference_id)
-    FROM team_wallets AS wallet
-    WHERE wallet.team_id = sqlc.arg(team_id)
-      AND sqlc.arg(amount_units)::bigint > 0
+    FROM locked_wallet AS wallet
+    WHERE sqlc.arg(amount_units)::bigint > 0
     ON CONFLICT (team_id, transaction_type, reference_id) DO NOTHING
     RETURNING team_id, amount_units
 ),
@@ -50,7 +55,13 @@ SELECT *
 FROM updated_wallet;
 
 -- name: DebitTeamWallet :one
-WITH inserted_ledger AS (
+WITH locked_wallet AS MATERIALIZED (
+    SELECT wallet.*
+    FROM team_wallets AS wallet
+    WHERE wallet.team_id = sqlc.arg(team_id)
+    FOR UPDATE
+),
+inserted_ledger AS (
     INSERT INTO wallet_ledger (
         team_id,
         amount_units,
@@ -62,9 +73,8 @@ WITH inserted_ledger AS (
         -sqlc.arg(amount_units)::bigint,
         sqlc.arg(transaction_type),
         sqlc.arg(reference_id)
-    FROM team_wallets AS wallet
-    WHERE wallet.team_id = sqlc.arg(team_id)
-      AND sqlc.arg(amount_units)::bigint > 0
+    FROM locked_wallet AS wallet
+    WHERE sqlc.arg(amount_units)::bigint > 0
       AND wallet.balance_units >= sqlc.arg(amount_units)
     ON CONFLICT (team_id, transaction_type, reference_id) DO NOTHING
     RETURNING team_id, amount_units

@@ -42,7 +42,13 @@ func (q *Queries) ConsumeFreeEmailAllowance(ctx context.Context, arg ConsumeFree
 }
 
 const creditTeamWallet = `-- name: CreditTeamWallet :one
-WITH inserted_ledger AS (
+WITH locked_wallet AS MATERIALIZED (
+    SELECT wallet.team_id, wallet.currency, wallet.balance_units, wallet.tier, wallet.free_email_allowance, wallet.last_allowance_reset, wallet.created_at, wallet.updated_at
+    FROM team_wallets AS wallet
+    WHERE wallet.team_id = $1
+    FOR UPDATE
+),
+inserted_ledger AS (
     INSERT INTO wallet_ledger (
         team_id,
         amount_units,
@@ -51,12 +57,11 @@ WITH inserted_ledger AS (
     )
     SELECT
         wallet.team_id,
-        $1,
         $2,
-        $3
-    FROM team_wallets AS wallet
-    WHERE wallet.team_id = $4
-      AND $1::bigint > 0
+        $3,
+        $4
+    FROM locked_wallet AS wallet
+    WHERE $2::bigint > 0
     ON CONFLICT (team_id, transaction_type, reference_id) DO NOTHING
     RETURNING team_id, amount_units
 ),
@@ -73,10 +78,10 @@ FROM updated_wallet
 `
 
 type CreditTeamWalletParams struct {
+	TeamID          uuid.UUID `db:"team_id" json:"team_id"`
 	AmountUnits     int64     `db:"amount_units" json:"amount_units"`
 	TransactionType string    `db:"transaction_type" json:"transaction_type"`
 	ReferenceID     string    `db:"reference_id" json:"reference_id"`
-	TeamID          uuid.UUID `db:"team_id" json:"team_id"`
 }
 
 type CreditTeamWalletRow struct {
@@ -92,10 +97,10 @@ type CreditTeamWalletRow struct {
 
 func (q *Queries) CreditTeamWallet(ctx context.Context, arg CreditTeamWalletParams) (CreditTeamWalletRow, error) {
 	row := q.db.QueryRow(ctx, creditTeamWallet,
+		arg.TeamID,
 		arg.AmountUnits,
 		arg.TransactionType,
 		arg.ReferenceID,
-		arg.TeamID,
 	)
 	var i CreditTeamWalletRow
 	err := row.Scan(
@@ -112,7 +117,13 @@ func (q *Queries) CreditTeamWallet(ctx context.Context, arg CreditTeamWalletPara
 }
 
 const debitTeamWallet = `-- name: DebitTeamWallet :one
-WITH inserted_ledger AS (
+WITH locked_wallet AS MATERIALIZED (
+    SELECT wallet.team_id, wallet.currency, wallet.balance_units, wallet.tier, wallet.free_email_allowance, wallet.last_allowance_reset, wallet.created_at, wallet.updated_at
+    FROM team_wallets AS wallet
+    WHERE wallet.team_id = $1
+    FOR UPDATE
+),
+inserted_ledger AS (
     INSERT INTO wallet_ledger (
         team_id,
         amount_units,
@@ -121,13 +132,12 @@ WITH inserted_ledger AS (
     )
     SELECT
         wallet.team_id,
-        -$1::bigint,
-        $2,
-        $3
-    FROM team_wallets AS wallet
-    WHERE wallet.team_id = $4
-      AND $1::bigint > 0
-      AND wallet.balance_units >= $1
+        -$2::bigint,
+        $3,
+        $4
+    FROM locked_wallet AS wallet
+    WHERE $2::bigint > 0
+      AND wallet.balance_units >= $2
     ON CONFLICT (team_id, transaction_type, reference_id) DO NOTHING
     RETURNING team_id, amount_units
 ),
@@ -144,10 +154,10 @@ FROM updated_wallet
 `
 
 type DebitTeamWalletParams struct {
+	TeamID          uuid.UUID `db:"team_id" json:"team_id"`
 	AmountUnits     int64     `db:"amount_units" json:"amount_units"`
 	TransactionType string    `db:"transaction_type" json:"transaction_type"`
 	ReferenceID     string    `db:"reference_id" json:"reference_id"`
-	TeamID          uuid.UUID `db:"team_id" json:"team_id"`
 }
 
 type DebitTeamWalletRow struct {
@@ -163,10 +173,10 @@ type DebitTeamWalletRow struct {
 
 func (q *Queries) DebitTeamWallet(ctx context.Context, arg DebitTeamWalletParams) (DebitTeamWalletRow, error) {
 	row := q.db.QueryRow(ctx, debitTeamWallet,
+		arg.TeamID,
 		arg.AmountUnits,
 		arg.TransactionType,
 		arg.ReferenceID,
-		arg.TeamID,
 	)
 	var i DebitTeamWalletRow
 	err := row.Scan(

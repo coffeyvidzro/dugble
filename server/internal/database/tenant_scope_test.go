@@ -16,6 +16,7 @@ func TestTenantOwnedQueriesDeclareTenantScope(t *testing.T) {
 	// immutable parent records, or worker ownership rather than caller input.
 	exemptions := map[string]map[string]struct{}{
 		"audit_events.sql": querySet("CreateAuditEvent"),
+		"billing.sql":      querySet("GetActiveProductRate"),
 		"sender_domains.sql": querySet(
 			"ClaimSenderDomainsForReconciliation", "CompleteSenderDomainReconciliation",
 			"CompleteSenderDomainHealthCheck", "RecordSenderDomainHealthFailure",
@@ -34,7 +35,7 @@ func TestTenantOwnedQueriesDeclareTenantScope(t *testing.T) {
 		),
 	}
 	files := []string{
-		"audit_events.sql", "email_messages.sql", "sender_domains.sql", "sender_ids.sql", "sms_messages.sql",
+		"audit_events.sql", "billing.sql", "email_messages.sql", "sender_domains.sql", "sender_ids.sql", "sms_messages.sql",
 		"team_invitations.sql", "team_tokens.sql", "teams.sql", "webhook_deliveries.sql",
 		"webhook_endpoints.sql", "webhook_events.sql",
 	}
