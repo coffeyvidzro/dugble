@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS email_provider_events (
     CONSTRAINT chk_email_provider_events_notification CHECK (length(trim(provider_notification_id)) > 0),
     CONSTRAINT chk_email_provider_events_message CHECK (length(trim(provider_message_id)) > 0),
     CONSTRAINT chk_email_provider_events_type CHECK (event_type IN (
-        'send', 'delivery', 'delivery_delay', 'bounce', 'complaint', 'reject', 'rendering_failure'
+        'send', 'delivery', 'delivery_delay', 'bounce', 'complaint', 'reject',
+        'rendering_failure', 'open', 'click', 'subscription'
     )),
     CONSTRAINT chk_email_provider_events_normalized CHECK (jsonb_typeof(normalized_payload) = 'object'),
     CONSTRAINT chk_email_provider_events_provider_payload CHECK (jsonb_typeof(provider_payload) = 'object'),
