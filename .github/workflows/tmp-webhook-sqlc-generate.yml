@@ -1,0 +1,46 @@
+name: Temporary Webhook SQLC Generation
+
+on:
+  push:
+    branches:
+      - fix/webhook-delivery-lifecycle
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: fix/webhook-delivery-lifecycle
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      - name: Generate SQLC code
+        run: go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
+
+      - name: Commit generated code
+        working-directory: .
+        run: |
+          if git diff --quiet -- server/internal/database/sqlc; then
+            echo "No generated changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server/internal/database/sqlc
+          git commit -m "chore(sqlc): regenerate final team query"
+          git push origin HEAD:fix/webhook-delivery-lifecycle
