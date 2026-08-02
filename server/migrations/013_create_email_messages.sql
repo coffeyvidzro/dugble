@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS email_messages (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     CONSTRAINT chk_email_body_present CHECK (html_body IS NOT NULL OR text_body IS NOT NULL),
-    CONSTRAINT chk_email_message_type CHECK (message_type = 'transactional'),
+    CONSTRAINT chk_email_message_type CHECK (message_type IN ('transactional', 'marketing')),
     CONSTRAINT chk_email_status CHECK (status IN (
         'queued', 'processing', 'submitted', 'delivered', 'delayed',
         'bounced', 'complained', 'rejected', 'failed', 'canceled'
