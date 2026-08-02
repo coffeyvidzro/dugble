@@ -9,6 +9,12 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AllowanceUsage struct {
+	TeamID      uuid.UUID          `db:"team_id" json:"team_id"`
+	ReferenceID string             `db:"reference_id" json:"reference_id"`
+	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
 type AuditEvent struct {
 	ID             uuid.UUID          `db:"id" json:"id"`
 	TeamID         *uuid.UUID         `db:"team_id" json:"team_id"`
@@ -35,12 +41,6 @@ type AuthenticationChallenge struct {
 	ExpiresAt  pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
 	ConsumedAt pgtype.Timestamptz `db:"consumed_at" json:"consumed_at"`
 	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
-}
-
-type EmailAllowanceUsage struct {
-	TeamID      uuid.UUID          `db:"team_id" json:"team_id"`
-	ReferenceID string             `db:"reference_id" json:"reference_id"`
-	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
 type EmailDeliveryAttempt struct {

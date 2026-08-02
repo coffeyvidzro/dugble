@@ -372,7 +372,7 @@ func insertBillingTestTeam(t *testing.T, db *pgxpool.Pool, balance int64) uuid.U
 	}
 	t.Cleanup(func() {
 		_, _ = db.Exec(context.Background(), `DELETE FROM wallet_ledger WHERE team_id = $1`, teamID)
-		_, _ = db.Exec(context.Background(), `DELETE FROM email_allowance_usage WHERE team_id = $1`, teamID)
+		_, _ = db.Exec(context.Background(), `DELETE FROM allowance_usage WHERE team_id = $1`, teamID)
 		_, _ = db.Exec(context.Background(), `DELETE FROM teams WHERE id = $1`, teamID)
 	})
 	return teamID
@@ -396,7 +396,7 @@ func assertEmailBillingState(
 			wallet.balance_units,
 			wallet.free_email_allowance,
 			(SELECT count(*) FROM wallet_ledger WHERE team_id = wallet.team_id),
-			(SELECT count(*) FROM email_allowance_usage WHERE team_id = wallet.team_id)
+			(SELECT count(*) FROM allowance_usage WHERE team_id = wallet.team_id)
 		FROM team_wallets AS wallet
 		WHERE wallet.team_id = $1
 	`, teamID).Scan(&balance, &allowance, &ledgerCount, &allowanceUsageCount); err != nil {

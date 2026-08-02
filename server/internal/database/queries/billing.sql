@@ -264,7 +264,7 @@ billing_account AS MATERIALIZED (
 ),
 existing_allowance_usage AS MATERIALIZED (
     SELECT usage.reference_id
-    FROM email_allowance_usage AS usage
+    FROM allowance_usage AS usage
     JOIN billing_account AS account ON account.team_id = usage.team_id
     WHERE usage.reference_id = sqlc.arg(reference_id)
 ),
@@ -276,7 +276,7 @@ existing_ledger AS MATERIALIZED (
       AND ledger.reference_id = sqlc.arg(reference_id)
 ),
 inserted_allowance_usage AS (
-    INSERT INTO email_allowance_usage (team_id, reference_id)
+    INSERT INTO allowance_usage (team_id, reference_id)
     SELECT account.team_id, sqlc.arg(reference_id)
     FROM billing_account AS account
     WHERE account.free_email_allowance > 0
