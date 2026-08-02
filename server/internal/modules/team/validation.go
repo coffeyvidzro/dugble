@@ -19,8 +19,8 @@ func validateTeamName(value string) (string, error) {
 
 func validateMarketCode(value string) (string, error) {
 	marketCode := strings.ToUpper(strings.TrimSpace(value))
-	if marketCode != "GH" && marketCode != "KE" && marketCode != "NG" {
-		return "", apperrors.NewBadRequest("Market code must be GH, KE, or NG")
+	if marketCode != "GH" && marketCode != "KE" {
+		return "", apperrors.NewBadRequest("Market code must be GH or KE")
 	}
 	return marketCode, nil
 }

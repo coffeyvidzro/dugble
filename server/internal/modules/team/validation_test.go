@@ -34,6 +34,7 @@ func TestTeamValidationNormalizesValidInput(t *testing.T) {
 func TestTeamValidationRejectsInvalidInput(t *testing.T) {
 	checks := []func() error{
 		func() error { _, err := validateTeamName(" "); return err },
+		func() error { _, err := validateMarketCode("NG"); return err },
 		func() error { _, err := validateMarketCode("US"); return err },
 		func() error { _, err := validateTeamID("invalid"); return err },
 		func() error { _, err := validateMemberID("invalid"); return err },

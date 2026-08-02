@@ -37,7 +37,6 @@ created_wallet AS (
         CASE market_code
             WHEN 'GH' THEN 'GHS'
             WHEN 'KE' THEN 'KES'
-            WHEN 'NG' THEN 'NGN'
         END
     FROM created_team
     RETURNING team_id

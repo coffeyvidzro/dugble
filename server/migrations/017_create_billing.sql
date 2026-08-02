@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS team_wallets (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     CONSTRAINT chk_team_wallets_currency
-        CHECK (currency IN ('GHS', 'KES', 'NGN')),
+        CHECK (currency IN ('GHS', 'KES')),
     CONSTRAINT chk_team_wallets_balance
         CHECK (balance_units >= 0),
     CONSTRAINT chk_team_wallets_tier
@@ -36,13 +36,13 @@ CREATE TABLE IF NOT EXISTS product_rates (
         CHECK (product IN ('sms_local', 'sms_intl', 'email')),
 
     CONSTRAINT chk_product_rates_market_code
-        CHECK (market_code IN ('GH', 'KE', 'NG')),
+        CHECK (market_code IN ('GH', 'KE')),
 
     CONSTRAINT chk_product_rates_tier
         CHECK (tier IN ('growth', 'scale', 'enterprise')),
 
     CONSTRAINT chk_product_rates_currency
-        CHECK (currency IN ('GHS', 'KES', 'NGN')),
+        CHECK (currency IN ('GHS', 'KES')),
 
     CONSTRAINT chk_product_rates_cost
         CHECK (cost_units > 0)
