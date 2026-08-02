@@ -38,10 +38,10 @@ type Service struct {
 	repository *Repository
 	sender     Sender
 	delivery   DeliveryQueue
-	billing    platformbilling.SMSAuthorizer
+	billing    platformbilling.SMSBilling
 }
 
-func NewService(repository *Repository, sender Sender, delivery DeliveryQueue, billing platformbilling.SMSAuthorizer) *Service {
+func NewService(repository *Repository, sender Sender, delivery DeliveryQueue, billing platformbilling.SMSBilling) *Service {
 	return &Service{repository: repository, sender: sender, delivery: delivery, billing: billing}
 }
 
@@ -132,10 +132,11 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	}
 
 	messageID := uuid.MustParse(created.ID)
-	if _, err := s.billing.AuthorizeSMS(ctx, tx, platformbilling.SMSAuthorizationInput{
+	authorization, err := s.billing.AuthorizeSMS(ctx, tx, platformbilling.SMSAuthorizationInput{
 		TeamID: tenantContext.Scope.TeamID, MessageID: messageID,
 		DestinationNumber: normalized.To, Segments: segments,
-	}); err != nil {
+	})
+	if err != nil {
 		return Message{}, smsBillingError(err)
 	}
 	if err := enqueueSMSDelivery(ctx, s.delivery, tx, messageID, tenantContext.Scope.TeamID, created.ScheduledAt); err != nil {
@@ -144,6 +145,10 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	if err := tx.Commit(ctx); err != nil {
 		return Message{}, apperrors.NewInternal("Unable to commit SMS send transaction", err)
 	}
+	s.billing.ObserveCommitted(ctx, platformbilling.CommittedAuthorization{
+		Authorization: authorization, Channel: platformbilling.ChannelSMS,
+		TeamID: tenantContext.Scope.TeamID, MessageID: messageID,
+	})
 
 	return created, nil
 }
@@ -197,6 +202,7 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 	defer func() { _ = tx.Rollback(ctx) }()
 	txRepository := s.repository.WithTx(tx)
 	result := make([]Message, 0, len(prepared))
+	committedAuthorizations := make([]platformbilling.CommittedAuthorization, 0, len(prepared))
 	for _, item := range prepared {
 
 		created, err := txRepository.Create(ctx, createMessageParams{
@@ -210,19 +216,27 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 			return nil, apperrors.NewInternal("Unable to create SMS batch message", err)
 		}
 		messageID := uuid.MustParse(created.ID)
-		if _, err := s.billing.AuthorizeSMS(ctx, tx, platformbilling.SMSAuthorizationInput{
+		authorization, err := s.billing.AuthorizeSMS(ctx, tx, platformbilling.SMSAuthorizationInput{
 			TeamID: tenantContext.Scope.TeamID, MessageID: messageID,
 			DestinationNumber: item.request.To, Segments: item.segments,
-		}); err != nil {
+		})
+		if err != nil {
 			return nil, smsBillingError(err)
 		}
 		if err := enqueueSMSDelivery(ctx, s.delivery, tx, messageID, tenantContext.Scope.TeamID, created.ScheduledAt); err != nil {
 			return nil, apperrors.NewInternal("Unable to enqueue SMS batch delivery", err)
 		}
 		result = append(result, created)
+		committedAuthorizations = append(committedAuthorizations, platformbilling.CommittedAuthorization{
+			Authorization: authorization, Channel: platformbilling.ChannelSMS,
+			TeamID: tenantContext.Scope.TeamID, MessageID: messageID,
+		})
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, apperrors.NewInternal("Unable to commit SMS batch transaction", err)
+	}
+	for _, authorization := range committedAuthorizations {
+		s.billing.ObserveCommitted(ctx, authorization)
 	}
 	return result, nil
 }

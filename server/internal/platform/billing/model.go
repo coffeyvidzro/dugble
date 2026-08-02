@@ -9,10 +9,17 @@ import (
 
 type Product string
 
+type Channel string
+
 const (
 	ProductSMSLocal Product = "sms_local"
 	ProductSMSIntl  Product = "sms_intl"
 	ProductEmail    Product = "email"
+)
+
+const (
+	ChannelSMS   Channel = "sms"
+	ChannelEmail Channel = "email"
 )
 
 type SMSAuthorizationInput struct {
@@ -42,10 +49,33 @@ type EmailAuthorizationInput struct {
 	MessageID uuid.UUID
 }
 
+// CommittedAuthorization is emitted only after the transaction containing the
+// message, billing mutation, and delivery outbox event has committed.
+type CommittedAuthorization struct {
+	Authorization
+	Channel   Channel
+	TeamID    uuid.UUID
+	MessageID uuid.UUID
+}
+
+type CommitObserver interface {
+	ObserveCommitted(context.Context, CommittedAuthorization)
+}
+
 type SMSAuthorizer interface {
 	AuthorizeSMS(context.Context, pgx.Tx, SMSAuthorizationInput) (Authorization, error)
 }
 
 type EmailAuthorizer interface {
 	AuthorizeEmail(context.Context, pgx.Tx, EmailAuthorizationInput) (Authorization, error)
+}
+
+type SMSBilling interface {
+	SMSAuthorizer
+	CommitObserver
+}
+
+type EmailBilling interface {
+	EmailAuthorizer
+	CommitObserver
 }

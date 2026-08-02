@@ -64,6 +64,9 @@ func (stubEmailBillingAuthorizer) AuthorizeEmail(
 	return platformbilling.Authorization{}, nil
 }
 
+func (stubEmailBillingAuthorizer) ObserveCommitted(context.Context, platformbilling.CommittedAuthorization) {
+}
+
 var testEmailBilling stubEmailBillingAuthorizer
 
 func TestNewServiceRequiresBillingAuthorizer(t *testing.T) {

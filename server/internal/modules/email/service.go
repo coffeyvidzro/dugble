@@ -111,7 +111,7 @@ type Service struct {
 	config        ServiceConfig
 	senderDomains senderDomainResolver
 	routes        customerRouteResolver
-	billing       platformbilling.EmailAuthorizer
+	billing       platformbilling.EmailBilling
 }
 
 type senderDomainResolver interface {
@@ -133,7 +133,7 @@ func NewService(
 	repository *Repository,
 	delivery DeliveryQueue,
 	config ServiceConfig,
-	billing platformbilling.EmailAuthorizer,
+	billing platformbilling.EmailBilling,
 	dependencies ...any,
 ) *Service {
 	service := &Service{
@@ -196,17 +196,23 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 	if err != nil {
 		return Message{}, apperrors.NewInternal("Unable to create email message", err)
 	}
-	if _, err := s.billing.AuthorizeEmail(ctx, tx, platformbilling.EmailAuthorizationInput{
-		TeamID: tc.Scope.TeamID, MessageID: uuid.MustParse(m.ID),
-	}); err != nil {
+	messageID := uuid.MustParse(m.ID)
+	authorization, err := s.billing.AuthorizeEmail(ctx, tx, platformbilling.EmailAuthorizationInput{
+		TeamID: tc.Scope.TeamID, MessageID: messageID,
+	})
+	if err != nil {
 		return Message{}, emailBillingError(err)
 	}
-	if err := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(m.ID), tc.Scope.TeamID, validated.ScheduledAt); err != nil {
+	if err := enqueueDelivery(ctx, s.delivery, tx, messageID, tc.Scope.TeamID, validated.ScheduledAt); err != nil {
 		return Message{}, apperrors.NewInternal("Unable to enqueue email delivery", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return Message{}, apperrors.NewInternal("Unable to commit email transaction", err)
 	}
+	s.billing.ObserveCommitted(ctx, platformbilling.CommittedAuthorization{
+		Authorization: authorization, Channel: platformbilling.ChannelEmail,
+		TeamID: tc.Scope.TeamID, MessageID: messageID,
+	})
 	return m, nil
 }
 
@@ -291,6 +297,7 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	result := make([]Message, 0, len(validated))
+	committedAuthorizations := make([]platformbilling.CommittedAuthorization, 0, len(validated))
 	for index := range validated {
 		validated[index].DeliveryRoute, err = s.routes.ResolveActiveCustomerRouteTx(ctx, tx, tc.Scope.TeamID, validated[index].Provider, validated[index].ProviderRegion, validated[index].MessageType)
 		if errors.Is(err, ErrActiveEmailTenantNotFound) {
@@ -303,18 +310,27 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 		if createErr != nil {
 			return nil, apperrors.NewInternal("Unable to create email message", createErr)
 		}
-		if _, billingErr := s.billing.AuthorizeEmail(ctx, tx, platformbilling.EmailAuthorizationInput{
-			TeamID: tc.Scope.TeamID, MessageID: uuid.MustParse(message.ID),
-		}); billingErr != nil {
+		messageID := uuid.MustParse(message.ID)
+		authorization, billingErr := s.billing.AuthorizeEmail(ctx, tx, platformbilling.EmailAuthorizationInput{
+			TeamID: tc.Scope.TeamID, MessageID: messageID,
+		})
+		if billingErr != nil {
 			return nil, emailBillingError(billingErr)
 		}
-		if enqueueErr := enqueueDelivery(ctx, s.delivery, tx, uuid.MustParse(message.ID), tc.Scope.TeamID, validated[index].ScheduledAt); enqueueErr != nil {
+		if enqueueErr := enqueueDelivery(ctx, s.delivery, tx, messageID, tc.Scope.TeamID, validated[index].ScheduledAt); enqueueErr != nil {
 			return nil, apperrors.NewInternal("Unable to enqueue email delivery", enqueueErr)
 		}
 		result = append(result, message)
+		committedAuthorizations = append(committedAuthorizations, platformbilling.CommittedAuthorization{
+			Authorization: authorization, Channel: platformbilling.ChannelEmail,
+			TeamID: tc.Scope.TeamID, MessageID: messageID,
+		})
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, apperrors.NewInternal("Unable to commit email batch transaction", err)
+	}
+	for _, authorization := range committedAuthorizations {
+		s.billing.ObserveCommitted(ctx, authorization)
 	}
 	return result, nil
 }
