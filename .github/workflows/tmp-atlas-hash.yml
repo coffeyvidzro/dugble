@@ -1,0 +1,38 @@
+name: Temporary Atlas Hash
+
+on:
+  push:
+    branches:
+      - fix/squash-email-constraint-migration
+
+permissions:
+  contents: write
+
+jobs:
+  hash:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: fix/squash-email-constraint-migration
+          fetch-depth: 0
+
+      - name: Regenerate Atlas checksum
+        uses: ariga/setup-atlas@v0
+
+      - name: Hash migrations
+        run: atlas migrate hash --dir file://server/migrations
+
+      - name: Commit checksum
+        run: |
+          if git diff --quiet -- server/migrations/atlas.sum; then
+            echo "No checksum changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server/migrations/atlas.sum
+          git commit -m "chore(migrations): regenerate Atlas checksum"
+          git push origin HEAD:fix/squash-email-constraint-migration
