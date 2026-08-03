@@ -1,0 +1,73 @@
+name: Temporary Verified Email Fix
+
+on:
+  push:
+    branches:
+      - fix/verified-email-reverification
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: ${{ !contains(github.event.head_commit.message, '[verified-email-fix]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/verified-email-reverification
+          fetch-depth: 0
+      - name: Apply backend verification guards
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          service = Path('server/internal/modules/auth/service.go')
+          text = service.read_text()
+          old = '''\tuser, err := s.repository.GetUserByEmail(ctx, email)
+\tif err != nil {
+\t\treturn nil
+\t}
+\treturn s.issueEmailVerificationToken(ctx, user.Email, user.Name)
+}'''
+          new = '''\tuser, err := s.repository.GetUserByEmail(ctx, email)
+\tif err != nil {
+\t\treturn nil
+\t}
+\tif user.EmailVerified {
+\t\treturn nil
+\t}
+\treturn s.issueEmailVerificationToken(ctx, user.Email, user.Name)
+}'''
+          if old not in text:
+              raise SystemExit('ResendEmail block not found')
+          service.write_text(text.replace(old, new, 1))
+
+          query = Path('server/internal/database/queries/verification_tokens.sql')
+          text = query.read_text()
+          old = '''WHERE lower(users.email) = lower(sqlc.arg(email))
+RETURNING users.*;'''
+          new = '''WHERE lower(users.email) = lower(sqlc.arg(email))
+  AND users.email_verified = false
+RETURNING users.*;'''
+          if old not in text:
+              raise SystemExit('VerifyEmailWithToken query block not found')
+          query.write_text(text.replace(old, new, 1))
+          PY
+      - name: Regenerate sqlc
+        working-directory: server
+        run: go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
+      - name: Format and test
+        working-directory: server
+        run: |
+          gofmt -w internal/modules/auth/service.go
+          go test ./internal/modules/auth/...
+      - name: Commit generated fix
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add server/internal/modules/auth/service.go \
+            server/internal/database/queries/verification_tokens.sql \
+            server/internal/database/sqlc/verification_tokens.sql.go
+          git commit -m "fix(auth): prevent verified email reverification [verified-email-fix]"
+          git push origin HEAD:fix/verified-email-reverification
