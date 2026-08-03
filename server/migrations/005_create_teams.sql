@@ -3,7 +3,6 @@ CREATE TABLE IF NOT EXISTS teams (
     name TEXT NOT NULL,
     market_code VARCHAR(2) NOT NULL,
     phone TEXT NOT NULL,
-    email TEXT NOT NULL,
     address TEXT NOT NULL,
     website TEXT,
     status TEXT NOT NULL DEFAULT 'active',
