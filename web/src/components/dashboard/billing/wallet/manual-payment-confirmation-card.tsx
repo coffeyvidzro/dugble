@@ -129,16 +129,20 @@ export function ManualPaymentConfirmationCard({
                         type="submit"
                         disabled={amountCents <= 0 || submitting}
                         className={cn(
-                            "min-w-44 transition-all",
+                            "group/button relative inline-flex min-w-44 shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20",
                             submitting && "opacity-80",
                         )}
                     >
                         {submitting ? (
-                            <Loader2 className="mr-2 size-4 animate-spin" />
+                            <Loader2 className="size-4 animate-spin" />
                         ) : null}
                         {submitting
                             ? "Submitting..."
                             : "I've sent this payment"}
+                        <span
+                            aria-hidden
+                            className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
+                        />
                     </Button>
                 </div>
             </form>

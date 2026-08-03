@@ -114,9 +114,17 @@ export function SendEmailDialog({
                 if (!next) reset();
             }}
         >
-            <DialogTrigger render={<Button size="sm" className="shadow-sm" />}>
-                <Plus className="mr-2 size-4" />
+            <DialogTrigger
+                render={
+                    <Button className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20" />
+                }
+            >
+                <Plus className="size-4" />
                 Send email
+                <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
+                />
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg border-border/40 shadow-xl">
                 <form onSubmit={handleSubmit}>
@@ -227,19 +235,27 @@ export function SendEmailDialog({
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={sending}>
+                        <Button
+                            type="submit"
+                            disabled={sending}
+                            className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
+                        >
                             {sending ? (
                                 <Loader2
-                                    className="mr-2 size-4 animate-spin"
+                                    className="size-4 animate-spin"
                                     data-icon="inline-start"
                                 />
                             ) : (
                                 <Send
-                                    className="mr-2 size-4"
+                                    className="size-4"
                                     data-icon="inline-start"
                                 />
                             )}
                             {sending ? "Sending..." : "Send"}
+                            <span
+                                aria-hidden
+                                className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
+                            />
                         </Button>
                     </DialogFooter>
                 </form>
