@@ -4,7 +4,6 @@ WITH created_team AS (
         name,
         market_code,
         phone,
-        email,
         address,
         website,
         created_by
@@ -13,7 +12,6 @@ WITH created_team AS (
         sqlc.arg(name),
         sqlc.arg(market_code),
         sqlc.arg(phone),
-        sqlc.arg(email),
         sqlc.arg(address),
         sqlc.narg(website),
         sqlc.arg(owner_id)
