@@ -31,7 +31,7 @@ func (s *sandboxAuthorizerStub) AuthorizeSandboxRecipients(
 func TestAuthorizeSenderRoutesOnboardingIdentityThroughSandbox(t *testing.T) {
 	authorizer := &sandboxAuthorizerStub{}
 	service := &Service{
-		config: ServiceConfig{DefaultProvider: "aws_ses", DefaultRegion: "eu-north-1"},
+		config:            ServiceConfig{DefaultProvider: "aws_ses", DefaultRegion: "eu-north-1"},
 		sandboxRecipients: authorizer,
 	}
 	message := validatedSend{
@@ -59,7 +59,7 @@ func TestAuthorizeSenderRoutesOnboardingIdentityThroughSandbox(t *testing.T) {
 
 func TestAuthorizeSenderRejectsUnverifiedSandboxTeamEmail(t *testing.T) {
 	service := &Service{
-		config: ServiceConfig{DefaultProvider: "aws_ses", DefaultRegion: "eu-north-1"},
+		config:            ServiceConfig{DefaultProvider: "aws_ses", DefaultRegion: "eu-north-1"},
 		sandboxRecipients: &sandboxAuthorizerStub{err: ErrSandboxTeamEmailNotVerified},
 	}
 	message := validatedSend{
@@ -75,7 +75,7 @@ func TestAuthorizeSenderRejectsUnverifiedSandboxTeamEmail(t *testing.T) {
 
 func TestAuthorizeSenderRejectsRestrictedSandboxRecipient(t *testing.T) {
 	service := &Service{
-		config: ServiceConfig{DefaultProvider: "aws_ses", DefaultRegion: "eu-north-1"},
+		config:            ServiceConfig{DefaultProvider: "aws_ses", DefaultRegion: "eu-north-1"},
 		sandboxRecipients: &sandboxAuthorizerStub{err: ErrSandboxRecipientRestricted},
 	}
 	message := validatedSend{
