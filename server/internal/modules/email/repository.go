@@ -82,29 +82,28 @@ func (r *Repository) AuthorizeSandboxRecipients(
 		return platformemail.ErrSandboxRecipientRestricted
 	}
 
-	var teamEmail string
+	var ownerEmail string
 	err := r.db.QueryRow(ctx, `
-		SELECT t.email
-		FROM teams AS t
+		SELECT owner.email
+		FROM teams AS team
 		JOIN team_members AS member
-		  ON member.team_id = t.id
+		  ON member.team_id = team.id
+		 AND member.user_id = team.created_by
 		 AND member.role = 'owner'
 		 AND member.status = 'active'
 		JOIN users AS owner
-		  ON owner.id = member.user_id
+		  ON owner.id = team.created_by
 		 AND owner.email_verified = true
-		 AND lower(owner.email) = lower(t.email)
-		WHERE t.id = $1
-		  AND t.status = 'active'
-		LIMIT 1
-	`, teamID).Scan(&teamEmail)
+		WHERE team.id = $1
+		  AND team.status = 'active'
+	`, teamID).Scan(&ownerEmail)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return platformemail.ErrSandboxTeamEmailNotVerified
 	}
 	if err != nil {
-		return fmt.Errorf("resolve verified sandbox team email: %w", err)
+		return fmt.Errorf("resolve verified sandbox owner email: %w", err)
 	}
-	return platformemail.ValidateSandboxRecipient(teamEmail, to[0].Email, len(to), len(cc), len(bcc))
+	return platformemail.ValidateSandboxRecipient(ownerEmail, to[0].Email, len(to), len(cc), len(bcc))
 }
 
 func (r *Repository) CreateTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, req validatedSend) (Message, error) {
