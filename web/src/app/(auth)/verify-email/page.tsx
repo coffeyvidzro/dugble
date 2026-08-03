@@ -1,7 +1,5 @@
 import { Suspense } from "react";
-import { redirect } from "next/navigation";
 import { VerifyEmailForm } from "@/components/auth/verify-email-form";
-import { getSession } from "@/lib/session";
 import { constructMetadata } from "@/utils/metadata";
 
 export const metadata = constructMetadata({
@@ -20,12 +18,7 @@ function VerifyEmailFallback() {
   );
 }
 
-export default async function Page() {
-  const session = await getSession();
-  if (session?.user.email_verified) {
-    redirect("/dashboard");
-  }
-
+export default function Page() {
   return (
     <Suspense fallback={<VerifyEmailFallback />}>
       <VerifyEmailForm />
