@@ -43,6 +43,7 @@ SET email_verified = true,
     updated_at = now()
 FROM consumed
 WHERE lower(users.email) = lower(sqlc.arg(email))
+  AND users.email_verified = false
 RETURNING users.*;
 
 -- name: ResetPasswordWithToken :one
