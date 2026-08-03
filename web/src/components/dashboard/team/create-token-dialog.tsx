@@ -114,9 +114,17 @@ export function CreateTokenDialog({
                 if (!next) reset();
             }}
         >
-            <DialogTrigger render={<Button size="sm" className="shadow-sm" />}>
-                <KeyRound className="mr-2 size-4" />
+            <DialogTrigger
+                render={
+                    <Button className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20" />
+                }
+            >
+                <KeyRound className="size-4" />
                 Generate Token
+                <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
+                />
             </DialogTrigger>
             <DialogContent className="sm:max-w-md border-border/40 shadow-xl">
                 {step === "form" ? (
@@ -245,7 +253,16 @@ export function CreateTokenDialog({
                             >
                                 Cancel
                             </Button>
-                            <Button type="submit">Generate Token</Button>
+                            <Button
+                                type="submit"
+                                className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
+                            >
+                                Generate Token
+                                <span
+                                    aria-hidden
+                                    className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
+                                />
+                            </Button>
                         </DialogFooter>
                     </form>
                 ) : (
