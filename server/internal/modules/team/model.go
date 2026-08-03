@@ -20,7 +20,6 @@ type Team struct {
 	Name       string    `json:"name"`
 	MarketCode string    `json:"market_code"`
 	Phone      string    `json:"phone"`
-	Email      string    `json:"email"`
 	Address    string    `json:"address"`
 	Website    *string   `json:"website,omitempty"`
 	Status     string    `json:"status"`
@@ -42,7 +41,6 @@ type CreateRequest struct {
 	Name       string `json:"name"`
 	MarketCode string `json:"market_code"`
 	Phone      string `json:"phone"`
-	Email      string `json:"email"`
 	Address    string `json:"address"`
 	Website    string `json:"website"`
 }
