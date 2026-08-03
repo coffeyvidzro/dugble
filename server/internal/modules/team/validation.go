@@ -33,15 +33,6 @@ func validateRequiredTeamField(value, field string) (string, error) {
 	return value, nil
 }
 
-func normalizeTeamEmail(value string) (string, error) {
-	email := strings.ToLower(strings.TrimSpace(value))
-	parsed, err := mail.ParseAddress(email)
-	if err != nil || parsed.Address != email {
-		return "", apperrors.NewBadRequest("A valid team email is required")
-	}
-	return email, nil
-}
-
 func normalizeOptionalTeamField(value string) *string {
 	value = strings.TrimSpace(value)
 	if value == "" {
