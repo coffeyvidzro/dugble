@@ -1,6 +1,4 @@
 import Link from "next/link";
-
-import { formatRelativeTime, type RecentEmail } from "./types";
 import { ArrowRight, Inbox } from "lucide-react";
 import {
     Card,
@@ -11,14 +9,14 @@ import {
 import {
     Table,
     TableBody,
-    TableCell,
     TableHead,
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { EmailStatusBadge } from "./email-status-badge";
+import { EmailLogRow } from "../emails-page/email-log-row";
+import type { EmailLogEntry } from "../emails-page/types";
 
-export function RecentEmailsCard({ emails }: { emails: RecentEmail[] }) {
+export function RecentEmailsCard({ emails }: { emails: EmailLogEntry[] }) {
     return (
         <Card className="border-border/40 shadow-sm">
             <CardHeader className="flex flex-col items-start gap-4 border-b border-border/40 bg-muted/10 pb-4 sm:flex-row sm:items-center sm:justify-between">
@@ -60,35 +58,20 @@ export function RecentEmailsCard({ emails }: { emails: RecentEmail[] }) {
                     <Table>
                         <TableHeader>
                             <TableRow className="border-b border-border/40 hover:bg-transparent">
-                                <TableHead className="w-56">To</TableHead>
+                                <TableHead className="w-64">To</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead>Subject</TableHead>
-                                <TableHead className="text-right">
-                                    Sent
-                                </TableHead>
+                                <TableHead className="w-32">Sent</TableHead>
+                                <TableHead className="w-10 text-right" />
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {emails.map((email) => (
-                                <TableRow
+                                <EmailLogRow
                                     key={email.id}
-                                    className="group border-b-0 transition-colors hover:bg-muted/30"
-                                >
-                                    <TableCell className="border-l-2 border-l-transparent font-mono text-xs text-foreground transition-colors group-hover:border-l-signal/50">
-                                        {email.to}
-                                    </TableCell>
-                                    <TableCell>
-                                        <EmailStatusBadge
-                                            status={email.status}
-                                        />
-                                    </TableCell>
-                                    <TableCell className="max-w-70 truncate text-sm text-foreground">
-                                        {email.subject}
-                                    </TableCell>
-                                    <TableCell className="text-right text-sm text-muted-foreground">
-                                        {formatRelativeTime(email.sentAt)}
-                                    </TableCell>
-                                </TableRow>
+                                    email={email}
+                                    onResend={() => {}}
+                                />
                             ))}
                         </TableBody>
                     </Table>
