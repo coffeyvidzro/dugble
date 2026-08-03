@@ -12,15 +12,41 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const cancelWebhookDeliveriesForEndpoint = `-- name: CancelWebhookDeliveriesForEndpoint :execrows
+UPDATE webhook_deliveries
+SET status = 'canceled',
+    last_error = 'Webhook endpoint disabled before delivery',
+    locked_at = NULL,
+    locked_by = NULL,
+    updated_at = now()
+WHERE endpoint_id = $1
+  AND status IN ('pending', 'retrying')
+`
+
+type CancelWebhookDeliveriesForEndpointParams struct {
+	EndpointID uuid.UUID `db:"endpoint_id" json:"endpoint_id"`
+}
+
+func (q *Queries) CancelWebhookDeliveriesForEndpoint(ctx context.Context, arg CancelWebhookDeliveriesForEndpointParams) (int64, error) {
+	result, err := q.db.Exec(ctx, cancelWebhookDeliveriesForEndpoint, arg.EndpointID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const claimWebhookDeliveries = `-- name: ClaimWebhookDeliveries :many
 WITH candidates AS (
     SELECT delivery.id
     FROM webhook_deliveries AS delivery
     JOIN webhook_endpoints AS endpoint ON endpoint.id = delivery.endpoint_id
+    JOIN webhook_events AS event ON event.id = delivery.event_id
+    JOIN teams AS team ON team.id = event.team_id
     WHERE delivery.status IN ('pending', 'retrying')
       AND delivery.next_attempt_at <= now()
       AND endpoint.enabled = true
       AND endpoint.disabled_at IS NULL
+      AND team.status = 'active'
       AND (
           delivery.locked_at IS NULL
           OR delivery.locked_at < $2
@@ -115,9 +141,11 @@ FROM webhook_endpoints AS endpoint
 JOIN webhook_events AS event
   ON event.id = $1
  AND event.team_id = endpoint.team_id
+JOIN teams AS team ON team.id = event.team_id
 WHERE endpoint.enabled = true
   AND endpoint.disabled_at IS NULL
   AND event.event_type = ANY(endpoint.subscribed_events)
+  AND team.status = 'active'
 ON CONFLICT (event_id, endpoint_id) DO NOTHING
 `
 
@@ -140,25 +168,34 @@ INSERT INTO webhook_deliveries (
     endpoint_id,
     status,
     next_attempt_at
-) VALUES (
-    $1,
-    $2,
-    'pending',
-    $3
 )
+SELECT
+    event.id,
+    endpoint.id,
+    'pending',
+    $1
+FROM webhook_events AS event
+JOIN webhook_endpoints AS endpoint
+  ON endpoint.id = $2
+ AND endpoint.team_id = event.team_id
+JOIN teams AS team ON team.id = event.team_id
+WHERE event.id = $3
+  AND endpoint.enabled = true
+  AND endpoint.disabled_at IS NULL
+  AND team.status = 'active'
 ON CONFLICT (event_id, endpoint_id) DO UPDATE
 SET event_id = EXCLUDED.event_id
 RETURNING id, event_id, endpoint_id, status, attempt_count, next_attempt_at, last_attempt_at, response_status, response_body, last_error, delivered_at, locked_at, locked_by, created_at, updated_at
 `
 
 type CreateWebhookDeliveryParams struct {
-	EventID       uuid.UUID          `db:"event_id" json:"event_id"`
-	EndpointID    uuid.UUID          `db:"endpoint_id" json:"endpoint_id"`
 	NextAttemptAt pgtype.Timestamptz `db:"next_attempt_at" json:"next_attempt_at"`
+	EndpointID    uuid.UUID          `db:"endpoint_id" json:"endpoint_id"`
+	EventID       uuid.UUID          `db:"event_id" json:"event_id"`
 }
 
 func (q *Queries) CreateWebhookDelivery(ctx context.Context, arg CreateWebhookDeliveryParams) (WebhookDelivery, error) {
-	row := q.db.QueryRow(ctx, createWebhookDelivery, arg.EventID, arg.EndpointID, arg.NextAttemptAt)
+	row := q.db.QueryRow(ctx, createWebhookDelivery, arg.NextAttemptAt, arg.EndpointID, arg.EventID)
 	var i WebhookDelivery
 	err := row.Scan(
 		&i.ID,
@@ -184,8 +221,10 @@ const getWebhookDelivery = `-- name: GetWebhookDelivery :one
 SELECT delivery.id, delivery.event_id, delivery.endpoint_id, delivery.status, delivery.attempt_count, delivery.next_attempt_at, delivery.last_attempt_at, delivery.response_status, delivery.response_body, delivery.last_error, delivery.delivered_at, delivery.locked_at, delivery.locked_by, delivery.created_at, delivery.updated_at
 FROM webhook_deliveries AS delivery
 JOIN webhook_events AS event ON event.id = delivery.event_id
+JOIN teams AS team ON team.id = event.team_id
 WHERE delivery.id = $1
   AND event.team_id = $2
+  AND team.status = 'active'
 `
 
 type GetWebhookDeliveryParams struct {
@@ -220,8 +259,10 @@ const listWebhookDeliveriesForEvent = `-- name: ListWebhookDeliveriesForEvent :m
 SELECT delivery.id, delivery.event_id, delivery.endpoint_id, delivery.status, delivery.attempt_count, delivery.next_attempt_at, delivery.last_attempt_at, delivery.response_status, delivery.response_body, delivery.last_error, delivery.delivered_at, delivery.locked_at, delivery.locked_by, delivery.created_at, delivery.updated_at
 FROM webhook_deliveries AS delivery
 JOIN webhook_events AS event ON event.id = delivery.event_id
+JOIN teams AS team ON team.id = event.team_id
 WHERE delivery.event_id = $1
   AND event.team_id = $2
+  AND team.status = 'active'
 ORDER BY delivery.created_at DESC
 LIMIT $4
 OFFSET $3
@@ -482,10 +523,17 @@ SET status = 'pending',
     locked_at = NULL,
     locked_by = NULL,
     updated_at = now()
-FROM webhook_events AS event
+FROM webhook_events AS event,
+     webhook_endpoints AS endpoint,
+     teams AS team
 WHERE delivery.id = $1
   AND event.id = delivery.event_id
+  AND endpoint.id = delivery.endpoint_id
+  AND team.id = event.team_id
   AND event.team_id = $2
+  AND team.status = 'active'
+  AND endpoint.enabled = true
+  AND endpoint.disabled_at IS NULL
   AND delivery.status = 'failed'
 RETURNING delivery.id, delivery.event_id, delivery.endpoint_id, delivery.status, delivery.attempt_count, delivery.next_attempt_at, delivery.last_attempt_at, delivery.response_status, delivery.response_body, delivery.last_error, delivery.delivered_at, delivery.locked_at, delivery.locked_by, delivery.created_at, delivery.updated_at
 `

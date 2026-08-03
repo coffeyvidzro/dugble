@@ -13,6 +13,11 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	minimumRetryAfter = time.Second
+	maximumRetryAfter = 24 * time.Hour
+)
+
 type ClaimedDelivery struct {
 	ID            uuid.UUID
 	EventID       uuid.UUID
@@ -98,12 +103,29 @@ func (h *Handler) Handle(ctx context.Context, delivery ClaimedDelivery) error {
 	}
 
 	cause := fmt.Errorf("webhook endpoint returned HTTP %d", response.StatusCode)
+	if !retryableStatus(response.StatusCode) {
+		return h.markFailed(ctx, delivery, &status, &responseBody, cause)
+	}
+
 	if response.StatusCode == http.StatusTooManyRequests {
+		if _, retry := h.policy.Next(int(delivery.AttemptCount), h.now()); !retry {
+			return h.markFailed(ctx, delivery, &status, &responseBody, cause)
+		}
 		if retryAt, ok := retryAfter(response.Header.Get("Retry-After"), h.now); ok {
-			return h.store.ScheduleRetry(ctx, delivery.ID, h.workerID, retryAt, &status, &responseBody, cause.Error())
+			if err := h.store.ScheduleRetry(ctx, delivery.ID, h.workerID, retryAt, &status, &responseBody, cause.Error()); err != nil {
+				return errors.Join(cause, err)
+			}
+			return nil
 		}
 	}
 	return h.finishFailure(ctx, delivery, &status, &responseBody, cause)
+}
+
+func retryableStatus(status int) bool {
+	return status == http.StatusRequestTimeout ||
+		status == http.StatusTooEarly ||
+		status == http.StatusTooManyRequests ||
+		status >= http.StatusInternalServerError
 }
 
 func (h *Handler) finishFailure(ctx context.Context, delivery ClaimedDelivery, status *int32, body *string, cause error) error {
@@ -114,6 +136,10 @@ func (h *Handler) finishFailure(ctx context.Context, delivery ClaimedDelivery, s
 		}
 		return nil
 	}
+	return h.markFailed(ctx, delivery, status, body, cause)
+}
+
+func (h *Handler) markFailed(ctx context.Context, delivery ClaimedDelivery, status *int32, body *string, cause error) error {
 	if err := h.store.MarkFailed(ctx, delivery.ID, h.workerID, status, body, cause.Error()); err != nil {
 		return errors.Join(cause, err)
 	}
@@ -121,12 +147,25 @@ func (h *Handler) finishFailure(ctx context.Context, delivery ClaimedDelivery, s
 }
 
 func retryAfter(value string, now func() time.Time) (time.Time, bool) {
+	current := now().UTC()
+	var retryAt time.Time
 	if seconds, err := strconv.Atoi(value); err == nil && seconds >= 0 {
-		return now().UTC().Add(time.Duration(seconds) * time.Second), true
+		retryAt = current.Add(time.Duration(seconds) * time.Second)
+	} else {
+		parsed, err := http.ParseTime(value)
+		if err != nil || parsed.Before(current) {
+			return time.Time{}, false
+		}
+		retryAt = parsed.UTC()
 	}
-	parsed, err := http.ParseTime(value)
-	if err != nil || parsed.Before(now()) {
-		return time.Time{}, false
+
+	minimum := current.Add(minimumRetryAfter)
+	maximum := current.Add(maximumRetryAfter)
+	if retryAt.Before(minimum) {
+		return minimum, true
 	}
-	return parsed.UTC(), true
+	if retryAt.After(maximum) {
+		return maximum, true
+	}
+	return retryAt, true
 }

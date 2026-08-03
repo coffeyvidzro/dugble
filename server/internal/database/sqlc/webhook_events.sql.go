@@ -70,10 +70,12 @@ func (q *Queries) CreateWebhookEvent(ctx context.Context, arg CreateWebhookEvent
 }
 
 const getWebhookEvent = `-- name: GetWebhookEvent :one
-SELECT id, team_id, event_type, object_type, object_id, payload, occurred_at, created_at
-FROM webhook_events
-WHERE id = $1
-  AND team_id = $2
+SELECT event.id, event.team_id, event.event_type, event.object_type, event.object_id, event.payload, event.occurred_at, event.created_at
+FROM webhook_events AS event
+JOIN teams AS team ON team.id = event.team_id
+WHERE event.id = $1
+  AND event.team_id = $2
+  AND team.status = 'active'
 `
 
 type GetWebhookEventParams struct {
@@ -98,10 +100,12 @@ func (q *Queries) GetWebhookEvent(ctx context.Context, arg GetWebhookEventParams
 }
 
 const listWebhookEvents = `-- name: ListWebhookEvents :many
-SELECT id, team_id, event_type, object_type, object_id, payload, occurred_at, created_at
-FROM webhook_events
-WHERE team_id = $1
-ORDER BY created_at DESC
+SELECT event.id, event.team_id, event.event_type, event.object_type, event.object_id, event.payload, event.occurred_at, event.created_at
+FROM webhook_events AS event
+JOIN teams AS team ON team.id = event.team_id
+WHERE event.team_id = $1
+  AND team.status = 'active'
+ORDER BY event.created_at DESC
 LIMIT $3
 OFFSET $2
 `
@@ -142,12 +146,14 @@ func (q *Queries) ListWebhookEvents(ctx context.Context, arg ListWebhookEventsPa
 }
 
 const listWebhookEventsForObject = `-- name: ListWebhookEventsForObject :many
-SELECT id, team_id, event_type, object_type, object_id, payload, occurred_at, created_at
-FROM webhook_events
-WHERE team_id = $1
-  AND object_type = $2
-  AND object_id IS NOT DISTINCT FROM $3
-ORDER BY occurred_at DESC, created_at DESC
+SELECT event.id, event.team_id, event.event_type, event.object_type, event.object_id, event.payload, event.occurred_at, event.created_at
+FROM webhook_events AS event
+JOIN teams AS team ON team.id = event.team_id
+WHERE event.team_id = $1
+  AND event.object_type = $2
+  AND event.object_id IS NOT DISTINCT FROM $3
+  AND team.status = 'active'
+ORDER BY event.occurred_at DESC, event.created_at DESC
 LIMIT $5
 OFFSET $4
 `

@@ -79,9 +79,33 @@ func (r *Repository) Update(ctx context.Context, id uuid.UUID, name string) (Tea
 }
 
 func (r *Repository) Disable(ctx context.Context, id uuid.UUID) (Team, error) {
-	row, err := r.queries.DisableTeam(ctx, dbsqlc.DisableTeamParams{ID: id})
+	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return Team{}, fmt.Errorf("begin disable team transaction: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	row, err := r.queries.WithTx(tx).DisableTeam(ctx, dbsqlc.DisableTeamParams{ID: id})
 	if err != nil {
 		return Team{}, fmt.Errorf("disable team: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
+UPDATE webhook_deliveries AS delivery
+SET status = 'canceled',
+    last_error = 'Team disabled before webhook delivery',
+    locked_at = NULL,
+    locked_by = NULL,
+    updated_at = now()
+FROM webhook_events AS event
+WHERE event.id = delivery.event_id
+  AND event.team_id = $1
+  AND delivery.status IN ('pending', 'retrying')`, id); err != nil {
+		return Team{}, fmt.Errorf("cancel team webhook deliveries: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Team{}, fmt.Errorf("commit disable team transaction: %w", err)
 	}
 	return teamFromSQLC(row), nil
 }

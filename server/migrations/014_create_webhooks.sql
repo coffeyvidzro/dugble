@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS webhook_deliveries (
 
     CONSTRAINT uq_webhook_delivery_event_endpoint UNIQUE (event_id, endpoint_id),
     CONSTRAINT chk_webhook_delivery_status CHECK (
-        status IN ('pending', 'retrying', 'succeeded', 'failed')
+        status IN ('pending', 'retrying', 'succeeded', 'failed', 'canceled')
     ),
     CONSTRAINT chk_webhook_delivery_attempts CHECK (attempt_count >= 0),
     CONSTRAINT chk_webhook_delivery_response_status CHECK (
