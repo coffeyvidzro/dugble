@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { TableCell, TableRow } from "@/components/ui/table";
 import {
+    formatDateTimeFull,
     formatRelativeTime,
     type DeviceType,
     type SecuritySession,
@@ -67,7 +68,8 @@ export function SessionRow({
             </TableCell>
             <TableCell
                 className="text-sm text-muted-foreground"
-                title={session.lastActiveAt.toLocaleString()}
+                title={formatDateTimeFull(session.lastActiveAt)}
+                suppressHydrationWarning
             >
                 {session.isCurrent
                     ? "Active now"
