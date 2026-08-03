@@ -29,13 +29,13 @@ export function RecentEmailsCard({ emails }: { emails: EmailLogEntry[] }) {
                 </div>
                 <Link
                     href="/dashboard/email/emails"
-                    className="group/button relative inline-flex py-1.5 items-center justify-center gap-2 overflow-hidden rounded-full border bg-background px-4 font-mono text-sm text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:text-foreground hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
+                    className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
                 >
                     View all
-                    <ArrowRight data-icon="inline-end" className="size-3.5" />
+                    <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                     <span
                         aria-hidden
-                        className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-foreground/10 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
+                        className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
                     />
                 </Link>
             </CardHeader>

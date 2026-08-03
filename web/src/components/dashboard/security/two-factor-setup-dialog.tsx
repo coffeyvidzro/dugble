@@ -97,9 +97,17 @@ export function TwoFactorSetupDialog({
                 if (!next) reset();
             }}
         >
-            <DialogTrigger render={<Button size="sm" className="shadow-sm" />}>
-                <ShieldCheck className="mr-2 size-4" />
+            <DialogTrigger
+                render={
+                    <Button className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20" />
+                }
+            >
+                <ShieldCheck className="size-4" />
                 Enable 2FA
+                <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
+                />
             </DialogTrigger>
             <DialogContent className="sm:max-w-md border-border/40 shadow-xl">
                 {step === "intro" && (
@@ -139,8 +147,13 @@ export function TwoFactorSetupDialog({
                             <Button
                                 type="button"
                                 onClick={() => setStep("verify")}
+                                className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
                             >
                                 Continue
+                                <span
+                                    aria-hidden
+                                    className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
+                                />
                             </Button>
                         </DialogFooter>
                     </div>
@@ -183,11 +196,19 @@ export function TwoFactorSetupDialog({
                                 type="button"
                                 onClick={handleVerify}
                                 disabled={verifying}
+                                className={cn(
+                                    "group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20",
+                                    verifying && "opacity-80",
+                                )}
                             >
                                 {verifying ? (
-                                    <Loader2 className="mr-2 size-4 animate-spin" />
+                                    <Loader2 className="size-4 animate-spin" />
                                 ) : null}
                                 {verifying ? "Verifying..." : "Verify"}
+                                <span
+                                    aria-hidden
+                                    className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
+                                />
                             </Button>
                         </DialogFooter>
                     </div>
@@ -248,10 +269,14 @@ export function TwoFactorSetupDialog({
                         <DialogFooter className="border-t border-border/40 pt-4">
                             <Button
                                 type="button"
-                                className="w-full sm:w-auto"
                                 onClick={handleFinish}
+                                className="group/button relative inline-flex w-full sm:w-auto shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
                             >
                                 I&apos;ve saved these codes
+                                <span
+                                    aria-hidden
+                                    className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
+                                />
                             </Button>
                         </DialogFooter>
                     </div>
