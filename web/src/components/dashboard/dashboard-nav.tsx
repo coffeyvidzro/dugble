@@ -3,13 +3,10 @@ import {
     ArrowLeftRight,
     BarChart3,
     BookOpen,
-    Building2,
     Fingerprint,
-    // FolderPlus,
     Globe,
     History as HistoryIcon,
     Inbox,
-    KeyRound,
     LayoutDashboard,
     LayoutTemplate,
     LineChart,
@@ -218,12 +215,6 @@ export const dashboardPortals: DashboardPortal[] = [
             {
                 label: "Developers",
                 items: [
-                    {
-                        title: "API Keys",
-                        href: "/dashboard/developers/api-keys",
-                        icon: KeyRound,
-                        description: "Create and manage API credentials.",
-                    },
                     {
                         title: "Webhooks",
                         href: "/dashboard/developers/webhooks",
