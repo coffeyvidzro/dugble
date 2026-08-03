@@ -1,11 +1,12 @@
 import { ArrowDownLeft, ArrowUpRight, Download } from "lucide-react";
 
-import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import {
     formatCurrency,
     formatDateTime,
+    formatDateTimeFull,
     type TransactionStatus,
     type WalletTransaction,
 } from "./types";
@@ -79,7 +80,8 @@ export function TransactionRow({
             </TableCell>
             <TableCell
                 className="text-sm text-muted-foreground"
-                title={transaction.occurredAt.toLocaleString()}
+                title={formatDateTimeFull(transaction.occurredAt)}
+                suppressHydrationWarning
             >
                 {formatDateTime(transaction.occurredAt)}
             </TableCell>
