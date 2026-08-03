@@ -14,6 +14,18 @@ func TestTeamValidationNormalizesValidInput(t *testing.T) {
 	if got, err := validateMarketCode(" gh "); err != nil || got != "GH" {
 		t.Fatalf("validateMarketCode() = %q, %v", got, err)
 	}
+	if got, err := validateRequiredTeamField(" +233531184325 ", "Phone"); err != nil || got != "+233531184325" {
+		t.Fatalf("validateRequiredTeamField() = %q, %v", got, err)
+	}
+	if got, err := normalizeTeamEmail(" Business@Vidzro.IO "); err != nil || got != "business@vidzro.io" {
+		t.Fatalf("normalizeTeamEmail() = %q, %v", got, err)
+	}
+	if got := normalizeOptionalTeamField(" vidzro.io "); got == nil || *got != "vidzro.io" {
+		t.Fatalf("normalizeOptionalTeamField() = %v", got)
+	}
+	if got := normalizeOptionalTeamField(" "); got != nil {
+		t.Fatalf("normalizeOptionalTeamField() = %v, want nil", got)
+	}
 	if got, err := validateTeamID(" " + id.String() + " "); err != nil || got != id {
 		t.Fatalf("validateTeamID() = %s, %v", got, err)
 	}
@@ -36,6 +48,8 @@ func TestTeamValidationRejectsInvalidInput(t *testing.T) {
 		func() error { _, err := validateTeamName(" "); return err },
 		func() error { _, err := validateMarketCode("NG"); return err },
 		func() error { _, err := validateMarketCode("US"); return err },
+		func() error { _, err := validateRequiredTeamField(" ", "Phone"); return err },
+		func() error { _, err := normalizeTeamEmail("invalid"); return err },
 		func() error { _, err := validateTeamID("invalid"); return err },
 		func() error { _, err := validateMemberID("invalid"); return err },
 		func() error { _, err := validateMemberRole(RoleOwner); return err },

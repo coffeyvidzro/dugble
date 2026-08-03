@@ -25,6 +25,31 @@ func validateMarketCode(value string) (string, error) {
 	return marketCode, nil
 }
 
+func validateRequiredTeamField(value, field string) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", apperrors.NewBadRequest(field + " is required")
+	}
+	return value, nil
+}
+
+func normalizeTeamEmail(value string) (string, error) {
+	email := strings.ToLower(strings.TrimSpace(value))
+	parsed, err := mail.ParseAddress(email)
+	if err != nil || parsed.Address != email {
+		return "", apperrors.NewBadRequest("A valid team email is required")
+	}
+	return email, nil
+}
+
+func normalizeOptionalTeamField(value string) *string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
 func validateTeamID(value string) (uuid.UUID, error) {
 	id, err := uuid.Parse(strings.TrimSpace(value))
 	if err != nil {

@@ -72,7 +72,21 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Team, error) {
 	if err != nil {
 		return Team{}, err
 	}
-	team, err := s.repository.CreateWithOwner(ctx, name, marketCode, principal.UserID)
+	phone, err := validateRequiredTeamField(req.Phone, "Phone")
+	if err != nil {
+		return Team{}, err
+	}
+	email, err := normalizeTeamEmail(req.Email)
+	if err != nil {
+		return Team{}, err
+	}
+	address, err := validateRequiredTeamField(req.Address, "Address")
+	if err != nil {
+		return Team{}, err
+	}
+	team, err := s.repository.CreateWithOwner(
+		ctx, name, marketCode, phone, email, address, normalizeOptionalTeamField(req.Website), principal.UserID,
+	)
 	if err != nil {
 		return Team{}, apperrors.NewInternal("Unable to create team", err)
 	}
