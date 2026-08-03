@@ -34,17 +34,25 @@ func (r *Repository) CreateWithOwner(
 	ctx context.Context,
 	name string,
 	marketCode string,
+	phone string,
+	email string,
+	address string,
+	website *string,
 	ownerID uuid.UUID,
 ) (Team, error) {
 	row, err := r.queries.CreateTeamWithOwner(
 		ctx,
-		dbsqlc.CreateTeamWithOwnerParams{Name: name, MarketCode: marketCode, OwnerID: &ownerID},
+		dbsqlc.CreateTeamWithOwnerParams{
+			Name: name, MarketCode: marketCode, Phone: phone, Email: email,
+			Address: address, Website: website, OwnerID: &ownerID,
+		},
 	)
 	if err != nil {
 		return Team{}, fmt.Errorf("create team with owner: %w", err)
 	}
 	return Team{
 		ID: row.ID.String(), Name: row.Name, MarketCode: row.MarketCode,
+		Phone: row.Phone, Email: row.Email, Address: row.Address, Website: row.Website,
 		Status: row.Status, CreatedBy: stringPointer(row.CreatedBy),
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}, nil
@@ -297,6 +305,10 @@ func teamFromSQLC(row dbsqlc.Team) Team {
 		ID:         row.ID.String(),
 		Name:       row.Name,
 		MarketCode: row.MarketCode,
+		Phone:      row.Phone,
+		Email:      row.Email,
+		Address:    row.Address,
+		Website:    row.Website,
 		Status:     row.Status,
 		CreatedBy:  stringPointer(row.CreatedBy),
 		CreatedAt:  row.CreatedAt.Time,

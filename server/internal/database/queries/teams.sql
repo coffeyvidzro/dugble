@@ -3,11 +3,19 @@ WITH created_team AS (
     INSERT INTO teams (
         name,
         market_code,
+        phone,
+        email,
+        address,
+        website,
         created_by
     )
     VALUES (
         sqlc.arg(name),
         sqlc.arg(market_code),
+        sqlc.arg(phone),
+        sqlc.arg(email),
+        sqlc.arg(address),
+        sqlc.narg(website),
         sqlc.arg(owner_id)
     )
     RETURNING *

@@ -19,6 +19,10 @@ type Team struct {
 	ID         string    `json:"id"`
 	Name       string    `json:"name"`
 	MarketCode string    `json:"market_code"`
+	Phone      string    `json:"phone"`
+	Email      string    `json:"email"`
+	Address    string    `json:"address"`
+	Website    *string   `json:"website,omitempty"`
 	Status     string    `json:"status"`
 	CreatedBy  *string   `json:"created_by,omitempty"`
 	CreatedAt  time.Time `json:"created_at"`
@@ -37,6 +41,10 @@ type Member struct {
 type CreateRequest struct {
 	Name       string `json:"name"`
 	MarketCode string `json:"market_code"`
+	Phone      string `json:"phone"`
+	Email      string `json:"email"`
+	Address    string `json:"address"`
+	Website    string `json:"website"`
 }
 
 type UpdateRequest struct {
