@@ -62,7 +62,7 @@ func (c *Client) Send(ctx context.Context, message platformemail.Message) (platf
 	input := &sesv2.SendEmailInput{
 		ConfigurationSetName: aws.String(configurationSet),
 		TenantName:           aws.String(tenantName),
-		FromEmailAddress:     aws.String(strings.TrimSpace(message.From.Email)),
+		FromEmailAddress:     aws.String(formatAddress(message.From)),
 		Destination:          destination(message),
 		Content: &sestypes.EmailContent{
 			Raw: &sestypes.RawMessage{Data: raw},
