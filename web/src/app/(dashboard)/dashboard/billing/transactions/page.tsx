@@ -1,6 +1,7 @@
-import { ArrowLeftRight } from "lucide-react";
-import { PlaceholderPage } from "@/components/dashboard/placeholder-page";
+import { TransactionsDashboard } from "@/components/dashboard/billing/transactions/transactions-dashboard";
 import { constructMetadata } from "@/utils/metadata";
+import { requireSession } from "@/lib/session";
+
 export const metadata = constructMetadata({
     title: "Transactions",
     description: "Review billing transactions for your Dugble workspace.",
@@ -8,12 +9,12 @@ export const metadata = constructMetadata({
     preset: "dashboard",
 });
 
-export default function Page() {
+export default async function Page() {
+    await requireSession();
+
     return (
-        <PlaceholderPage
-            title="Transactions"
-            description="Every charge and top-up, itemized."
-            icon={ArrowLeftRight}
-        />
+        <div className="flex-1 w-full bg-background min-h-screen pt-8 pb-16 px-4 md:px-5.5">
+            <TransactionsDashboard />
+        </div>
     );
 }
