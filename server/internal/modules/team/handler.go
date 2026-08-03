@@ -10,11 +10,18 @@ import (
 )
 
 type Handler struct {
-	service *Service
+	service                  *Service
+	emailTenantProvisioner   EmailTenantProvisioner
+	defaultEmailTenantRegion string
 }
 
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service *Service, provisioning ...EmailTenantProvisioningConfig) *Handler {
+	handler := &Handler{service: service}
+	if len(provisioning) > 0 {
+		handler.emailTenantProvisioner = provisioning[0].Provisioner
+		handler.defaultEmailTenantRegion = provisioning[0].Region
+	}
+	return handler
 }
 
 func (h *Handler) List(c *echo.Context) error {
@@ -34,6 +41,12 @@ func (h *Handler) Create(c *echo.Context) error {
 	if err != nil {
 		return httputil.Error(c, err)
 	}
+	requestEmailTenantProvisioning(
+		c.Request().Context(),
+		h.emailTenantProvisioner,
+		h.defaultEmailTenantRegion,
+		team,
+	)
 	return httputil.Created(c, team)
 }
 
