@@ -71,3 +71,5 @@ RETURNING users.*;'''
             server/internal/database/sqlc/verification_tokens.sql.go
           git commit -m "fix(auth): prevent verified email reverification [verified-email-fix]"
           git push origin HEAD:fix/verified-email-reverification
+
+# Triggered after workflow registration.
