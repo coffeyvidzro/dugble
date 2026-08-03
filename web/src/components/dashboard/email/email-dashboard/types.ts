@@ -65,14 +65,6 @@ export const EMAIL_STATUS_LABEL: Record<EmailStatus, string> = {
     complained: "Complained",
 };
 
-export type RecentEmail = {
-    id: string;
-    to: string;
-    subject: string;
-    status: EmailStatus;
-    sentAt: Date;
-};
-
 export type DomainStatus = "verified" | "pending" | "failed";
 
 export type SendingDomain = {
@@ -252,85 +244,6 @@ const STATS_BY_RANGE: Record<EmailRange, EmailStat[]> = {
 
 export function getEmailStats(range: EmailRange): EmailStat[] {
     return STATS_BY_RANGE[range];
-}
-
-const RECENT_EMAIL_SEED: {
-    to: string;
-    subject: string;
-    status: EmailStatus;
-    minutesAgo: number;
-}[] = [
-    {
-        to: "coffey@vidzro.io",
-        subject: "Your Dugble verification code",
-        status: "opened",
-        minutesAgo: 3,
-    },
-    {
-        to: "receipts@westline.com",
-        subject: "Payment receipt. Invoice #4821",
-        status: "delivered",
-        minutesAgo: 12,
-    },
-    {
-        to: "p.kessie@snappx.app",
-        subject: "Your one-time passcode: 738214",
-        status: "clicked",
-        minutesAgo: 27,
-    },
-    {
-        to: "hello@james.dev",
-        subject: "Welcome to Dugble. Verify your email",
-        status: "sent",
-        minutesAgo: 41,
-    },
-    {
-        to: "janet.r@ofori-cloud.co",
-        subject: "Reset your password",
-        status: "delivered",
-        minutesAgo: 58,
-    },
-    {
-        to: "ops@gpha-alerts.com",
-        subject: "Weekly delivery summary",
-        status: "bounced",
-        minutesAgo: 95,
-    },
-    {
-        to: "t.mensah@quickledger.io",
-        subject: "Your OTP code expires in 5 minutes",
-        status: "delivered",
-        minutesAgo: 134,
-    },
-    {
-        to: "billing@vertexstudio.com",
-        subject: "Your subscription receipt",
-        status: "failed",
-        minutesAgo: 182,
-    },
-    {
-        to: "s.johnson@driftwave.app",
-        subject: "New sign-in from Chrome on macOS",
-        status: "opened",
-        minutesAgo: 241,
-    },
-    {
-        to: "support@parcelroute.io",
-        subject: "Delivery confirmation. Order #90213",
-        status: "complained",
-        minutesAgo: 366,
-    },
-];
-
-export function buildRecentEmails(): RecentEmail[] {
-    const now = Date.now();
-    return RECENT_EMAIL_SEED.map((entry, index) => ({
-        id: `email-${index + 1}`,
-        to: entry.to,
-        subject: entry.subject,
-        status: entry.status,
-        sentAt: new Date(now - entry.minutesAgo * 60 * 1000),
-    }));
 }
 
 export const SENDING_DOMAINS: SendingDomain[] = [
