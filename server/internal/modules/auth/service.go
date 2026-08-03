@@ -182,9 +182,14 @@ func (s *Service) VerifyEmail(ctx context.Context, req VerifyEmailRequest) error
 		return err
 	}
 
+	user, err := s.repository.GetUserByEmail(ctx, email)
+	if err == nil && user.EmailVerified {
+		return apperrors.NewBadRequest("Email is already verified")
+	}
+
 	identifier := emailVerificationIdentifier(email)
 	tokenHash := authnz.HashSessionToken(token)
-	user, err := s.repository.VerifyEmailWithToken(ctx, email, identifier, tokenHash)
+	user, err = s.repository.VerifyEmailWithToken(ctx, email, identifier, tokenHash)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return apperrors.NewBadRequest("Email verification token is invalid or expired")
@@ -202,6 +207,9 @@ func (s *Service) ResendEmail(ctx context.Context, req ResendEmailRequest) error
 	}
 	user, err := s.repository.GetUserByEmail(ctx, email)
 	if err != nil {
+		return nil
+	}
+	if user.EmailVerified {
 		return nil
 	}
 	return s.issueEmailVerificationToken(ctx, user.Email, user.Name)
