@@ -112,7 +112,11 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	tenantAccess := func(permission tenant.Permission) echo.MiddlewareFunc {
 		return middlewares.TenantAccess(middlewares.TenantAccessConfig{Sessions: sessionRepository, Users: authRepository, Memberships: teamRepository, Tokens: teamTokenRepository, CSRF: csrfConfig, Required: permission})
 	}
-	team.RegisterRoutes(router, team.NewHandler(teamService), authMiddleware, csrfMiddleware, tenantMiddleware)
+	teamHandler := team.NewHandler(teamService, team.EmailTenantProvisioningConfig{
+		Provisioner: emailTenantService,
+		Region:      cfg.AWS.Region,
+	})
+	team.RegisterRoutes(router, teamHandler, authMiddleware, csrfMiddleware, tenantMiddleware)
 	wallet.RegisterRoutes(router, wallet.NewHandler(wallet.NewService(wallet.NewRepository(deps.DB))), tenantAccess)
 	auditevent.RegisterRoutes(router, auditevent.NewHandler(auditevent.NewService(auditRepository)), authMiddleware, csrfMiddleware, tenantMiddleware)
 	teamtoken.RegisterRoutes(router, teamtoken.NewHandler(teamtoken.NewService(teamTokenRepository).WithNotifier(emailService)), authMiddleware, csrfMiddleware, tenantMiddleware)
