@@ -1,0 +1,25 @@
+name: Temporary Atlas Hash
+
+on:
+  push:
+    branches:
+      - fix/shared-email-sandbox-migration
+
+permissions:
+  contents: read
+
+jobs:
+  hash:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Regenerate Atlas checksum
+        run: |
+          docker run --rm \
+            -v "$PWD/server/migrations:/migrations" \
+            arigaio/atlas:1.2.3-community-alpine \
+            migrate hash --dir "file:///migrations"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: atlas-sum
+          path: server/migrations/atlas.sum
