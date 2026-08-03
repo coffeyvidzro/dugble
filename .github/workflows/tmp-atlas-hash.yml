@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - fix/shared-email-sandbox-migration
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
