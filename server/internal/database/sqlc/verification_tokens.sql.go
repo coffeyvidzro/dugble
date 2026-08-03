@@ -189,6 +189,7 @@ SET email_verified = true,
     updated_at = now()
 FROM consumed
 WHERE lower(users.email) = lower($1)
+  AND users.email_verified = false
 RETURNING users.id, users.email, users.email_verified, users.name, users.password_hash, users.created_at, users.updated_at, users.credential_version, users.security_updated_at
 `
 
