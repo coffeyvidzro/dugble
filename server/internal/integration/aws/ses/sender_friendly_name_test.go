@@ -2,6 +2,7 @@ package ses
 
 import (
 	"context"
+	"net/mail"
 	"strings"
 	"testing"
 
@@ -35,13 +36,7 @@ func TestSendPreservesFriendlyFromName(t *testing.T) {
 		t.Fatalf("send email: %v", err)
 	}
 
-	const want = "Dugble <onboarding@runnage.dev>"
-	if got := aws.ToString(recordingClient.input.FromEmailAddress); got != want {
-		t.Fatalf("FromEmailAddress = %q, want %q", got, want)
-	}
-	if raw := string(recordingClient.input.Content.Raw.Data); !strings.Contains(raw, "From: "+want+"\r\n") {
-		t.Fatalf("raw MIME does not contain matching friendly From header:\n%s", raw)
-	}
+	assertFriendlyFrom(t, recordingClient, "Dugble", "onboarding@runnage.dev")
 }
 
 func TestSendEncodesUnicodeFriendlyFromName(t *testing.T) {
@@ -69,11 +64,29 @@ func TestSendEncodesUnicodeFriendlyFromName(t *testing.T) {
 		t.Fatalf("send email: %v", err)
 	}
 
+	assertFriendlyFrom(t, recordingClient, "Dugblé", "onboarding@runnage.dev")
+}
+
+func assertFriendlyFrom(t *testing.T, recordingClient *recordingSESV2Client, wantName, wantEmail string) {
+	t.Helper()
+
 	got := aws.ToString(recordingClient.input.FromEmailAddress)
-	if !strings.Contains(got, "=?UTF-8?") || !strings.HasSuffix(got, " <onboarding@runnage.dev>") {
-		t.Fatalf("FromEmailAddress = %q, want an RFC 2047 encoded display name", got)
+	parsed, err := mail.ParseAddress(got)
+	if err != nil {
+		t.Fatalf("parse FromEmailAddress %q: %v", got, err)
 	}
-	if raw := string(recordingClient.input.Content.Raw.Data); !strings.Contains(raw, "From: "+got+"\r\n") {
+	if parsed.Name != wantName || parsed.Address != wantEmail {
+		t.Fatalf(
+			"FromEmailAddress parsed as name=%q address=%q, want name=%q address=%q",
+			parsed.Name,
+			parsed.Address,
+			wantName,
+			wantEmail,
+		)
+	}
+
+	raw := string(recordingClient.input.Content.Raw.Data)
+	if !strings.Contains(raw, "From: "+got+"\r\n") {
 		t.Fatalf("raw MIME From header does not match SES FromEmailAddress:\n%s", raw)
 	}
 }
