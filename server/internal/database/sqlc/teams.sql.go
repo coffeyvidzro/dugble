@@ -35,9 +35,21 @@ type CreateTeamMemberParams struct {
 }
 
 func (q *Queries) CreateTeamMember(ctx context.Context, arg CreateTeamMemberParams) (TeamMember, error) {
-	row := q.db.QueryRow(ctx, createTeamMember, arg.TeamID, arg.UserID, arg.Role, arg.Status)
+	row := q.db.QueryRow(ctx, createTeamMember,
+		arg.TeamID,
+		arg.UserID,
+		arg.Role,
+		arg.Status,
+	)
 	var i TeamMember
-	err := row.Scan(&i.TeamID, &i.UserID, &i.Role, &i.Status, &i.CreatedAt, &i.UpdatedAt)
+	err := row.Scan(
+		&i.TeamID,
+		&i.UserID,
+		&i.Role,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
 	return i, err
 }
 
@@ -121,9 +133,27 @@ type CreateTeamWithOwnerRow struct {
 }
 
 func (q *Queries) CreateTeamWithOwner(ctx context.Context, arg CreateTeamWithOwnerParams) (CreateTeamWithOwnerRow, error) {
-	row := q.db.QueryRow(ctx, createTeamWithOwner, arg.Name, arg.MarketCode, arg.Phone, arg.Address, arg.Website, arg.OwnerID)
+	row := q.db.QueryRow(ctx, createTeamWithOwner,
+		arg.Name,
+		arg.MarketCode,
+		arg.Phone,
+		arg.Address,
+		arg.Website,
+		arg.OwnerID,
+	)
 	var i CreateTeamWithOwnerRow
-	err := row.Scan(&i.ID, &i.Name, &i.MarketCode, &i.Phone, &i.Address, &i.Website, &i.Status, &i.CreatedBy, &i.CreatedAt, &i.UpdatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.MarketCode,
+		&i.Phone,
+		&i.Address,
+		&i.Website,
+		&i.Status,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
 	return i, err
 }
 
@@ -142,7 +172,18 @@ type DisableTeamParams struct {
 func (q *Queries) DisableTeam(ctx context.Context, arg DisableTeamParams) (Team, error) {
 	row := q.db.QueryRow(ctx, disableTeam, arg.ID)
 	var i Team
-	err := row.Scan(&i.ID, &i.Name, &i.MarketCode, &i.Phone, &i.Address, &i.Website, &i.Status, &i.CreatedBy, &i.CreatedAt, &i.UpdatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.MarketCode,
+		&i.Phone,
+		&i.Address,
+		&i.Website,
+		&i.Status,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
 	return i, err
 }
 
@@ -159,7 +200,18 @@ type GetTeamParams struct {
 func (q *Queries) GetTeam(ctx context.Context, arg GetTeamParams) (Team, error) {
 	row := q.db.QueryRow(ctx, getTeam, arg.ID)
 	var i Team
-	err := row.Scan(&i.ID, &i.Name, &i.MarketCode, &i.Phone, &i.Address, &i.Website, &i.Status, &i.CreatedBy, &i.CreatedAt, &i.UpdatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.MarketCode,
+		&i.Phone,
+		&i.Address,
+		&i.Website,
+		&i.Status,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
 	return i, err
 }
 
@@ -178,7 +230,14 @@ type GetTeamMemberParams struct {
 func (q *Queries) GetTeamMember(ctx context.Context, arg GetTeamMemberParams) (TeamMember, error) {
 	row := q.db.QueryRow(ctx, getTeamMember, arg.TeamID, arg.UserID)
 	var i TeamMember
-	err := row.Scan(&i.TeamID, &i.UserID, &i.Role, &i.Status, &i.CreatedAt, &i.UpdatedAt)
+	err := row.Scan(
+		&i.TeamID,
+		&i.UserID,
+		&i.Role,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
 	return i, err
 }
 
@@ -202,7 +261,14 @@ func (q *Queries) ListTeamMembers(ctx context.Context, arg ListTeamMembersParams
 	items := []TeamMember{}
 	for rows.Next() {
 		var i TeamMember
-		if err := rows.Scan(&i.TeamID, &i.UserID, &i.Role, &i.Status, &i.CreatedAt, &i.UpdatedAt); err != nil {
+		if err := rows.Scan(
+			&i.TeamID,
+			&i.UserID,
+			&i.Role,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -236,7 +302,18 @@ func (q *Queries) ListTeamsForUser(ctx context.Context, arg ListTeamsForUserPara
 	items := []Team{}
 	for rows.Next() {
 		var i Team
-		if err := rows.Scan(&i.ID, &i.Name, &i.MarketCode, &i.Phone, &i.Address, &i.Website, &i.Status, &i.CreatedBy, &i.CreatedAt, &i.UpdatedAt); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.MarketCode,
+			&i.Phone,
+			&i.Address,
+			&i.Website,
+			&i.Status,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -279,7 +356,18 @@ type UpdateTeamParams struct {
 func (q *Queries) UpdateTeam(ctx context.Context, arg UpdateTeamParams) (Team, error) {
 	row := q.db.QueryRow(ctx, updateTeam, arg.Name, arg.ID)
 	var i Team
-	err := row.Scan(&i.ID, &i.Name, &i.MarketCode, &i.Phone, &i.Address, &i.Website, &i.Status, &i.CreatedBy, &i.CreatedAt, &i.UpdatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.MarketCode,
+		&i.Phone,
+		&i.Address,
+		&i.Website,
+		&i.Status,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
 	return i, err
 }
 
@@ -301,6 +389,13 @@ type UpdateTeamMemberRoleParams struct {
 func (q *Queries) UpdateTeamMemberRole(ctx context.Context, arg UpdateTeamMemberRoleParams) (TeamMember, error) {
 	row := q.db.QueryRow(ctx, updateTeamMemberRole, arg.Role, arg.TeamID, arg.UserID)
 	var i TeamMember
-	err := row.Scan(&i.TeamID, &i.UserID, &i.Role, &i.Status, &i.CreatedAt, &i.UpdatedAt)
+	err := row.Scan(
+		&i.TeamID,
+		&i.UserID,
+		&i.Role,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
 	return i, err
 }

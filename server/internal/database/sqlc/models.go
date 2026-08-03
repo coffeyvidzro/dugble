@@ -308,7 +308,6 @@ type Team struct {
 	Name       string             `db:"name" json:"name"`
 	MarketCode string             `db:"market_code" json:"market_code"`
 	Phone      string             `db:"phone" json:"phone"`
-	Email      string             `db:"email" json:"email"`
 	Address    string             `db:"address" json:"address"`
 	Website    *string            `db:"website" json:"website"`
 	Status     string             `db:"status" json:"status"`
