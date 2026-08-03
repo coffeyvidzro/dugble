@@ -104,4 +104,7 @@ func TestMapVerificationRecords(t *testing.T) {
 	if records[0].Record != platformemail.RecordDKIM || records[1].Type != platformemail.RecordTypeMX || records[2].Type != platformemail.RecordTypeTXT {
 		t.Fatalf("unexpected verification records: %#v", records)
 	}
+	if got, want := records[0].Value, "p=public-key"; got != want {
+		t.Fatalf("DKIM value = %q, want %q", got, want)
+	}
 }
