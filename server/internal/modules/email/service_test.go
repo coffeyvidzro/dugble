@@ -216,13 +216,24 @@ func TestAuthorizeSenderRejectsUnverifiedDisabledOrDegradedDomain(t *testing.T) 
 }
 
 func TestAuthorizeSenderUsesOnboardingIdentityWithoutSystemFallback(t *testing.T) {
-	service := NewService(nil, nil, testServiceConfig, testEmailBilling)
-	message := validatedSend{FromEmail: platformemail.CustomerOnboardingIdentity, MessageType: MessageTypeTransactional}
+	authorizer := &sandboxAuthorizerStub{}
+	service := NewService(nil, nil, testServiceConfig, testEmailBilling, authorizer)
+	message := validatedSend{
+		FromEmail:   platformemail.CustomerOnboardingIdentity,
+		MessageType: MessageTypeTransactional,
+		To:          []EmailAddress{{Email: "owner@example.com"}},
+	}
 	if err := service.authorizeSender(context.Background(), uuid.New(), &message); err != nil {
 		t.Fatalf("authorize onboarding sender: %v", err)
 	}
+	if !authorizer.called {
+		t.Fatal("sandbox recipient authorizer was not called")
+	}
 	if message.SenderDomainID != nil || message.Provider != "aws_ses" || message.ProviderRegion != "us-east-1" {
 		t.Fatalf("unexpected onboarding sender route: %+v", message)
+	}
+	if message.DeliveryRoute != platformemail.CustomerSandboxDeliveryRoute() {
+		t.Fatalf("delivery route = %#v, want sandbox route", message.DeliveryRoute)
 	}
 	if message.DeliveryRoute.SESTenantName == platformemail.SystemSESTenantName {
 		t.Fatal("onboarding sender fell back to dugble-system")

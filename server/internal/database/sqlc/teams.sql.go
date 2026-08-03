@@ -59,7 +59,6 @@ WITH created_team AS (
         name,
         market_code,
         phone,
-        email,
         address,
         website,
         created_by
@@ -70,10 +69,9 @@ WITH created_team AS (
         $3,
         $4,
         $5,
-        $6,
-        $7
+        $6
     )
-    RETURNING id, name, market_code, phone, email, address, website, status, created_by, created_at, updated_at
+    RETURNING id, name, market_code, phone, address, website, status, created_by, created_at, updated_at
 ),
 created_owner AS (
     INSERT INTO team_members (
@@ -84,7 +82,7 @@ created_owner AS (
     )
     SELECT
         id,
-        $7,
+        $6,
         'owner',
         'active'
     FROM created_team
@@ -104,7 +102,7 @@ created_wallet AS (
     FROM created_team
     RETURNING team_id
 )
-SELECT created_team.id, created_team.name, created_team.market_code, created_team.phone, created_team.email, created_team.address, created_team.website, created_team.status, created_team.created_by, created_team.created_at, created_team.updated_at
+SELECT created_team.id, created_team.name, created_team.market_code, created_team.phone, created_team.address, created_team.website, created_team.status, created_team.created_by, created_team.created_at, created_team.updated_at
 FROM created_team
 JOIN created_owner
     ON created_owner.team_id = created_team.id
@@ -116,7 +114,6 @@ type CreateTeamWithOwnerParams struct {
 	Name       string     `db:"name" json:"name"`
 	MarketCode string     `db:"market_code" json:"market_code"`
 	Phone      string     `db:"phone" json:"phone"`
-	Email      string     `db:"email" json:"email"`
 	Address    string     `db:"address" json:"address"`
 	Website    *string    `db:"website" json:"website"`
 	OwnerID    *uuid.UUID `db:"owner_id" json:"owner_id"`
@@ -127,7 +124,6 @@ type CreateTeamWithOwnerRow struct {
 	Name       string             `db:"name" json:"name"`
 	MarketCode string             `db:"market_code" json:"market_code"`
 	Phone      string             `db:"phone" json:"phone"`
-	Email      string             `db:"email" json:"email"`
 	Address    string             `db:"address" json:"address"`
 	Website    *string            `db:"website" json:"website"`
 	Status     string             `db:"status" json:"status"`
@@ -141,7 +137,6 @@ func (q *Queries) CreateTeamWithOwner(ctx context.Context, arg CreateTeamWithOwn
 		arg.Name,
 		arg.MarketCode,
 		arg.Phone,
-		arg.Email,
 		arg.Address,
 		arg.Website,
 		arg.OwnerID,
@@ -152,7 +147,6 @@ func (q *Queries) CreateTeamWithOwner(ctx context.Context, arg CreateTeamWithOwn
 		&i.Name,
 		&i.MarketCode,
 		&i.Phone,
-		&i.Email,
 		&i.Address,
 		&i.Website,
 		&i.Status,
@@ -168,7 +162,7 @@ UPDATE teams
 SET status = 'disabled',
     updated_at = now()
 WHERE id = $1
-RETURNING id, name, market_code, phone, email, address, website, status, created_by, created_at, updated_at
+RETURNING id, name, market_code, phone, address, website, status, created_by, created_at, updated_at
 `
 
 type DisableTeamParams struct {
@@ -183,7 +177,6 @@ func (q *Queries) DisableTeam(ctx context.Context, arg DisableTeamParams) (Team,
 		&i.Name,
 		&i.MarketCode,
 		&i.Phone,
-		&i.Email,
 		&i.Address,
 		&i.Website,
 		&i.Status,
@@ -195,7 +188,7 @@ func (q *Queries) DisableTeam(ctx context.Context, arg DisableTeamParams) (Team,
 }
 
 const getTeam = `-- name: GetTeam :one
-SELECT id, name, market_code, phone, email, address, website, status, created_by, created_at, updated_at
+SELECT id, name, market_code, phone, address, website, status, created_by, created_at, updated_at
 FROM teams
 WHERE id = $1
 `
@@ -212,7 +205,6 @@ func (q *Queries) GetTeam(ctx context.Context, arg GetTeamParams) (Team, error) 
 		&i.Name,
 		&i.MarketCode,
 		&i.Phone,
-		&i.Email,
 		&i.Address,
 		&i.Website,
 		&i.Status,
@@ -288,7 +280,7 @@ func (q *Queries) ListTeamMembers(ctx context.Context, arg ListTeamMembersParams
 }
 
 const listTeamsForUser = `-- name: ListTeamsForUser :many
-SELECT t.id, t.name, t.market_code, t.phone, t.email, t.address, t.website, t.status, t.created_by, t.created_at, t.updated_at
+SELECT t.id, t.name, t.market_code, t.phone, t.address, t.website, t.status, t.created_by, t.created_at, t.updated_at
 FROM teams t
 JOIN team_members tm ON tm.team_id = t.id
 WHERE tm.user_id = $1
@@ -315,7 +307,6 @@ func (q *Queries) ListTeamsForUser(ctx context.Context, arg ListTeamsForUserPara
 			&i.Name,
 			&i.MarketCode,
 			&i.Phone,
-			&i.Email,
 			&i.Address,
 			&i.Website,
 			&i.Status,
@@ -354,7 +345,7 @@ UPDATE teams
 SET name = $1,
     updated_at = now()
 WHERE id = $2
-RETURNING id, name, market_code, phone, email, address, website, status, created_by, created_at, updated_at
+RETURNING id, name, market_code, phone, address, website, status, created_by, created_at, updated_at
 `
 
 type UpdateTeamParams struct {
@@ -370,7 +361,6 @@ func (q *Queries) UpdateTeam(ctx context.Context, arg UpdateTeamParams) (Team, e
 		&i.Name,
 		&i.MarketCode,
 		&i.Phone,
-		&i.Email,
 		&i.Address,
 		&i.Website,
 		&i.Status,

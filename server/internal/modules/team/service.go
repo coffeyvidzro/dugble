@@ -76,16 +76,12 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Team, error) {
 	if err != nil {
 		return Team{}, err
 	}
-	email, err := normalizeTeamEmail(req.Email)
-	if err != nil {
-		return Team{}, err
-	}
 	address, err := validateRequiredTeamField(req.Address, "Address")
 	if err != nil {
 		return Team{}, err
 	}
 	team, err := s.repository.CreateWithOwner(
-		ctx, name, marketCode, phone, email, address, normalizeOptionalTeamField(req.Website), principal.UserID,
+		ctx, name, marketCode, phone, address, normalizeOptionalTeamField(req.Website), principal.UserID,
 	)
 	if err != nil {
 		return Team{}, apperrors.NewInternal("Unable to create team", err)
@@ -163,11 +159,7 @@ func (s *Service) Leave(ctx context.Context, teamID string) error {
 	if tenantContext.Scope.Role == RoleOwner {
 		return apperrors.NewBadRequest("Team owner cannot leave the team")
 	}
-	if err := s.repository.RemoveMember(
-		ctx,
-		tenantContext.Scope.TeamID,
-		tenantContext.Actor.UserID,
-	); err != nil {
+	if err := s.repository.RemoveMember(ctx, tenantContext.Scope.TeamID, tenantContext.Actor.UserID); err != nil {
 		return apperrors.NewInternal("Unable to leave team", err)
 	}
 	audit.Record(ctx, tenantContext, audit.Event{Action: "team_member.left", ResourceType: "team_member", ResourceID: tenantContext.Actor.UserID.String()})
@@ -198,12 +190,7 @@ func (s *Service) RemoveMember(ctx context.Context, teamID string, userID string
 	return nil
 }
 
-func (s *Service) UpdateMemberRole(
-	ctx context.Context,
-	teamID string,
-	userID string,
-	req UpdateMemberRoleRequest,
-) (Member, error) {
+func (s *Service) UpdateMemberRole(ctx context.Context, teamID string, userID string, req UpdateMemberRoleRequest) (Member, error) {
 	tenantContext, err := requireTenantPermission(ctx, teamID, tenant.PermissionTeamMemberRole)
 	if err != nil {
 		return Member{}, err
@@ -257,11 +244,7 @@ func (s *Service) notifyMemberChange(ctx context.Context, teamID, userID uuid.UU
 	}
 }
 
-func (s *Service) InviteMember(
-	ctx context.Context,
-	teamID string,
-	req InviteMemberRequest,
-) (Invitation, error) {
+func (s *Service) InviteMember(ctx context.Context, teamID string, req InviteMemberRequest) (Invitation, error) {
 	tenantContext, err := requireTenantPermission(ctx, teamID, tenant.PermissionTeamMemberInvite)
 	if err != nil {
 		return Invitation{}, err
@@ -283,15 +266,7 @@ func (s *Service) InviteMember(
 		return Invitation{}, apperrors.NewInternal("Unable to generate invitation token", err)
 	}
 	expiresAt := time.Now().UTC().Add(teamInvitationTTL)
-	invitation, err := s.repository.CreateInvitation(
-		ctx,
-		tenantContext.Scope.TeamID,
-		email,
-		role,
-		authnz.HashSessionToken(token),
-		tenantContext.Actor.UserID,
-		expiresAt,
-	)
+	invitation, err := s.repository.CreateInvitation(ctx, tenantContext.Scope.TeamID, email, role, authnz.HashSessionToken(token), tenantContext.Actor.UserID, expiresAt)
 	if err != nil {
 		return Invitation{}, apperrors.NewInternal("Unable to create team invitation", err)
 	}
@@ -303,29 +278,15 @@ func (s *Service) InviteMember(
 	if err := s.sendTeamInvitation(ctx, invitation, team, inviterDisplayName(principal)); err != nil {
 		return Invitation{}, err
 	}
-	audit.Record(ctx, tenantContext, audit.Event{
-		Action: "team_member.invited", ResourceType: "team_invitation", ResourceID: invitation.ID,
-		Metadata: map[string]any{"email": invitation.Email, "role": invitation.Role, "expires_at": invitation.ExpiresAt},
-	})
+	audit.Record(ctx, tenantContext, audit.Event{Action: "team_member.invited", ResourceType: "team_invitation", ResourceID: invitation.ID, Metadata: map[string]any{"email": invitation.Email, "role": invitation.Role, "expires_at": invitation.ExpiresAt}})
 	return invitation, nil
 }
 
-func (s *Service) sendTeamInvitation(
-	ctx context.Context,
-	invitation Invitation,
-	team Team,
-	inviterName string,
-) error {
+func (s *Service) sendTeamInvitation(ctx context.Context, invitation Invitation, team Team, inviterName string) error {
 	if s.notifier == nil {
 		return nil
 	}
-	if err := s.notifier.SendTeamInvitation(ctx, notifications.SendTeamInvitationInput{
-		ToEmail:     invitation.Email,
-		TeamName:    team.Name,
-		InviterName: inviterName,
-		Role:        invitation.Role,
-		Token:       invitation.Token,
-	}); err != nil {
+	if err := s.notifier.SendTeamInvitation(ctx, notifications.SendTeamInvitationInput{ToEmail: invitation.Email, TeamName: team.Name, InviterName: inviterName, Role: invitation.Role, Token: invitation.Token}); err != nil {
 		return apperrors.NewInternal("Unable to deliver team invitation", err)
 	}
 	return nil
@@ -336,7 +297,6 @@ func inviterDisplayName(principal authnz.Principal) string {
 	if name != "" {
 		return name
 	}
-
 	return strings.TrimSpace(principal.Email)
 }
 
@@ -346,9 +306,7 @@ func (s *Service) GetInvitation(ctx context.Context, token string) (Invitation, 
 		return Invitation{}, err
 	}
 	if !strings.EqualFold(invitation.Email, principal.Email) {
-		return Invitation{}, apperrors.NewForbidden(
-			"Invitation does not belong to authenticated user",
-		)
+		return Invitation{}, apperrors.NewForbidden("Invitation does not belong to authenticated user")
 	}
 	return invitation, nil
 }
@@ -359,9 +317,7 @@ func (s *Service) AcceptInvitation(ctx context.Context, token string) (Invitatio
 		return Invitation{}, err
 	}
 	if !strings.EqualFold(invitation.Email, principal.Email) {
-		return Invitation{}, apperrors.NewForbidden(
-			"Invitation does not belong to authenticated user",
-		)
+		return Invitation{}, apperrors.NewForbidden("Invitation does not belong to authenticated user")
 	}
 	teamID, err := uuid.Parse(invitation.TeamID)
 	if err != nil {
@@ -370,14 +326,7 @@ func (s *Service) AcceptInvitation(ctx context.Context, token string) (Invitatio
 	if _, err := s.repository.GetMember(ctx, teamID, principal.UserID); err == nil {
 		return Invitation{}, apperrors.NewBadRequest("User is already a team member")
 	}
-	accepted, err := s.repository.AcceptInvitationAndCreateMember(
-		ctx,
-		authnz.HashSessionToken(normalizeInvitationToken(token)),
-		teamID,
-		principal.UserID,
-		invitation.Role,
-		"active",
-	)
+	accepted, err := s.repository.AcceptInvitationAndCreateMember(ctx, authnz.HashSessionToken(normalizeInvitationToken(token)), teamID, principal.UserID, invitation.Role, "active")
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrInvitationNotAccepted):
@@ -388,10 +337,7 @@ func (s *Service) AcceptInvitation(ctx context.Context, token string) (Invitatio
 			return Invitation{}, apperrors.NewInternal("Unable to accept invitation", err)
 		}
 	}
-	audit.Record(ctx, tenant.AccessContext{
-		Actor: tenant.Actor{Type: tenant.ActorTypeUser, UserID: principal.UserID, SessionID: principal.SessionID},
-		Scope: tenant.Scope{TeamID: teamID, Role: invitation.Role, Status: tenant.StatusActive},
-	}, audit.Event{Action: "team_invitation.accepted", ResourceType: "team_invitation", ResourceID: accepted.ID})
+	audit.Record(ctx, tenant.AccessContext{Actor: tenant.Actor{Type: tenant.ActorTypeUser, UserID: principal.UserID, SessionID: principal.SessionID}, Scope: tenant.Scope{TeamID: teamID, Role: invitation.Role, Status: tenant.StatusActive}}, audit.Event{Action: "team_invitation.accepted", ResourceType: "team_invitation", ResourceID: accepted.ID})
 	return accepted, nil
 }
 
@@ -401,34 +347,21 @@ func (s *Service) DeclineInvitation(ctx context.Context, token string) (Invitati
 		return Invitation{}, err
 	}
 	if !strings.EqualFold(invitation.Email, principal.Email) {
-		return Invitation{}, apperrors.NewForbidden(
-			"Invitation does not belong to authenticated user",
-		)
+		return Invitation{}, apperrors.NewForbidden("Invitation does not belong to authenticated user")
 	}
-	declined, err := s.repository.DeclineInvitation(
-		ctx,
-		authnz.HashSessionToken(normalizeInvitationToken(token)),
-	)
+	declined, err := s.repository.DeclineInvitation(ctx, authnz.HashSessionToken(normalizeInvitationToken(token)))
 	if err != nil {
 		return Invitation{}, apperrors.NewBadRequest("Invitation token is invalid or expired")
 	}
 	teamID, _ := uuid.Parse(declined.TeamID)
-	audit.Record(ctx, tenant.AccessContext{
-		Actor: tenant.Actor{Type: tenant.ActorTypeUser, UserID: principal.UserID, SessionID: principal.SessionID},
-		Scope: tenant.Scope{TeamID: teamID},
-	}, audit.Event{Action: "team_invitation.declined", ResourceType: "team_invitation", ResourceID: declined.ID})
+	audit.Record(ctx, tenant.AccessContext{Actor: tenant.Actor{Type: tenant.ActorTypeUser, UserID: principal.UserID, SessionID: principal.SessionID}, Scope: tenant.Scope{TeamID: teamID}}, audit.Event{Action: "team_invitation.declined", ResourceType: "team_invitation", ResourceID: declined.ID})
 	return declined, nil
 }
 
-func (s *Service) invitationForPrincipal(
-	ctx context.Context,
-	token string,
-) (authnz.Principal, Invitation, error) {
+func (s *Service) invitationForPrincipal(ctx context.Context, token string) (authnz.Principal, Invitation, error) {
 	principal, ok := authnz.PrincipalFromContext(ctx)
 	if !ok {
-		return authnz.Principal{}, Invitation{}, apperrors.NewUnauthorized(
-			"Authentication is required",
-		)
+		return authnz.Principal{}, Invitation{}, apperrors.NewUnauthorized("Authentication is required")
 	}
 	token, err := validateInvitationToken(token)
 	if err != nil {
@@ -436,18 +369,12 @@ func (s *Service) invitationForPrincipal(
 	}
 	invitation, err := s.repository.GetInvitationByTokenHash(ctx, authnz.HashSessionToken(token))
 	if err != nil {
-		return authnz.Principal{}, Invitation{}, apperrors.NewBadRequest(
-			"Invitation token is invalid or expired",
-		)
+		return authnz.Principal{}, Invitation{}, apperrors.NewBadRequest("Invitation token is invalid or expired")
 	}
 	return principal, invitation, nil
 }
 
-func requireTenantPermission(
-	ctx context.Context,
-	teamID string,
-	permission tenant.Permission,
-) (tenant.AccessContext, error) {
+func requireTenantPermission(ctx context.Context, teamID string, permission tenant.Permission) (tenant.AccessContext, error) {
 	tenantContext, decision := tenant.ResolveAccess(ctx, permission)
 	if !decision.Allowed {
 		return tenant.AccessContext{}, apperrors.NewForbidden(decision.Reason)

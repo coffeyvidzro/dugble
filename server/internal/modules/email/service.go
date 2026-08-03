@@ -107,12 +107,13 @@ func (s *Service) Cancel(ctx context.Context, value string) (MutationResponse, e
 }
 
 type Service struct {
-	repository    *Repository
-	delivery      DeliveryQueue
-	config        ServiceConfig
-	senderDomains senderDomainResolver
-	routes        customerRouteResolver
-	billing       platformbilling.EmailBilling
+	repository        *Repository
+	delivery          DeliveryQueue
+	config            ServiceConfig
+	senderDomains     senderDomainResolver
+	routes            customerRouteResolver
+	sandboxRecipients sandboxRecipientAuthorizer
+	billing           platformbilling.EmailBilling
 }
 
 type senderDomainResolver interface {
@@ -121,6 +122,10 @@ type senderDomainResolver interface {
 
 type customerRouteResolver interface {
 	ResolveActiveCustomerRouteTx(context.Context, pgx.Tx, uuid.UUID, string, string, string) (platformemail.DeliveryRoute, error)
+}
+
+type sandboxRecipientAuthorizer interface {
+	AuthorizeSandboxRecipients(context.Context, uuid.UUID, []EmailAddress, []EmailAddress, []EmailAddress) error
 }
 
 type ServiceConfig struct {
@@ -139,7 +144,7 @@ func NewService(
 ) *Service {
 	service := &Service{
 		repository: repository, delivery: delivery, config: config,
-		senderDomains: repository, routes: repository, billing: billing,
+		senderDomains: repository, routes: repository, sandboxRecipients: repository, billing: billing,
 	}
 	for _, dependency := range dependencies {
 		if resolver, ok := dependency.(senderDomainResolver); ok {
@@ -147,6 +152,9 @@ func NewService(
 		}
 		if resolver, ok := dependency.(customerRouteResolver); ok {
 			service.routes = resolver
+		}
+		if authorizer, ok := dependency.(sandboxRecipientAuthorizer); ok {
+			service.sandboxRecipients = authorizer
 		}
 	}
 	return service
@@ -186,12 +194,14 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (Message, error) {
 		return Message{}, apperrors.NewInternal("Unable to begin email transaction", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	validated.DeliveryRoute, err = s.routes.ResolveActiveCustomerRouteTx(ctx, tx, tc.Scope.TeamID, validated.Provider, validated.ProviderRegion, validated.MessageType)
-	if errors.Is(err, ErrActiveEmailTenantNotFound) {
-		return Message{}, apperrors.NewConflict("Customer email tenant is not active")
-	}
-	if err != nil {
-		return Message{}, apperrors.NewInternal("Unable to resolve customer email route", err)
+	if validated.DeliveryRoute.SESTenantName == "" {
+		validated.DeliveryRoute, err = s.routes.ResolveActiveCustomerRouteTx(ctx, tx, tc.Scope.TeamID, validated.Provider, validated.ProviderRegion, validated.MessageType)
+		if errors.Is(err, ErrActiveEmailTenantNotFound) {
+			return Message{}, apperrors.NewConflict("Customer email tenant is not active")
+		}
+		if err != nil {
+			return Message{}, apperrors.NewInternal("Unable to resolve customer email route", err)
+		}
 	}
 	m, err := s.repository.CreateTx(ctx, tx, tc.Scope.TeamID, validated)
 	if err != nil {
@@ -300,12 +310,14 @@ func (s *Service) BatchSend(ctx context.Context, req BatchSendRequest) ([]Messag
 	result := make([]Message, 0, len(validated))
 	committedAuthorizations := make([]platformbilling.CommittedAuthorization, 0, len(validated))
 	for index := range validated {
-		validated[index].DeliveryRoute, err = s.routes.ResolveActiveCustomerRouteTx(ctx, tx, tc.Scope.TeamID, validated[index].Provider, validated[index].ProviderRegion, validated[index].MessageType)
-		if errors.Is(err, ErrActiveEmailTenantNotFound) {
-			return nil, apperrors.NewConflict("Customer email tenant is not active")
-		}
-		if err != nil {
-			return nil, apperrors.NewInternal("Unable to resolve customer email route", err)
+		if validated[index].DeliveryRoute.SESTenantName == "" {
+			validated[index].DeliveryRoute, err = s.routes.ResolveActiveCustomerRouteTx(ctx, tx, tc.Scope.TeamID, validated[index].Provider, validated[index].ProviderRegion, validated[index].MessageType)
+			if errors.Is(err, ErrActiveEmailTenantNotFound) {
+				return nil, apperrors.NewConflict("Customer email tenant is not active")
+			}
+			if err != nil {
+				return nil, apperrors.NewInternal("Unable to resolve customer email route", err)
+			}
 		}
 		message, createErr := s.repository.CreateTx(ctx, tx, tc.Scope.TeamID, validated[index])
 		if createErr != nil {
@@ -369,9 +381,23 @@ func (s *Service) authorizeSender(ctx context.Context, teamID uuid.UUID, message
 		if message.MessageType != MessageTypeTransactional {
 			return apperrors.NewBadRequest("The onboarding identity supports transactional email only")
 		}
+		if s.sandboxRecipients == nil {
+			return apperrors.NewInternal("Sandbox recipient authorization is not configured", nil)
+		}
+		if err := s.sandboxRecipients.AuthorizeSandboxRecipients(ctx, teamID, message.To, message.CC, message.BCC); err != nil {
+			switch {
+			case errors.Is(err, ErrSandboxTeamEmailNotVerified):
+				return apperrors.NewForbidden("Verify the team email before using the runnage.dev test sender")
+			case errors.Is(err, ErrSandboxRecipientRestricted):
+				return apperrors.NewForbidden("The runnage.dev test sender can only deliver to the verified team email")
+			default:
+				return apperrors.NewInternal("Unable to authorize sandbox recipient", err)
+			}
+		}
 		message.Provider = provider
 		message.ProviderRegion = region
 		message.SenderDomainID = nil
+		message.DeliveryRoute = platformemail.CustomerSandboxDeliveryRoute()
 		return nil
 	}
 
