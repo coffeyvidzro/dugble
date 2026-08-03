@@ -8,17 +8,21 @@ import { RangeSelector } from "./range-selector";
 import { EmailHeader } from "./email-header";
 import { StatsGrid } from "./stats-grid";
 import {
-    buildRecentEmails,
     EMAIL_RANGE_DAYS,
     getEmailStats,
     SENDING_DOMAINS,
     type EmailRange,
 } from "./types";
+import { generateEmailLog } from "../emails-page/types";
+
+const INITIAL_LOG_SEED = 42;
 
 export function EmailOverview() {
     const [range, setRange] = useState<EmailRange>("30d");
     const stats = getEmailStats(range);
-    const recentEmails = buildRecentEmails();
+
+    const recentEmails = generateEmailLog(50, INITIAL_LOG_SEED).slice(0, 5);
+
     const deliverability = stats.find((s) => s.id === "deliverability");
 
     return (
