@@ -3,26 +3,30 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 BEGIN
+    -- The shared onboarding identity uses Dugble's platform sandbox tenant and
+    -- does not require a dedicated email_tenants row for the customer team.
     IF NEW.sender_domain_id IS NULL THEN
         IF NEW.message_type <> 'transactional' THEN
             RAISE EXCEPTION 'onboarding identity supports transactional email only'
                 USING ERRCODE = '23514';
         END IF;
-    ELSE
-        IF NOT EXISTS (
-            SELECT 1
-            FROM sender_domains AS domain
-            WHERE domain.id = NEW.sender_domain_id
-              AND domain.team_id = NEW.team_id
-              AND domain.provider = NEW.delivery_provider
-              AND domain.provider_region = NEW.provider_region
-              AND domain.status = 'verified'
-              AND domain.disabled_at IS NULL
-              AND domain.health_status <> 'degraded'
-        ) THEN
-            RAISE EXCEPTION 'customer sender domain is not verified, enabled, and healthy'
-                USING ERRCODE = '23514';
-        END IF;
+
+        RETURN NEW;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM sender_domains AS domain
+        WHERE domain.id = NEW.sender_domain_id
+          AND domain.team_id = NEW.team_id
+          AND domain.provider = NEW.delivery_provider
+          AND domain.provider_region = NEW.provider_region
+          AND domain.status = 'verified'
+          AND domain.disabled_at IS NULL
+          AND domain.health_status <> 'degraded'
+    ) THEN
+        RAISE EXCEPTION 'customer sender domain is not verified, enabled, and healthy'
+            USING ERRCODE = '23514';
     END IF;
 
     -- Routing names and header keys are application-owned constants. The
