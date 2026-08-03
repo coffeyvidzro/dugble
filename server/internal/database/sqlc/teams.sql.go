@@ -136,28 +136,11 @@ func (q *Queries) CreateTeamWithOwner(ctx context.Context, arg CreateTeamWithOwn
 }
 
 const disableTeam = `-- name: DisableTeam :one
-WITH disabled_team AS (
-    UPDATE teams AS team
-    SET status = 'disabled',
-        updated_at = now()
-    WHERE team.id = $1
-    RETURNING team.id
-), canceled_webhook_deliveries AS (
-    UPDATE webhook_deliveries AS delivery
-    SET status = 'canceled',
-        last_error = 'Team disabled before webhook delivery',
-        locked_at = NULL,
-        locked_by = NULL,
-        updated_at = now()
-    FROM webhook_events AS event
-    WHERE event.id = delivery.event_id
-      AND event.team_id = (SELECT disabled_team.id FROM disabled_team)
-      AND delivery.status IN ('pending', 'retrying')
-    RETURNING delivery.id
-)
-SELECT team.id, team.name, team.market_code, team.status, team.created_by, team.created_at, team.updated_at
-FROM teams AS team
-JOIN disabled_team ON disabled_team.id = team.id
+UPDATE teams
+SET status = 'disabled',
+    updated_at = now()
+WHERE id = $1
+RETURNING id, name, market_code, status, created_by, created_at, updated_at
 `
 
 type DisableTeamParams struct {
