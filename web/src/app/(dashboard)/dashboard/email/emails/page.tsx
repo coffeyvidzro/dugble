@@ -1,19 +1,18 @@
-import { Inbox } from "lucide-react";
-import { PlaceholderPage } from "@/components/dashboard/placeholder-page";
+import { EmailsLogView } from "@/components/dashboard/email/emails-page/emails-log-view";
 import { constructMetadata } from "@/utils/metadata";
+
 export const metadata = constructMetadata({
-  title: "Send Email",
-  description: "Send a transactional email from your Dugble workspace.",
-  path: "/dashboard/email/emails",
-  preset: "dashboard",
+    title: "Emails",
+    description:
+        "Browse sent and received email activity, filter by status or date, and send a one-off transactional email.",
+    path: "/dashboard/email/emails",
+    preset: "dashboard",
 });
 
 export default function Page() {
-  return (
-    <PlaceholderPage
-      title="Emails"
-      description="Outbox and compose."
-      icon={Inbox}
-    />
-  );
+    return (
+        <div className="flex-1 w-full bg-background min-h-screen pt-8 pb-16 px-4 md:px-8">
+            <EmailsLogView />
+        </div>
+    );
 }
