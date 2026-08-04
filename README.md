@@ -175,6 +175,18 @@ Dugble sends outbound email through AWS SES and accepts SES lifecycle feedback t
 
 Required AWS environment variables are `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_FROM_EMAIL`. Set `AWS_SES_CONFIGURATION_SET` when SES events are attached to a configuration set; set `AWS_SNS_TOPIC_ARNS` in API deployments so unsigned or unexpected topics cannot ingest feedback.
 
+The shared API accepts feedback from both supported SES regions when both exact
+regional topic ARNs are allowlisted:
+
+```env
+AWS_SNS_TOPIC_ARNS=arn:aws:sns:eu-north-1:123456789012:dugble-ses-events,arn:aws:sns:us-east-1:123456789012:dugble-ses-events
+```
+
+Configure the `dugble-transactional` and `dugble-marketing` SES configuration
+sets in each region to publish to the SNS topic in that same region, and
+subscribe both topics to `POST /integrations/aws/sns/ses`. Replace the example
+account ID and topic names with the deployed values; topic matching is exact.
+
 ### Run the full stack
 
 ```sh
