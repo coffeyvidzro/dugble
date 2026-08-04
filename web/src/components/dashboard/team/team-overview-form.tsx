@@ -151,7 +151,7 @@ export function TeamOverviewForm({
                             onChange={(event) => setName(event.target.value)}
                             placeholder="e.g. Acme Corp"
                             maxLength={MAX_NAME_LENGTH}
-                            className="max-w-md border-border bg-muted/20 text-foreground shadow-sm transition-shadow focus-visible:border-primary focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-primary/40"
+                            className="max-w-sm rounded-lg border border-border/60 bg-muted/20 py-2 pl-4 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
                         />
                         <div className="min-h-4">
                             {avatarError ? (

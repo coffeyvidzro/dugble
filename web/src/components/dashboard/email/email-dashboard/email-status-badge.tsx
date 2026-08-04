@@ -10,7 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { EMAIL_STATUS_LABEL, type EmailStatus } from "./types";
 
-const STATUS_CONFIG: Record<
+export const EMAIL_STATUS_CONFIG: Record<
     EmailStatus,
     { icon: typeof Check; className: string; pulse?: boolean }
 > = {
@@ -24,7 +24,7 @@ const STATUS_CONFIG: Record<
 };
 
 export function EmailStatusBadge({ status }: { status: EmailStatus }) {
-    const config = STATUS_CONFIG[status];
+    const config = EMAIL_STATUS_CONFIG[status];
     const Icon = config.icon;
 
     return (

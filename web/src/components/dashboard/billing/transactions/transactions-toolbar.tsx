@@ -1,4 +1,4 @@
-import { Download, Search } from "lucide-react";
+import { Download, Search, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -51,8 +51,18 @@ export function TransactionsToolbar({
                         value={search}
                         onChange={(event) => onSearchChange(event.target.value)}
                         placeholder="Search description or reference"
-                        className="h-8 w-56 border-border bg-muted/20 pl-8 text-sm text-foreground shadow-sm focus-visible:border-primary focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-primary/40 sm:w-64"
+                        className="w-full rounded-lg border border-border/60 bg-muted/20 py-2 pl-9 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
                     />
+                    {search.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => onSearchChange("")}
+                            aria-label="Clear search"
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                            <X className="size-3.5" />
+                        </button>
+                    )}
                 </div>
                 <Button
                     type="button"

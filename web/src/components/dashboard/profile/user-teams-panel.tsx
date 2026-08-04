@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import { Building2, Search } from "lucide-react";
+import { Building2, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -51,8 +51,18 @@ export function UserTeamsPanel({
                             value={query}
                             onChange={(event) => setQuery(event.target.value)}
                             placeholder="Search teams"
-                            className="h-8 w-40 bg-background pl-8 text-sm sm:w-52"
+                            className="w-full rounded-lg border border-border/60 bg-muted/20 py-2 pl-9 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
                         />
+                        {query.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => setQuery("")}
+                                aria-label="Clear search"
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                                <X className="size-3.5" />
+                            </button>
+                        )}
                     </div>
                 )}
             </div>

@@ -1,4 +1,4 @@
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { EmailFilterSelect } from "./email-filter-select";
 import {
@@ -37,8 +37,18 @@ export function EmailsToolbar({
                     value={query}
                     onChange={(event) => onQueryChange(event.target.value)}
                     placeholder="Search by recipient or subject"
-                    className="h-8 w-full border-foreground/15 bg-background pl-8 text-sm"
+                    className="w-full rounded-lg border border-border/60 bg-muted/20 py-2 pl-9 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
                 />
+                {query.length > 0 && (
+                    <button
+                        type="button"
+                        onClick={() => onQueryChange("")}
+                        aria-label="Clear search"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                        <X className="size-3.5" />
+                    </button>
+                )}
             </div>
 
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">

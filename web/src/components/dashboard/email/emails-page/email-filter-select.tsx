@@ -1,3 +1,4 @@
+import { Filter } from "lucide-react";
 import {
     Select,
     SelectContent,
@@ -20,12 +21,15 @@ export function EmailFilterSelect<T extends string>({
     return (
         <Select value={value} onValueChange={(next) => onChange(next as T)}>
             <SelectTrigger
-                className="h-8 w-auto min-w-32 border-foreground/15 bg-background text-xs"
+                className="inline-flex h-auto w-auto items-center gap-1.5 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted/40 [&>svg]:size-3.5 [&>svg]:shrink-0 [&>svg]:text-muted-foreground"
                 aria-label={label}
             >
-                <SelectValue />
+                <Filter className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="max-w-32 truncate text-left">
+                    <SelectValue placeholder={label} />
+                </span>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="max-h-80 w-52 bg-popover mask-none [-webkit-mask-image:none]">
                 {options.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                         {option.label}
