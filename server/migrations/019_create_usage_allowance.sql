@@ -1,0 +1,101 @@
+CREATE TABLE IF NOT EXISTS usage_allowance_buckets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE RESTRICT,
+    meter TEXT NOT NULL,
+    period_start TIMESTAMPTZ NOT NULL,
+    period_end TIMESTAMPTZ NOT NULL,
+    included_quantity BIGINT NOT NULL,
+    consumed_quantity BIGINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT uq_usage_allowance_buckets_team_meter_period
+        UNIQUE (team_id, meter, period_start, period_end),
+    CONSTRAINT uq_usage_allowance_buckets_id_team
+        UNIQUE (id, team_id),
+    CONSTRAINT chk_usage_allowance_buckets_meter
+        CHECK (length(trim(meter)) > 0 AND meter !~ '[[:space:]]'),
+    CONSTRAINT chk_usage_allowance_buckets_period
+        CHECK (period_end > period_start),
+    CONSTRAINT chk_usage_allowance_buckets_included_quantity
+        CHECK (included_quantity >= 0),
+    CONSTRAINT chk_usage_allowance_buckets_consumed_quantity
+        CHECK (
+            consumed_quantity >= 0
+            AND consumed_quantity <= included_quantity
+        )
+);
+
+CREATE INDEX IF NOT EXISTS idx_usage_allowance_buckets_team_meter_period
+    ON usage_allowance_buckets (
+        team_id,
+        meter,
+        period_start DESC,
+        period_end DESC
+    );
+
+CREATE TABLE IF NOT EXISTS usage_authorizations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE RESTRICT,
+    meter TEXT NOT NULL,
+    reference_id TEXT NOT NULL,
+    allowance_bucket_id UUID,
+    total_quantity BIGINT NOT NULL,
+    allowance_quantity BIGINT NOT NULL DEFAULT 0,
+    billable_quantity BIGINT NOT NULL DEFAULT 0,
+    unit_cost_units BIGINT NOT NULL DEFAULT 0,
+    amount_units BIGINT NOT NULL DEFAULT 0,
+    currency CHAR(3) NOT NULL,
+    tier TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT uq_usage_authorizations_team_meter_reference
+        UNIQUE (team_id, meter, reference_id),
+    CONSTRAINT fk_usage_authorizations_bucket_same_team
+        FOREIGN KEY (allowance_bucket_id, team_id)
+        REFERENCES usage_allowance_buckets (id, team_id)
+        ON DELETE RESTRICT,
+    CONSTRAINT chk_usage_authorizations_meter
+        CHECK (length(trim(meter)) > 0 AND meter !~ '[[:space:]]'),
+    CONSTRAINT chk_usage_authorizations_reference
+        CHECK (length(trim(reference_id)) > 0),
+    CONSTRAINT chk_usage_authorizations_quantities
+        CHECK (
+            total_quantity > 0
+            AND allowance_quantity >= 0
+            AND billable_quantity >= 0
+            AND allowance_quantity + billable_quantity = total_quantity
+        ),
+    CONSTRAINT chk_usage_authorizations_bucket
+        CHECK (
+            (allowance_quantity = 0 AND allowance_bucket_id IS NULL)
+            OR (allowance_quantity > 0 AND allowance_bucket_id IS NOT NULL)
+        ),
+    CONSTRAINT chk_usage_authorizations_cost
+        CHECK (
+            unit_cost_units >= 0
+            AND amount_units >= 0
+            AND (
+                (billable_quantity = 0 AND amount_units = 0)
+                OR (
+                    billable_quantity > 0
+                    AND unit_cost_units > 0
+                    AND amount_units = billable_quantity * unit_cost_units
+                )
+            )
+        ),
+    CONSTRAINT chk_usage_authorizations_currency
+        CHECK (currency ~ '^[A-Z]{3}$'),
+    CONSTRAINT chk_usage_authorizations_tier
+        CHECK (length(trim(tier)) > 0 AND tier !~ '[[:space:]]')
+);
+
+CREATE INDEX IF NOT EXISTS idx_usage_authorizations_team_created
+    ON usage_authorizations (team_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_usage_authorizations_team_meter_created
+    ON usage_authorizations (team_id, meter, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_usage_authorizations_allowance_bucket
+    ON usage_authorizations (allowance_bucket_id, created_at DESC)
+    WHERE allowance_bucket_id IS NOT NULL;
