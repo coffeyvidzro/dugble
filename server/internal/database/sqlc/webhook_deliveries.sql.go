@@ -185,7 +185,7 @@ WHERE event.id = $3
   AND team.status = 'active'
 ON CONFLICT (event_id, endpoint_id) DO UPDATE
 SET event_id = EXCLUDED.event_id
-RETURNING id, event_id, endpoint_id, status, attempt_count, next_attempt_at, last_attempt_at, response_status, response_body, last_error, delivered_at, locked_at, locked_by, created_at, updated_at
+RETURNING id, event_id, endpoint_id, status, attempt_count, replay_count, next_attempt_at, last_attempt_at, last_replayed_at, response_status, response_body, last_error, delivered_at, locked_at, locked_by, created_at, updated_at
 `
 
 type CreateWebhookDeliveryParams struct {
@@ -203,8 +203,10 @@ func (q *Queries) CreateWebhookDelivery(ctx context.Context, arg CreateWebhookDe
 		&i.EndpointID,
 		&i.Status,
 		&i.AttemptCount,
+		&i.ReplayCount,
 		&i.NextAttemptAt,
 		&i.LastAttemptAt,
+		&i.LastReplayedAt,
 		&i.ResponseStatus,
 		&i.ResponseBody,
 		&i.LastError,
@@ -218,7 +220,7 @@ func (q *Queries) CreateWebhookDelivery(ctx context.Context, arg CreateWebhookDe
 }
 
 const getWebhookDelivery = `-- name: GetWebhookDelivery :one
-SELECT delivery.id, delivery.event_id, delivery.endpoint_id, delivery.status, delivery.attempt_count, delivery.next_attempt_at, delivery.last_attempt_at, delivery.response_status, delivery.response_body, delivery.last_error, delivery.delivered_at, delivery.locked_at, delivery.locked_by, delivery.created_at, delivery.updated_at
+SELECT delivery.id, delivery.event_id, delivery.endpoint_id, delivery.status, delivery.attempt_count, delivery.replay_count, delivery.next_attempt_at, delivery.last_attempt_at, delivery.last_replayed_at, delivery.response_status, delivery.response_body, delivery.last_error, delivery.delivered_at, delivery.locked_at, delivery.locked_by, delivery.created_at, delivery.updated_at
 FROM webhook_deliveries AS delivery
 JOIN webhook_events AS event ON event.id = delivery.event_id
 JOIN teams AS team ON team.id = event.team_id
@@ -241,8 +243,10 @@ func (q *Queries) GetWebhookDelivery(ctx context.Context, arg GetWebhookDelivery
 		&i.EndpointID,
 		&i.Status,
 		&i.AttemptCount,
+		&i.ReplayCount,
 		&i.NextAttemptAt,
 		&i.LastAttemptAt,
+		&i.LastReplayedAt,
 		&i.ResponseStatus,
 		&i.ResponseBody,
 		&i.LastError,
@@ -256,7 +260,7 @@ func (q *Queries) GetWebhookDelivery(ctx context.Context, arg GetWebhookDelivery
 }
 
 const listWebhookDeliveriesForEvent = `-- name: ListWebhookDeliveriesForEvent :many
-SELECT delivery.id, delivery.event_id, delivery.endpoint_id, delivery.status, delivery.attempt_count, delivery.next_attempt_at, delivery.last_attempt_at, delivery.response_status, delivery.response_body, delivery.last_error, delivery.delivered_at, delivery.locked_at, delivery.locked_by, delivery.created_at, delivery.updated_at
+SELECT delivery.id, delivery.event_id, delivery.endpoint_id, delivery.status, delivery.attempt_count, delivery.replay_count, delivery.next_attempt_at, delivery.last_attempt_at, delivery.last_replayed_at, delivery.response_status, delivery.response_body, delivery.last_error, delivery.delivered_at, delivery.locked_at, delivery.locked_by, delivery.created_at, delivery.updated_at
 FROM webhook_deliveries AS delivery
 JOIN webhook_events AS event ON event.id = delivery.event_id
 JOIN teams AS team ON team.id = event.team_id
@@ -295,8 +299,10 @@ func (q *Queries) ListWebhookDeliveriesForEvent(ctx context.Context, arg ListWeb
 			&i.EndpointID,
 			&i.Status,
 			&i.AttemptCount,
+			&i.ReplayCount,
 			&i.NextAttemptAt,
 			&i.LastAttemptAt,
+			&i.LastReplayedAt,
 			&i.ResponseStatus,
 			&i.ResponseBody,
 			&i.LastError,
@@ -328,7 +334,7 @@ SET status = 'failed',
     updated_at = now()
 WHERE delivery.id = $4
   AND delivery.locked_by = $5
-RETURNING delivery.id, delivery.event_id, delivery.endpoint_id, delivery.status, delivery.attempt_count, delivery.next_attempt_at, delivery.last_attempt_at, delivery.response_status, delivery.response_body, delivery.last_error, delivery.delivered_at, delivery.locked_at, delivery.locked_by, delivery.created_at, delivery.updated_at
+RETURNING delivery.id, delivery.event_id, delivery.endpoint_id, delivery.status, delivery.attempt_count, delivery.replay_count, delivery.next_attempt_at, delivery.last_attempt_at, delivery.last_replayed_at, delivery.response_status, delivery.response_body, delivery.last_error, delivery.delivered_at, delivery.locked_at, delivery.locked_by, delivery.created_at, delivery.updated_at
 ), update_endpoint AS (
 UPDATE webhook_endpoints
 SET consecutive_failures = consecutive_failures + 1,
@@ -349,7 +355,7 @@ SET consecutive_failures = consecutive_failures + 1,
 WHERE id = (SELECT endpoint_id FROM failed)
 RETURNING id
 )
-SELECT id, event_id, endpoint_id, status, attempt_count, next_attempt_at, last_attempt_at, response_status, response_body, last_error, delivered_at, locked_at, locked_by, created_at, updated_at FROM failed
+SELECT id, event_id, endpoint_id, status, attempt_count, replay_count, next_attempt_at, last_attempt_at, last_replayed_at, response_status, response_body, last_error, delivered_at, locked_at, locked_by, created_at, updated_at FROM failed
 `
 
 type MarkWebhookDeliveryFailedParams struct {
@@ -367,8 +373,10 @@ type MarkWebhookDeliveryFailedRow struct {
 	EndpointID     uuid.UUID          `db:"endpoint_id" json:"endpoint_id"`
 	Status         string             `db:"status" json:"status"`
 	AttemptCount   int32              `db:"attempt_count" json:"attempt_count"`
+	ReplayCount    int32              `db:"replay_count" json:"replay_count"`
 	NextAttemptAt  pgtype.Timestamptz `db:"next_attempt_at" json:"next_attempt_at"`
 	LastAttemptAt  pgtype.Timestamptz `db:"last_attempt_at" json:"last_attempt_at"`
+	LastReplayedAt pgtype.Timestamptz `db:"last_replayed_at" json:"last_replayed_at"`
 	ResponseStatus *int32             `db:"response_status" json:"response_status"`
 	ResponseBody   *string            `db:"response_body" json:"response_body"`
 	LastError      *string            `db:"last_error" json:"last_error"`
@@ -395,8 +403,10 @@ func (q *Queries) MarkWebhookDeliveryFailed(ctx context.Context, arg MarkWebhook
 		&i.EndpointID,
 		&i.Status,
 		&i.AttemptCount,
+		&i.ReplayCount,
 		&i.NextAttemptAt,
 		&i.LastAttemptAt,
+		&i.LastReplayedAt,
 		&i.ResponseStatus,
 		&i.ResponseBody,
 		&i.LastError,
@@ -422,7 +432,7 @@ SET status = 'succeeded',
     updated_at = now()
 WHERE delivery.id = $3
   AND delivery.locked_by = $4
-RETURNING delivery.id, delivery.event_id, delivery.endpoint_id, delivery.status, delivery.attempt_count, delivery.next_attempt_at, delivery.last_attempt_at, delivery.response_status, delivery.response_body, delivery.last_error, delivery.delivered_at, delivery.locked_at, delivery.locked_by, delivery.created_at, delivery.updated_at
+RETURNING delivery.id, delivery.event_id, delivery.endpoint_id, delivery.status, delivery.attempt_count, delivery.replay_count, delivery.next_attempt_at, delivery.last_attempt_at, delivery.last_replayed_at, delivery.response_status, delivery.response_body, delivery.last_error, delivery.delivered_at, delivery.locked_at, delivery.locked_by, delivery.created_at, delivery.updated_at
 ), reset_endpoint AS (
 UPDATE webhook_endpoints
 SET consecutive_failures = 0,
@@ -434,7 +444,7 @@ WHERE id = (SELECT endpoint_id FROM succeeded)
   AND consecutive_failures > 0
 RETURNING id
 )
-SELECT id, event_id, endpoint_id, status, attempt_count, next_attempt_at, last_attempt_at, response_status, response_body, last_error, delivered_at, locked_at, locked_by, created_at, updated_at FROM succeeded
+SELECT id, event_id, endpoint_id, status, attempt_count, replay_count, next_attempt_at, last_attempt_at, last_replayed_at, response_status, response_body, last_error, delivered_at, locked_at, locked_by, created_at, updated_at FROM succeeded
 `
 
 type MarkWebhookDeliverySucceededParams struct {
@@ -450,8 +460,10 @@ type MarkWebhookDeliverySucceededRow struct {
 	EndpointID     uuid.UUID          `db:"endpoint_id" json:"endpoint_id"`
 	Status         string             `db:"status" json:"status"`
 	AttemptCount   int32              `db:"attempt_count" json:"attempt_count"`
+	ReplayCount    int32              `db:"replay_count" json:"replay_count"`
 	NextAttemptAt  pgtype.Timestamptz `db:"next_attempt_at" json:"next_attempt_at"`
 	LastAttemptAt  pgtype.Timestamptz `db:"last_attempt_at" json:"last_attempt_at"`
+	LastReplayedAt pgtype.Timestamptz `db:"last_replayed_at" json:"last_replayed_at"`
 	ResponseStatus *int32             `db:"response_status" json:"response_status"`
 	ResponseBody   *string            `db:"response_body" json:"response_body"`
 	LastError      *string            `db:"last_error" json:"last_error"`
@@ -476,8 +488,10 @@ func (q *Queries) MarkWebhookDeliverySucceeded(ctx context.Context, arg MarkWebh
 		&i.EndpointID,
 		&i.Status,
 		&i.AttemptCount,
+		&i.ReplayCount,
 		&i.NextAttemptAt,
 		&i.LastAttemptAt,
+		&i.LastReplayedAt,
 		&i.ResponseStatus,
 		&i.ResponseBody,
 		&i.LastError,
@@ -512,6 +526,64 @@ func (q *Queries) ReleaseWebhookDeliveryClaim(ctx context.Context, arg ReleaseWe
 	return result.RowsAffected(), nil
 }
 
+const replayWebhookDelivery = `-- name: ReplayWebhookDelivery :one
+UPDATE webhook_deliveries AS delivery
+SET status = 'pending',
+    replay_count = delivery.replay_count + 1,
+    last_replayed_at = now(),
+    next_attempt_at = now(),
+    response_status = NULL,
+    response_body = NULL,
+    last_error = NULL,
+    delivered_at = NULL,
+    locked_at = NULL,
+    locked_by = NULL,
+    updated_at = now()
+FROM webhook_events AS event,
+     webhook_endpoints AS endpoint,
+     teams AS team
+WHERE delivery.id = $1
+  AND event.id = delivery.event_id
+  AND endpoint.id = delivery.endpoint_id
+  AND team.id = event.team_id
+  AND event.team_id = $2
+  AND team.status = 'active'
+  AND endpoint.enabled = true
+  AND endpoint.disabled_at IS NULL
+  AND delivery.status IN ('succeeded', 'failed', 'canceled')
+RETURNING delivery.id, delivery.event_id, delivery.endpoint_id, delivery.status, delivery.attempt_count, delivery.replay_count, delivery.next_attempt_at, delivery.last_attempt_at, delivery.last_replayed_at, delivery.response_status, delivery.response_body, delivery.last_error, delivery.delivered_at, delivery.locked_at, delivery.locked_by, delivery.created_at, delivery.updated_at
+`
+
+type ReplayWebhookDeliveryParams struct {
+	ID     uuid.UUID `db:"id" json:"id"`
+	TeamID uuid.UUID `db:"team_id" json:"team_id"`
+}
+
+func (q *Queries) ReplayWebhookDelivery(ctx context.Context, arg ReplayWebhookDeliveryParams) (WebhookDelivery, error) {
+	row := q.db.QueryRow(ctx, replayWebhookDelivery, arg.ID, arg.TeamID)
+	var i WebhookDelivery
+	err := row.Scan(
+		&i.ID,
+		&i.EventID,
+		&i.EndpointID,
+		&i.Status,
+		&i.AttemptCount,
+		&i.ReplayCount,
+		&i.NextAttemptAt,
+		&i.LastAttemptAt,
+		&i.LastReplayedAt,
+		&i.ResponseStatus,
+		&i.ResponseBody,
+		&i.LastError,
+		&i.DeliveredAt,
+		&i.LockedAt,
+		&i.LockedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const retryWebhookDelivery = `-- name: RetryWebhookDelivery :one
 UPDATE webhook_deliveries AS delivery
 SET status = 'pending',
@@ -535,7 +607,7 @@ WHERE delivery.id = $1
   AND endpoint.enabled = true
   AND endpoint.disabled_at IS NULL
   AND delivery.status = 'failed'
-RETURNING delivery.id, delivery.event_id, delivery.endpoint_id, delivery.status, delivery.attempt_count, delivery.next_attempt_at, delivery.last_attempt_at, delivery.response_status, delivery.response_body, delivery.last_error, delivery.delivered_at, delivery.locked_at, delivery.locked_by, delivery.created_at, delivery.updated_at
+RETURNING delivery.id, delivery.event_id, delivery.endpoint_id, delivery.status, delivery.attempt_count, delivery.replay_count, delivery.next_attempt_at, delivery.last_attempt_at, delivery.last_replayed_at, delivery.response_status, delivery.response_body, delivery.last_error, delivery.delivered_at, delivery.locked_at, delivery.locked_by, delivery.created_at, delivery.updated_at
 `
 
 type RetryWebhookDeliveryParams struct {
@@ -552,8 +624,10 @@ func (q *Queries) RetryWebhookDelivery(ctx context.Context, arg RetryWebhookDeli
 		&i.EndpointID,
 		&i.Status,
 		&i.AttemptCount,
+		&i.ReplayCount,
 		&i.NextAttemptAt,
 		&i.LastAttemptAt,
+		&i.LastReplayedAt,
 		&i.ResponseStatus,
 		&i.ResponseBody,
 		&i.LastError,
@@ -578,7 +652,7 @@ SET status = 'retrying',
     updated_at = now()
 WHERE delivery.id = $5
   AND delivery.locked_by = $6
-RETURNING delivery.id, delivery.event_id, delivery.endpoint_id, delivery.status, delivery.attempt_count, delivery.next_attempt_at, delivery.last_attempt_at, delivery.response_status, delivery.response_body, delivery.last_error, delivery.delivered_at, delivery.locked_at, delivery.locked_by, delivery.created_at, delivery.updated_at
+RETURNING delivery.id, delivery.event_id, delivery.endpoint_id, delivery.status, delivery.attempt_count, delivery.replay_count, delivery.next_attempt_at, delivery.last_attempt_at, delivery.last_replayed_at, delivery.response_status, delivery.response_body, delivery.last_error, delivery.delivered_at, delivery.locked_at, delivery.locked_by, delivery.created_at, delivery.updated_at
 `
 
 type ScheduleWebhookDeliveryRetryParams struct {
@@ -606,8 +680,10 @@ func (q *Queries) ScheduleWebhookDeliveryRetry(ctx context.Context, arg Schedule
 		&i.EndpointID,
 		&i.Status,
 		&i.AttemptCount,
+		&i.ReplayCount,
 		&i.NextAttemptAt,
 		&i.LastAttemptAt,
+		&i.LastReplayedAt,
 		&i.ResponseStatus,
 		&i.ResponseBody,
 		&i.LastError,

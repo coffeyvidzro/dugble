@@ -49,3 +49,16 @@ WHERE event.team_id = sqlc.arg(team_id)
 ORDER BY event.occurred_at DESC, event.created_at DESC
 LIMIT sqlc.arg(limit_count)
 OFFSET sqlc.arg(offset_count);
+
+-- name: ListWebhookEventsFiltered :many
+SELECT event.*
+FROM webhook_events AS event
+JOIN teams AS team ON team.id = event.team_id
+WHERE event.team_id = sqlc.arg(team_id)
+  AND team.status = 'active'
+  AND (sqlc.narg(event_type)::text IS NULL OR event.event_type = sqlc.narg(event_type))
+  AND (sqlc.narg(object_type)::text IS NULL OR event.object_type = sqlc.narg(object_type))
+  AND (sqlc.narg(object_id)::uuid IS NULL OR event.object_id = sqlc.narg(object_id))
+  AND (sqlc.narg(before_occurred_at)::timestamptz IS NULL OR event.occurred_at < sqlc.narg(before_occurred_at))
+ORDER BY event.occurred_at DESC, event.id DESC
+LIMIT sqlc.arg(limit_count);
