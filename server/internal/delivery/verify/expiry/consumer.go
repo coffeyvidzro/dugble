@@ -5,6 +5,8 @@ import (
 	"errors"
 	"log/slog"
 	"time"
+
+	"github.com/coffeyvidzro/dugble/server/internal/monitoring/verifymetrics"
 )
 
 type batchExpirer interface {
@@ -38,14 +40,20 @@ func (consumer *Consumer) Run(ctx context.Context) error {
 
 func (consumer *Consumer) poll(ctx context.Context) {
 	for {
+		started := time.Now()
 		batchCtx, cancel := context.WithTimeout(ctx, consumer.config.BatchTimeout)
 		expired, err := consumer.repository.ExpireBatch(batchCtx, consumer.config.BatchSize)
 		cancel()
+		verifymetrics.Default.Observe("expiry_batch", verifymetrics.Outcome(err), time.Since(started))
+		verifymetrics.Default.AddExpired(expired)
 		if err != nil {
 			if !errors.Is(err, context.Canceled) {
 				slog.Error("verification expiry batch failed", "error", err)
 			}
 			return
+		}
+		if expired > 0 {
+			slog.InfoContext(ctx, "verification expiry batch completed", "expired", expired)
 		}
 		if expired < int(consumer.config.BatchSize) {
 			return
