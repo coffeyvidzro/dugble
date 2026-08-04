@@ -27,7 +27,7 @@ export default async function Page({
     const { id } = await params;
 
     return (
-        <div className="flex-1 w-full bg-background min-h-screen pt-8 pb-16 px-4 md:px-8">
+        <div className="flex-1 w-full bg-background min-h-screen pt-8 pb-16 px-4 md:px-2">
             <TemplateEditorLoader id={id} />
         </div>
     );
