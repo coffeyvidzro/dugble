@@ -1,0 +1,48 @@
+name: Temporary product scaffold generation
+
+on:
+  push:
+    branches:
+      - feat/product-delivery-scaffolding
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      - name: Refresh Atlas checksum
+        run: |
+          docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            -v "${{ github.workspace }}/server/migrations:/migrations" \
+            arigaio/atlas:latest \
+            migrate hash --dir file:///migrations
+
+      - name: Regenerate sqlc output
+        working-directory: server
+        run: go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
+
+      - name: Capture generated diff
+        run: git diff -- server/migrations/atlas.sum server/internal/database/sqlc > generated.diff
+
+      - name: Upload generated files
+        uses: actions/upload-artifact@v7
+        with:
+          name: product-scaffold-generated
+          path: |
+            server/migrations/atlas.sum
+            server/internal/database/sqlc
+            generated.diff
+          retention-days: 1
