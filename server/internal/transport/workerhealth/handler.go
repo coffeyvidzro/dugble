@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/coffeyvidzro/dugble/server/internal/monitoring/verifymetrics"
 	"github.com/coffeyvidzro/dugble/server/internal/worker"
 )
 
@@ -33,6 +34,7 @@ func (h *Handler) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", h.live)
 	mux.HandleFunc("GET /ready", h.ready)
+	mux.Handle("GET /metrics/verify", verifymetrics.Default)
 	return mux
 }
 
