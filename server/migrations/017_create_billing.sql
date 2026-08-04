@@ -3,8 +3,6 @@ CREATE TABLE IF NOT EXISTS team_wallets (
     currency CHAR(3) NOT NULL,
     balance_units BIGINT NOT NULL DEFAULT 0,
     tier TEXT NOT NULL DEFAULT 'growth',
-    free_email_allowance INTEGER NOT NULL DEFAULT 1000,
-    last_allowance_reset TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
@@ -13,9 +11,7 @@ CREATE TABLE IF NOT EXISTS team_wallets (
     CONSTRAINT chk_team_wallets_balance
         CHECK (balance_units >= 0),
     CONSTRAINT chk_team_wallets_tier
-        CHECK (tier IN ('growth', 'scale', 'enterprise')),
-    CONSTRAINT chk_team_wallets_free_email_allowance
-        CHECK (free_email_allowance >= 0)
+        CHECK (tier IN ('growth', 'scale', 'enterprise'))
 );
 
 CREATE TABLE IF NOT EXISTS product_rates (
@@ -51,6 +47,7 @@ CREATE TABLE IF NOT EXISTS product_rates (
 CREATE TABLE IF NOT EXISTS wallet_ledger (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE RESTRICT,
+    usage_authorization_id UUID,
     amount_units BIGINT NOT NULL,
     transaction_type TEXT NOT NULL,
     reference_id TEXT NOT NULL,
