@@ -27,9 +27,9 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/celcom"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/provider/mnotify"
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/routing"
-	"github.com/coffeyvidzro/dugble/server/internal/messaging/inbox"
 	jetstreammessaging "github.com/coffeyvidzro/dugble/server/internal/messaging/jetstream"
 	"github.com/coffeyvidzro/dugble/server/internal/messaging/outbox"
+	"github.com/coffeyvidzro/dugble/server/internal/messaging/processed"
 	domainmodule "github.com/coffeyvidzro/dugble/server/internal/modules/domain"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/emailtenant"
 	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
@@ -74,7 +74,7 @@ func run() error {
 		return fmt.Errorf("provision JetStream topology: %w", err)
 	}
 
-	processedEvents := inbox.NewRepository(db)
+	processedEvents := processed.NewRepository(db)
 	webhookModuleRepository := webhookmodule.NewRepository(db)
 	webhookEmitter := platformwebhook.NewEmitter(webhookModuleRepository)
 	emailSender, err := awsses.NewSESSender(startupCtx, cfg.AWS.Region, cfg.AWS.FromEmail, cfg.AWS.AccessKey, cfg.AWS.SecretKey, cfg.AWS.SESConfigurationSet)
