@@ -1,9 +1,9 @@
 name: Temporary product scaffold generation
 
 on:
-  push:
+  pull_request:
     branches:
-      - feat/product-delivery-scaffolding
+      - main
 
 permissions:
   contents: read
