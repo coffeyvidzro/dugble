@@ -93,7 +93,7 @@ export function ChangePasswordForm({
 
     return (
         <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-5 pt-6">
+            <CardContent className="space-y-5 pt-6 mb-6">
                 <div className="max-w-md space-y-2">
                     <Label htmlFor="current-password">Current password</Label>
                     <Input
@@ -108,7 +108,7 @@ export function ChangePasswordForm({
                                 currentPassword: undefined,
                             }));
                         }}
-                        className="border-border bg-muted/20 text-foreground shadow-sm focus-visible:border-primary focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-primary/40"
+                        className="w-full rounded-lg border border-border/60 bg-muted/20 py-2 pl-9 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
                     />
                     {errors.currentPassword && (
                         <p className="text-xs font-medium text-danger animate-fade-up">
@@ -131,7 +131,7 @@ export function ChangePasswordForm({
                                 newPassword: undefined,
                             }));
                         }}
-                        className="border-border bg-muted/20 text-foreground shadow-sm focus-visible:border-primary focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-primary/40"
+                        className="w-full rounded-lg border border-border/60 bg-muted/20 py-2 pl-9 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
                     />
                     {newPassword && (
                         <div className="space-y-1.5 animate-fade-up">
@@ -175,7 +175,7 @@ export function ChangePasswordForm({
                                 confirmPassword: undefined,
                             }));
                         }}
-                        className="border-border bg-muted/20 text-foreground shadow-sm focus-visible:border-primary focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-primary/40"
+                        className="w-full rounded-lg border border-border/60 bg-muted/20 py-2 pl-9 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
                     />
                     {errors.confirmPassword && (
                         <p className="text-xs font-medium text-danger animate-fade-up">

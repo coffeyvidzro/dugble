@@ -55,7 +55,7 @@ export function AccountEmailForm({ initialEmail }: { initialEmail: string }) {
     return (
         <>
             <CardContent className="space-y-4 pt-6">
-                <div className="max-w-md space-y-2">
+                <div className="max-w-sm space-y-2">
                     <div className="flex items-center justify-between">
                         <Label htmlFor="account-email">Email Address</Label>
                         <Badge
@@ -75,7 +75,7 @@ export function AccountEmailForm({ initialEmail }: { initialEmail: string }) {
                             setError(null);
                         }}
                         disabled={!!pendingEmail}
-                        className="border-border bg-muted/20 text-foreground shadow-sm transition-shadow focus-visible:border-primary focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-70"
+                        className="w-full rounded-lg border border-border/60 bg-muted/20 py-2 pl-4 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
                     />
                     {error && (
                         <p className="text-xs font-medium text-danger animate-fade-up">
