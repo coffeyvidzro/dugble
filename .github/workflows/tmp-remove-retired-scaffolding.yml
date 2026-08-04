@@ -1,6 +1,9 @@
 name: Temporary retired product scaffolding cleanup
 
 on:
+  push:
+    branches:
+      - refactor/remove-retired-product-scaffolding
   pull_request:
     branches:
       - main
