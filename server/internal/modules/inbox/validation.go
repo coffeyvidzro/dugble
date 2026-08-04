@@ -82,6 +82,9 @@ func normalizeRecipients(values []string) ([]string, error) {
 	if len(values) == 0 {
 		return nil, apperrors.NewBadRequest("At least one Inbox recipient is required")
 	}
+	if len(values) > maxRecipients {
+		return nil, apperrors.NewBadRequest("Inbox messages support at most 500 recipients per request")
+	}
 	seen := make(map[string]struct{}, len(values))
 	recipients := make([]string, 0, len(values))
 	for _, value := range values {
@@ -97,9 +100,6 @@ func normalizeRecipients(values []string) ([]string, error) {
 		}
 		seen[recipient] = struct{}{}
 		recipients = append(recipients, recipient)
-		if len(recipients) > maxRecipients {
-			return nil, apperrors.NewBadRequest("Inbox messages support at most 500 recipients per request")
-		}
 	}
 	return recipients, nil
 }
