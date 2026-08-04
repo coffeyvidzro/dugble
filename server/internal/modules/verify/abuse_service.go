@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/google/uuid"
-
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
@@ -64,5 +62,3 @@ func (service *Service) enforceExistingAbuse(
 	}
 	return apperrors.NewInternal("Unable to apply verification abuse controls", err)
 }
-
-var _ = uuid.Nil
