@@ -64,9 +64,17 @@ export function AddWebhookDialog({
                 if (!next) reset();
             }}
         >
-            <DialogTrigger render={<Button size="sm" className="shadow-sm" />}>
-                <Plus className="mr-2 size-4" />
+            <DialogTrigger
+                render={
+                    <Button className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20" />
+                }
+            >
+                <Plus className="size-4" />
                 Add webhook
+                <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
+                />
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg border-border/40 shadow-xl">
                 {step === "form" ? (
@@ -105,7 +113,16 @@ export function AddWebhookDialog({
                             >
                                 Cancel
                             </Button>
-                            <Button type="submit">Add webhook</Button>
+                            <Button
+                                type="submit"
+                                className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
+                            >
+                                Add webhook
+                                <span
+                                    aria-hidden
+                                    className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
+                                />
+                            </Button>
                         </DialogFooter>
                     </form>
                 ) : (
@@ -128,10 +145,14 @@ export function AddWebhookDialog({
                         <DialogFooter className="border-t border-border/40 pt-4">
                             <Button
                                 type="button"
-                                className="w-full sm:w-auto"
                                 onClick={() => setOpen(false)}
+                                className="group/button relative inline-flex w-full sm:w-auto shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
                             >
                                 I&apos;ve saved it securely
+                                <span
+                                    aria-hidden
+                                    className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
+                                />
                             </Button>
                         </DialogFooter>
                     </div>

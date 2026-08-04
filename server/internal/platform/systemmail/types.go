@@ -1,4 +1,4 @@
-package notifications
+package systemmail
 
 import platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 

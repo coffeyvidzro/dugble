@@ -29,9 +29,9 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/integration/sms/routing"
 	"github.com/coffeyvidzro/dugble/server/internal/messaging/outbox"
 	"github.com/coffeyvidzro/dugble/server/internal/monitoring"
-	"github.com/coffeyvidzro/dugble/server/internal/notifications"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/cache"
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
+	"github.com/coffeyvidzro/dugble/server/internal/platform/systemmail"
 	"github.com/coffeyvidzro/dugble/server/internal/transport"
 	"github.com/coffeyvidzro/dugble/server/internal/transport/middlewares"
 	providersns "github.com/coffeyvidzro/dugble/server/internal/transport/provider/sns"
@@ -82,7 +82,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("initialize Arcjet: %w", err)
 	}
-	renderer, err := notifications.NewRenderer()
+	renderer, err := systemmail.NewRenderer()
 	if err != nil {
 		return fmt.Errorf("initialize email renderer: %w", err)
 	}

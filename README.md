@@ -1,6 +1,111 @@
 # Dugble
 
-Dugble is a multi-tenant communications platform for African startups and teams. It combines browser authentication, team-scoped API tokens, email and SMS delivery, webhooks, and operational tooling.
+Dugble is a multi-tenant communications platform for African startups and teams. It combines browser authentication, team-scoped API tokens, email and SMS delivery, verification, notification workflows, in-app inboxes, webhooks, and operational tooling.
+
+## Products
+
+Dugble provides a set of developer-first communication products that can be used independently or combined into end-to-end messaging workflows.
+
+### Dugble Email
+
+A transactional email API for sending reliable application email through verified domains.
+
+**Use cases**
+
+- Account verification and password reset emails
+- Sign-in alerts and security notifications
+- Receipts, invoices, and payment confirmations
+- Product updates and operational alerts
+- Scheduled and batch email delivery
+- Delivery, bounce, complaint, and failure tracking
+
+### Dugble SMS
+
+An SMS API for sending time-sensitive transactional messages with asynchronous delivery and status tracking.
+
+**Use cases**
+
+- One-time passcodes and login codes
+- Payment and order updates
+- Appointment and delivery reminders
+- Incident and service-status alerts
+- Two-factor authentication fallbacks
+- Country-aware delivery and sender identity management
+
+### Dugble Verify
+
+A verification API that manages one-time codes, expiration, retry limits, and validation across Email and SMS.
+
+**Use cases**
+
+- Verify email addresses and phone numbers
+- Passwordless sign-in
+- Two-factor authentication
+- Account recovery
+- Confirm sensitive actions such as payouts or profile changes
+- Reduce duplicate OTP, rate-limit, and fraud-prevention logic in customer applications
+
+### Dugble Notify
+
+A multi-channel notification orchestration API that accepts a business event and routes it through Email, SMS, or Inbox based on workflow rules and recipient preferences.
+
+**Use cases**
+
+- Send one event across multiple communication channels
+- Fall back from email to SMS for urgent messages
+- Respect user channel preferences and quiet hours
+- Delay, sequence, or conditionally send notification steps
+- Create reusable workflows for billing, security, and product events
+- Track the complete lifecycle of a notification workflow
+
+### Dugble Inbox
+
+An embeddable in-app notification center with persistent history, unread counts, actions, and real-time updates.
+
+**Use cases**
+
+- Add a notification feed to web and mobile applications
+- Show billing, account, team, and system activity
+- Track seen, read, unread, and archived states
+- Provide action buttons and deep links inside notifications
+- Deliver low-priority updates without sending email or SMS
+- Use Inbox as a channel inside Dugble Notify workflows
+
+### Dugble Events
+
+A reliable event and webhook delivery layer for every Dugble product, including signatures, retries, logs, and replay.
+
+**Use cases**
+
+- Receive email delivery, bounce, and complaint events
+- Receive SMS delivery and failure events
+- Track verification, workflow, and Inbox lifecycle changes
+- Subscribe endpoints to selected event types
+- Verify webhook authenticity with signed payloads
+- Retry failed deliveries and manually replay events
+
+## How the products work together
+
+```text
+Customer application
+        |
+        +--> Dugble Verify
+        |       +--> Email
+        |       +--> SMS
+        |
+        +--> Dugble Notify
+                +--> Email
+                +--> SMS
+                +--> Inbox
+
+All product lifecycle changes
+        |
+        v
+Dugble Events
+        |
+        v
+Customer webhooks and internal systems
+```
 
 ## Architecture
 
@@ -45,6 +150,7 @@ deploy/                    # Docker Compose, Caddy, and NATS configuration
 | Email and SMS APIs with asynchronous delivery | Implemented |
 | Webhook signing, retries, and operational controls | Implemented |
 | Backoffice administration | Implemented; internal use only |
+| Verify, Notify, and Inbox products | Planned |
 
 ## Local development
 
