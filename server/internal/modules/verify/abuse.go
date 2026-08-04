@@ -33,15 +33,15 @@ type AbuseLimit struct {
 }
 
 type AbusePolicy struct {
-	CreateTeam        AbuseLimit
-	CreateService     AbuseLimit
-	CreateRecipient   AbuseLimit
-	CreateIP          AbuseLimit
-	CheckRecipient    AbuseLimit
-	CheckIP           AbuseLimit
-	CheckVerification AbuseLimit
-	ResendRecipient   AbuseLimit
-	ResendIP          AbuseLimit
+	CreateTeam         AbuseLimit
+	CreateService      AbuseLimit
+	CreateRecipient    AbuseLimit
+	CreateIP           AbuseLimit
+	CheckRecipient     AbuseLimit
+	CheckIP            AbuseLimit
+	CheckVerification  AbuseLimit
+	ResendRecipient    AbuseLimit
+	ResendIP           AbuseLimit
 	ResendVerification AbuseLimit
 }
 
