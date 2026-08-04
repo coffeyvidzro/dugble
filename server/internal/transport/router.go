@@ -1,6 +1,8 @@
 package transport
 
 import (
+	"fmt"
+
 	"github.com/arcjet/arcjet-go"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v5"
@@ -8,6 +10,8 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/coffeyvidzro/dugble/server/internal/config"
+	verifydispatch "github.com/coffeyvidzro/dugble/server/internal/delivery/verify/dispatch"
+	dugbleserver "github.com/coffeyvidzro/dugble/server/internal/dugble/server"
 	"github.com/coffeyvidzro/dugble/server/internal/messaging/outbox"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/auditevent"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/auth"
@@ -21,6 +25,7 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/modules/team"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/teamtoken"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/user"
+	verifymodule "github.com/coffeyvidzro/dugble/server/internal/modules/verify"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/wallet"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/webhooks"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/audit"
@@ -97,14 +102,16 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 	teamService := team.NewService(teamRepository, emailService).WithRecipientStore(userRepository)
 	teamTokenRepository := teamtoken.NewRepository(deps.DB)
 	domainRepository := domain.NewRepository(deps.DB)
+	outboxRepository := outbox.NewRepository(deps.DB)
 	emailTenantRepository := emailtenant.NewRepository(deps.DB)
-	emailTenantService := emailtenant.NewService(
-		emailTenantRepository,
-		emailtenant.NewProvisionQueue(outbox.NewRepository(deps.DB)),
-	)
+	emailTenantService := emailtenant.NewService(emailTenantRepository, emailtenant.NewProvisionQueue(outboxRepository))
 	senderIDRepository := senderid.NewRepository(deps.DB)
 	webhookRepository := webhooks.NewRepository(deps.DB)
 	webhookEmitter := platformwebhook.NewEmitter(webhookRepository)
+	productRuntime, err := dugbleserver.New(dugbleserver.Dependencies{WebhookEmitter: webhookEmitter})
+	if err != nil {
+		return nil, fmt.Errorf("initialize product runtime: %w", err)
+	}
 	smsRepository := smsmodule.NewRepositoryWithWebhookEmitter(deps.DB, webhookEmitter)
 	tenantMiddleware := func(permission tenant.Permission) echo.MiddlewareFunc {
 		return middlewares.Tenant(middlewares.TenantConfig{Memberships: teamRepository, Required: permission})
@@ -128,6 +135,17 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		DefaultRegion:    cfg.AWS.Region,
 	}, billingService)
 	emailmodule.RegisterRoutes(router, emailmodule.NewHandler(emailServiceAPI), tenantAccess)
+	verifyCodes, err := verifymodule.NewCodeManager([]byte(cfg.Verify.HMACSecret), mfaCipher)
+	if err != nil {
+		return nil, fmt.Errorf("initialize verify code manager: %w", err)
+	}
+	verifyService := verifymodule.NewService(
+		verifymodule.NewRepository(deps.DB),
+		verifyCodes,
+		verifydispatch.NewQueue(outboxRepository),
+		productRuntime.Events,
+	)
+	verifymodule.RegisterRoutes(router, verifymodule.NewHandler(verifyService), tenantAccess)
 	webhookService := webhooks.NewService(webhookRepository, webhookEmitter)
 	webhooks.RegisterRoutes(router, webhooks.NewHandler(webhookService), authMiddleware, csrfMiddleware, tenantMiddleware)
 	session.RegisterRoutes(router, session.NewHandler(session.NewService(sessionRepository)), authMiddleware, csrfMiddleware)

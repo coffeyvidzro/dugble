@@ -20,11 +20,8 @@ func TestDocumentedEventsMatchSubscribableCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read webhook event documentation: %v", err)
 	}
-
-	documented := append(
-		documentedEvents(t, string(content), "SMS events", "sms"),
-		documentedEvents(t, string(content), "Email events", "email")...,
-	)
+	documented := append(documentedEvents(t, string(content), "SMS events", "sms"), documentedEvents(t, string(content), "Email events", "email")...)
+	documented = append(documented, documentedEvents(t, string(content), "Verify events", "verification")...)
 	if supported := SubscribableEventTypes(); !reflect.DeepEqual(documented, supported) {
 		t.Fatalf("documented events = %v, subscribable events = %v", documented, supported)
 	}
