@@ -14,6 +14,20 @@ BEGIN
             ADD CONSTRAINT chk_webhook_deliveries_replay_count
             CHECK (replay_count >= 0);
     END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'chk_webhook_deliveries_replay_state'
+          AND conrelid = 'webhook_deliveries'::regclass
+    ) THEN
+        ALTER TABLE webhook_deliveries
+            ADD CONSTRAINT chk_webhook_deliveries_replay_state
+            CHECK (
+                (replay_count = 0 AND last_replayed_at IS NULL)
+                OR (replay_count > 0 AND last_replayed_at IS NOT NULL)
+            );
+    END IF;
 END;
 $$;
 
@@ -24,8 +38,8 @@ CREATE TABLE IF NOT EXISTS webhook_delivery_attempts (
     outcome TEXT NOT NULL,
     request_timestamp TIMESTAMPTZ NOT NULL DEFAULT now(),
     started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    completed_at TIMESTAMPTZ,
-    duration_ms BIGINT,
+    completed_at TIMESTAMPTZ NOT NULL,
+    duration_ms BIGINT NOT NULL,
     response_status INTEGER,
     response_headers JSONB NOT NULL DEFAULT '{}'::jsonb,
     response_body TEXT,
@@ -42,23 +56,31 @@ CREATE TABLE IF NOT EXISTS webhook_delivery_attempts (
         'timeout',
         'network_error'
     )),
-    CONSTRAINT chk_webhook_delivery_attempts_duration CHECK (
-        duration_ms IS NULL OR duration_ms >= 0
-    ),
+    CONSTRAINT chk_webhook_delivery_attempts_duration CHECK (duration_ms >= 0),
     CONSTRAINT chk_webhook_delivery_attempts_response_status CHECK (
         response_status IS NULL OR response_status BETWEEN 100 AND 599
     ),
     CONSTRAINT chk_webhook_delivery_attempts_response_headers CHECK (
         jsonb_typeof(response_headers) = 'object'
     ),
-    CONSTRAINT chk_webhook_delivery_attempts_completion CHECK (
-        completed_at IS NULL OR completed_at >= started_at
+    CONSTRAINT chk_webhook_delivery_attempts_timestamps CHECK (
+        request_timestamp <= started_at
+        AND completed_at >= started_at
     ),
     CONSTRAINT chk_webhook_delivery_attempts_outcome_fields CHECK (
-        (outcome <> 'succeeded' OR response_status IS NOT NULL)
-        AND (
-            outcome NOT IN ('timeout', 'network_error')
-            OR error_message IS NOT NULL
+        (
+            outcome = 'succeeded'
+            AND response_status BETWEEN 200 AND 299
+            AND error_message IS NULL
+        )
+        OR (
+            outcome IN ('retryable_failure', 'permanent_failure')
+            AND (response_status IS NOT NULL OR error_message IS NOT NULL)
+        )
+        OR (
+            outcome IN ('timeout', 'network_error')
+            AND response_status IS NULL
+            AND length(trim(error_message)) > 0
         )
     )
 );
