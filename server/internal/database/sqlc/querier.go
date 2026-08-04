@@ -35,7 +35,6 @@ type Querier interface {
 	CompleteSenderDomainHealthCheck(ctx context.Context, arg CompleteSenderDomainHealthCheckParams) (SenderDomain, error)
 	CompleteSenderDomainReconciliation(ctx context.Context, arg CompleteSenderDomainReconciliationParams) (SenderDomain, error)
 	ConfirmTOTPCredential(ctx context.Context, arg ConfirmTOTPCredentialParams) (int64, error)
-	ConsumeFreeEmailAllowance(ctx context.Context, arg ConsumeFreeEmailAllowanceParams) (TeamWallet, error)
 	ConsumeMFALoginChallengeWithRecoveryCode(ctx context.Context, arg ConsumeMFALoginChallengeWithRecoveryCodeParams) (int64, error)
 	ConsumeMFALoginChallengeWithTOTP(ctx context.Context, arg ConsumeMFALoginChallengeWithTOTPParams) (int64, error)
 	CountUnreadInboxReceipts(ctx context.Context, arg CountUnreadInboxReceiptsParams) (int64, error)
@@ -227,7 +226,6 @@ type Querier interface {
 	RemoveTeamMember(ctx context.Context, arg RemoveTeamMemberParams) error
 	ReplayWebhookDelivery(ctx context.Context, arg ReplayWebhookDeliveryParams) (WebhookDelivery, error)
 	RescheduleEmailProviderEvent(ctx context.Context, arg RescheduleEmailProviderEventParams) (int64, error)
-	ResetFreeEmailAllowance(ctx context.Context, arg ResetFreeEmailAllowanceParams) (TeamWallet, error)
 	ResetPasswordWithToken(ctx context.Context, arg ResetPasswordWithTokenParams) (ResetPasswordWithTokenRow, error)
 	ResolveNotificationPreferences(ctx context.Context, arg ResolveNotificationPreferencesParams) ([]NotificationPreference, error)
 	RetirePublishedNotificationWorkflowVersion(ctx context.Context, arg RetirePublishedNotificationWorkflowVersionParams) ([]NotificationWorkflowVersion, error)

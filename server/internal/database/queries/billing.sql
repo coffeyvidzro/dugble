@@ -125,11 +125,11 @@ wallet_record AS MATERIALIZED (
     FOR UPDATE
 ),
 existing_authorization AS MATERIALIZED (
-    SELECT authorization.*
-    FROM usage_authorizations AS authorization
-    WHERE authorization.team_id = sqlc.arg(team_id)
-      AND authorization.meter = 'sms_segment'
-      AND authorization.reference_id = sqlc.arg(reference_id)
+    SELECT *
+    FROM usage_authorizations AS usage_auth
+    WHERE usage_auth.team_id = sqlc.arg(team_id)
+      AND usage_auth.meter = 'sms_segment'
+      AND usage_auth.reference_id = sqlc.arg(reference_id)
 ),
 allowance_record AS MATERIALIZED (
     SELECT allowance.*
@@ -250,11 +250,11 @@ inserted_authorization AS (
 ),
 updated_allowance AS (
     UPDATE usage_allowances AS allowance
-    SET consumed_quantity = allowance.consumed_quantity + authorization.allowance_quantity,
+    SET consumed_quantity = allowance.consumed_quantity + usage_auth.allowance_quantity,
         updated_at = now()
-    FROM inserted_authorization AS authorization
-    WHERE allowance.id = authorization.usage_allowance_id
-      AND authorization.allowance_quantity > 0
+    FROM inserted_authorization AS usage_auth
+    WHERE allowance.id = usage_auth.usage_allowance_id
+      AND usage_auth.allowance_quantity > 0
     RETURNING allowance.id, allowance.included_quantity, allowance.consumed_quantity
 ),
 inserted_ledger AS (
@@ -266,13 +266,13 @@ inserted_ledger AS (
         reference_id
     )
     SELECT
-        authorization.team_id,
-        authorization.id,
-        -authorization.amount_units,
+        usage_auth.team_id,
+        usage_auth.id,
+        -usage_auth.amount_units,
         'usage',
-        authorization.reference_id
-    FROM inserted_authorization AS authorization
-    WHERE authorization.amount_units > 0
+        usage_auth.reference_id
+    FROM inserted_authorization AS usage_auth
+    WHERE usage_auth.amount_units > 0
     RETURNING team_id, amount_units
 ),
 updated_wallet AS (
@@ -349,11 +349,11 @@ wallet_record AS MATERIALIZED (
     FOR UPDATE
 ),
 existing_authorization AS MATERIALIZED (
-    SELECT authorization.*
-    FROM usage_authorizations AS authorization
-    WHERE authorization.team_id = sqlc.arg(team_id)
-      AND authorization.meter = 'email_recipient'
-      AND authorization.reference_id = sqlc.arg(reference_id)
+    SELECT *
+    FROM usage_authorizations AS usage_auth
+    WHERE usage_auth.team_id = sqlc.arg(team_id)
+      AND usage_auth.meter = 'email_recipient'
+      AND usage_auth.reference_id = sqlc.arg(reference_id)
 ),
 allowance_record AS MATERIALIZED (
     SELECT allowance.*
@@ -452,11 +452,11 @@ inserted_authorization AS (
 ),
 updated_allowance AS (
     UPDATE usage_allowances AS allowance
-    SET consumed_quantity = allowance.consumed_quantity + authorization.allowance_quantity,
+    SET consumed_quantity = allowance.consumed_quantity + usage_auth.allowance_quantity,
         updated_at = now()
-    FROM inserted_authorization AS authorization
-    WHERE allowance.id = authorization.usage_allowance_id
-      AND authorization.allowance_quantity > 0
+    FROM inserted_authorization AS usage_auth
+    WHERE allowance.id = usage_auth.usage_allowance_id
+      AND usage_auth.allowance_quantity > 0
     RETURNING allowance.id, allowance.included_quantity, allowance.consumed_quantity
 ),
 inserted_ledger AS (
@@ -468,13 +468,13 @@ inserted_ledger AS (
         reference_id
     )
     SELECT
-        authorization.team_id,
-        authorization.id,
-        -authorization.amount_units,
+        usage_auth.team_id,
+        usage_auth.id,
+        -usage_auth.amount_units,
         'usage',
-        authorization.reference_id
-    FROM inserted_authorization AS authorization
-    WHERE authorization.amount_units > 0
+        usage_auth.reference_id
+    FROM inserted_authorization AS usage_auth
+    WHERE usage_auth.amount_units > 0
     RETURNING team_id, amount_units
 ),
 updated_wallet AS (
