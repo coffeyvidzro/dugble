@@ -56,29 +56,42 @@ func (repository *Repository) BeginTx(ctx context.Context) (pgx.Tx, error) {
 
 func (repository *Repository) Lock(ctx context.Context, tx pgx.Tx, command Command) (DispatchState, error) {
 	var state DispatchState
-	err := tx.QueryRow(ctx, `
-		SELECT challenge.id, challenge.verification_id, challenge.team_id,
-		       challenge.status, verification.status, challenge.channel,
-		       verification.recipient, challenge.expires_at,
-		       challenge.email_message_id, challenge.sms_message_id
-		FROM verification_challenges AS challenge
-		JOIN verifications AS verification
-		  ON verification.id = challenge.verification_id
-		 AND verification.team_id = challenge.team_id
-		WHERE challenge.id = $1
-		  AND challenge.verification_id = $2
-		  AND challenge.team_id = $3
-		FOR UPDATE OF challenge, verification
-	`, command.ChallengeID, command.VerificationID, command.TeamID).Scan(
-		&state.ChallengeID, &state.VerificationID, &state.TeamID,
-		&state.ChallengeStatus, &state.VerificationStatus, &state.Channel,
-		&state.Recipient, &state.ExpiresAt, &state.EmailMessageID, &state.SMSMessageID,
-	)
-	if errors.Is(err, pgx.ErrNoRows) {
+	state.VerificationID = command.VerificationID
+	state.TeamID = command.TeamID
+	if err := tx.QueryRow(ctx, `
+		SELECT status, recipient
+		FROM verifications
+		WHERE id = $1 AND team_id = $2
+		FOR UPDATE
+	`, command.VerificationID, command.TeamID).Scan(
+		&state.VerificationStatus,
+		&state.Recipient,
+	); errors.Is(err, pgx.ErrNoRows) {
 		return DispatchState{}, ErrNotFound
+	} else if err != nil {
+		return DispatchState{}, fmt.Errorf("lock verification dispatch parent: %w", err)
 	}
-	if err != nil {
-		return DispatchState{}, fmt.Errorf("lock verification dispatch: %w", err)
+	if err := tx.QueryRow(ctx, `
+		SELECT id, verification_id, team_id, status, channel, expires_at,
+		       email_message_id, sms_message_id
+		FROM verification_challenges
+		WHERE id = $1
+		  AND verification_id = $2
+		  AND team_id = $3
+		FOR UPDATE
+	`, command.ChallengeID, command.VerificationID, command.TeamID).Scan(
+		&state.ChallengeID,
+		&state.VerificationID,
+		&state.TeamID,
+		&state.ChallengeStatus,
+		&state.Channel,
+		&state.ExpiresAt,
+		&state.EmailMessageID,
+		&state.SMSMessageID,
+	); errors.Is(err, pgx.ErrNoRows) {
+		return DispatchState{}, ErrNotFound
+	} else if err != nil {
+		return DispatchState{}, fmt.Errorf("lock verification dispatch challenge: %w", err)
 	}
 	return state, nil
 }
