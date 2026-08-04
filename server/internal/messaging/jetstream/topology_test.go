@@ -20,8 +20,8 @@ func TestStreamConfigs(t *testing.T) {
 		if config.Storage != natsjs.FileStorage {
 			t.Errorf("stream %s must use file storage", config.Name)
 		}
-		if config.Replicas != 1 {
-			t.Errorf("stream %s must start with one replica", config.Name)
+		if config.Replicas != 3 {
+			t.Errorf("stream %s must use three replicas", config.Name)
 		}
 		if config.MaxBytes <= 0 || config.MaxAge <= 0 || config.MaxMsgSize <= 0 {
 			t.Errorf("stream %s must have explicit limits", config.Name)
@@ -44,16 +44,5 @@ func TestStreamConfigs(t *testing.T) {
 	dlq := byName[DLQStreamName]
 	if dlq.Retention != natsjs.LimitsPolicy || dlq.Discard != natsjs.DiscardOld {
 		t.Fatalf("DLQ stream must retain a bounded investigation window")
-	}
-}
-
-func TestStreamConfigsUseConfiguredReplicas(t *testing.T) {
-	t.Parallel()
-
-	configs := StreamConfigs(StreamLimits{Replicas: 3})
-	for _, config := range configs {
-		if config.Replicas != 3 {
-			t.Errorf("stream %s replicas = %d, want 3", config.Name, config.Replicas)
-		}
 	}
 }

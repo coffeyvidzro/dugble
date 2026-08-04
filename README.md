@@ -188,8 +188,7 @@ Deployment assets live in `deploy/`. `compose.yaml` defines the runtime stack, w
 The Compose deployment runs a three-node NATS JetStream cluster. Applications
 receive all three client URLs, and production streams use three replicas so the
 cluster can continue serving durable work after one NATS node is lost. Each
-node uses an independent persistent volume. Set `NATS_STREAM_REPLICAS=1` only
-when intentionally running a single-node development environment.
+node uses an independent persistent volume.
 
 ### Run individual services
 
