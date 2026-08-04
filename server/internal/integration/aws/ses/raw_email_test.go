@@ -26,6 +26,7 @@ func TestSendUsesEnvelopeDestinationsForBCC(t *testing.T) {
 	}
 
 	_, err = client.Send(context.Background(), platformemail.Message{
+		Region:           "us-east-1",
 		Stream:           route.Stream,
 		ConfigurationSet: route.ConfigurationSet,
 		SESTenantName:    route.SESTenantName,
@@ -68,6 +69,7 @@ func TestSendAddsDeliveryCorrelationTags(t *testing.T) {
 	}
 
 	_, err = client.Send(context.Background(), platformemail.Message{
+		Region:           "us-east-1",
 		MessageID:        "message-123",
 		AttemptID:        "attempt-456",
 		Stream:           route.Stream,

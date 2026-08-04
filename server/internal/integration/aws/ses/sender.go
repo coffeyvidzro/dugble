@@ -21,6 +21,15 @@ const (
 )
 
 func (c *Client) Send(ctx context.Context, message platformemail.Message) (platformemail.Result, error) {
+	region, supported := platformemail.NormalizeSESRegion(message.Region)
+	if !supported {
+		return platformemail.Result{}, platformemail.NewSendError(
+			"invalid_region",
+			false,
+			fmt.Errorf("SES delivery region %q is not supported", strings.TrimSpace(message.Region)),
+		)
+	}
+	message.Region = region
 	client, err := c.v2SendingClient(message.Region)
 	if err != nil {
 		return platformemail.Result{}, err
