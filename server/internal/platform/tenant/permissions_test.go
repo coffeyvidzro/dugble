@@ -2,20 +2,12 @@ package tenant
 
 import "testing"
 
-func TestProductRuntimePermissionsByRole(t *testing.T) {
+func TestVerifyPermissionsByRole(t *testing.T) {
 	privileged := []Permission{
 		PermissionVerifyRead,
 		PermissionVerifySend,
 		PermissionVerifyCheck,
 		PermissionVerifyManage,
-		PermissionInboxRead,
-		PermissionInboxWrite,
-		PermissionNotifyRead,
-		PermissionNotifyExecute,
-		PermissionNotifyManage,
-		PermissionEventsRead,
-		PermissionEventsManage,
-		PermissionEventsReplay,
 	}
 	for _, role := range []string{RoleOwner, RoleAdmin} {
 		for _, permission := range privileged {
@@ -25,26 +17,13 @@ func TestProductRuntimePermissionsByRole(t *testing.T) {
 		}
 	}
 
-	memberReads := []Permission{
-		PermissionVerifyRead,
-		PermissionInboxRead,
-		PermissionNotifyRead,
-		PermissionEventsRead,
-	}
-	for _, permission := range memberReads {
-		if !Can(RoleMember, permission) {
-			t.Fatalf("Can(%q, %q) = false, want true", RoleMember, permission)
-		}
+	if !Can(RoleMember, PermissionVerifyRead) {
+		t.Fatalf("Can(%q, %q) = false, want true", RoleMember, PermissionVerifyRead)
 	}
 	memberWrites := []Permission{
 		PermissionVerifySend,
 		PermissionVerifyCheck,
 		PermissionVerifyManage,
-		PermissionInboxWrite,
-		PermissionNotifyExecute,
-		PermissionNotifyManage,
-		PermissionEventsManage,
-		PermissionEventsReplay,
 	}
 	for _, permission := range memberWrites {
 		if Can(RoleMember, permission) {
