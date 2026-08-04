@@ -30,7 +30,8 @@ func (r *Repository) AuthorizeSMS(
 	}
 	row, err := r.queries.WithTx(tx).AuthorizeSMSCharge(ctx, dbsqlc.AuthorizeSMSChargeParams{
 		TeamID: input.TeamID, ReferenceID: input.MessageID.String(),
-		DestinationCountry: input.destinationCountry, Segments: int64(input.Segments),
+		DestinationCountry: input.destinationCountry, Provider: input.provider,
+		RouteType: input.routeType, Quantity: int64(input.Segments),
 	})
 	if err != nil {
 		return Authorization{}, fmt.Errorf("authorize SMS charge: %w", err)
@@ -39,6 +40,7 @@ func (r *Repository) AuthorizeSMS(
 		Outcome: Outcome(row.Outcome), MarketCode: row.MarketCode, Currency: row.Currency,
 		Tier: row.Tier, Product: Product(row.Product), UnitCostUnits: row.UnitCostUnits,
 		Quantity: row.Quantity, AmountUnits: row.AmountUnits, RemainingBalance: row.BalanceUnits,
+		CoveredByAllowance: row.CoveredByAllowance, RemainingAllowance: row.RemainingAllowance,
 	}, nil
 }
 
