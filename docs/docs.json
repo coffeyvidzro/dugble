@@ -10,21 +10,91 @@
   "favicon": "/assets/favicon.svg",
   "navigation": {
     "pages": [
-      {"group": "Getting Started", "pages": ["overview", "quickstart"]},
-      {"group": "Email", "pages": ["emails/introduction", "emails/custom-headers", "emails/schedule-email", "emails/batch-sending"]},
-      {"group": "SMS", "pages": ["sms/introduction", "sms/sender-ids", "sms/schedule-sms", "sms/batch-sending", "sms/delivery-status"]},
-      {"group": "Verify", "pages": ["verify/introduction"]},
-      {"group": "Domains", "pages": ["domains/introduction", "domains/dmarc"]},
-      {"group": "Webhooks", "pages": ["webhooks/introduction", "webhooks/events", "webhooks/signatures", "webhooks/operations"]}
+      {
+        "group": "Getting Started",
+        "pages": ["overview", "quickstart"]
+      },
+      {
+        "group": "Email",
+        "pages": [
+          "emails/introduction",
+          "emails/custom-headers",
+          "emails/schedule-email",
+          "emails/batch-sending"
+        ]
+      },
+      {
+        "group": "SMS",
+        "pages": [
+          "sms/introduction",
+          "sms/sender-ids",
+          "sms/schedule-sms",
+          "sms/batch-sending",
+          "sms/delivery-status"
+        ]
+      },
+      {
+        "group": "Verify",
+        "pages": ["verify/introduction"]
+      },
+      {
+        "group": "Domains",
+        "pages": ["domains/introduction", "domains/dmarc"]
+      },
+      {
+        "group": "Webhooks",
+        "pages": [
+          "webhooks/introduction",
+          "webhooks/events",
+          "webhooks/signatures",
+          "webhooks/operations"
+        ]
+      }
     ]
   },
-  "logo": {"light": "/assets/light.svg", "dark": "/assets/dark.svg"},
-  "appearance": {"default": "dark", "strict": true},
-  "background": {"color": {"dark": "#050505"}},
-  "navbar": {
-    "links": [{"label": "Support", "href": "mailto:support@dugble.com"}],
-    "primary": {"type": "button", "label": "Dashboard", "href": "https://dashboard.dugble.com"}
+  "logo": {
+    "light": "/assets/light.svg",
+    "dark": "/assets/dark.svg"
   },
-  "contextual": {"options": ["copy", "view", "chatgpt", "claude", "perplexity", "mcp", "cursor", "vscode"]},
-  "footer": {"socials": {"x": "https://x.com/coffeyvidzro", "github": "https://github.com/coffeyvidzro", "linkedin": "https://linkedin.com/in/coffeyvidzro"}}
+  "appearance": {
+    "default": "dark",
+    "strict": true
+  },
+  "background": {
+    "color": {
+      "dark": "#050505"
+    }
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Support",
+        "href": "mailto:support@dugble.com"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Dashboard",
+      "href": "https://dashboard.dugble.com"
+    }
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
+  },
+  "footer": {
+    "socials": {
+      "x": "https://x.com/coffeyvidzro",
+      "github": "https://github.com/coffeyvidzro",
+      "linkedin": "https://linkedin.com/in/coffeyvidzro"
+    }
+  }
 }
