@@ -26,8 +26,11 @@ jobs:
           cache: true
           cache-dependency-path: server/go.sum
 
-      - name: Normalize SQLC projections
-        run: sed -i 's/SELECT authorization\.\*/SELECT */g' server/internal/database/queries/billing.sql
+      - name: Normalize SQLC aliases and projections
+        run: |
+          sed -i 's/AS authorization/AS usage_auth/g' server/internal/database/queries/billing.sql
+          sed -i 's/authorization\./usage_auth./g' server/internal/database/queries/billing.sql
+          sed -i 's/SELECT usage_auth\.\*/SELECT */g' server/internal/database/queries/billing.sql
 
       - name: Refresh Atlas checksum
         run: |
