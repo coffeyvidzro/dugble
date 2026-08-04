@@ -69,12 +69,12 @@ func validateCreateMessage(request CreateMessageRequest) (validatedCreateMessage
 	}
 	return validatedCreateMessage{
 		Recipients: recipients,
-		Category: category,
-		Priority: priority,
-		Title: title,
-		Body: body,
-		Data: data,
-		Actions: actions,
+		Category:   category,
+		Priority:   priority,
+		Title:      title,
+		Body:       body,
+		Data:       data,
+		Actions:    actions,
 	}, nil
 }
 
@@ -126,9 +126,9 @@ func normalizeActions(values []Action) ([]byte, error) {
 	actions := make([]Action, 0, len(values))
 	for _, value := range values {
 		action := Action{
-			ID: strings.TrimSpace(value.ID),
+			ID:    strings.TrimSpace(value.ID),
 			Label: strings.TrimSpace(value.Label),
-			URL: strings.TrimSpace(value.URL),
+			URL:   strings.TrimSpace(value.URL),
 			Style: strings.ToLower(strings.TrimSpace(value.Style)),
 		}
 		if action.ID == "" || len(action.ID) > maxActionIDBytes || !categoryPattern.MatchString(strings.ToLower(action.ID)) {

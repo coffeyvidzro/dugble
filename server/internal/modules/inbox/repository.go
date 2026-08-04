@@ -30,22 +30,22 @@ func (repository *Repository) InTransaction(ctx context.Context, operation func(
 func (repository *Repository) CreateMessageTx(ctx context.Context, tx pgx.Tx, teamID uuid.UUID, input validatedCreateMessage) (Message, error) {
 	queries := repository.queries.WithTx(tx)
 	row, err := queries.CreateInboxMessage(ctx, dbsqlc.CreateInboxMessageParams{
-		TeamID: teamID,
+		TeamID:   teamID,
 		Category: input.Category,
 		Priority: input.Priority,
-		Title: input.Title,
-		Body: input.Body,
-		Data: input.Data,
-		Actions: input.Actions,
-		Source: "api",
+		Title:    input.Title,
+		Body:     input.Body,
+		Data:     input.Data,
+		Actions:  input.Actions,
+		Source:   "api",
 	})
 	if err != nil {
 		return Message{}, fmt.Errorf("create inbox message: %w", err)
 	}
 	receipts, err := queries.CreateInboxReceipts(ctx, dbsqlc.CreateInboxReceiptsParams{
 		RecipientIds: input.Recipients,
-		MessageID: row.ID,
-		TeamID: teamID,
+		MessageID:    row.ID,
+		TeamID:       teamID,
 	})
 	if err != nil {
 		return Message{}, fmt.Errorf("create inbox receipts: %w", err)
@@ -71,8 +71,8 @@ func (repository *Repository) GetMessage(ctx context.Context, id, teamID uuid.UU
 
 func (repository *Repository) ListMessages(ctx context.Context, teamID uuid.UUID, limit, offset int32) ([]Message, error) {
 	rows, err := repository.queries.ListInboxMessages(ctx, dbsqlc.ListInboxMessagesParams{
-		TeamID: teamID,
-		LimitCount: limit,
+		TeamID:      teamID,
+		LimitCount:  limit,
 		OffsetCount: offset,
 	})
 	if err != nil {
@@ -100,16 +100,16 @@ func messageFromSQLC(row dbsqlc.InboxMessage) (Message, error) {
 		sourceID = &value
 	}
 	return Message{
-		ID: row.ID.String(),
-		TeamID: row.TeamID.String(),
-		Category: row.Category,
-		Priority: row.Priority,
-		Title: row.Title,
-		Body: row.Body,
-		Data: json.RawMessage(row.Data),
-		Actions: actions,
-		Source: row.Source,
-		SourceID: sourceID,
+		ID:        row.ID.String(),
+		TeamID:    row.TeamID.String(),
+		Category:  row.Category,
+		Priority:  row.Priority,
+		Title:     row.Title,
+		Body:      row.Body,
+		Data:      json.RawMessage(row.Data),
+		Actions:   actions,
+		Source:    row.Source,
+		SourceID:  sourceID,
 		CreatedAt: pgconv.TimestamptzToTime(row.CreatedAt),
 		UpdatedAt: pgconv.TimestamptzToTime(row.UpdatedAt),
 	}, nil

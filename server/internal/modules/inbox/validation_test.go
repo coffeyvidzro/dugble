@@ -9,11 +9,11 @@ import (
 func TestValidateCreateMessageNormalizesAndDeduplicates(t *testing.T) {
 	validated, err := validateCreateMessage(CreateMessageRequest{
 		Recipients: []string{" user-1 ", "user-1", "User-1"},
-		Category: " Billing.Alert ",
-		Title: " Payment failed ",
-		Body: " Update your payment method. ",
-		Data: json.RawMessage(`{"invoice_id":"inv_123"}`),
-		Actions: []Action{{ID: "update_payment", Label: "Update payment", URL: "/billing/payment-method"}},
+		Category:   " Billing.Alert ",
+		Title:      " Payment failed ",
+		Body:       " Update your payment method. ",
+		Data:       json.RawMessage(`{"invoice_id":"inv_123"}`),
+		Actions:    []Action{{ID: "update_payment", Label: "Update payment", URL: "/billing/payment-method"}},
 	})
 	if err != nil {
 		t.Fatalf("validateCreateMessage() error = %v", err)
@@ -42,10 +42,26 @@ func TestValidateCreateMessageRejectsInvalidInputs(t *testing.T) {
 		request CreateMessageRequest
 	}{
 		{name: "missing recipients", request: validCreateRequest(nil)},
-		{name: "invalid priority", request: func() CreateMessageRequest { value := validCreateRequest([]string{"user"}); value.Priority = "critical"; return value }()},
-		{name: "array data", request: func() CreateMessageRequest { value := validCreateRequest([]string{"user"}); value.Data = json.RawMessage(`[]`); return value }()},
-		{name: "unsafe action", request: func() CreateMessageRequest { value := validCreateRequest([]string{"user"}); value.Actions = []Action{{ID: "open", Label: "Open", URL: "javascript:alert(1)"}}; return value }()},
-		{name: "duplicate action", request: func() CreateMessageRequest { value := validCreateRequest([]string{"user"}); value.Actions = []Action{{ID: "open", Label: "Open", URL: "/one"}, {ID: "open", Label: "Again", URL: "/two"}}; return value }()},
+		{name: "invalid priority", request: func() CreateMessageRequest {
+			value := validCreateRequest([]string{"user"})
+			value.Priority = "critical"
+			return value
+		}()},
+		{name: "array data", request: func() CreateMessageRequest {
+			value := validCreateRequest([]string{"user"})
+			value.Data = json.RawMessage(`[]`)
+			return value
+		}()},
+		{name: "unsafe action", request: func() CreateMessageRequest {
+			value := validCreateRequest([]string{"user"})
+			value.Actions = []Action{{ID: "open", Label: "Open", URL: "javascript:alert(1)"}}
+			return value
+		}()},
+		{name: "duplicate action", request: func() CreateMessageRequest {
+			value := validCreateRequest([]string{"user"})
+			value.Actions = []Action{{ID: "open", Label: "Open", URL: "/one"}, {ID: "open", Label: "Again", URL: "/two"}}
+			return value
+		}()},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -84,10 +100,10 @@ func TestSafeActionURL(t *testing.T) {
 func validCreateRequest(recipients []string) CreateMessageRequest {
 	return CreateMessageRequest{
 		Recipients: recipients,
-		Category: "general",
-		Priority: PriorityNormal,
-		Title: "Hello",
-		Body: "World",
-		Data: json.RawMessage(`{}`),
+		Category:   "general",
+		Priority:   PriorityNormal,
+		Title:      "Hello",
+		Body:       "World",
+		Data:       json.RawMessage(`{}`),
 	}
 }

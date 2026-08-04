@@ -52,11 +52,11 @@ func (service *Service) CreateMessage(ctx context.Context, request CreateMessage
 		}
 		messageID := uuid.MustParse(message.ID)
 		if _, emitErr := service.events.EmitTx(ctx, tx, platformevent.Envelope{
-			Type: platformevent.TypeInboxMessageCreated,
-			TeamID: access.Scope.TeamID,
+			Type:       platformevent.TypeInboxMessageCreated,
+			TeamID:     access.Scope.TeamID,
 			ObjectType: "inbox_message",
-			ObjectID: &messageID,
-			Data: payload,
+			ObjectID:   &messageID,
+			Data:       payload,
 			OccurredAt: message.CreatedAt,
 		}); emitErr != nil {
 			return emitErr
@@ -68,10 +68,10 @@ func (service *Service) CreateMessage(ctx context.Context, request CreateMessage
 		return Message{}, apperrors.NewInternal("Unable to create Inbox message", err)
 	}
 	audit.Record(ctx, access, audit.Event{
-		Action: "inbox_message.created",
+		Action:       "inbox_message.created",
 		ResourceType: "inbox_message",
-		ResourceID: created.ID,
-		Metadata: map[string]any{"recipient_count": created.RecipientCount, "category": created.Category, "priority": created.Priority},
+		ResourceID:   created.ID,
+		Metadata:     map[string]any{"recipient_count": created.RecipientCount, "category": created.Category, "priority": created.Priority},
 	})
 	return created, nil
 }
