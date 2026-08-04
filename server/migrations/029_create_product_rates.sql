@@ -13,6 +13,17 @@ CREATE TABLE IF NOT EXISTS product_rates (
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
+    CONSTRAINT uq_product_rates_audit
+        UNIQUE (
+            id,
+            product,
+            meter,
+            billing_market,
+            tier,
+            currency,
+            cost_units
+        ),
+
     CONSTRAINT chk_product_rates_product
         CHECK (
             length(trim(product)) > 0
@@ -68,3 +79,56 @@ CREATE INDEX IF NOT EXISTS idx_product_rates_lookup
         tier,
         effective_from DESC
     );
+
+ALTER TABLE usage_authorizations
+    ADD COLUMN product_rate_id UUID;
+
+ALTER TABLE usage_authorizations
+    ADD CONSTRAINT fk_usage_authorizations_product_rate_audit
+    FOREIGN KEY (
+        product_rate_id,
+        product,
+        meter,
+        billing_market,
+        tier,
+        currency,
+        unit_cost_units
+    )
+    REFERENCES product_rates (
+        id,
+        product,
+        meter,
+        billing_market,
+        tier,
+        currency,
+        cost_units
+    )
+    ON DELETE RESTRICT;
+
+ALTER TABLE usage_authorizations
+    ADD CONSTRAINT chk_usage_authorizations_rate_source
+    CHECK (
+        (
+            billable_quantity = 0
+            AND product_rate_id IS NULL
+            AND sms_rate_id IS NULL
+        )
+        OR
+        (
+            billable_quantity > 0
+            AND product = 'sms'
+            AND sms_rate_id IS NOT NULL
+            AND product_rate_id IS NULL
+        )
+        OR
+        (
+            billable_quantity > 0
+            AND product <> 'sms'
+            AND product_rate_id IS NOT NULL
+            AND sms_rate_id IS NULL
+        )
+    );
+
+CREATE INDEX IF NOT EXISTS idx_usage_authorizations_product_rate
+    ON usage_authorizations (product_rate_id, created_at DESC)
+    WHERE product_rate_id IS NOT NULL;
