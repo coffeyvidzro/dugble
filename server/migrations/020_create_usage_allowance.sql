@@ -72,14 +72,14 @@ CREATE TABLE IF NOT EXISTS usage_authorizations (
     CONSTRAINT uq_usage_authorizations_id_team
         UNIQUE (id, team_id),
 
-    CONSTRAINT fk_usage_authorizations_wallet_market_currency
-        FOREIGN KEY (team_id, billing_market, currency)
-        REFERENCES team_wallets (team_id, billing_market, currency)
-        ON DELETE RESTRICT,
-
     CONSTRAINT fk_usage_authorizations_allowance_same_team_meter
         FOREIGN KEY (usage_allowance_id, team_id, meter)
         REFERENCES usage_allowances (id, team_id, meter)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_usage_authorizations_wallet_market_currency
+        FOREIGN KEY (team_id, billing_market, currency)
+        REFERENCES team_wallets (team_id, billing_market, currency)
         ON DELETE RESTRICT,
 
     CONSTRAINT fk_usage_authorizations_sms_rate_audit
@@ -99,6 +99,27 @@ CREATE TABLE IF NOT EXISTS usage_authorizations (
             destination_country,
             provider,
             route_type,
+            tier,
+            currency,
+            cost_units
+        )
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_usage_authorizations_product_rate_audit
+        FOREIGN KEY (
+            product_rate_id,
+            product,
+            meter,
+            billing_market,
+            tier,
+            currency,
+            unit_cost_units
+        )
+        REFERENCES product_rates (
+            id,
+            product,
+            meter,
+            billing_market,
             tier,
             currency,
             cost_units
@@ -164,10 +185,27 @@ CREATE TABLE IF NOT EXISTS usage_authorizations (
                 AND sms_rate_id IS NULL
             )
         ),
-    CONSTRAINT chk_usage_authorizations_sms_rate
+    CONSTRAINT chk_usage_authorizations_rate_source
         CHECK (
-            sms_rate_id IS NULL
-            OR product = 'sms'
+            (
+                billable_quantity = 0
+                AND product_rate_id IS NULL
+                AND sms_rate_id IS NULL
+            )
+            OR
+            (
+                billable_quantity > 0
+                AND product = 'sms'
+                AND sms_rate_id IS NOT NULL
+                AND product_rate_id IS NULL
+            )
+            OR
+            (
+                billable_quantity > 0
+                AND product <> 'sms'
+                AND product_rate_id IS NOT NULL
+                AND sms_rate_id IS NULL
+            )
         )
 );
 
@@ -194,3 +232,7 @@ CREATE INDEX IF NOT EXISTS idx_usage_authorizations_usage_allowance
 CREATE INDEX IF NOT EXISTS idx_usage_authorizations_sms_rate
     ON usage_authorizations (sms_rate_id, created_at DESC)
     WHERE sms_rate_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_usage_authorizations_product_rate
+    ON usage_authorizations (product_rate_id, created_at DESC)
+    WHERE product_rate_id IS NOT NULL;
