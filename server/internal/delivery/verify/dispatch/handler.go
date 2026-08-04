@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	verifychannel "github.com/coffeyvidzro/dugble/server/internal/delivery/verify/channel"
+	"github.com/coffeyvidzro/dugble/server/internal/monitoring/verifymetrics"
 	platformbilling "github.com/coffeyvidzro/dugble/server/internal/platform/billing"
 	platformevent "github.com/coffeyvidzro/dugble/server/internal/platform/event"
 )
@@ -35,7 +37,20 @@ func NewHandler(repository *Repository, cipher codeCipher, email, sms channelDis
 	return &Handler{repository: repository, cipher: cipher, email: email, sms: sms, events: events, now: time.Now}
 }
 
-func (handler *Handler) Handle(ctx context.Context, command Command) error {
+func (handler *Handler) Handle(ctx context.Context, command Command) (err error) {
+	started := time.Now()
+	defer func() {
+		verifymetrics.Default.Observe("dispatch", verifymetrics.Outcome(err), time.Since(started))
+		if err != nil {
+			slog.WarnContext(ctx, "verification dispatch failed",
+				"verification_id", command.VerificationID,
+				"challenge_id", command.ChallengeID,
+				"team_id", command.TeamID,
+				"error", err,
+			)
+		}
+	}()
+
 	if err := handler.validate(); err != nil {
 		return err
 	}
@@ -106,7 +121,24 @@ func (handler *Handler) Handle(ctx context.Context, command Command) error {
 	return nil
 }
 
-func (handler *Handler) HandleExhausted(ctx context.Context, command Command, _ error) error {
+func (handler *Handler) HandleExhausted(ctx context.Context, command Command, cause error) (err error) {
+	started := time.Now()
+	defer func() {
+		verifymetrics.Default.Observe("dispatch_exhausted", verifymetrics.Outcome(err), time.Since(started))
+		attributes := []any{
+			"verification_id", command.VerificationID,
+			"challenge_id", command.ChallengeID,
+			"team_id", command.TeamID,
+			"cause", cause,
+		}
+		if err != nil {
+			attributes = append(attributes, "error", err)
+			slog.ErrorContext(ctx, "verification dispatch exhaustion handling failed", attributes...)
+			return
+		}
+		slog.ErrorContext(ctx, "verification dispatch exhausted", attributes...)
+	}()
+
 	if err := handler.validate(); err != nil {
 		return err
 	}
