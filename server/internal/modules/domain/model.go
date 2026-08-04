@@ -21,6 +21,9 @@ const (
 	HealthStatusDegraded = "degraded"
 
 	DefaultHealthFailureThreshold int32 = 3
+
+	emailInfrastructureRetryAfterSeconds = 10
+	emailInfrastructureProvisioningMessage = "Customer email infrastructure is being prepared"
 )
 
 type VerificationRecord = platformemail.VerificationRecord
@@ -50,4 +53,15 @@ type CreateRequest struct {
 	Domain           string `json:"domain"`
 	Region           string `json:"region"`
 	CustomReturnPath string `json:"custom_return_path"`
+}
+
+type CreateResult struct {
+	Domain       *SenderDomain
+	Provisioning bool
+}
+
+type ProvisioningResponse struct {
+	Status            string `json:"status"`
+	Message           string `json:"message"`
+	RetryAfterSeconds int    `json:"retry_after_seconds"`
 }
