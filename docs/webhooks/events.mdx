@@ -1,6 +1,6 @@
 ---
 title: "Webhook events"
-description: "Understand the outgoing email and SMS lifecycle event catalog"
+description: "Understand the outgoing Email, SMS, and Verify lifecycle event catalog"
 ---
 
 <Warning>
@@ -9,7 +9,7 @@ description: "Understand the outgoing email and SMS lifecycle event catalog"
 </Warning>
 
 Event types use a resource and lifecycle name, such as `email.delivered`,
-`sms.delivered`, or `sms.failed`.
+`sms.delivered`, or `verification.approved`.
 
 ## Common envelope
 
@@ -98,6 +98,23 @@ the webhook.
 `recipient_details` contains the current state for each affected recipient. Bounce
 and delay events can include SMTP `action`, enhanced status code, and diagnostic
 text. Fields that SES did not provide are omitted.
+
+## Verify events
+
+| Event                               | Meaning                                                  | Suggested action                                       |
+| ----------------------------------- | -------------------------------------------------------- | ------------------------------------------------------ |
+| `verification.created`              | A verification and its first challenge were created.    | Store the verification ID and wait for user input.     |
+| `verification.dispatched`           | The challenge was handed to Email or SMS delivery.       | Surface that the code was sent.                        |
+| `verification.approved`             | The submitted code matched the active challenge.         | Complete the protected action exactly once.            |
+| `verification.incorrect`            | A submitted code did not match.                          | Keep the session pending unless attempts are exhausted.|
+| `verification.resent`               | A new challenge replaced the previous challenge.        | Discard any previously entered code.                   |
+| `verification.expired`              | The verification or active challenge expired.            | Start a new verification when the user retries.        |
+| `verification.delivery_failed`      | Dugble could not deliver the active challenge.           | Offer another channel or begin a new session.          |
+| `verification.max_attempts_reached` | The configured number of attempts was exhausted.         | Require a new verification session.                    |
+| `verification.canceled`             | The pending verification was canceled.                   | Stop accepting codes for the verification ID.          |
+
+Verify event data is a snapshot of the verification resource. It never contains
+the plaintext code, the stored HMAC, or the encrypted dispatch value.
 
 ## Test events
 

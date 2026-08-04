@@ -1,0 +1,154 @@
+---
+title: "Verify API"
+description: "Create and validate one-time verification codes through Email or SMS"
+---
+
+Dugble Verify manages short-lived verification sessions, code attempts, resends,
+and lifecycle events. A verification service stores reusable policy such as the
+channel, code length, expiration time, attempt limit, and resend limits.
+
+All requests use a team-scoped bearer token. Create, check, and resend requests
+also require an `Idempotency-Key` header so network retries do not create another
+challenge or consume another attempt.
+
+## Verification services
+
+### Create a service
+
+`POST /verification-services`
+
+```json
+{
+  "key": "customer-login",
+  "name": "Customer login",
+  "default_channel": "sms",
+  "code_length": 6,
+  "ttl_seconds": 300,
+  "max_attempts": 5,
+  "resend_cooldown_seconds": 30,
+  "max_resends": 3,
+  "enabled": true,
+  "metadata": {}
+}
+```
+
+The service key is immutable and unique within the team. It can contain lowercase
+letters, numbers, dots, underscores, and hyphens.
+
+### List and retrieve services
+
+```text
+GET /verification-services?limit=50&offset=0
+GET /verification-services/:service_id
+```
+
+### Update a service
+
+`PATCH /verification-services/:service_id`
+
+Only supplied fields are changed. The service key cannot be changed.
+
+```json
+{
+  "ttl_seconds": 600,
+  "max_attempts": 4,
+  "enabled": true
+}
+```
+
+## Verifications
+
+### Start a verification
+
+`POST /verifications`
+
+```http
+Authorization: Bearer <team-token>
+Idempotency-Key: login-customer-123
+Content-Type: application/json
+```
+
+Reference the service by either its UUID or key, but not both:
+
+```json
+{
+  "service": "customer-login",
+  "channel": "sms",
+  "recipient": "+233241234567",
+  "locale": "en-GH",
+  "metadata": {
+    "customer_id": "customer_123"
+  }
+}
+```
+
+The response is `202 Accepted` and contains the verification resource. The code
+is never returned by the API, stored in plaintext, or included in lifecycle events.
+The active challenge stores an HMAC, while the dispatch outbox carries an encrypted
+code for the delivery worker.
+
+### List and retrieve verifications
+
+```text
+GET /verifications?limit=50&offset=0
+GET /verifications/:verification_id
+```
+
+Possible statuses are `pending`, `approved`, `expired`, `canceled`,
+`max_attempts_reached`, and `delivery_failed`.
+
+### Check a code
+
+`POST /verifications/:verification_id/check`
+
+```http
+Idempotency-Key: check-customer-123-1
+Content-Type: application/json
+```
+
+```json
+{
+  "code": "123456",
+  "metadata": {
+    "flow": "login"
+  }
+}
+```
+
+A correct code returns:
+
+```json
+{
+  "id": "3efbf5d3-74e9-42cb-b980-69c673bfd5ca",
+  "status": "approved",
+  "valid": true,
+  "expired": false
+}
+```
+
+An incorrect code returns the same shape with `valid: false`. It consumes one
+attempt. Concurrent checks are serialized so only one request can approve the
+verification and emit the approval event.
+
+### Resend a code
+
+`POST /verifications/:verification_id/resend`
+
+The request requires an idempotency key. Dugble enforces the service cooldown and
+maximum resend count. Resending invalidates all earlier challenges and extends the
+session using the configured TTL. Expired or terminal verifications cannot be resent.
+
+### Cancel a verification
+
+`POST /verifications/:verification_id/cancel`
+
+Canceling invalidates the active challenge. Repeating cancellation returns the
+already-canceled resource without emitting another lifecycle event.
+
+## Lifecycle events
+
+Verify emits `verification.created`, `verification.approved`,
+`verification.incorrect`, `verification.resent`, `verification.expired`,
+`verification.max_attempts_reached`, and `verification.canceled` from the same
+PostgreSQL transaction as the state change. Delivery workers add dispatched and
+delivery-failure events when they process the queued challenge.

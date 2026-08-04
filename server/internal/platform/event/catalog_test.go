@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestSubscribableTypesPreservesExistingWebhookCatalog(t *testing.T) {
+func TestSubscribableTypesIncludesVerifyCatalog(t *testing.T) {
 	want := []string{
 		"sms.submitted",
 		"sms.sent",
@@ -22,6 +22,15 @@ func TestSubscribableTypesPreservesExistingWebhookCatalog(t *testing.T) {
 		"email.opened",
 		"email.clicked",
 		"email.subscription_changed",
+		"verification.created",
+		"verification.dispatched",
+		"verification.approved",
+		"verification.incorrect",
+		"verification.resent",
+		"verification.expired",
+		"verification.delivery_failed",
+		"verification.max_attempts_reached",
+		"verification.canceled",
 	}
 	if got := SubscribableTypes(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("SubscribableTypes() = %v, want %v", got, want)
@@ -40,7 +49,7 @@ func TestDefinitionsReturnsCopy(t *testing.T) {
 	}
 }
 
-func TestVerificationEventsAreKnownButNotYetSubscribable(t *testing.T) {
+func TestVerificationEventsAreSubscribable(t *testing.T) {
 	definition, ok := Lookup(TypeVerificationCreated)
 	if !ok {
 		t.Fatal("Lookup(TypeVerificationCreated) did not find event")
@@ -48,8 +57,8 @@ func TestVerificationEventsAreKnownButNotYetSubscribable(t *testing.T) {
 	if definition.ObjectType != "verification" || !definition.ObjectIDRequired {
 		t.Fatalf("verification definition = %+v", definition)
 	}
-	if IsSubscribable(TypeVerificationCreated) {
-		t.Fatal("verification.created should not be subscribable before Verify delivery is activated")
+	if !IsSubscribable(TypeVerificationCreated) {
+		t.Fatal("verification.created should be subscribable after the Verify API is activated")
 	}
 }
 

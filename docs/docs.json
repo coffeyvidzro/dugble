@@ -34,6 +34,10 @@
         ]
       },
       {
+        "group": "Verify",
+        "pages": ["verify/introduction"]
+      },
+      {
         "group": "Domains",
         "pages": ["domains/introduction", "domains/dmarc"]
       },
