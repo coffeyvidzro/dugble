@@ -27,32 +27,36 @@ type abuseControls interface {
 	AllowResend(context.Context, uuid.UUID, uuid.UUID, string, []byte) error
 }
 
-type AbusePolicy struct {
-	CreateTeam      limit
-	CreateService   limit
-	CreateRecipient limit
-	CreateIP        limit
-	CheckRecipient  limit
-	CheckIP         limit
-	ResendRecipient limit
-	ResendIP        limit
-}
-
-type limit struct {
+type AbuseLimit struct {
 	Count  int64
 	Window time.Duration
 }
 
+type AbusePolicy struct {
+	CreateTeam        AbuseLimit
+	CreateService     AbuseLimit
+	CreateRecipient   AbuseLimit
+	CreateIP          AbuseLimit
+	CheckRecipient    AbuseLimit
+	CheckIP           AbuseLimit
+	CheckVerification AbuseLimit
+	ResendRecipient   AbuseLimit
+	ResendIP          AbuseLimit
+	ResendVerification AbuseLimit
+}
+
 func DefaultAbusePolicy() AbusePolicy {
 	return AbusePolicy{
-		CreateTeam:      limit{Count: 300, Window: time.Minute},
-		CreateService:   limit{Count: 120, Window: time.Minute},
-		CreateRecipient: limit{Count: 5, Window: 10 * time.Minute},
-		CreateIP:        limit{Count: 30, Window: 10 * time.Minute},
-		CheckRecipient:  limit{Count: 20, Window: 10 * time.Minute},
-		CheckIP:         limit{Count: 60, Window: 10 * time.Minute},
-		ResendRecipient: limit{Count: 5, Window: 10 * time.Minute},
-		ResendIP:        limit{Count: 20, Window: 10 * time.Minute},
+		CreateTeam:         AbuseLimit{Count: 300, Window: time.Minute},
+		CreateService:      AbuseLimit{Count: 120, Window: time.Minute},
+		CreateRecipient:    AbuseLimit{Count: 5, Window: 10 * time.Minute},
+		CreateIP:           AbuseLimit{Count: 30, Window: 10 * time.Minute},
+		CheckRecipient:     AbuseLimit{Count: 20, Window: 10 * time.Minute},
+		CheckIP:            AbuseLimit{Count: 60, Window: 10 * time.Minute},
+		CheckVerification:  AbuseLimit{Count: 25, Window: 10 * time.Minute},
+		ResendRecipient:    AbuseLimit{Count: 5, Window: 10 * time.Minute},
+		ResendIP:           AbuseLimit{Count: 20, Window: 10 * time.Minute},
+		ResendVerification: AbuseLimit{Count: 6, Window: 10 * time.Minute},
 	}
 }
 
@@ -89,7 +93,7 @@ func (controls *RedisAbuseControls) AllowCheck(ctx context.Context, teamID, veri
 	return controls.allow(ctx, []rule{
 		{scope: "check:recipient:" + controls.digest(teamID.String()+":"+recipient), limit: controls.policy.CheckRecipient},
 		{scope: "check:ip:" + controls.ipScope(teamID, ipHash), limit: controls.policy.CheckIP, optional: len(ipHash) == 0},
-		{scope: "check:verification:" + verificationID.String(), limit: limit{Count: 25, Window: 10 * time.Minute}},
+		{scope: "check:verification:" + verificationID.String(), limit: controls.policy.CheckVerification},
 	})
 }
 
@@ -97,13 +101,13 @@ func (controls *RedisAbuseControls) AllowResend(ctx context.Context, teamID, ver
 	return controls.allow(ctx, []rule{
 		{scope: "resend:recipient:" + controls.digest(teamID.String()+":"+recipient), limit: controls.policy.ResendRecipient},
 		{scope: "resend:ip:" + controls.ipScope(teamID, ipHash), limit: controls.policy.ResendIP, optional: len(ipHash) == 0},
-		{scope: "resend:verification:" + verificationID.String(), limit: limit{Count: 6, Window: 10 * time.Minute}},
+		{scope: "resend:verification:" + verificationID.String(), limit: controls.policy.ResendVerification},
 	})
 }
 
 type rule struct {
 	scope    string
-	limit    limit
+	limit    AbuseLimit
 	optional bool
 }
 
@@ -155,9 +159,17 @@ func (controls *RedisAbuseControls) ipScope(teamID uuid.UUID, ipHash []byte) str
 }
 
 func validateAbusePolicy(policy AbusePolicy) error {
-	limits := []limit{
-		policy.CreateTeam, policy.CreateService, policy.CreateRecipient, policy.CreateIP,
-		policy.CheckRecipient, policy.CheckIP, policy.ResendRecipient, policy.ResendIP,
+	limits := []AbuseLimit{
+		policy.CreateTeam,
+		policy.CreateService,
+		policy.CreateRecipient,
+		policy.CreateIP,
+		policy.CheckRecipient,
+		policy.CheckIP,
+		policy.CheckVerification,
+		policy.ResendRecipient,
+		policy.ResendIP,
+		policy.ResendVerification,
 	}
 	for _, configured := range limits {
 		if configured.Count <= 0 || configured.Window < time.Second {
