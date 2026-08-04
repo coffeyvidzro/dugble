@@ -119,8 +119,8 @@ CREATE TABLE IF NOT EXISTS verification_challenges (
     code_hmac BYTEA NOT NULL,
     status TEXT NOT NULL DEFAULT 'queued',
     channel TEXT NOT NULL,
-    email_message_id UUID REFERENCES email_messages(id) ON DELETE SET NULL,
-    sms_message_id UUID REFERENCES sms_messages(id) ON DELETE SET NULL,
+    email_message_id UUID,
+    sms_message_id UUID,
     expires_at TIMESTAMPTZ NOT NULL,
     superseded_at TIMESTAMPTZ,
     dispatched_at TIMESTAMPTZ,
@@ -134,6 +134,14 @@ CREATE TABLE IF NOT EXISTS verification_challenges (
         FOREIGN KEY (verification_id, team_id)
         REFERENCES verifications (id, team_id)
         ON DELETE CASCADE,
+    CONSTRAINT fk_verification_challenges_email_same_team
+        FOREIGN KEY (email_message_id, team_id)
+        REFERENCES email_messages (id, team_id)
+        ON DELETE SET NULL (email_message_id),
+    CONSTRAINT fk_verification_challenges_sms_same_team
+        FOREIGN KEY (sms_message_id, team_id)
+        REFERENCES sms_messages (id, team_id)
+        ON DELETE SET NULL (sms_message_id),
     CONSTRAINT chk_verification_challenges_sequence CHECK (sequence > 0),
     CONSTRAINT chk_verification_challenges_hmac CHECK (octet_length(code_hmac) > 0),
     CONSTRAINT chk_verification_challenges_status CHECK (status IN (
