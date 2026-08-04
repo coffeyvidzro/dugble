@@ -22,17 +22,28 @@ type Command struct {
 	SchemaVersion  int       `json:"schema_version"`
 }
 
-func NewEvent(command Command) (outbox.Event, error) {
+func EventID(challengeID uuid.UUID) uuid.UUID {
+	return uuid.NewSHA1(uuid.NameSpaceURL, []byte(namespace+challengeID.String()))
+}
+
+func ValidateCommand(command Command) error {
 	if command.VerificationID == uuid.Nil || command.ChallengeID == uuid.Nil || command.TeamID == uuid.Nil {
-		return outbox.Event{}, errors.New("verification, challenge, and team ids are required")
+		return errors.New("verification, challenge, and team ids are required")
 	}
 	if len(command.EncryptedCode) == 0 {
-		return outbox.Event{}, errors.New("encrypted verification code is required")
+		return errors.New("encrypted verification code is required")
 	}
 	if command.SchemaVersion != 1 {
-		return outbox.Event{}, errors.New("unsupported verification dispatch schema version")
+		return errors.New("unsupported verification dispatch schema version")
 	}
-	eventID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(namespace+command.ChallengeID.String()))
+	return nil
+}
+
+func NewEvent(command Command) (outbox.Event, error) {
+	if err := ValidateCommand(command); err != nil {
+		return outbox.Event{}, err
+	}
+	eventID := EventID(command.ChallengeID)
 	payload, err := json.Marshal(command)
 	if err != nil {
 		return outbox.Event{}, err

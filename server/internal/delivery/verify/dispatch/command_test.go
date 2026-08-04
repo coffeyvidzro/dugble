@@ -21,8 +21,8 @@ func TestNewEventIsDeterministicAndEncrypted(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewEvent() replay error = %v", err)
 	}
-	if first.ID != second.ID {
-		t.Fatalf("event IDs differ: %s != %s", first.ID, second.ID)
+	if first.ID != second.ID || first.ID != EventID(command.ChallengeID) {
+		t.Fatalf("event IDs are not stable: %s != %s", first.ID, second.ID)
 	}
 	if first.Subject != Subject || first.AggregateID != command.ChallengeID {
 		t.Fatalf("NewEvent() = %+v", first)
@@ -36,5 +36,24 @@ func TestNewEventIsDeterministicAndEncrypted(t *testing.T) {
 	}
 	if !bytes.Equal(decoded.EncryptedCode, command.EncryptedCode) {
 		t.Fatal("dispatch payload did not preserve encrypted code")
+	}
+}
+
+func TestEventIDDiffersAcrossChallenges(t *testing.T) {
+	firstChallengeID := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	secondChallengeID := uuid.MustParse("00000000-0000-0000-0000-000000000002")
+	if EventID(firstChallengeID) == EventID(secondChallengeID) {
+		t.Fatal("EventID collided for different challenges")
+	}
+}
+
+func TestValidateCommandRejectsInvalidPayload(t *testing.T) {
+	if err := ValidateCommand(Command{SchemaVersion: 1}); err == nil {
+		t.Fatal("ValidateCommand accepted missing identifiers")
+	}
+	if err := ValidateCommand(Command{
+		VerificationID: uuid.New(), ChallengeID: uuid.New(), TeamID: uuid.New(), SchemaVersion: 1,
+	}); err == nil {
+		t.Fatal("ValidateCommand accepted an empty encrypted code")
 	}
 }

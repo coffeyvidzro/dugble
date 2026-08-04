@@ -20,6 +20,8 @@ import (
 	systememail "github.com/coffeyvidzro/dugble/server/internal/delivery/email/system"
 	tenantprovision "github.com/coffeyvidzro/dugble/server/internal/delivery/email/tenant"
 	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
+	verifychannel "github.com/coffeyvidzro/dugble/server/internal/delivery/verify/channel"
+	verifydispatch "github.com/coffeyvidzro/dugble/server/internal/delivery/verify/dispatch"
 	webhookdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/webhooks"
 	awsses "github.com/coffeyvidzro/dugble/server/internal/integration/aws/ses"
 	smsintegration "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
@@ -31,10 +33,14 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/messaging/outbox"
 	"github.com/coffeyvidzro/dugble/server/internal/messaging/processed"
 	domainmodule "github.com/coffeyvidzro/dugble/server/internal/modules/domain"
+	emailmodule "github.com/coffeyvidzro/dugble/server/internal/modules/email"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/emailtenant"
 	smsmodule "github.com/coffeyvidzro/dugble/server/internal/modules/sms"
 	webhookmodule "github.com/coffeyvidzro/dugble/server/internal/modules/webhooks"
+	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
+	platformbilling "github.com/coffeyvidzro/dugble/server/internal/platform/billing"
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
+	platformevent "github.com/coffeyvidzro/dugble/server/internal/platform/event"
 	platformwebhook "github.com/coffeyvidzro/dugble/server/internal/platform/webhook"
 	"github.com/coffeyvidzro/dugble/server/internal/transport/workerhealth"
 	workerruntime "github.com/coffeyvidzro/dugble/server/internal/worker"
@@ -75,8 +81,12 @@ func run() error {
 	}
 
 	processedEvents := processed.NewRepository(db)
+	outboxRepository := outbox.NewRepository(db)
 	webhookModuleRepository := webhookmodule.NewRepository(db)
 	webhookEmitter := platformwebhook.NewEmitter(webhookModuleRepository)
+	events := platformevent.NewEmitter(platformwebhook.NewEventSink(webhookEmitter))
+	billingService := platformbilling.NewService(platformbilling.NewRepository(db))
+
 	emailSender, err := awsses.NewSESSender(startupCtx, cfg.AWS.Region, cfg.AWS.FromEmail, cfg.AWS.AccessKey, cfg.AWS.SecretKey, cfg.AWS.SESConfigurationSet)
 	if err != nil {
 		return fmt.Errorf("initialize SES email sender: %w", err)
@@ -124,9 +134,31 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("initialize SMS sender: %w", err)
 	}
-	smsHandler := smsdelivery.NewHandler(smsmodule.NewRepositoryWithWebhookEmitter(db, webhookEmitter), smsSender)
+	smsRepository := smsmodule.NewRepositoryWithWebhookEmitter(db, webhookEmitter)
+	smsHandler := smsdelivery.NewHandler(smsRepository, smsSender)
 	smsConsumer := smsdelivery.NewConsumer(messagingClient, processedEvents, smsHandler, smsdelivery.ConsumerConfig{Concurrency: 10, AckWait: 2 * time.Minute, HandlerTimeout: 45 * time.Second, MaxDeliver: 6})
-	outboxRelay := outbox.NewRelay(outbox.NewRepository(db), messagingClient, outbox.Config{PollInterval: 500 * time.Millisecond, BatchSize: 100, LockTimeout: 30 * time.Second})
+
+	verifyCipher, err := authnz.NewSecretCipherKeyring(cfg.EncryptionKeys)
+	if err != nil {
+		return fmt.Errorf("initialize verification code cipher: %w", err)
+	}
+	emailAPIService := emailmodule.NewService(
+		emailmodule.NewRepository(db),
+		emaildelivery.NewQueue(outboxRepository),
+		emailmodule.ServiceConfig{DefaultFromEmail: cfg.AWS.FromEmail, DefaultProvider: "ses", DefaultRegion: cfg.AWS.Region},
+		billingService,
+	)
+	smsAPIService := smsmodule.NewService(smsRepository, smsSender, smsdelivery.NewQueue(outboxRepository), billingService)
+	verifyHandler := verifydispatch.NewHandler(
+		verifydispatch.NewRepository(db),
+		verifyCipher,
+		verifychannel.NewEmail(emailAPIService),
+		verifychannel.NewSMS(smsAPIService, "Dugble"),
+		events,
+	)
+	verifyConsumer := verifydispatch.NewConsumer(messagingClient, processedEvents, verifyHandler, verifydispatch.DefaultConsumerConfig())
+
+	outboxRelay := outbox.NewRelay(outboxRepository, messagingClient, outbox.Config{PollInterval: 500 * time.Millisecond, BatchSize: 100, LockTimeout: 30 * time.Second})
 	webhookWorkerID := "webhook-delivery-" + uuid.NewString()
 	webhookRepository := webhookdelivery.NewRepository(db, webhookdelivery.RepositoryConfig{AutoDisableAfter: 20})
 	webhookHandler := webhookdelivery.NewHandler(webhookRepository, webhookdelivery.NewClient(10*time.Second), webhookdelivery.DefaultRetryPolicy(), webhookWorkerID)
@@ -159,6 +191,7 @@ func run() error {
 		{Name: "email feedback database reconciler", Run: emailFeedbackReconciler.Run},
 		{Name: "email feedback metrics collector", Run: emailFeedbackMetricsCollector.Run},
 		{Name: "SMS JetStream consumer", Run: smsConsumer.Run},
+		{Name: "Verify dispatch JetStream consumer", Run: verifyConsumer.Run},
 		{Name: "webhook delivery consumer", Run: webhookConsumer.Run},
 		{Name: "sender domain reconciliation consumer", Run: domainConsumer.Run},
 	}
