@@ -14,7 +14,11 @@ CREATE TABLE IF NOT EXISTS usage_allowances (
     CONSTRAINT uq_usage_allowances_id_team_meter
         UNIQUE (id, team_id, meter),
     CONSTRAINT chk_usage_allowances_meter
-        CHECK (length(trim(meter)) > 0 AND meter !~ '[[:space:]]'),
+        CHECK (
+            length(trim(meter)) > 0
+            AND meter = lower(trim(meter))
+            AND meter !~ '[[:space:]]'
+        ),
     CONSTRAINT chk_usage_allowances_period
         CHECK (period_end > period_start),
     CONSTRAINT chk_usage_allowances_included_quantity
