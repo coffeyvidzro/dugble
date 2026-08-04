@@ -81,9 +81,6 @@ CREATE INDEX IF NOT EXISTS idx_product_rates_lookup
     );
 
 ALTER TABLE usage_authorizations
-    ADD COLUMN product_rate_id UUID;
-
-ALTER TABLE usage_authorizations
     ADD CONSTRAINT fk_usage_authorizations_product_rate_audit
     FOREIGN KEY (
         product_rate_id,
