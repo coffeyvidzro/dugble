@@ -20,7 +20,7 @@ func TestObserveCommittedRecordsAuthorizationReceipt(t *testing.T) {
 	NewService(nil).ObserveCommitted(context.Background(), CommittedAuthorization{
 		Authorization: Authorization{
 			Outcome: OutcomeApplied, MarketCode: "GH", Currency: "GHS", Tier: "growth",
-			Product: ProductSMSLocal, UnitCostUnits: 6500, Quantity: 2,
+			Product: ProductSMS, UnitCostUnits: 6500, Quantity: 2,
 			AmountUnits: 13000, RemainingBalance: 87000,
 		},
 		Channel: ChannelSMS, TeamID: teamID, MessageID: messageID,
@@ -33,7 +33,7 @@ func TestObserveCommittedRecordsAuthorizationReceipt(t *testing.T) {
 		`"team_id":"` + teamID.String() + `"`,
 		`"message_id":"` + messageID.String() + `"`,
 		`"billing_outcome":"applied"`,
-		`"billing_product":"sms_local"`,
+		`"billing_product":"sms"`,
 		`"amount_units":13000`,
 		`"remaining_balance_units":87000`,
 	} {

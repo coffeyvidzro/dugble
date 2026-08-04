@@ -39,7 +39,7 @@ func (f *fakeAuthorizationRepository) AuthorizeEmail(
 func TestAuthorizeSMSNormalizesAndReturnsAppliedCharge(t *testing.T) {
 	repository := &fakeAuthorizationRepository{result: Authorization{
 		Outcome: OutcomeApplied, MarketCode: "GH", Currency: "GHS", Tier: "growth",
-		Product: ProductSMSIntl, UnitCostUnits: 17544, Quantity: 2,
+		Product: ProductSMS, UnitCostUnits: 17544, Quantity: 2,
 		AmountUnits: 35188, RemainingBalance: 64812,
 	}}
 	input := SMSAuthorizationInput{
@@ -49,14 +49,15 @@ func TestAuthorizeSMSNormalizesAndReturnsAppliedCharge(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AuthorizeSMS() error = %v", err)
 	}
-	if repository.input.destinationCountry != "NG" || result.Product != ProductSMSIntl || result.AmountUnits != 35188 {
+	if repository.input.destinationCountry != "NG" || repository.input.provider != "arkesel" ||
+		repository.input.routeType != "standard" || result.Product != ProductSMS || result.AmountUnits != 35188 {
 		t.Fatalf("AuthorizeSMS() input/result = %+v/%+v", repository.input, result)
 	}
 }
 
 func TestAuthorizeSMSAcceptsIdempotentReplay(t *testing.T) {
 	repository := &fakeAuthorizationRepository{result: Authorization{
-		Outcome: OutcomeAlreadyApplied, MarketCode: "KE", Product: ProductSMSLocal,
+		Outcome: OutcomeAlreadyApplied, MarketCode: "KE", Product: ProductSMS,
 	}}
 	_, err := NewService(repository).AuthorizeSMS(context.Background(), nil, SMSAuthorizationInput{
 		TeamID: uuid.New(), MessageID: uuid.New(), DestinationNumber: "+254712345678", Segments: 1,
@@ -106,15 +107,6 @@ func TestAuthorizeSMSRejectsInvalidInputBeforeRepositoryCall(t *testing.T) {
 		if repository.calls != 0 {
 			t.Fatalf("AuthorizeSMS(%+v) called repository", input)
 		}
-	}
-}
-
-func TestProductForDestination(t *testing.T) {
-	if got := productForDestination("GH", "GH"); got != ProductSMSLocal {
-		t.Fatalf("productForDestination(GH, GH) = %s", got)
-	}
-	if got := productForDestination("GH", "NG"); got != ProductSMSIntl {
-		t.Fatalf("productForDestination(GH, NG) = %s", got)
 	}
 }
 

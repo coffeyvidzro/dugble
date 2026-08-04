@@ -36,14 +36,33 @@ created_owner AS (
 created_wallet AS (
     INSERT INTO team_wallets (
         team_id,
+        billing_market,
         currency
     )
     SELECT
+        team.id,
+        team.market_code,
+        market.currency
+    FROM created_team AS team
+    JOIN billing_markets AS market
+      ON market.code = team.market_code
+     AND market.is_enabled = true
+    RETURNING team_id
+),
+created_email_allowance AS (
+    INSERT INTO usage_allowances (
+        team_id,
+        meter,
+        period_start,
+        period_end,
+        included_quantity
+    )
+    SELECT
         id,
-        CASE market_code
-            WHEN 'GH' THEN 'GHS'
-            WHEN 'KE' THEN 'KES'
-        END
+        'email_recipient',
+        date_trunc('month', now()),
+        date_trunc('month', now()) + interval '1 month',
+        1000
     FROM created_team
     RETURNING team_id
 )
@@ -52,7 +71,9 @@ FROM created_team
 JOIN created_owner
     ON created_owner.team_id = created_team.id
 JOIN created_wallet
-    ON created_wallet.team_id = created_team.id;
+    ON created_wallet.team_id = created_team.id
+JOIN created_email_allowance
+    ON created_email_allowance.team_id = created_team.id;
 
 -- name: GetTeam :one
 SELECT *

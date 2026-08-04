@@ -61,33 +61,34 @@ func (r *Repository) Credit(
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			// A repeated payment reference is an idempotent success. Return the
-			// current wallet rather than applying the credit again.
 			return r.Get(ctx, teamID)
 		}
 		return Wallet{}, fmt.Errorf("credit team wallet: %w", err)
 	}
 	return Wallet{
-		TeamID: row.TeamID.String(), Currency: row.Currency, BalanceUnits: row.BalanceUnits,
-		Tier: row.Tier, FreeEmailAllowance: row.FreeEmailAllowance,
-		LastAllowanceReset: row.LastAllowanceReset.Time,
-		CreatedAt:          row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
+		TeamID: row.TeamID.String(), BillingMarket: row.BillingMarket,
+		Currency: row.Currency, BalanceUnits: row.BalanceUnits, Tier: row.Tier,
+		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}, nil
 }
 
 func walletFromSQLC(row dbsqlc.TeamWallet) Wallet {
 	return Wallet{
-		TeamID: row.TeamID.String(), Currency: row.Currency, BalanceUnits: row.BalanceUnits,
-		Tier: row.Tier, FreeEmailAllowance: row.FreeEmailAllowance,
-		LastAllowanceReset: row.LastAllowanceReset.Time,
-		CreatedAt:          row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
+		TeamID: row.TeamID.String(), BillingMarket: row.BillingMarket,
+		Currency: row.Currency, BalanceUnits: row.BalanceUnits, Tier: row.Tier,
+		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
 }
 
 func ledgerEntryFromSQLC(row dbsqlc.WalletLedger) LedgerEntry {
+	var authorizationID *string
+	if row.UsageAuthorizationID != nil {
+		value := row.UsageAuthorizationID.String()
+		authorizationID = &value
+	}
 	return LedgerEntry{
-		ID: row.ID.String(), TeamID: row.TeamID.String(), AmountUnits: row.AmountUnits,
-		TransactionType: row.TransactionType, ReferenceID: row.ReferenceID,
-		CreatedAt: row.CreatedAt.Time,
+		ID: row.ID.String(), TeamID: row.TeamID.String(), UsageAuthorizationID: authorizationID,
+		AmountUnits: row.AmountUnits, TransactionType: row.TransactionType,
+		ReferenceID: row.ReferenceID, CreatedAt: row.CreatedAt.Time,
 	}
 }

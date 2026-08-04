@@ -29,6 +29,17 @@ func validateSMSAuthorization(input SMSAuthorizationInput) (SMSAuthorizationInpu
 		return SMSAuthorizationInput{}, ErrInvalidDestination
 	}
 	input.destinationCountry = destinationCountry
+	input.routeType = "standard"
+	switch destinationCountry {
+	case "GH":
+		input.provider = "mnotify"
+	case "KE":
+		input.provider = "celcom"
+	case "NG":
+		input.provider = "arkesel"
+	default:
+		return SMSAuthorizationInput{}, ErrInvalidDestination
+	}
 	if input.Segments <= 0 {
 		return SMSAuthorizationInput{}, ErrInvalidSegments
 	}

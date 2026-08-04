@@ -9,12 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type AllowanceUsage struct {
-	TeamID      uuid.UUID          `db:"team_id" json:"team_id"`
-	ReferenceID string             `db:"reference_id" json:"reference_id"`
-	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
-}
-
 type AuditEvent struct {
 	ID             uuid.UUID          `db:"id" json:"id"`
 	TeamID         *uuid.UUID         `db:"team_id" json:"team_id"`
@@ -41,6 +35,18 @@ type AuthenticationChallenge struct {
 	ExpiresAt  pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
 	ConsumedAt pgtype.Timestamptz `db:"consumed_at" json:"consumed_at"`
 	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
+type BillingMarket struct {
+	Code      string `db:"code" json:"code"`
+	Currency  string `db:"currency" json:"currency"`
+	IsEnabled bool   `db:"is_enabled" json:"is_enabled"`
+}
+
+type Currency struct {
+	Code      string `db:"code" json:"code"`
+	MinorUnit int16  `db:"minor_unit" json:"minor_unit"`
+	IsEnabled bool   `db:"is_enabled" json:"is_enabled"`
 }
 
 type EmailDeliveryAttempt struct {
@@ -323,15 +329,16 @@ type ProcessedEvent struct {
 }
 
 type ProductRate struct {
-	ID         uuid.UUID          `db:"id" json:"id"`
-	Product    string             `db:"product" json:"product"`
-	MarketCode string             `db:"market_code" json:"market_code"`
-	Tier       string             `db:"tier" json:"tier"`
-	Currency   string             `db:"currency" json:"currency"`
-	CostUnits  int64              `db:"cost_units" json:"cost_units"`
-	IsActive   bool               `db:"is_active" json:"is_active"`
-	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt  pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	ID             uuid.UUID          `db:"id" json:"id"`
+	Product        string             `db:"product" json:"product"`
+	Meter          string             `db:"meter" json:"meter"`
+	BillingMarket  string             `db:"billing_market" json:"billing_market"`
+	Tier           string             `db:"tier" json:"tier"`
+	Currency       string             `db:"currency" json:"currency"`
+	CostUnits      int64              `db:"cost_units" json:"cost_units"`
+	EffectiveFrom  pgtype.Timestamptz `db:"effective_from" json:"effective_from"`
+	EffectiveUntil pgtype.Timestamptz `db:"effective_until" json:"effective_until"`
+	CreatedAt      pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
 type RecoveryCode struct {
@@ -423,6 +430,20 @@ type SmsMessage struct {
 	DestinationCountry string             `db:"destination_country" json:"destination_country"`
 }
 
+type SmsRate struct {
+	ID                 uuid.UUID          `db:"id" json:"id"`
+	BillingMarket      string             `db:"billing_market" json:"billing_market"`
+	DestinationCountry string             `db:"destination_country" json:"destination_country"`
+	Provider           string             `db:"provider" json:"provider"`
+	RouteType          string             `db:"route_type" json:"route_type"`
+	Tier               string             `db:"tier" json:"tier"`
+	Currency           string             `db:"currency" json:"currency"`
+	CostUnits          int64              `db:"cost_units" json:"cost_units"`
+	EffectiveFrom      pgtype.Timestamptz `db:"effective_from" json:"effective_from"`
+	EffectiveUntil     pgtype.Timestamptz `db:"effective_until" json:"effective_until"`
+	CreatedAt          pgtype.Timestamptz `db:"created_at" json:"created_at"`
+}
+
 type Team struct {
 	ID         uuid.UUID          `db:"id" json:"id"`
 	Name       string             `db:"name" json:"name"`
@@ -476,14 +497,13 @@ type TeamToken struct {
 }
 
 type TeamWallet struct {
-	TeamID             uuid.UUID          `db:"team_id" json:"team_id"`
-	Currency           string             `db:"currency" json:"currency"`
-	BalanceUnits       int64              `db:"balance_units" json:"balance_units"`
-	Tier               string             `db:"tier" json:"tier"`
-	FreeEmailAllowance int32              `db:"free_email_allowance" json:"free_email_allowance"`
-	LastAllowanceReset pgtype.Timestamptz `db:"last_allowance_reset" json:"last_allowance_reset"`
-	CreatedAt          pgtype.Timestamptz `db:"created_at" json:"created_at"`
-	UpdatedAt          pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+	TeamID        uuid.UUID          `db:"team_id" json:"team_id"`
+	BillingMarket string             `db:"billing_market" json:"billing_market"`
+	Currency      string             `db:"currency" json:"currency"`
+	BalanceUnits  int64              `db:"balance_units" json:"balance_units"`
+	Tier          string             `db:"tier" json:"tier"`
+	CreatedAt     pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
 type TotpCredential struct {
@@ -493,6 +513,42 @@ type TotpCredential struct {
 	LastUsedStep     *int64             `db:"last_used_step" json:"last_used_step"`
 	CreatedAt        pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type UsageAllowance struct {
+	ID               uuid.UUID          `db:"id" json:"id"`
+	TeamID           uuid.UUID          `db:"team_id" json:"team_id"`
+	Meter            string             `db:"meter" json:"meter"`
+	PeriodStart      pgtype.Timestamptz `db:"period_start" json:"period_start"`
+	PeriodEnd        pgtype.Timestamptz `db:"period_end" json:"period_end"`
+	IncludedQuantity int64              `db:"included_quantity" json:"included_quantity"`
+	ConsumedQuantity int64              `db:"consumed_quantity" json:"consumed_quantity"`
+	CreatedAt        pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type UsageAuthorization struct {
+	ID                 uuid.UUID          `db:"id" json:"id"`
+	TeamID             uuid.UUID          `db:"team_id" json:"team_id"`
+	Product            string             `db:"product" json:"product"`
+	Meter              string             `db:"meter" json:"meter"`
+	ReferenceID        string             `db:"reference_id" json:"reference_id"`
+	UsageAllowanceID   *uuid.UUID         `db:"usage_allowance_id" json:"usage_allowance_id"`
+	SmsRateID          *uuid.UUID         `db:"sms_rate_id" json:"sms_rate_id"`
+	ProductRateID      *uuid.UUID         `db:"product_rate_id" json:"product_rate_id"`
+	BillingMarket      string             `db:"billing_market" json:"billing_market"`
+	DestinationCountry *string            `db:"destination_country" json:"destination_country"`
+	Provider           *string            `db:"provider" json:"provider"`
+	RouteType          *string            `db:"route_type" json:"route_type"`
+	TotalQuantity      int64              `db:"total_quantity" json:"total_quantity"`
+	AllowanceQuantity  int64              `db:"allowance_quantity" json:"allowance_quantity"`
+	BillableQuantity   int64              `db:"billable_quantity" json:"billable_quantity"`
+	UnitCostUnits      int64              `db:"unit_cost_units" json:"unit_cost_units"`
+	AmountUnits        int64              `db:"amount_units" json:"amount_units"`
+	Currency           string             `db:"currency" json:"currency"`
+	Tier               string             `db:"tier" json:"tier"`
+	PricedAt           pgtype.Timestamptz `db:"priced_at" json:"priced_at"`
+	CreatedAt          pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
 type User struct {
@@ -583,12 +639,13 @@ type VerificationToken struct {
 }
 
 type WalletLedger struct {
-	ID              uuid.UUID          `db:"id" json:"id"`
-	TeamID          uuid.UUID          `db:"team_id" json:"team_id"`
-	AmountUnits     int64              `db:"amount_units" json:"amount_units"`
-	TransactionType string             `db:"transaction_type" json:"transaction_type"`
-	ReferenceID     string             `db:"reference_id" json:"reference_id"`
-	CreatedAt       pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	ID                   uuid.UUID          `db:"id" json:"id"`
+	TeamID               uuid.UUID          `db:"team_id" json:"team_id"`
+	UsageAuthorizationID *uuid.UUID         `db:"usage_authorization_id" json:"usage_authorization_id"`
+	AmountUnits          int64              `db:"amount_units" json:"amount_units"`
+	TransactionType      string             `db:"transaction_type" json:"transaction_type"`
+	ReferenceID          string             `db:"reference_id" json:"reference_id"`
+	CreatedAt            pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
 type WebhookDelivery struct {

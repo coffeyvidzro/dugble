@@ -12,9 +12,8 @@ type Product string
 type Channel string
 
 const (
-	ProductSMSLocal Product = "sms_local"
-	ProductSMSIntl  Product = "sms_intl"
-	ProductEmail    Product = "email"
+	ProductSMS   Product = "sms"
+	ProductEmail Product = "email"
 )
 
 const (
@@ -28,6 +27,8 @@ type SMSAuthorizationInput struct {
 	DestinationNumber  string
 	Segments           int32
 	destinationCountry string
+	provider           string
+	routeType          string
 }
 
 type Authorization struct {
@@ -41,7 +42,7 @@ type Authorization struct {
 	AmountUnits        int64
 	RemainingBalance   int64
 	CoveredByAllowance bool
-	RemainingAllowance int32
+	RemainingAllowance int64
 }
 
 type EmailAuthorizationInput struct {
