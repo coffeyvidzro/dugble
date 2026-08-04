@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -22,10 +23,18 @@ type eventEmitter interface {
 type Service struct {
 	repository *Repository
 	events     eventEmitter
+	tokens     *RecipientTokenManager
+	tokenTTL   time.Duration
 }
 
 func NewService(repository *Repository, events eventEmitter) *Service {
 	return &Service{repository: repository, events: events}
+}
+
+func (service *Service) WithRecipientTokens(tokens *RecipientTokenManager, ttl time.Duration) *Service {
+	service.tokens = tokens
+	service.tokenTTL = ttl
+	return service
 }
 
 func (service *Service) CreateMessage(ctx context.Context, request CreateMessageRequest) (Message, error) {
