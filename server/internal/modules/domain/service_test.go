@@ -8,10 +8,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/coffeyvidzro/dugble/server/internal/modules/emailtenant"
-
 	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/tenant"
-	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
 type checkProvider struct {
@@ -159,18 +157,17 @@ func domainAccessContext(teamID uuid.UUID) context.Context {
 	})
 }
 
-func TestCreateReturnsConflictWhileTenantIsProvisioning(t *testing.T) {
+func TestCreateReturnsProvisioningResultWhileTenantIsProvisioning(t *testing.T) {
 	teamID := uuid.New()
 	provisioner := &provisioningStub{tenant: emailtenant.Tenant{ID: uuid.New(), TeamID: teamID, Region: "eu-north-1", Status: emailtenant.StatusProvisioning}}
 	service := NewService(nil, checkProvider{}, checkDNS(true), provisioner)
 
-	_, err := service.Create(domainAccessContext(teamID), CreateRequest{Domain: "example.com", Region: "eu-north-1"})
-	if err == nil {
-		t.Fatal("Create() error = nil, want tenant preparation conflict")
+	result, err := service.Create(domainAccessContext(teamID), CreateRequest{Domain: "example.com", Region: "eu-north-1"})
+	if err != nil {
+		t.Fatalf("Create() error = %v, want nil", err)
 	}
-	var appErr *apperrors.AppError
-	if !errors.As(err, &appErr) || appErr.Code != "CONFLICT" {
-		t.Fatalf("Create() error = %v, want conflict", err)
+	if !result.Provisioning || result.Domain != nil {
+		t.Fatalf("Create() result = %+v, want provisioning result", result)
 	}
 	if provisioner.requests != 1 {
 		t.Fatalf("provisioning requests = %d, want 1", provisioner.requests)
