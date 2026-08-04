@@ -22,6 +22,7 @@ import (
 	smsdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/sms"
 	verifychannel "github.com/coffeyvidzro/dugble/server/internal/delivery/verify/channel"
 	verifydispatch "github.com/coffeyvidzro/dugble/server/internal/delivery/verify/dispatch"
+	verifyexpiry "github.com/coffeyvidzro/dugble/server/internal/delivery/verify/expiry"
 	webhookdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/webhooks"
 	awsses "github.com/coffeyvidzro/dugble/server/internal/integration/aws/ses"
 	smsintegration "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
@@ -157,6 +158,7 @@ func run() error {
 		events,
 	)
 	verifyConsumer := verifydispatch.NewConsumer(messagingClient, processedEvents, verifyHandler, verifydispatch.DefaultConsumerConfig())
+	verifyExpiryConsumer := verifyexpiry.NewConsumer(verifyexpiry.NewRepository(db, events), verifyexpiry.DefaultConfig())
 
 	outboxRelay := outbox.NewRelay(outboxRepository, messagingClient, outbox.Config{PollInterval: 500 * time.Millisecond, BatchSize: 100, LockTimeout: 30 * time.Second})
 	webhookWorkerID := "webhook-delivery-" + uuid.NewString()
@@ -192,6 +194,7 @@ func run() error {
 		{Name: "email feedback metrics collector", Run: emailFeedbackMetricsCollector.Run},
 		{Name: "SMS JetStream consumer", Run: smsConsumer.Run},
 		{Name: "Verify dispatch JetStream consumer", Run: verifyConsumer.Run},
+		{Name: "Verify expiry database consumer", Run: verifyExpiryConsumer.Run},
 		{Name: "webhook delivery consumer", Run: webhookConsumer.Run},
 		{Name: "sender domain reconciliation consumer", Run: domainConsumer.Run},
 	}
