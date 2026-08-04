@@ -72,6 +72,11 @@ CREATE TABLE IF NOT EXISTS usage_authorizations (
     CONSTRAINT uq_usage_authorizations_id_team
         UNIQUE (id, team_id),
 
+    CONSTRAINT fk_usage_authorizations_wallet_market_currency
+        FOREIGN KEY (team_id, billing_market, currency)
+        REFERENCES team_wallets (team_id, billing_market, currency)
+        ON DELETE RESTRICT,
+
     CONSTRAINT fk_usage_authorizations_allowance_same_team_meter
         FOREIGN KEY (usage_allowance_id, team_id, meter)
         REFERENCES usage_allowances (id, team_id, meter)
@@ -114,8 +119,6 @@ CREATE TABLE IF NOT EXISTS usage_authorizations (
         ),
     CONSTRAINT chk_usage_authorizations_reference
         CHECK (length(trim(reference_id)) > 0),
-    CONSTRAINT chk_usage_authorizations_billing_market
-        CHECK (billing_market ~ '^[A-Z]{2}$'),
     CONSTRAINT chk_usage_authorizations_quantities
         CHECK (
             total_quantity > 0
@@ -141,8 +144,6 @@ CREATE TABLE IF NOT EXISTS usage_authorizations (
                 )
             )
         ),
-    CONSTRAINT chk_usage_authorizations_currency
-        CHECK (currency ~ '^[A-Z]{3}$'),
     CONSTRAINT chk_usage_authorizations_tier
         CHECK (tier IN ('growth', 'scale', 'enterprise')),
     CONSTRAINT chk_usage_authorizations_sms_context
