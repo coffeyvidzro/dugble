@@ -22,6 +22,7 @@ func TestDocumentedEventsMatchSubscribableCatalog(t *testing.T) {
 	}
 	documented := append(documentedEvents(t, string(content), "SMS events", "sms"), documentedEvents(t, string(content), "Email events", "email")...)
 	documented = append(documented, documentedEvents(t, string(content), "Verify events", "verification")...)
+	documented = append(documented, documentedEvents(t, string(content), "Inbox events", "inbox")...)
 	if supported := SubscribableEventTypes(); !reflect.DeepEqual(documented, supported) {
 		t.Fatalf("documented events = %v, subscribable events = %v", documented, supported)
 	}
@@ -34,7 +35,7 @@ func documentedEvents(t *testing.T, document, section, resource string) []string
 		t.Fatalf("webhook event documentation is missing the %s section", section)
 	}
 	body := strings.SplitN(parts[1], "\n## ", 2)[0]
-	eventPattern := regexp.MustCompile(`(?m)^\| \x60(` + regexp.QuoteMeta(resource) + `\.[a-z_]+)\x60`)
+	eventPattern := regexp.MustCompile(`(?m)^\| \x60(` + regexp.QuoteMeta(resource) + `\.[a-z_.]+)\x60`)
 	matches := eventPattern.FindAllStringSubmatch(body, -1)
 	events := make([]string, 0, len(matches))
 	for _, match := range matches {

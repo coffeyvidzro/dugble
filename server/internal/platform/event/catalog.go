@@ -43,6 +43,8 @@ const (
 	TypeVerificationMaxAttemptsReached Type = "verification.max_attempts_reached"
 	TypeVerificationCanceled           Type = "verification.canceled"
 
+	TypeInboxMessageCreated Type = "inbox.message.created"
+
 	TypeWebhookTest Type = "webhook.test"
 )
 
@@ -71,6 +73,7 @@ var definitions = []Definition{
 	{Type: TypeVerificationDeliveryFailed, ObjectType: "verification", ObjectIDRequired: true, Subscribable: true},
 	{Type: TypeVerificationMaxAttemptsReached, ObjectType: "verification", ObjectIDRequired: true, Subscribable: true},
 	{Type: TypeVerificationCanceled, ObjectType: "verification", ObjectIDRequired: true, Subscribable: true},
+	{Type: TypeInboxMessageCreated, ObjectType: "inbox_message", ObjectIDRequired: true, Subscribable: true},
 	{Type: TypeWebhookTest, ObjectType: "webhook_endpoint", ObjectIDRequired: true},
 }
 
