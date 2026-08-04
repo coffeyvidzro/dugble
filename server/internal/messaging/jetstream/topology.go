@@ -25,6 +25,7 @@ type StreamLimits struct {
 	JobsMaxAge     time.Duration
 	EventsMaxAge   time.Duration
 	DLQMaxAge      time.Duration
+	Replicas       int
 }
 
 func DefaultStreamLimits() StreamLimits {
@@ -35,6 +36,7 @@ func DefaultStreamLimits() StreamLimits {
 		JobsMaxAge:     7 * 24 * time.Hour,
 		EventsMaxAge:   30 * 24 * time.Hour,
 		DLQMaxAge:      90 * 24 * time.Hour,
+		Replicas:       1,
 	}
 }
 
@@ -58,6 +60,9 @@ func StreamConfigs(limits StreamLimits) []natsjs.StreamConfig {
 	if limits.DLQMaxAge <= 0 {
 		limits.DLQMaxAge = defaults.DLQMaxAge
 	}
+	if limits.Replicas <= 0 {
+		limits.Replicas = defaults.Replicas
+	}
 
 	return []natsjs.StreamConfig{
 		{
@@ -67,7 +72,7 @@ func StreamConfigs(limits StreamLimits) []natsjs.StreamConfig {
 			Retention:   natsjs.WorkQueuePolicy,
 			Discard:     natsjs.DiscardNew,
 			Storage:     natsjs.FileStorage,
-			Replicas:    1,
+			Replicas:    limits.Replicas,
 			MaxBytes:    limits.JobsMaxBytes,
 			MaxAge:      limits.JobsMaxAge,
 			MaxMsgSize:  maxMessageSize,
@@ -80,7 +85,7 @@ func StreamConfigs(limits StreamLimits) []natsjs.StreamConfig {
 			Retention:   natsjs.LimitsPolicy,
 			Discard:     natsjs.DiscardOld,
 			Storage:     natsjs.FileStorage,
-			Replicas:    1,
+			Replicas:    limits.Replicas,
 			MaxBytes:    limits.EventsMaxBytes,
 			MaxAge:      limits.EventsMaxAge,
 			MaxMsgSize:  maxMessageSize,
@@ -93,7 +98,7 @@ func StreamConfigs(limits StreamLimits) []natsjs.StreamConfig {
 			Retention:   natsjs.LimitsPolicy,
 			Discard:     natsjs.DiscardOld,
 			Storage:     natsjs.FileStorage,
-			Replicas:    1,
+			Replicas:    limits.Replicas,
 			MaxBytes:    limits.DLQMaxBytes,
 			MaxAge:      limits.DLQMaxAge,
 			MaxMsgSize:  maxMessageSize,

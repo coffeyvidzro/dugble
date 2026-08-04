@@ -70,7 +70,9 @@ func run() error {
 			slog.Warn("close JetStream client", "error", closeErr)
 		}
 	}()
-	if err := messagingClient.Provision(startupCtx, jetstreammessaging.DefaultStreamLimits()); err != nil {
+	streamLimits := jetstreammessaging.DefaultStreamLimits()
+	streamLimits.Replicas = cfg.NATSStreamReplicas
+	if err := messagingClient.Provision(startupCtx, streamLimits); err != nil {
 		return fmt.Errorf("provision JetStream topology: %w", err)
 	}
 

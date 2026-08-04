@@ -4,7 +4,8 @@ x-app-env: &app-env
   APP_ENV: ${APP_ENV:-production}
   DATABASE_URL: postgres://${POSTGRES_USER:-dugble}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-dugble}?sslmode=disable
   REDIS_URL: redis://redis:6379/0
-  NATS_URL: nats://${NATS_USER:-dugble}:${NATS_PASSWORD:?set NATS_PASSWORD}@nats:4222
+  NATS_URL: nats://${NATS_USER:-dugble}:${NATS_PASSWORD:?set NATS_PASSWORD}@nats:4222,nats://${NATS_USER:-dugble}:${NATS_PASSWORD:?set NATS_PASSWORD}@nats-2:4222,nats://${NATS_USER:-dugble}:${NATS_PASSWORD:?set NATS_PASSWORD}@nats-3:4222
+  NATS_STREAM_REPLICAS: ${NATS_STREAM_REPLICAS:-3}
   FRONTEND_URL: ${FRONTEND_URL:?set FRONTEND_URL}
   BACKEND_URL: ${BACKEND_URL:?set BACKEND_URL}
   CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS}
@@ -134,12 +135,87 @@ services:
       - "${NATS_USER:-dugble}"
       - "--pass"
       - "${NATS_PASSWORD:?set NATS_PASSWORD}"
+      - "--name"
+      - "dugble-nats-1"
+      - "--routes"
+      - "nats://nats-2:6222,nats://nats-3:6222"
     expose:
       - "4222"
+      - "6222"
       - "8222"
     volumes:
       - ./nats-server.conf:/etc/nats/nats-server.conf:ro
       - nats_data:/data
+    networks:
+      - dugble-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null 'http://127.0.0.1:8222/healthz?js-enabled-only=true' || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  nats-2:
+    image: nats:2.14.3-alpine
+    container_name: dugble-nats-2
+    restart: unless-stopped
+    command:
+      - "-c"
+      - "/etc/nats/nats-server.conf"
+      - "--user"
+      - "${NATS_USER:-dugble}"
+      - "--pass"
+      - "${NATS_PASSWORD:?set NATS_PASSWORD}"
+      - "--name"
+      - "dugble-nats-2"
+      - "--routes"
+      - "nats://nats:6222,nats://nats-3:6222"
+    expose:
+      - "4222"
+      - "6222"
+      - "8222"
+    volumes:
+      - ./nats-server.conf:/etc/nats/nats-server.conf:ro
+      - nats_data_2:/data
+    networks:
+      - dugble-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null 'http://127.0.0.1:8222/healthz?js-enabled-only=true' || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  nats-3:
+    image: nats:2.14.3-alpine
+    container_name: dugble-nats-3
+    restart: unless-stopped
+    command:
+      - "-c"
+      - "/etc/nats/nats-server.conf"
+      - "--user"
+      - "${NATS_USER:-dugble}"
+      - "--pass"
+      - "${NATS_PASSWORD:?set NATS_PASSWORD}"
+      - "--name"
+      - "dugble-nats-3"
+      - "--routes"
+      - "nats://nats:6222,nats://nats-2:6222"
+    expose:
+      - "4222"
+      - "6222"
+      - "8222"
+    volumes:
+      - ./nats-server.conf:/etc/nats/nats-server.conf:ro
+      - nats_data_3:/data
     networks:
       - dugble-network
     healthcheck:
@@ -180,6 +256,12 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+      nats:
+        condition: service_healthy
+      nats-2:
+        condition: service_healthy
+      nats-3:
+        condition: service_healthy
 
   worker:
     <<: *app-build
@@ -208,6 +290,10 @@ services:
       redis:
         condition: service_healthy
       nats:
+        condition: service_healthy
+      nats-2:
+        condition: service_healthy
+      nats-3:
         condition: service_healthy
 
   backoffice:
@@ -248,5 +334,7 @@ volumes:
   postgres_data:
   redis_data:
   nats_data:
+  nats_data_2:
+  nats_data_3:
   caddy_data:
   caddy_config:

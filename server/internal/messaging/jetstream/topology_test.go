@@ -46,3 +46,14 @@ func TestStreamConfigs(t *testing.T) {
 		t.Fatalf("DLQ stream must retain a bounded investigation window")
 	}
 }
+
+func TestStreamConfigsUseConfiguredReplicas(t *testing.T) {
+	t.Parallel()
+
+	configs := StreamConfigs(StreamLimits{Replicas: 3})
+	for _, config := range configs {
+		if config.Replicas != 3 {
+			t.Errorf("stream %s replicas = %d, want 3", config.Name, config.Replicas)
+		}
+	}
+}
