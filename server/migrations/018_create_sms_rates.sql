@@ -14,6 +14,18 @@ CREATE TABLE IF NOT EXISTS sms_rates (
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
+    CONSTRAINT uq_sms_rates_audit
+        UNIQUE (
+            id,
+            billing_market,
+            destination_country,
+            provider,
+            route_type,
+            tier,
+            currency,
+            cost_units
+        ),
+
     CONSTRAINT chk_sms_rates_billing_market
         CHECK (billing_market ~ '^[A-Z]{2}$'),
 
@@ -22,13 +34,15 @@ CREATE TABLE IF NOT EXISTS sms_rates (
 
     CONSTRAINT chk_sms_rates_provider
         CHECK (
-            provider = lower(trim(provider))
+            length(trim(provider)) > 0
+            AND provider = lower(trim(provider))
             AND provider !~ '[[:space:]]'
         ),
 
     CONSTRAINT chk_sms_rates_route_type
         CHECK (
-            route_type = lower(trim(route_type))
+            length(trim(route_type)) > 0
+            AND route_type = lower(trim(route_type))
             AND route_type !~ '[[:space:]]'
         ),
 
