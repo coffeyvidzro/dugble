@@ -10,6 +10,14 @@ CREATE TABLE IF NOT EXISTS currencies (
         CHECK (minor_unit BETWEEN 0 AND 6)
 );
 
+INSERT INTO currencies (code, minor_unit, is_enabled)
+VALUES
+    ('GHS', 2, true),
+    ('KES', 2, true)
+ON CONFLICT (code) DO UPDATE SET
+    minor_unit = EXCLUDED.minor_unit,
+    is_enabled = EXCLUDED.is_enabled;
+
 CREATE TABLE IF NOT EXISTS billing_markets (
     code CHAR(2) PRIMARY KEY,
     currency CHAR(3) NOT NULL
@@ -23,6 +31,14 @@ CREATE TABLE IF NOT EXISTS billing_markets (
     CONSTRAINT uq_billing_markets_code_currency
         UNIQUE (code, currency)
 );
+
+INSERT INTO billing_markets (code, currency, is_enabled)
+VALUES
+    ('GH', 'GHS', true),
+    ('KE', 'KES', true)
+ON CONFLICT (code) DO UPDATE SET
+    currency = EXCLUDED.currency,
+    is_enabled = EXCLUDED.is_enabled;
 
 CREATE TABLE IF NOT EXISTS team_wallets (
     team_id UUID PRIMARY KEY REFERENCES teams(id) ON DELETE CASCADE,
@@ -67,10 +83,23 @@ CREATE TABLE IF NOT EXISTS wallet_ledger (
         CHECK (
             transaction_type IN (
                 'deposit',
-                'usage_sms',
-                'usage_email',
+                'usage',
                 'refund',
                 'expiry_wipe'
+            )
+        ),
+
+    CONSTRAINT chk_wallet_ledger_usage_authorization
+        CHECK (
+            (
+                transaction_type = 'usage'
+                AND usage_authorization_id IS NOT NULL
+                AND amount_units < 0
+            )
+            OR
+            (
+                transaction_type <> 'usage'
+                AND usage_authorization_id IS NULL
             )
         ),
 
