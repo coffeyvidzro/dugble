@@ -18,7 +18,6 @@ import (
 	"github.com/coffeyvidzro/dugble/server/internal/modules/domain"
 	emailmodule "github.com/coffeyvidzro/dugble/server/internal/modules/email"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/emailtenant"
-	"github.com/coffeyvidzro/dugble/server/internal/modules/inbox"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/mfa"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/senderid"
 	"github.com/coffeyvidzro/dugble/server/internal/modules/session"
@@ -136,8 +135,6 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		DefaultRegion:    cfg.AWS.Region,
 	}, billingService)
 	emailmodule.RegisterRoutes(router, emailmodule.NewHandler(emailServiceAPI), tenantAccess)
-	inboxService := inbox.NewService(inbox.NewRepository(deps.DB), productRuntime.Events)
-	inbox.RegisterRoutes(router, inbox.NewHandler(inboxService), tenantAccess)
 	verifySecret := []byte(cfg.Verify.HMACSecret)
 	verifyCodes, err := verifymodule.NewCodeManager(verifySecret, mfaCipher)
 	if err != nil {
