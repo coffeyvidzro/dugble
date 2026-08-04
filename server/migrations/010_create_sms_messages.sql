@@ -34,6 +34,9 @@ CREATE TABLE IF NOT EXISTS sms_messages (
         CHECK (status IN ('queued', 'processing', 'submitted', 'sent', 'delivered', 'undelivered', 'rejected', 'failed', 'expired', 'unknown', 'canceled'))
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sms_messages_id_team
+    ON sms_messages (id, team_id);
+
 CREATE INDEX IF NOT EXISTS idx_sms_messages_team_created
     ON sms_messages (team_id, created_at DESC);
 
