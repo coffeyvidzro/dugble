@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	dbsqlc "github.com/coffeyvidzro/dugble/server/internal/database/sqlc"
-	"github.com/coffeyvidzro/dugble/server/internal/notifications"
+	notifications "github.com/coffeyvidzro/dugble/server/internal/platform/systemmail"
 )
 
 type Repository struct {
