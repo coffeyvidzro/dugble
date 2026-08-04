@@ -224,3 +224,30 @@ WHERE delivery.id = sqlc.arg(id)
   AND endpoint.disabled_at IS NULL
   AND delivery.status = 'failed'
 RETURNING delivery.*;
+
+-- name: ReplayWebhookDelivery :one
+UPDATE webhook_deliveries AS delivery
+SET status = 'pending',
+    replay_count = delivery.replay_count + 1,
+    last_replayed_at = now(),
+    next_attempt_at = now(),
+    response_status = NULL,
+    response_body = NULL,
+    last_error = NULL,
+    delivered_at = NULL,
+    locked_at = NULL,
+    locked_by = NULL,
+    updated_at = now()
+FROM webhook_events AS event,
+     webhook_endpoints AS endpoint,
+     teams AS team
+WHERE delivery.id = sqlc.arg(id)
+  AND event.id = delivery.event_id
+  AND endpoint.id = delivery.endpoint_id
+  AND team.id = event.team_id
+  AND event.team_id = sqlc.arg(team_id)
+  AND team.status = 'active'
+  AND endpoint.enabled = true
+  AND endpoint.disabled_at IS NULL
+  AND delivery.status IN ('succeeded', 'failed', 'canceled')
+RETURNING delivery.*;
