@@ -45,7 +45,7 @@ type Message struct {
 	Actions        []Action        `json:"actions"`
 	Source         string          `json:"source"`
 	SourceID       *string         `json:"source_id,omitempty"`
-	RecipientCount int             `json:"recipient_count"`
+	RecipientCount int             `json:"recipient_count,omitempty"`
 	CreatedAt      time.Time       `json:"created_at"`
 	UpdatedAt      time.Time       `json:"updated_at"`
 }
