@@ -40,7 +40,9 @@ func TestNewEventIsDeterministicAndEncrypted(t *testing.T) {
 }
 
 func TestEventIDDiffersAcrossChallenges(t *testing.T) {
-	if EventID(uuid.New()) == EventID(uuid.New()) {
+	firstChallengeID := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	secondChallengeID := uuid.MustParse("00000000-0000-0000-0000-000000000002")
+	if EventID(firstChallengeID) == EventID(secondChallengeID) {
 		t.Fatal("EventID collided for different challenges")
 	}
 }
