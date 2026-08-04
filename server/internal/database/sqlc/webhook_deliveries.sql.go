@@ -526,6 +526,64 @@ func (q *Queries) ReleaseWebhookDeliveryClaim(ctx context.Context, arg ReleaseWe
 	return result.RowsAffected(), nil
 }
 
+const replayWebhookDelivery = `-- name: ReplayWebhookDelivery :one
+UPDATE webhook_deliveries AS delivery
+SET status = 'pending',
+    replay_count = delivery.replay_count + 1,
+    last_replayed_at = now(),
+    next_attempt_at = now(),
+    response_status = NULL,
+    response_body = NULL,
+    last_error = NULL,
+    delivered_at = NULL,
+    locked_at = NULL,
+    locked_by = NULL,
+    updated_at = now()
+FROM webhook_events AS event,
+     webhook_endpoints AS endpoint,
+     teams AS team
+WHERE delivery.id = $1
+  AND event.id = delivery.event_id
+  AND endpoint.id = delivery.endpoint_id
+  AND team.id = event.team_id
+  AND event.team_id = $2
+  AND team.status = 'active'
+  AND endpoint.enabled = true
+  AND endpoint.disabled_at IS NULL
+  AND delivery.status IN ('succeeded', 'failed', 'canceled')
+RETURNING delivery.id, delivery.event_id, delivery.endpoint_id, delivery.status, delivery.attempt_count, delivery.replay_count, delivery.next_attempt_at, delivery.last_attempt_at, delivery.last_replayed_at, delivery.response_status, delivery.response_body, delivery.last_error, delivery.delivered_at, delivery.locked_at, delivery.locked_by, delivery.created_at, delivery.updated_at
+`
+
+type ReplayWebhookDeliveryParams struct {
+	ID     uuid.UUID `db:"id" json:"id"`
+	TeamID uuid.UUID `db:"team_id" json:"team_id"`
+}
+
+func (q *Queries) ReplayWebhookDelivery(ctx context.Context, arg ReplayWebhookDeliveryParams) (WebhookDelivery, error) {
+	row := q.db.QueryRow(ctx, replayWebhookDelivery, arg.ID, arg.TeamID)
+	var i WebhookDelivery
+	err := row.Scan(
+		&i.ID,
+		&i.EventID,
+		&i.EndpointID,
+		&i.Status,
+		&i.AttemptCount,
+		&i.ReplayCount,
+		&i.NextAttemptAt,
+		&i.LastAttemptAt,
+		&i.LastReplayedAt,
+		&i.ResponseStatus,
+		&i.ResponseBody,
+		&i.LastError,
+		&i.DeliveredAt,
+		&i.LockedAt,
+		&i.LockedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const retryWebhookDelivery = `-- name: RetryWebhookDelivery :one
 UPDATE webhook_deliveries AS delivery
 SET status = 'pending',

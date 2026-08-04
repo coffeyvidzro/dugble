@@ -145,6 +145,65 @@ func (q *Queries) ListWebhookEvents(ctx context.Context, arg ListWebhookEventsPa
 	return items, nil
 }
 
+const listWebhookEventsFiltered = `-- name: ListWebhookEventsFiltered :many
+SELECT event.id, event.team_id, event.event_type, event.object_type, event.object_id, event.payload, event.occurred_at, event.created_at
+FROM webhook_events AS event
+JOIN teams AS team ON team.id = event.team_id
+WHERE event.team_id = $1
+  AND team.status = 'active'
+  AND ($2::text IS NULL OR event.event_type = $2)
+  AND ($3::text IS NULL OR event.object_type = $3)
+  AND ($4::uuid IS NULL OR event.object_id = $4)
+  AND ($5::timestamptz IS NULL OR event.occurred_at < $5)
+ORDER BY event.occurred_at DESC, event.id DESC
+LIMIT $6
+`
+
+type ListWebhookEventsFilteredParams struct {
+	TeamID           uuid.UUID          `db:"team_id" json:"team_id"`
+	EventType        *string            `db:"event_type" json:"event_type"`
+	ObjectType       *string            `db:"object_type" json:"object_type"`
+	ObjectID         *uuid.UUID         `db:"object_id" json:"object_id"`
+	BeforeOccurredAt pgtype.Timestamptz `db:"before_occurred_at" json:"before_occurred_at"`
+	LimitCount       int32              `db:"limit_count" json:"limit_count"`
+}
+
+func (q *Queries) ListWebhookEventsFiltered(ctx context.Context, arg ListWebhookEventsFilteredParams) ([]WebhookEvent, error) {
+	rows, err := q.db.Query(ctx, listWebhookEventsFiltered,
+		arg.TeamID,
+		arg.EventType,
+		arg.ObjectType,
+		arg.ObjectID,
+		arg.BeforeOccurredAt,
+		arg.LimitCount,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []WebhookEvent{}
+	for rows.Next() {
+		var i WebhookEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.TeamID,
+			&i.EventType,
+			&i.ObjectType,
+			&i.ObjectID,
+			&i.Payload,
+			&i.OccurredAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWebhookEventsForObject = `-- name: ListWebhookEventsForObject :many
 SELECT event.id, event.team_id, event.event_type, event.object_type, event.object_id, event.payload, event.occurred_at, event.created_at
 FROM webhook_events AS event
