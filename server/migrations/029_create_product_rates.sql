@@ -24,6 +24,11 @@ CREATE TABLE IF NOT EXISTS product_rates (
             cost_units
         ),
 
+    CONSTRAINT fk_product_rates_billing_market_currency
+        FOREIGN KEY (billing_market, currency)
+        REFERENCES billing_markets (code, currency)
+        ON DELETE RESTRICT,
+
     CONSTRAINT chk_product_rates_product
         CHECK (
             length(trim(product)) > 0
@@ -38,14 +43,8 @@ CREATE TABLE IF NOT EXISTS product_rates (
             AND meter !~ '[[:space:]]'
         ),
 
-    CONSTRAINT chk_product_rates_billing_market
-        CHECK (billing_market ~ '^[A-Z]{2}$'),
-
     CONSTRAINT chk_product_rates_tier
         CHECK (tier IN ('growth', 'scale', 'enterprise')),
-
-    CONSTRAINT chk_product_rates_currency
-        CHECK (currency ~ '^[A-Z]{3}$'),
 
     CONSTRAINT chk_product_rates_cost
         CHECK (cost_units > 0),
