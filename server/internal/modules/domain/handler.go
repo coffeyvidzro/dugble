@@ -2,6 +2,7 @@ package domain
 
 import (
 	"encoding/json"
+	"strconv"
 
 	"github.com/labstack/echo/v5"
 
@@ -34,15 +35,19 @@ func (h *Handler) Create(c *echo.Context) error {
 	if err := decodeJSON(c, &req); err != nil {
 		return err
 	}
-	domain, err := h.service.Create(c.Request().Context(), req)
-	if isEmailInfrastructureProvisioning(err) {
-		c.Response().Header().Set("Retry-After", emailInfrastructureRetryAfterHeader)
-		return httputil.Accepted(c, emailInfrastructureProvisioningResponse())
-	}
+	result, err := h.service.Create(c.Request().Context(), req)
 	if err != nil {
 		return httputil.Error(c, err)
 	}
-	return httputil.Created(c, domain)
+	if result.Provisioning {
+		c.Response().Header().Set("Retry-After", strconv.Itoa(emailInfrastructureRetryAfterSeconds))
+		return httputil.Accepted(c, ProvisioningResponse{
+			Status:            "provisioning",
+			Message:           emailInfrastructureProvisioningMessage,
+			RetryAfterSeconds: emailInfrastructureRetryAfterSeconds,
+		})
+	}
+	return httputil.Created(c, result.Domain)
 }
 
 func (h *Handler) Verify(c *echo.Context) error {
