@@ -177,9 +177,9 @@ func validateCreateVerification(req CreateVerificationRequest, service Verificat
 	}, nil
 }
 
-func validateCheck(req CheckRequest, codeLength int32) (CheckRequest, error) {
+func validateCheck(req CheckRequest) (CheckRequest, error) {
 	req.Code = strings.TrimSpace(req.Code)
-	if len(req.Code) != int(codeLength) || strings.IndexFunc(req.Code, func(r rune) bool { return !unicode.IsDigit(r) }) >= 0 {
+	if len(req.Code) < 4 || len(req.Code) > 10 || strings.IndexFunc(req.Code, func(r rune) bool { return !unicode.IsDigit(r) }) >= 0 {
 		return CheckRequest{}, apperrors.NewBadRequest("Verification code has an invalid format")
 	}
 	metadata, err := normalizeJSONObject(req.Metadata)
