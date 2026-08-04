@@ -90,7 +90,7 @@ services:
       start_period: 10s
 
   migrate:
-    image: arigaio/atlas:1.2.3-community-alpine
+    image: arigaio/atlas:1.3.0-alpine
     container_name: dugble-migrate
     restart: "no"
     entrypoint: ["/bin/sh", "-c"]
