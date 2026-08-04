@@ -32,6 +32,9 @@ func NewService(repository *Repository, events eventEmitter) *Service {
 }
 
 func (service *Service) WithRecipientTokens(tokens *RecipientTokenManager, ttl time.Duration) *Service {
+	if ttl <= 0 || ttl > time.Hour {
+		ttl = 15 * time.Minute
+	}
 	service.tokens = tokens
 	service.tokenTTL = ttl
 	return service
