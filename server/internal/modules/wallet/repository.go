@@ -65,7 +65,11 @@ func (r *Repository) Credit(
 		}
 		return Wallet{}, fmt.Errorf("credit team wallet: %w", err)
 	}
-	return walletFromSQLC(row), nil
+	return Wallet{
+		TeamID: row.TeamID.String(), BillingMarket: row.BillingMarket,
+		Currency: row.Currency, BalanceUnits: row.BalanceUnits, Tier: row.Tier,
+		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
+	}, nil
 }
 
 func walletFromSQLC(row dbsqlc.TeamWallet) Wallet {
