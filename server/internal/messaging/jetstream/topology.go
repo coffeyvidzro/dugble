@@ -58,7 +58,6 @@ func StreamConfigs(limits StreamLimits) []natsjs.StreamConfig {
 	if limits.DLQMaxAge <= 0 {
 		limits.DLQMaxAge = defaults.DLQMaxAge
 	}
-
 	return []natsjs.StreamConfig{
 		{
 			Name:        JobsStreamName,
@@ -67,7 +66,7 @@ func StreamConfigs(limits StreamLimits) []natsjs.StreamConfig {
 			Retention:   natsjs.WorkQueuePolicy,
 			Discard:     natsjs.DiscardNew,
 			Storage:     natsjs.FileStorage,
-			Replicas:    1,
+			Replicas:    3,
 			MaxBytes:    limits.JobsMaxBytes,
 			MaxAge:      limits.JobsMaxAge,
 			MaxMsgSize:  maxMessageSize,
@@ -80,7 +79,7 @@ func StreamConfigs(limits StreamLimits) []natsjs.StreamConfig {
 			Retention:   natsjs.LimitsPolicy,
 			Discard:     natsjs.DiscardOld,
 			Storage:     natsjs.FileStorage,
-			Replicas:    1,
+			Replicas:    3,
 			MaxBytes:    limits.EventsMaxBytes,
 			MaxAge:      limits.EventsMaxAge,
 			MaxMsgSize:  maxMessageSize,
@@ -93,7 +92,7 @@ func StreamConfigs(limits StreamLimits) []natsjs.StreamConfig {
 			Retention:   natsjs.LimitsPolicy,
 			Discard:     natsjs.DiscardOld,
 			Storage:     natsjs.FileStorage,
-			Replicas:    1,
+			Replicas:    3,
 			MaxBytes:    limits.DLQMaxBytes,
 			MaxAge:      limits.DLQMaxAge,
 			MaxMsgSize:  maxMessageSize,

@@ -10,6 +10,8 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
+
+	platformemail "github.com/coffeyvidzro/dugble/server/internal/platform/email"
 )
 
 func NewClient(region, defaultFrom, accessKey, secretKey string, _ ...string) (*Client, error) {
@@ -63,7 +65,10 @@ func (c *Client) v2SendingClient(region string) (sesV2SendAPI, error) {
 	}
 	region = strings.TrimSpace(region)
 	if region == "" {
-		region = c.defaultRegion
+		return nil, errors.New("SES delivery region is required")
+	}
+	if _, supported := platformemail.NormalizeSESRegion(region); !supported {
+		return nil, fmt.Errorf("SES delivery region %q is not supported", region)
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()

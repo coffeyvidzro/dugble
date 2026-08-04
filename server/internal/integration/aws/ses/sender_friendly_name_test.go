@@ -24,6 +24,7 @@ func TestSendPreservesFriendlyFromName(t *testing.T) {
 	}
 
 	_, err = client.Send(context.Background(), platformemail.Message{
+		Region:           "us-east-1",
 		Stream:           route.Stream,
 		ConfigurationSet: route.ConfigurationSet,
 		SESTenantName:    route.SESTenantName,
@@ -52,6 +53,7 @@ func TestSendEncodesUnicodeFriendlyFromName(t *testing.T) {
 	}
 
 	_, err = client.Send(context.Background(), platformemail.Message{
+		Region:           "us-east-1",
 		Stream:           route.Stream,
 		ConfigurationSet: route.ConfigurationSet,
 		SESTenantName:    route.SESTenantName,
