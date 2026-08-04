@@ -22,6 +22,11 @@ type VerifyConfig struct {
 	HMACSecret string `env:"HMAC_SECRET"`
 }
 
+type InboxConfig struct {
+	HMACSecret      string `env:"HMAC_SECRET"`
+	TokenTTLMinutes int    `env:"TOKEN_TTL_MINUTES" envDefault:"15"`
+}
+
 type AWSConfig struct {
 	FromEmail                        string `env:"FROM_EMAIL,required,notEmpty"`
 	Region                           string `env:"REGION,required,notEmpty"`
@@ -64,6 +69,7 @@ type Config struct {
 	CookieDomain   string           `env:"COOKIE_DOMAIN"`
 	EncryptionKeys []string         `env:"ENCRYPTION_KEYS" envSeparator:","`
 	Verify         VerifyConfig     `envPrefix:"VERIFY_"`
+	Inbox          InboxConfig      `envPrefix:"INBOX_"`
 	AWS            AWSConfig        `envPrefix:"AWS_"`
 	NATSURL        string           `env:"NATS_URL" envDefault:"nats://localhost:4222"`
 	Arkesel        ProviderConfig   `envPrefix:"ARKESEL_"`
@@ -97,6 +103,10 @@ func (c *Config) normalize() {
 	c.CookieDomain = strings.TrimSpace(c.CookieDomain)
 	c.EncryptionKeys = normalizeStrings(c.EncryptionKeys)
 	c.Verify.HMACSecret = strings.TrimSpace(c.Verify.HMACSecret)
+	c.Inbox.HMACSecret = strings.TrimSpace(c.Inbox.HMACSecret)
+	if c.Inbox.TokenTTLMinutes <= 0 || c.Inbox.TokenTTLMinutes > 60 {
+		c.Inbox.TokenTTLMinutes = 15
+	}
 	c.AWS.FromEmail = strings.TrimSpace(c.AWS.FromEmail)
 	c.AWS.Region = strings.TrimSpace(c.AWS.Region)
 	c.AWS.AccessKey = strings.TrimSpace(c.AWS.AccessKey)
