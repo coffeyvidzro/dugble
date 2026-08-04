@@ -26,8 +26,10 @@ CREATE TABLE IF NOT EXISTS sms_rates (
             cost_units
         ),
 
-    CONSTRAINT chk_sms_rates_billing_market
-        CHECK (billing_market ~ '^[A-Z]{2}$'),
+    CONSTRAINT fk_sms_rates_billing_market_currency
+        FOREIGN KEY (billing_market, currency)
+        REFERENCES billing_markets (code, currency)
+        ON DELETE RESTRICT,
 
     CONSTRAINT chk_sms_rates_destination_country
         CHECK (destination_country ~ '^[A-Z]{2}$'),
@@ -48,9 +50,6 @@ CREATE TABLE IF NOT EXISTS sms_rates (
 
     CONSTRAINT chk_sms_rates_tier
         CHECK (tier IN ('growth', 'scale', 'enterprise')),
-
-    CONSTRAINT chk_sms_rates_currency
-        CHECK (currency ~ '^[A-Z]{3}$'),
 
     CONSTRAINT chk_sms_rates_cost
         CHECK (cost_units > 0),
