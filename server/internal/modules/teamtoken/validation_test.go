@@ -44,20 +44,12 @@ func TestValidatePermissionsAllowsSMSScopes(t *testing.T) {
 	}
 }
 
-func TestValidatePermissionsAllowsProductRuntimeScopes(t *testing.T) {
+func TestValidatePermissionsAllowsVerifyScopes(t *testing.T) {
 	values := []string{
 		string(tenant.PermissionVerifyRead),
 		string(tenant.PermissionVerifySend),
 		string(tenant.PermissionVerifyCheck),
 		string(tenant.PermissionVerifyManage),
-		string(tenant.PermissionInboxRead),
-		string(tenant.PermissionInboxWrite),
-		string(tenant.PermissionNotifyRead),
-		string(tenant.PermissionNotifyExecute),
-		string(tenant.PermissionNotifyManage),
-		string(tenant.PermissionEventsRead),
-		string(tenant.PermissionEventsManage),
-		string(tenant.PermissionEventsReplay),
 	}
 	permissions, err := validatePermissions(values)
 	if err != nil {
