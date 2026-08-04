@@ -45,7 +45,7 @@ type CreateServiceRequest struct {
 	MaxAttempts           int32           `json:"max_attempts,omitempty"`
 	ResendCooldownSeconds *int32          `json:"resend_cooldown_seconds,omitempty"`
 	MaxResends            *int32          `json:"max_resends,omitempty"`
-	Enabled               *bool            `json:"enabled,omitempty"`
+	Enabled               *bool           `json:"enabled,omitempty"`
 	Metadata              json.RawMessage `json:"metadata,omitempty"`
 }
 
