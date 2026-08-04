@@ -50,6 +50,9 @@ CREATE TABLE IF NOT EXISTS email_messages (
     CONSTRAINT chk_email_subject_present CHECK (length(trim(subject)) > 0)
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_email_messages_id_team
+    ON email_messages (id, team_id);
+
 CREATE INDEX IF NOT EXISTS idx_email_messages_team_created
     ON email_messages (team_id, created_at DESC);
 
