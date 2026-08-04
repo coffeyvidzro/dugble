@@ -29,13 +29,13 @@ func TestSendUsesMessageRegion(t *testing.T) {
 		t.Fatalf("create client: %v", err)
 	}
 	client.v2SendingClients["us-east-1"] = defaultClient
-	client.v2SendingClients["eu-west-1"] = regionalClient
+	client.v2SendingClients["eu-north-1"] = regionalClient
 	route, err := platformemail.CustomerDeliveryRoute("transactional", "dugble-t-customer")
 	if err != nil {
 		t.Fatalf("create customer route: %v", err)
 	}
 	_, err = client.Send(context.Background(), platformemail.Message{
-		Region:           "eu-west-1",
+		Region:           "eu-north-1",
 		Stream:           route.Stream,
 		ConfigurationSet: route.ConfigurationSet,
 		SESTenantName:    route.SESTenantName,
@@ -64,6 +64,7 @@ func TestSendUsesPersistedConfigurationSetAndTenant(t *testing.T) {
 		t.Fatalf("create customer route: %v", err)
 	}
 	_, err = client.Send(context.Background(), platformemail.Message{
+		Region:           "us-east-1",
 		Stream:           route.Stream,
 		ConfigurationSet: route.ConfigurationSet,
 		SESTenantName:    route.SESTenantName,
@@ -80,6 +81,27 @@ func TestSendUsesPersistedConfigurationSetAndTenant(t *testing.T) {
 	}
 	if got := aws.ToString(recordingClient.input.TenantName); got != "dugble-t-customer" {
 		t.Fatalf("TenantName = %q, want %q", got, "dugble-t-customer")
+	}
+}
+
+func TestSendRejectsMissingOrUnsupportedRegion(t *testing.T) {
+	t.Parallel()
+
+	client, err := NewClient("us-east-1", "default@example.com", "access-key", "secret-key")
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	for _, region := range []string{"", "eu-west-1"} {
+		region := region
+		t.Run(region, func(t *testing.T) {
+			_, sendErr := client.Send(context.Background(), platformemail.Message{Region: region})
+			if sendErr == nil || !strings.Contains(sendErr.Error(), "region") {
+				t.Fatalf("Send() error = %v, want region validation error", sendErr)
+			}
+			if platformemail.IsRetryable(sendErr) || platformemail.FailureCode(sendErr) != "invalid_region" {
+				t.Fatalf("Send() error = %v, want non-retryable invalid_region", sendErr)
+			}
+		})
 	}
 }
 

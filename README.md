@@ -185,6 +185,11 @@ make down
 
 Deployment assets live in `deploy/`. `compose.yaml` defines the runtime stack, while `Caddyfile` and `nats-server.conf` configure the edge proxy and NATS JetStream.
 
+The Compose deployment runs a three-node NATS JetStream cluster. Applications
+receive all three client URLs, and production streams use three replicas so the
+cluster can continue serving durable work after one NATS node is lost. Each
+node uses an independent persistent volume.
+
 ### Run individual services
 
 ```sh
