@@ -23,6 +23,12 @@ CREATE TABLE IF NOT EXISTS usage_allowances (
         CHECK (
             consumed_quantity >= 0
             AND consumed_quantity <= included_quantity
+        ),
+    CONSTRAINT ex_usage_allowances_no_overlap
+        EXCLUDE USING gist (
+            team_id WITH =,
+            meter WITH =,
+            tstzrange(period_start, period_end, '[)') WITH &&
         )
 );
 
@@ -51,6 +57,8 @@ CREATE TABLE IF NOT EXISTS usage_authorizations (
 
     CONSTRAINT uq_usage_authorizations_team_meter_reference
         UNIQUE (team_id, meter, reference_id),
+    CONSTRAINT uq_usage_authorizations_id_team
+        UNIQUE (id, team_id),
     CONSTRAINT fk_usage_authorizations_allowance_same_team
         FOREIGN KEY (usage_allowance_id, team_id)
         REFERENCES usage_allowances (id, team_id)
@@ -89,6 +97,16 @@ CREATE TABLE IF NOT EXISTS usage_authorizations (
     CONSTRAINT chk_usage_authorizations_tier
         CHECK (length(trim(tier)) > 0 AND tier !~ '[[:space:]]')
 );
+
+ALTER TABLE wallet_ledger
+    ADD CONSTRAINT fk_wallet_ledger_usage_authorization_same_team
+    FOREIGN KEY (usage_authorization_id, team_id)
+    REFERENCES usage_authorizations (id, team_id)
+    ON DELETE RESTRICT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_wallet_ledger_usage_authorization
+    ON wallet_ledger (usage_authorization_id)
+    WHERE usage_authorization_id IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_usage_authorizations_team_created
     ON usage_authorizations (team_id, created_at DESC);
