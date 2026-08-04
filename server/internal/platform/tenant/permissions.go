@@ -29,14 +29,6 @@ const (
 	PermissionVerifySend          Permission = "verify:send"
 	PermissionVerifyCheck         Permission = "verify:check"
 	PermissionVerifyManage        Permission = "verify:manage"
-	PermissionInboxRead           Permission = "inbox:read"
-	PermissionInboxWrite          Permission = "inbox:write"
-	PermissionNotifyRead          Permission = "notify:read"
-	PermissionNotifyExecute       Permission = "notify:execute"
-	PermissionNotifyManage        Permission = "notify:manage"
-	PermissionEventsRead          Permission = "events:read"
-	PermissionEventsManage        Permission = "events:manage"
-	PermissionEventsReplay        Permission = "events:replay"
 	PermissionWebhooksRead        Permission = "webhooks:read"
 	PermissionWebhooksWrite       Permission = "webhooks:write"
 	PermissionAuditEventsRead     Permission = "audit_events:read"
@@ -71,14 +63,6 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 		PermissionVerifySend:          {},
 		PermissionVerifyCheck:         {},
 		PermissionVerifyManage:        {},
-		PermissionInboxRead:           {},
-		PermissionInboxWrite:          {},
-		PermissionNotifyRead:          {},
-		PermissionNotifyExecute:       {},
-		PermissionNotifyManage:        {},
-		PermissionEventsRead:          {},
-		PermissionEventsManage:        {},
-		PermissionEventsReplay:        {},
 		PermissionWebhooksRead:        {},
 		PermissionWebhooksWrite:       {},
 		PermissionAuditEventsRead:     {},
@@ -110,14 +94,6 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 		PermissionVerifySend:          {},
 		PermissionVerifyCheck:         {},
 		PermissionVerifyManage:        {},
-		PermissionInboxRead:           {},
-		PermissionInboxWrite:          {},
-		PermissionNotifyRead:          {},
-		PermissionNotifyExecute:       {},
-		PermissionNotifyManage:        {},
-		PermissionEventsRead:          {},
-		PermissionEventsManage:        {},
-		PermissionEventsReplay:        {},
 		PermissionWebhooksRead:        {},
 		PermissionWebhooksWrite:       {},
 		PermissionAuditEventsRead:     {},
@@ -133,9 +109,6 @@ var permissionsByRole = map[string]map[Permission]struct{}{
 		PermissionSMSRead:           {},
 		PermissionEmailRead:         {},
 		PermissionVerifyRead:        {},
-		PermissionInboxRead:         {},
-		PermissionNotifyRead:        {},
-		PermissionEventsRead:        {},
 		PermissionWebhooksRead:      {},
 	},
 }
