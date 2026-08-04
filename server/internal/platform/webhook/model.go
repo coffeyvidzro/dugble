@@ -2,57 +2,40 @@ package webhook
 
 import (
 	"encoding/json"
-	"slices"
 	"time"
 
 	"github.com/google/uuid"
+
+	platformevent "github.com/coffeyvidzro/dugble/server/internal/platform/event"
 )
 
-var subscribableEventTypes = []string{
-	EventSMSSubmitted,
-	EventSMSSent,
-	EventSMSDelivered,
-	EventSMSUndelivered,
-	EventSMSFailed,
-	EventEmailSubmitted,
-	EventEmailDelivered,
-	EventEmailDelayed,
-	EventEmailBounced,
-	EventEmailComplained,
-	EventEmailRejected,
-	EventEmailFailed,
-	EventEmailOpened,
-	EventEmailClicked,
-	EventEmailSubscriptionChanged,
-}
-
 func SubscribableEventTypes() []string {
-	return slices.Clone(subscribableEventTypes)
+	return platformevent.SubscribableTypes()
 }
 
 func IsSubscribableEventType(eventType string) bool {
-	return slices.Contains(subscribableEventTypes, eventType)
+	return platformevent.IsSubscribable(platformevent.Type(eventType))
 }
 
 const (
-	EventSMSSubmitted   = "sms.submitted"
-	EventSMSSent        = "sms.sent"
-	EventSMSDelivered   = "sms.delivered"
-	EventSMSUndelivered = "sms.undelivered"
-	EventSMSFailed      = "sms.failed"
+	EventSMSSubmitted   = string(platformevent.TypeSMSSubmitted)
+	EventSMSSent        = string(platformevent.TypeSMSSent)
+	EventSMSDelivered   = string(platformevent.TypeSMSDelivered)
+	EventSMSUndelivered = string(platformevent.TypeSMSUndelivered)
+	EventSMSFailed      = string(platformevent.TypeSMSFailed)
 
-	EventEmailSubmitted           = "email.submitted"
-	EventEmailDelivered           = "email.delivered"
-	EventEmailDelayed             = "email.delayed"
-	EventEmailBounced             = "email.bounced"
-	EventEmailComplained          = "email.complained"
-	EventEmailRejected            = "email.rejected"
-	EventEmailFailed              = "email.failed"
-	EventEmailOpened              = "email.opened"
-	EventEmailClicked             = "email.clicked"
-	EventEmailSubscriptionChanged = "email.subscription_changed"
+	EventEmailSubmitted           = string(platformevent.TypeEmailSubmitted)
+	EventEmailDelivered           = string(platformevent.TypeEmailDelivered)
+	EventEmailDelayed             = string(platformevent.TypeEmailDelayed)
+	EventEmailBounced             = string(platformevent.TypeEmailBounced)
+	EventEmailComplained          = string(platformevent.TypeEmailComplained)
+	EventEmailRejected            = string(platformevent.TypeEmailRejected)
+	EventEmailFailed              = string(platformevent.TypeEmailFailed)
+	EventEmailOpened              = string(platformevent.TypeEmailOpened)
+	EventEmailClicked             = string(platformevent.TypeEmailClicked)
+	EventEmailSubscriptionChanged = string(platformevent.TypeEmailSubscriptionChanged)
 
-	EventTest = "webhook.test"
+	EventTest = string(platformevent.TypeWebhookTest)
 )
 
 type Event struct {
