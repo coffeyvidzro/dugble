@@ -67,36 +67,36 @@ func (s *Service) Get(ctx context.Context, domainID string) (SenderDomain, error
 	return domain, nil
 }
 
-func (s *Service) Create(ctx context.Context, req CreateRequest) (SenderDomain, error) {
+func (s *Service) Create(ctx context.Context, req CreateRequest) (CreateResult, error) {
 	tc, err := requireTenantPermission(ctx, tenant.PermissionSenderDomainsCreate)
 	if err != nil {
-		return SenderDomain{}, err
+		return CreateResult{}, err
 	}
 	domainName, region, returnPath, err := validateCreate(req)
 	if err != nil {
-		return SenderDomain{}, err
+		return CreateResult{}, err
 	}
 	if s.provider == nil {
-		return SenderDomain{}, apperrors.NewInternal("Sender domain provider is not configured", nil)
+		return CreateResult{}, apperrors.NewInternal("Sender domain provider is not configured", nil)
 	}
 	if s.tenantProvision == nil {
-		return SenderDomain{}, apperrors.NewInternal("Customer email tenant provisioning is not configured", nil)
+		return CreateResult{}, apperrors.NewInternal("Customer email tenant provisioning is not configured", nil)
 	}
 
 	emailTenant, err := s.tenantProvision.RequestProvisioning(ctx, tc.Scope.TeamID, region)
 	if err != nil {
-		return SenderDomain{}, apperrors.NewInternal("Unable to prepare customer email tenant", err)
+		return CreateResult{}, apperrors.NewInternal("Unable to prepare customer email tenant", err)
 	}
 	if emailTenant.Status != emailtenant.StatusActive {
-		return SenderDomain{}, apperrors.NewConflict("Customer email infrastructure is being prepared; retry sender-domain creation shortly")
+		return CreateResult{Provisioning: true}, nil
 	}
 
 	domain, err := s.repository.Create(ctx, tc.Scope.TeamID, domainName, DefaultProvider, region, []VerificationRecord{}, tc.Actor.UserID)
 	if err != nil {
 		if errors.Is(err, ErrSenderDomainAlreadyExists) {
-			return SenderDomain{}, apperrors.NewConflict("Sender domain already exists")
+			return CreateResult{}, apperrors.NewConflict("Sender domain already exists")
 		}
-		return SenderDomain{}, apperrors.NewInternal("Unable to create sender domain", err)
+		return CreateResult{}, apperrors.NewInternal("Unable to create sender domain", err)
 	}
 	id := uuid.MustParse(domain.ID)
 
@@ -106,11 +106,11 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (SenderDomain, 
 	if provisionErr != nil {
 		reason := provisionErr.Error()
 		_, _ = s.repository.UpdateVerification(ctx, id, tc.Scope.TeamID, StatusFailed, []VerificationRecord{}, &reason)
-		return SenderDomain{}, apperrors.NewInternal("Unable to provision sender domain", provisionErr)
+		return CreateResult{}, apperrors.NewInternal("Unable to provision sender domain", provisionErr)
 	}
 	updated, saveErr := s.repository.UpdateVerification(ctx, id, tc.Scope.TeamID, StatusPending, records, nil)
 	if saveErr == nil {
-		return updated, nil
+		return CreateResult{Domain: &updated}, nil
 	}
 
 	cleanupErr := s.provider.DeleteDomain(ctx, domainName, region)
@@ -122,7 +122,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (SenderDomain, 
 	if cleanupErr != nil {
 		saveErr = errors.Join(saveErr, cleanupErr)
 	}
-	return SenderDomain{}, apperrors.NewInternal("Unable to save sender domain verification records", saveErr)
+	return CreateResult{}, apperrors.NewInternal("Unable to save sender domain verification records", saveErr)
 }
 
 func (s *Service) Verify(ctx context.Context, domainID string) (SenderDomain, error) {
