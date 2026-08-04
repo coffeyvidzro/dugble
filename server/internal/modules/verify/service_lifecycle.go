@@ -28,23 +28,23 @@ func (service *Service) Check(ctx context.Context, value string, req CheckReques
 	if err != nil {
 		return CheckResponse{}, err
 	}
+	validated, err := validateCheck(req)
+	if err != nil {
+		return CheckResponse{}, err
+	}
 	response, err := database.InTransactionResult(ctx, service.repository.db, func(tx pgx.Tx) (CheckResponse, error) {
 		repository := service.repository.WithTx(tx)
 		locked, lockErr := repository.GetVerificationForUpdate(ctx, id, access.Scope.TeamID)
 		if lockErr != nil {
 			return CheckResponse{}, lockErr
 		}
+		current := verificationFromSQLC(locked)
+		if current.Status != StatusPending {
+			return terminalCheckResponse(current), nil
+		}
 		configured, serviceErr := repository.GetService(ctx, locked.ServiceID, access.Scope.TeamID)
 		if serviceErr != nil {
 			return CheckResponse{}, serviceErr
-		}
-		validated, validationErr := validateCheck(req, configured.CodeLength)
-		if validationErr != nil {
-			return CheckResponse{}, validationErr
-		}
-		current := verificationFromSQLC(locked)
-		if current.Status != StatusPending {
-			return CheckResponse{ID: current.ID, Status: current.Status, Valid: current.Status == StatusApproved, Expired: current.Status == StatusExpired}, nil
 		}
 		challenge, challengeErr := repository.GetActiveChallengeForUpdate(ctx, id, access.Scope.TeamID)
 		if challengeErr != nil {
@@ -144,27 +144,25 @@ func (service *Service) Resend(ctx context.Context, value string) (Verification,
 			return Verification{}, lockErr
 		}
 		current := verificationFromSQLC(locked)
-		if current.Status != StatusPending {
-			return Verification{}, apperrors.NewConflict("Only pending verifications can be resent")
-		}
 		configured, serviceErr := repository.GetService(ctx, locked.ServiceID, access.Scope.TeamID)
 		if serviceErr != nil {
 			return Verification{}, serviceErr
 		}
-		if current.ResendCount >= configured.MaxResends {
-			return Verification{}, apperrors.TooManyRequests("Verification resend limit reached")
+		now := service.now().UTC()
+		if policyErr := validateResendVerification(current, configured, now); policyErr != nil {
+			return Verification{}, policyErr
 		}
 		challenge, challengeErr := repository.GetActiveChallengeForUpdate(ctx, id, access.Scope.TeamID)
 		if challengeErr != nil {
 			return Verification{}, challengeErr
 		}
-		now := service.now().UTC()
-		if !current.ExpiresAt.After(now) {
-			return Verification{}, apperrors.NewConflict("Expired verifications cannot be resent")
-		}
-		nextAllowed := challenge.CreatedAt.Time.Add(time.Duration(configured.ResendCooldownSeconds) * time.Second)
-		if now.Before(nextAllowed) {
-			return Verification{}, apperrors.TooManyRequests("Verification resend cooldown is still active")
+		if policyErr := validateResendChallenge(
+			challenge.CreatedAt.Time,
+			challenge.ExpiresAt.Time,
+			configured.ResendCooldownSeconds,
+			now,
+		); policyErr != nil {
+			return Verification{}, policyErr
 		}
 		sequence := challenge.Sequence + 1
 		expiresAt := now.Add(time.Duration(configured.TTLSeconds) * time.Second)
