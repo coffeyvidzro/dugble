@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS usage_allowances (
 
     CONSTRAINT uq_usage_allowances_team_meter_period
         UNIQUE (team_id, meter, period_start, period_end),
-    CONSTRAINT uq_usage_allowances_id_team
-        UNIQUE (id, team_id),
+    CONSTRAINT uq_usage_allowances_id_team_meter
+        UNIQUE (id, team_id, meter),
     CONSTRAINT chk_usage_allowances_meter
         CHECK (length(trim(meter)) > 0 AND meter !~ '[[:space:]]'),
     CONSTRAINT chk_usage_allowances_period
@@ -43,30 +43,78 @@ CREATE INDEX IF NOT EXISTS idx_usage_allowances_team_meter_period
 CREATE TABLE IF NOT EXISTS usage_authorizations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE RESTRICT,
+    product TEXT NOT NULL,
     meter TEXT NOT NULL,
     reference_id TEXT NOT NULL,
+
     usage_allowance_id UUID,
+    sms_rate_id UUID,
+
+    billing_market CHAR(2) NOT NULL,
+    destination_country CHAR(2),
+    provider TEXT,
+    route_type TEXT,
+
     total_quantity BIGINT NOT NULL,
     allowance_quantity BIGINT NOT NULL DEFAULT 0,
     billable_quantity BIGINT NOT NULL DEFAULT 0,
     unit_cost_units BIGINT NOT NULL DEFAULT 0,
     amount_units BIGINT NOT NULL DEFAULT 0,
+
     currency CHAR(3) NOT NULL,
     tier TEXT NOT NULL,
+    priced_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     CONSTRAINT uq_usage_authorizations_team_meter_reference
         UNIQUE (team_id, meter, reference_id),
     CONSTRAINT uq_usage_authorizations_id_team
         UNIQUE (id, team_id),
-    CONSTRAINT fk_usage_authorizations_allowance_same_team
-        FOREIGN KEY (usage_allowance_id, team_id)
-        REFERENCES usage_allowances (id, team_id)
+
+    CONSTRAINT fk_usage_authorizations_allowance_same_team_meter
+        FOREIGN KEY (usage_allowance_id, team_id, meter)
+        REFERENCES usage_allowances (id, team_id, meter)
         ON DELETE RESTRICT,
+
+    CONSTRAINT fk_usage_authorizations_sms_rate_audit
+        FOREIGN KEY (
+            sms_rate_id,
+            billing_market,
+            destination_country,
+            provider,
+            route_type,
+            tier,
+            currency,
+            unit_cost_units
+        )
+        REFERENCES sms_rates (
+            id,
+            billing_market,
+            destination_country,
+            provider,
+            route_type,
+            tier,
+            currency,
+            cost_units
+        )
+        ON DELETE RESTRICT,
+
+    CONSTRAINT chk_usage_authorizations_product
+        CHECK (
+            length(trim(product)) > 0
+            AND product = lower(trim(product))
+            AND product !~ '[[:space:]]'
+        ),
     CONSTRAINT chk_usage_authorizations_meter
-        CHECK (length(trim(meter)) > 0 AND meter !~ '[[:space:]]'),
+        CHECK (
+            length(trim(meter)) > 0
+            AND meter = lower(trim(meter))
+            AND meter !~ '[[:space:]]'
+        ),
     CONSTRAINT chk_usage_authorizations_reference
         CHECK (length(trim(reference_id)) > 0),
+    CONSTRAINT chk_usage_authorizations_billing_market
+        CHECK (billing_market ~ '^[A-Z]{2}$'),
     CONSTRAINT chk_usage_authorizations_quantities
         CHECK (
             total_quantity > 0
@@ -84,7 +132,7 @@ CREATE TABLE IF NOT EXISTS usage_authorizations (
             unit_cost_units >= 0
             AND amount_units >= 0
             AND (
-                (billable_quantity = 0 AND amount_units = 0)
+                (billable_quantity = 0 AND unit_cost_units = 0 AND amount_units = 0)
                 OR (
                     billable_quantity > 0
                     AND unit_cost_units > 0
@@ -95,7 +143,30 @@ CREATE TABLE IF NOT EXISTS usage_authorizations (
     CONSTRAINT chk_usage_authorizations_currency
         CHECK (currency ~ '^[A-Z]{3}$'),
     CONSTRAINT chk_usage_authorizations_tier
-        CHECK (length(trim(tier)) > 0 AND tier !~ '[[:space:]]')
+        CHECK (tier IN ('growth', 'scale', 'enterprise')),
+    CONSTRAINT chk_usage_authorizations_sms_context
+        CHECK (
+            (
+                product = 'sms'
+                AND meter = 'sms_segment'
+                AND destination_country IS NOT NULL
+                AND provider IS NOT NULL
+                AND route_type IS NOT NULL
+            )
+            OR
+            (
+                product <> 'sms'
+                AND destination_country IS NULL
+                AND provider IS NULL
+                AND route_type IS NULL
+                AND sms_rate_id IS NULL
+            )
+        ),
+    CONSTRAINT chk_usage_authorizations_sms_rate
+        CHECK (
+            sms_rate_id IS NULL
+            OR product = 'sms'
+        )
 );
 
 ALTER TABLE wallet_ledger
@@ -117,3 +188,7 @@ CREATE INDEX IF NOT EXISTS idx_usage_authorizations_team_meter_created
 CREATE INDEX IF NOT EXISTS idx_usage_authorizations_usage_allowance
     ON usage_authorizations (usage_allowance_id, created_at DESC)
     WHERE usage_allowance_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_usage_authorizations_sms_rate
+    ON usage_authorizations (sms_rate_id, created_at DESC)
+    WHERE sms_rate_id IS NOT NULL;
