@@ -4,8 +4,8 @@ import (
 	"context"
 	"log/slog"
 
-	notifications "github.com/coffeyvidzro/dugble/server/internal/platform/systemmail"
 	"github.com/coffeyvidzro/dugble/server/internal/platform/authnz"
+	notifications "github.com/coffeyvidzro/dugble/server/internal/platform/systemmail"
 	apperrors "github.com/coffeyvidzro/dugble/server/pkg/errors"
 )
 
