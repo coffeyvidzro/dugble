@@ -1,15 +1,16 @@
 name: Temporary usage billing generation
 
 on:
-  push:
+  pull_request:
     branches:
-      - fix/usage-allowance-schema
+      - main
 
 permissions:
   contents: write
 
 jobs:
   generate:
+    if: github.head_ref == 'fix/usage-allowance-schema'
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout feature branch
