@@ -135,16 +135,21 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		DefaultRegion:    cfg.AWS.Region,
 	}, billingService)
 	emailmodule.RegisterRoutes(router, emailmodule.NewHandler(emailServiceAPI), tenantAccess)
-	verifyCodes, err := verifymodule.NewCodeManager([]byte(cfg.Verify.HMACSecret), mfaCipher)
+	verifySecret := []byte(cfg.Verify.HMACSecret)
+	verifyCodes, err := verifymodule.NewCodeManager(verifySecret, mfaCipher)
 	if err != nil {
 		return nil, fmt.Errorf("initialize verify code manager: %w", err)
+	}
+	verifyAbuse, err := verifymodule.NewRedisAbuseControls(deps.Redis, verifySecret, verifymodule.DefaultAbusePolicy())
+	if err != nil {
+		return nil, fmt.Errorf("initialize verify abuse controls: %w", err)
 	}
 	verifyService := verifymodule.NewService(
 		verifymodule.NewRepository(deps.DB),
 		verifyCodes,
 		verifydispatch.NewQueue(outboxRepository),
 		productRuntime.Events,
-	)
+	).WithAbuseControls(verifyAbuse)
 	verifymodule.RegisterRoutes(router, verifymodule.NewHandler(verifyService), tenantAccess)
 	webhookService := webhooks.NewService(webhookRepository, webhookEmitter)
 	webhooks.RegisterRoutes(router, webhooks.NewHandler(webhookService), authMiddleware, csrfMiddleware, tenantMiddleware)
