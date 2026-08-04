@@ -1,6 +1,6 @@
 ---
 title: "Webhook events"
-description: "Understand the outgoing Email, SMS, and Verify lifecycle event catalog"
+description: "Understand the outgoing Email, SMS, Verify, and Inbox lifecycle event catalog"
 ---
 
 <Warning>
@@ -9,7 +9,7 @@ description: "Understand the outgoing Email, SMS, and Verify lifecycle event cat
 </Warning>
 
 Event types use a resource and lifecycle name, such as `email.delivered`,
-`sms.delivered`, or `verification.approved`.
+`sms.delivered`, `verification.approved`, or `inbox.message.created`.
 
 ## Common envelope
 
@@ -115,6 +115,15 @@ text. Fields that SES did not provide are omitted.
 
 Verify event data is a snapshot of the verification resource. It never contains
 the plaintext code, the stored HMAC, or the encrypted dispatch value.
+
+## Inbox events
+
+| Event                   | Meaning                                                        | Suggested action                                             |
+| ----------------------- | -------------------------------------------------------------- | ------------------------------------------------------------ |
+| `inbox.message.created` | An Inbox message and its recipient receipts were committed.    | Record the message ID or synchronize downstream projections. |
+
+Inbox creation event data includes the committed message snapshot and recipient
+count. It does not contain recipient identifiers.
 
 ## Test events
 
