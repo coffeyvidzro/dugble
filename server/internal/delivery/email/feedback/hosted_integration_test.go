@@ -16,9 +16,9 @@ import (
 
 	"github.com/coffeyvidzro/dugble/server/internal/database"
 	awssns "github.com/coffeyvidzro/dugble/server/internal/integration/aws/sns"
-	"github.com/coffeyvidzro/dugble/server/internal/messaging/inbox"
 	jetstreammessaging "github.com/coffeyvidzro/dugble/server/internal/messaging/jetstream"
 	"github.com/coffeyvidzro/dugble/server/internal/messaging/outbox"
+	"github.com/coffeyvidzro/dugble/server/internal/messaging/processed"
 )
 
 func TestHostedPostgresJetStreamFeedbackFlow(t *testing.T) {
@@ -47,7 +47,7 @@ func TestHostedPostgresJetStreamFeedbackFlow(t *testing.T) {
 
 	consumer := NewConsumer(
 		client,
-		inbox.NewRepository(db),
+		processed.NewRepository(db),
 		NewHandlerWithMetrics(NewRepository(db, nil), metrics),
 		ConsumerConfig{
 			Concurrency:    1,
