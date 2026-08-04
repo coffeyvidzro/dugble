@@ -31,6 +31,7 @@ func TestSubscribableTypesIncludesVerifyCatalog(t *testing.T) {
 		"verification.delivery_failed",
 		"verification.max_attempts_reached",
 		"verification.canceled",
+		"inbox.message.created",
 	}
 	if got := SubscribableTypes(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("SubscribableTypes() = %v, want %v", got, want)
@@ -59,6 +60,19 @@ func TestVerificationEventsAreSubscribable(t *testing.T) {
 	}
 	if !IsSubscribable(TypeVerificationCreated) {
 		t.Fatal("verification.created should be subscribable after the Verify API is activated")
+	}
+}
+
+func TestInboxEventsAreSubscribable(t *testing.T) {
+	definition, ok := Lookup(TypeInboxMessageCreated)
+	if !ok {
+		t.Fatal("Lookup(TypeInboxMessageCreated) did not find event")
+	}
+	if definition.ObjectType != "inbox_message" || !definition.ObjectIDRequired {
+		t.Fatalf("inbox definition = %+v", definition)
+	}
+	if !IsSubscribable(TypeInboxMessageCreated) {
+		t.Fatal("inbox.message.created should be subscribable")
 	}
 }
 
