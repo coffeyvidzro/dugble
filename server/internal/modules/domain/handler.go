@@ -35,6 +35,10 @@ func (h *Handler) Create(c *echo.Context) error {
 		return err
 	}
 	domain, err := h.service.Create(c.Request().Context(), req)
+	if isEmailInfrastructureProvisioning(err) {
+		c.Response().Header().Set("Retry-After", emailInfrastructureRetryAfterHeader)
+		return httputil.Accepted(c, emailInfrastructureProvisioningResponse())
+	}
 	if err != nil {
 		return httputil.Error(c, err)
 	}
