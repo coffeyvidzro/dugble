@@ -23,6 +23,7 @@ import (
 	verifychannel "github.com/coffeyvidzro/dugble/server/internal/delivery/verify/channel"
 	verifydispatch "github.com/coffeyvidzro/dugble/server/internal/delivery/verify/dispatch"
 	verifyexpiry "github.com/coffeyvidzro/dugble/server/internal/delivery/verify/expiry"
+	verifyfeedback "github.com/coffeyvidzro/dugble/server/internal/delivery/verify/feedback"
 	webhookdelivery "github.com/coffeyvidzro/dugble/server/internal/delivery/webhooks"
 	awsses "github.com/coffeyvidzro/dugble/server/internal/integration/aws/ses"
 	smsintegration "github.com/coffeyvidzro/dugble/server/internal/integration/sms"
@@ -86,6 +87,7 @@ func run() error {
 	webhookModuleRepository := webhookmodule.NewRepository(db)
 	webhookEmitter := platformwebhook.NewEmitter(webhookModuleRepository)
 	events := platformevent.NewEmitter(platformwebhook.NewEventSink(webhookEmitter))
+	lifecycleEmitter := verifyfeedback.NewEmitter(webhookEmitter, events)
 	billingService := platformbilling.NewService(platformbilling.NewRepository(db))
 
 	emailSender, err := awsses.NewSESSender(startupCtx, cfg.AWS.Region, cfg.AWS.FromEmail, cfg.AWS.AccessKey, cfg.AWS.SecretKey, cfg.AWS.SESConfigurationSet)
@@ -106,7 +108,7 @@ func run() error {
 		tenantprovision.Config{Concurrency: 3, AckWait: 2 * time.Minute, HandlerTimeout: 60 * time.Second, RetryBackOff: tenantprovision.DefaultRetryBackOff()},
 	)
 	feedbackMetrics := emailfeedback.DefaultMetrics
-	emailFeedbackRepository := emailfeedback.NewRepositoryWithWebhookEmitter(db, webhookEmitter)
+	emailFeedbackRepository := emailfeedback.NewRepositoryWithWebhookEmitter(db, lifecycleEmitter)
 	emailFeedbackConsumer := emailfeedback.NewConsumer(messagingClient, processedEvents, emailfeedback.NewHandlerWithMetrics(emailFeedbackRepository, feedbackMetrics), emailfeedback.ConsumerConfig{
 		Concurrency: 5, AckWait: time.Minute, HandlerTimeout: 30 * time.Second, MaxDeliver: 6, RetryPolicy: emailfeedback.DefaultRetryPolicy(),
 	})
@@ -135,7 +137,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("initialize SMS sender: %w", err)
 	}
-	smsRepository := smsmodule.NewRepositoryWithWebhookEmitter(db, webhookEmitter)
+	smsRepository := smsmodule.NewRepositoryWithWebhookEmitter(db, lifecycleEmitter)
 	smsHandler := smsdelivery.NewHandler(smsRepository, smsSender)
 	smsConsumer := smsdelivery.NewConsumer(messagingClient, processedEvents, smsHandler, smsdelivery.ConsumerConfig{Concurrency: 10, AckWait: 2 * time.Minute, HandlerTimeout: 45 * time.Second, MaxDeliver: 6})
 
