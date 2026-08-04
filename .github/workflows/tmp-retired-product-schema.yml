@@ -1,16 +1,16 @@
 name: Temporary retired product schema cleanup
 
 on:
-  push:
+  pull_request:
     branches:
-      - refactor/retired-product-schema
+      - refactor/inbox-remove-module
 
 permissions:
   contents: write
 
 jobs:
   regenerate:
-    if: github.actor != 'github-actions[bot]'
+    if: github.head_ref == 'refactor/retired-product-schema' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
 
     steps:
