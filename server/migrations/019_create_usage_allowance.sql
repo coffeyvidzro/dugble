@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS usage_authorizations (
 
     usage_allowance_id UUID,
     sms_rate_id UUID,
+    product_rate_id UUID,
 
     billing_market CHAR(2) NOT NULL,
     destination_country CHAR(2),
