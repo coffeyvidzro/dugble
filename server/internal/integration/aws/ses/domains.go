@@ -148,7 +148,7 @@ func isSESIdentityNotFound(err error) bool {
 func mapVerificationRecords(req platformemail.DomainProvisionRequest, selector, publicKey string) []platformemail.VerificationRecord {
 	priority := 10
 	return []platformemail.VerificationRecord{
-		{Record: platformemail.RecordDKIM, Name: selector + "._domainkey", Value: "v=DKIM1; k=rsa; p=" + publicKey, Type: platformemail.RecordTypeTXT, Status: platformemail.RecordStatusPending, TTL: "Auto"},
+		{Record: platformemail.RecordDKIM, Name: selector + "._domainkey", Value: "p=" + publicKey, Type: platformemail.RecordTypeTXT, Status: platformemail.RecordStatusPending, TTL: "Auto"},
 		{Record: platformemail.RecordSPF, Name: req.CustomReturnPath, Value: "feedback-smtp." + req.Region + ".amazonses.com", Type: platformemail.RecordTypeMX, Status: platformemail.RecordStatusPending, TTL: "Auto", Priority: &priority},
 		{Record: platformemail.RecordSPF, Name: req.CustomReturnPath, Value: "v=spf1 include:amazonses.com ~all", Type: platformemail.RecordTypeTXT, Status: platformemail.RecordStatusPending, TTL: "Auto"},
 	}
