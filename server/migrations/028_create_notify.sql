@@ -16,9 +16,6 @@ CREATE TABLE IF NOT EXISTS notification_recipients (
     CONSTRAINT chk_notification_recipients_external_id CHECK (
         length(trim(external_id)) > 0
     ),
-    CONSTRAINT chk_notification_recipients_contact CHECK (
-        email IS NOT NULL OR phone IS NOT NULL
-    ),
     CONSTRAINT chk_notification_recipients_email CHECK (
         email IS NULL OR (length(trim(email)) > 0 AND email = lower(email))
     ),
@@ -105,7 +102,7 @@ ALTER TABLE notification_workflows
     ADD CONSTRAINT fk_notification_workflows_published_version
     FOREIGN KEY (published_version_id, id, team_id)
     REFERENCES notification_workflow_versions (id, workflow_id, team_id)
-    ON DELETE SET NULL;
+    ON DELETE SET NULL (published_version_id);
 
 CREATE INDEX IF NOT EXISTS idx_notification_workflow_versions_workflow_created
     ON notification_workflow_versions (workflow_id, created_at DESC);
@@ -243,15 +240,15 @@ CREATE TABLE IF NOT EXISTS notification_step_runs (
     CONSTRAINT fk_notification_step_runs_email_same_team
         FOREIGN KEY (email_message_id, team_id)
         REFERENCES email_messages (id, team_id)
-        ON DELETE SET NULL,
+        ON DELETE SET NULL (email_message_id),
     CONSTRAINT fk_notification_step_runs_sms_same_team
         FOREIGN KEY (sms_message_id, team_id)
         REFERENCES sms_messages (id, team_id)
-        ON DELETE SET NULL,
+        ON DELETE SET NULL (sms_message_id),
     CONSTRAINT fk_notification_step_runs_inbox_same_team
         FOREIGN KEY (inbox_message_id, team_id)
         REFERENCES inbox_messages (id, team_id)
-        ON DELETE SET NULL,
+        ON DELETE SET NULL (inbox_message_id),
     CONSTRAINT chk_notification_step_runs_key CHECK (
         length(trim(step_key)) > 0
     ),
