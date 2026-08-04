@@ -2,6 +2,7 @@ package transport
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/arcjet/arcjet-go"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -136,7 +137,19 @@ func NewRouter(cfg *config.Config, deps Dependencies) (*echo.Echo, error) {
 		DefaultRegion:    cfg.AWS.Region,
 	}, billingService)
 	emailmodule.RegisterRoutes(router, emailmodule.NewHandler(emailServiceAPI), tenantAccess)
-	inboxService := inbox.NewService(inbox.NewRepository(deps.DB), productRuntime.Events)
+	inboxSecret := cfg.Inbox.HMACSecret
+	if inboxSecret == "" {
+		inboxSecret = cfg.Verify.HMACSecret
+	}
+	if inboxSecret == "" && len(cfg.EncryptionKeys) > 0 {
+		inboxSecret = cfg.EncryptionKeys[0]
+	}
+	inboxTokens, err := inbox.NewRecipientTokenManager(inboxSecret)
+	if err != nil {
+		return nil, fmt.Errorf("initialize Inbox recipient tokens: %w", err)
+	}
+	inboxService := inbox.NewService(inbox.NewRepository(deps.DB), productRuntime.Events).
+		WithRecipientTokens(inboxTokens, time.Duration(cfg.Inbox.TokenTTLMinutes)*time.Minute)
 	inbox.RegisterRoutes(router, inbox.NewHandler(inboxService), tenantAccess)
 	verifySecret := []byte(cfg.Verify.HMACSecret)
 	verifyCodes, err := verifymodule.NewCodeManager(verifySecret, mfaCipher)
