@@ -170,6 +170,126 @@ type IdempotencyKey struct {
 	UpdatedAt           pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
 }
 
+type InboxMessage struct {
+	ID        uuid.UUID          `db:"id" json:"id"`
+	TeamID    uuid.UUID          `db:"team_id" json:"team_id"`
+	Category  string             `db:"category" json:"category"`
+	Priority  string             `db:"priority" json:"priority"`
+	Title     string             `db:"title" json:"title"`
+	Body      string             `db:"body" json:"body"`
+	Data      []byte             `db:"data" json:"data"`
+	Actions   []byte             `db:"actions" json:"actions"`
+	Source    string             `db:"source" json:"source"`
+	SourceID  *uuid.UUID         `db:"source_id" json:"source_id"`
+	CreatedAt pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type InboxReceipt struct {
+	ID          uuid.UUID          `db:"id" json:"id"`
+	TeamID      uuid.UUID          `db:"team_id" json:"team_id"`
+	MessageID   uuid.UUID          `db:"message_id" json:"message_id"`
+	RecipientID string             `db:"recipient_id" json:"recipient_id"`
+	SeenAt      pgtype.Timestamptz `db:"seen_at" json:"seen_at"`
+	ReadAt      pgtype.Timestamptz `db:"read_at" json:"read_at"`
+	ArchivedAt  pgtype.Timestamptz `db:"archived_at" json:"archived_at"`
+	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type NotificationPreference struct {
+	ID          uuid.UUID          `db:"id" json:"id"`
+	TeamID      uuid.UUID          `db:"team_id" json:"team_id"`
+	RecipientID uuid.UUID          `db:"recipient_id" json:"recipient_id"`
+	Category    string             `db:"category" json:"category"`
+	WorkflowID  *uuid.UUID         `db:"workflow_id" json:"workflow_id"`
+	Channel     string             `db:"channel" json:"channel"`
+	Enabled     bool               `db:"enabled" json:"enabled"`
+	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type NotificationRecipient struct {
+	ID         uuid.UUID          `db:"id" json:"id"`
+	TeamID     uuid.UUID          `db:"team_id" json:"team_id"`
+	ExternalID string             `db:"external_id" json:"external_id"`
+	Email      *string            `db:"email" json:"email"`
+	Phone      *string            `db:"phone" json:"phone"`
+	Locale     *string            `db:"locale" json:"locale"`
+	Timezone   *string            `db:"timezone" json:"timezone"`
+	Data       []byte             `db:"data" json:"data"`
+	CreatedAt  pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type NotificationRun struct {
+	ID                uuid.UUID          `db:"id" json:"id"`
+	TeamID            uuid.UUID          `db:"team_id" json:"team_id"`
+	WorkflowID        uuid.UUID          `db:"workflow_id" json:"workflow_id"`
+	WorkflowVersionID uuid.UUID          `db:"workflow_version_id" json:"workflow_version_id"`
+	RecipientID       uuid.UUID          `db:"recipient_id" json:"recipient_id"`
+	Status            string             `db:"status" json:"status"`
+	TriggerKey        *string            `db:"trigger_key" json:"trigger_key"`
+	Data              []byte             `db:"data" json:"data"`
+	ScheduledAt       pgtype.Timestamptz `db:"scheduled_at" json:"scheduled_at"`
+	StartedAt         pgtype.Timestamptz `db:"started_at" json:"started_at"`
+	CompletedAt       pgtype.Timestamptz `db:"completed_at" json:"completed_at"`
+	FailedAt          pgtype.Timestamptz `db:"failed_at" json:"failed_at"`
+	CanceledAt        pgtype.Timestamptz `db:"canceled_at" json:"canceled_at"`
+	ErrorCode         *string            `db:"error_code" json:"error_code"`
+	ErrorMessage      *string            `db:"error_message" json:"error_message"`
+	CreatedAt         pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type NotificationStepRun struct {
+	ID             uuid.UUID          `db:"id" json:"id"`
+	TeamID         uuid.UUID          `db:"team_id" json:"team_id"`
+	RunID          uuid.UUID          `db:"run_id" json:"run_id"`
+	StepKey        string             `db:"step_key" json:"step_key"`
+	StepType       string             `db:"step_type" json:"step_type"`
+	Channel        *string            `db:"channel" json:"channel"`
+	Sequence       int32              `db:"sequence" json:"sequence"`
+	Status         string             `db:"status" json:"status"`
+	AttemptCount   int32              `db:"attempt_count" json:"attempt_count"`
+	AvailableAt    pgtype.Timestamptz `db:"available_at" json:"available_at"`
+	StartedAt      pgtype.Timestamptz `db:"started_at" json:"started_at"`
+	CompletedAt    pgtype.Timestamptz `db:"completed_at" json:"completed_at"`
+	FailedAt       pgtype.Timestamptz `db:"failed_at" json:"failed_at"`
+	EmailMessageID *uuid.UUID         `db:"email_message_id" json:"email_message_id"`
+	SmsMessageID   *uuid.UUID         `db:"sms_message_id" json:"sms_message_id"`
+	InboxMessageID *uuid.UUID         `db:"inbox_message_id" json:"inbox_message_id"`
+	Input          []byte             `db:"input" json:"input"`
+	Output         []byte             `db:"output" json:"output"`
+	ErrorCode      *string            `db:"error_code" json:"error_code"`
+	ErrorMessage   *string            `db:"error_message" json:"error_message"`
+	CreatedAt      pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type NotificationWorkflow struct {
+	ID                 uuid.UUID          `db:"id" json:"id"`
+	TeamID             uuid.UUID          `db:"team_id" json:"team_id"`
+	Key                string             `db:"key" json:"key"`
+	Name               string             `db:"name" json:"name"`
+	Category           string             `db:"category" json:"category"`
+	Enabled            bool               `db:"enabled" json:"enabled"`
+	PublishedVersionID *uuid.UUID         `db:"published_version_id" json:"published_version_id"`
+	CreatedAt          pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type NotificationWorkflowVersion struct {
+	ID          uuid.UUID          `db:"id" json:"id"`
+	TeamID      uuid.UUID          `db:"team_id" json:"team_id"`
+	WorkflowID  uuid.UUID          `db:"workflow_id" json:"workflow_id"`
+	Version     int32              `db:"version" json:"version"`
+	Status      string             `db:"status" json:"status"`
+	Definition  []byte             `db:"definition" json:"definition"`
+	CreatedAt   pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	PublishedAt pgtype.Timestamptz `db:"published_at" json:"published_at"`
+}
+
 type OauthIdentity struct {
 	ID          uuid.UUID          `db:"id" json:"id"`
 	UserID      uuid.UUID          `db:"user_id" json:"user_id"`
@@ -387,6 +507,74 @@ type User struct {
 	SecurityUpdatedAt pgtype.Timestamptz `db:"security_updated_at" json:"security_updated_at"`
 }
 
+type Verification struct {
+	ID                  uuid.UUID          `db:"id" json:"id"`
+	TeamID              uuid.UUID          `db:"team_id" json:"team_id"`
+	ServiceID           uuid.UUID          `db:"service_id" json:"service_id"`
+	Channel             string             `db:"channel" json:"channel"`
+	Recipient           string             `db:"recipient" json:"recipient"`
+	RecipientNormalized string             `db:"recipient_normalized" json:"recipient_normalized"`
+	Status              string             `db:"status" json:"status"`
+	Locale              *string            `db:"locale" json:"locale"`
+	Metadata            []byte             `db:"metadata" json:"metadata"`
+	AttemptCount        int32              `db:"attempt_count" json:"attempt_count"`
+	ResendCount         int32              `db:"resend_count" json:"resend_count"`
+	ExpiresAt           pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+	ApprovedAt          pgtype.Timestamptz `db:"approved_at" json:"approved_at"`
+	ExpiredAt           pgtype.Timestamptz `db:"expired_at" json:"expired_at"`
+	CanceledAt          pgtype.Timestamptz `db:"canceled_at" json:"canceled_at"`
+	FailedAt            pgtype.Timestamptz `db:"failed_at" json:"failed_at"`
+	CreatedAt           pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type VerificationAttempt struct {
+	ID             uuid.UUID          `db:"id" json:"id"`
+	TeamID         uuid.UUID          `db:"team_id" json:"team_id"`
+	VerificationID uuid.UUID          `db:"verification_id" json:"verification_id"`
+	ChallengeID    uuid.UUID          `db:"challenge_id" json:"challenge_id"`
+	Result         string             `db:"result" json:"result"`
+	IpAddressHash  []byte             `db:"ip_address_hash" json:"ip_address_hash"`
+	UserAgent      *string            `db:"user_agent" json:"user_agent"`
+	Metadata       []byte             `db:"metadata" json:"metadata"`
+	AttemptedAt    pgtype.Timestamptz `db:"attempted_at" json:"attempted_at"`
+}
+
+type VerificationChallenge struct {
+	ID               uuid.UUID          `db:"id" json:"id"`
+	TeamID           uuid.UUID          `db:"team_id" json:"team_id"`
+	VerificationID   uuid.UUID          `db:"verification_id" json:"verification_id"`
+	Sequence         int32              `db:"sequence" json:"sequence"`
+	CodeHmac         []byte             `db:"code_hmac" json:"code_hmac"`
+	Status           string             `db:"status" json:"status"`
+	Channel          string             `db:"channel" json:"channel"`
+	EmailMessageID   *uuid.UUID         `db:"email_message_id" json:"email_message_id"`
+	SmsMessageID     *uuid.UUID         `db:"sms_message_id" json:"sms_message_id"`
+	ExpiresAt        pgtype.Timestamptz `db:"expires_at" json:"expires_at"`
+	SupersededAt     pgtype.Timestamptz `db:"superseded_at" json:"superseded_at"`
+	DispatchedAt     pgtype.Timestamptz `db:"dispatched_at" json:"dispatched_at"`
+	DeliveryFailedAt pgtype.Timestamptz `db:"delivery_failed_at" json:"delivery_failed_at"`
+	CreatedAt        pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type VerificationService struct {
+	ID                    uuid.UUID          `db:"id" json:"id"`
+	TeamID                uuid.UUID          `db:"team_id" json:"team_id"`
+	Key                   string             `db:"key" json:"key"`
+	Name                  string             `db:"name" json:"name"`
+	DefaultChannel        string             `db:"default_channel" json:"default_channel"`
+	CodeLength            int32              `db:"code_length" json:"code_length"`
+	TtlSeconds            int32              `db:"ttl_seconds" json:"ttl_seconds"`
+	MaxAttempts           int32              `db:"max_attempts" json:"max_attempts"`
+	ResendCooldownSeconds int32              `db:"resend_cooldown_seconds" json:"resend_cooldown_seconds"`
+	MaxResends            int32              `db:"max_resends" json:"max_resends"`
+	Enabled               bool               `db:"enabled" json:"enabled"`
+	Metadata              []byte             `db:"metadata" json:"metadata"`
+	CreatedAt             pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	UpdatedAt             pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
 type VerificationToken struct {
 	Identifier string             `db:"identifier" json:"identifier"`
 	TokenHash  string             `db:"token_hash" json:"token_hash"`
@@ -409,8 +597,10 @@ type WebhookDelivery struct {
 	EndpointID     uuid.UUID          `db:"endpoint_id" json:"endpoint_id"`
 	Status         string             `db:"status" json:"status"`
 	AttemptCount   int32              `db:"attempt_count" json:"attempt_count"`
+	ReplayCount    int32              `db:"replay_count" json:"replay_count"`
 	NextAttemptAt  pgtype.Timestamptz `db:"next_attempt_at" json:"next_attempt_at"`
 	LastAttemptAt  pgtype.Timestamptz `db:"last_attempt_at" json:"last_attempt_at"`
+	LastReplayedAt pgtype.Timestamptz `db:"last_replayed_at" json:"last_replayed_at"`
 	ResponseStatus *int32             `db:"response_status" json:"response_status"`
 	ResponseBody   *string            `db:"response_body" json:"response_body"`
 	LastError      *string            `db:"last_error" json:"last_error"`
@@ -419,6 +609,22 @@ type WebhookDelivery struct {
 	LockedBy       *string            `db:"locked_by" json:"locked_by"`
 	CreatedAt      pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `db:"updated_at" json:"updated_at"`
+}
+
+type WebhookDeliveryAttempt struct {
+	ID               uuid.UUID          `db:"id" json:"id"`
+	DeliveryID       uuid.UUID          `db:"delivery_id" json:"delivery_id"`
+	AttemptNumber    int32              `db:"attempt_number" json:"attempt_number"`
+	Outcome          string             `db:"outcome" json:"outcome"`
+	RequestTimestamp pgtype.Timestamptz `db:"request_timestamp" json:"request_timestamp"`
+	StartedAt        pgtype.Timestamptz `db:"started_at" json:"started_at"`
+	CompletedAt      pgtype.Timestamptz `db:"completed_at" json:"completed_at"`
+	DurationMs       int64              `db:"duration_ms" json:"duration_ms"`
+	ResponseStatus   *int32             `db:"response_status" json:"response_status"`
+	ResponseHeaders  []byte             `db:"response_headers" json:"response_headers"`
+	ResponseBody     *string            `db:"response_body" json:"response_body"`
+	ErrorMessage     *string            `db:"error_message" json:"error_message"`
+	CreatedAt        pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
 type WebhookEndpoint struct {
