@@ -1,6 +1,6 @@
-import { LineChart } from "lucide-react";
-import { PlaceholderPage } from "@/components/dashboard/placeholder-page";
+import { MetricsOverview } from "@/components/dashboard/email/metrics/metrics-overview";
 import { constructMetadata } from "@/utils/metadata";
+
 export const metadata = constructMetadata({
     title: "Email Metrics",
     description:
@@ -11,10 +11,8 @@ export const metadata = constructMetadata({
 
 export default function Page() {
     return (
-        <PlaceholderPage
-            title="Metrics"
-            description="Deliverability charts."
-            icon={LineChart}
-        />
+        <div className="flex-1 w-full bg-background min-h-screen pt-8 pb-16 px-4 md:px-2">
+            <MetricsOverview />
+        </div>
     );
 }
