@@ -10,7 +10,7 @@ export function ProfileHeader({
 }) {
     return (
         <PortalHeroHeader
-            breadcrumb="Settings > Profile"
+            breadcrumb="Settings / Profile"
             title={name}
             description="Manage your email, teams, and account security."
             badge={

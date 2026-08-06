@@ -7,7 +7,7 @@ export function WalletHeader({
 }) {
     return (
         <PortalHeroHeader
-            breadcrumb="Billing > Wallet"
+            breadcrumb="Billing / Wallet"
             title="Wallet"
             description="Fund your workspace balance and manage how Dugble bills your usage."
             badge={
