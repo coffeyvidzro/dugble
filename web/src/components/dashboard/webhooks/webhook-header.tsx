@@ -4,7 +4,7 @@ import { PortalHeroHeader } from "../portal-hero-header";
 export function WebhookHeader({ endpointCount }: { endpointCount: number }) {
     return (
         <PortalHeroHeader
-            breadcrumb="Developers > Webhooks"
+            breadcrumb="Developers / Webhooks"
             title="Webhooks"
             description="Get notified in real time when domain, email, and SMS events happen in your workspace."
             badge={

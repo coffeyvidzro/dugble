@@ -8,7 +8,7 @@ export function TeamHeader({ teamName }: { teamName: string }) {
 
     return (
         <PortalHeroHeader
-            breadcrumb="Settings > Team"
+            breadcrumb="Settings / Team"
             title={teamName}
             description="Manage members, roles, and the management tokens that script this workspace."
             badge={
