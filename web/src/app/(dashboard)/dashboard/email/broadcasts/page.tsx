@@ -1,6 +1,6 @@
-import { Megaphone } from "lucide-react";
-import { PlaceholderPage } from "@/components/dashboard/placeholder-page";
+import { BroadcastsListView } from "@/components/dashboard/email/broadcasts/broadcasts-list-view";
 import { constructMetadata } from "@/utils/metadata";
+
 export const metadata = constructMetadata({
     title: "Email Broadcasts",
     description:
@@ -10,11 +10,5 @@ export const metadata = constructMetadata({
 });
 
 export default function Page() {
-    return (
-        <PlaceholderPage
-            title="Broadcasts"
-            description="One-time and scheduled sends."
-            icon={Megaphone}
-        />
-    );
+    return <BroadcastsListView />;
 }

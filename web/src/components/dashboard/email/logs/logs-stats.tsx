@@ -35,7 +35,7 @@ export function LogsStats({ logs }: { logs: LogEntry[] }) {
             {stats.map((stat) => (
                 <Card
                     key={stat.label}
-                    className="border-border/40 p-4 shadow-sm"
+                    className="border-border/40 p-4 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
                 >
                     <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                         <stat.icon className="size-3.5" />
