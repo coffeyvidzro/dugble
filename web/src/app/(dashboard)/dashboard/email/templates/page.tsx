@@ -9,9 +9,5 @@ export const metadata = constructMetadata({
 });
 
 export default function Page() {
-    return (
-        <div className="flex-1 w-full bg-background min-h-screen pt-8 pb-16 px-4 md:px-2">
-            <TemplatesOverview />
-        </div>
-    );
+    return <TemplatesOverview />;
 }

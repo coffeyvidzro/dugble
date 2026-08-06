@@ -12,9 +12,5 @@ export const metadata = constructMetadata({
 export default async function Page() {
     await requireSession();
 
-    return (
-        <div className="flex-1 w-full bg-background min-h-screen pt-8 pb-16 px-4 md:px-2">
-            <TransactionsDashboard />
-        </div>
-    );
+    return <TransactionsDashboard />;
 }
