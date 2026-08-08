@@ -13,7 +13,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTemplatesStore } from "./templates-store";
-import { TemplatePreviewDialog } from "./editor/template-preview-dialog";
+import { TemplatePreviewSheet } from "./editor/template-preview-sheet";
 import { DeleteTemplateDialog } from "./editor/delete-template-dialog";
 import type { EmailTemplate } from "./types";
 
@@ -81,7 +81,7 @@ export function TemplateActionsMenu({ template }: { template: EmailTemplate }) {
                 </DropdownMenuContent>
             </DropdownMenu>
 
-            <TemplatePreviewDialog
+            <TemplatePreviewSheet
                 template={template}
                 open={activeDialog === "preview"}
                 onOpenChange={(open) =>
