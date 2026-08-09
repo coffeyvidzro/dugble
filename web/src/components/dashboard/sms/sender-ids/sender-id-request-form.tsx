@@ -188,7 +188,7 @@ export function SenderIdRequestForm() {
                     />
                     <p className="text-xs text-muted-foreground">
                         {type === "alphanumeric"
-                            ? "Up to 11 letters and numbers — this is exactly what recipients will see."
+                            ? "Up to 11 letters and numbers. This is exactly what recipients will see."
                             : "We'll provision a number for you once approved; this label just helps you identify it."}
                     </p>
                 </div>
@@ -197,7 +197,7 @@ export function SenderIdRequestForm() {
                     <Label htmlFor="use-case">Use case</Label>
                     <Textarea
                         id="use-case"
-                        placeholder="Describe what you'll use this sender ID for — e.g. OTPs, order updates, appointment reminders."
+                        placeholder="Describe what you'll use this sender ID for. e.g. OTPs, order updates, appointment reminders."
                         value={useCase}
                         onChange={(event) => setUseCase(event.target.value)}
                         rows={3}

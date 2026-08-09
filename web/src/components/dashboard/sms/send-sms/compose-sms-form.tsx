@@ -116,7 +116,7 @@ export function ComposeSmsForm({
                     <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
                         <CardTitle className="text-xl">Compose</CardTitle>
                         <CardDescription>
-                            Fill in the details below — the preview updates as
+                            Fill in the details below. The preview updates as
                             you type.
                         </CardDescription>
                     </CardHeader>
