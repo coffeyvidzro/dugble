@@ -1,6 +1,6 @@
-import { Send } from "lucide-react";
-import { PlaceholderPage } from "@/components/dashboard/placeholder-page";
 import { constructMetadata } from "@/utils/metadata";
+import { SmsOverview } from "@/components/dashboard/sms/sms-dashboard/sms-overview";
+
 export const metadata = constructMetadata({
     title: "SMS",
     description:
@@ -10,11 +10,5 @@ export const metadata = constructMetadata({
 });
 
 export default function Page() {
-    return (
-        <PlaceholderPage
-            title="Send SMS"
-            description="Your messaging performance overview"
-            icon={Send}
-        />
-    );
+    return <SmsOverview />;
 }

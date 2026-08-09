@@ -12,7 +12,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { TransactionDetailDialog } from "./transaction-detail-dialog";
+import { TransactionDetailSheet } from "./transaction-detail-sheet";
 import { TransactionRow } from "./transaction-row";
 import { TransactionsPagination } from "./transactions-pagination";
 import { TransactionsTableHeader } from "./transactions-table-header";
@@ -144,7 +144,7 @@ export function TransactionsTableCard({
                 </>
             )}
 
-            <TransactionDetailDialog
+            <TransactionDetailSheet
                 transaction={selected}
                 onOpenChange={(open) => !open && setSelected(null)}
             />

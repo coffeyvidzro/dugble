@@ -9,7 +9,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogPreviewDialog } from "./log-preview-dialog";
+import { LogPreviewSheet } from "./log-preview-sheet";
 import type { LogEntry } from "./types";
 
 export function LogRowActions({ log }: { log: LogEntry }) {
@@ -54,7 +54,7 @@ export function LogRowActions({ log }: { log: LogEntry }) {
                 </DropdownMenuContent>
             </DropdownMenu>
 
-            <LogPreviewDialog
+            <LogPreviewSheet
                 log={log}
                 open={previewOpen}
                 onOpenChange={setPreviewOpen}
