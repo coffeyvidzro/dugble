@@ -21,7 +21,7 @@ require (
 	github.com/newrelic/go-agent/v3/integrations/nrnats v1.1.8
 	github.com/newrelic/go-agent/v3/integrations/nrpgx5 v1.3.4
 	github.com/newrelic/go-agent/v3/integrations/nrredis-v9 v1.1.2
-	github.com/redis/go-redis/v9 v9.21.0
+	github.com/redis/go-redis/v9 v9.22.0
 	golang.org/x/crypto v0.54.0
 )
 
