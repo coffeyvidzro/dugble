@@ -1,8 +1,8 @@
 import Link from "next/link";
 
-import { ArrowLeft, Clock3, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Clock3 } from "lucide-react";
 
-export function CreateWorkspaceHeader() {
+export function CreateTeamHeader() {
   return (
     <div className="relative space-y-5 sm:space-y-6">
       <div
@@ -29,27 +29,21 @@ export function CreateWorkspaceHeader() {
 
       <div className="space-y-2.5">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-signal">
-          New workspace
+          New team
         </p>
         <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl lg:text-4xl">
-          Set up a new business workspace
+          Create a new team
         </h1>
         <p className="max-w-xl text-sm leading-6 text-muted-foreground">
-          A separate workspace for a different business, its own API keys,
-          senders, team, and billing. You&apos;ll be the owner from the start.
+          A team keeps its own API keys, senders, webhooks, and members apart
+          from your other work. You&apos;ll be the owner from the start.
         </p>
       </div>
 
-      <div className="flex flex-col gap-2 font-mono text-xs text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5 sm:gap-y-2">
-        <span className="inline-flex items-center gap-1.5">
-          <Clock3 className="size-3.5 shrink-0" />
-          Takes about 3 minutes
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <ShieldCheck className="size-3.5 shrink-0" />
-          Business verification usually clears in 1 business day
-        </span>
-      </div>
+      <span className="inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
+        <Clock3 className="size-3.5 shrink-0" />
+        Takes about a minute
+      </span>
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 
-import { Building2, Check, Plus } from "lucide-react";
+import { Check, Plus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -11,11 +11,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { AVATAR_PRESETS, initialsFromName } from "./team-avatar-picker";
 
-const CURRENT_WORKSPACE = "My Workspace";
-
-export function WorkspaceSwitcher() {
+export function TeamSwitcher({ teamName }: { teamName: string }) {
   const [open, setOpen] = useState(false);
+  const initials = initialsFromName(teamName) || "T";
+  const preset = AVATAR_PRESETS[0];
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -23,8 +24,8 @@ export function WorkspaceSwitcher() {
         render={
           <button
             type="button"
-            aria-label="Workspaces"
-            title="Workspaces"
+            aria-label="Teams"
+            title="Teams"
             className={cn(
               "flex size-10 items-center justify-center rounded-xl border bg-background text-muted-foreground transition-colors hover:border-foreground/25 hover:text-foreground",
               open && "border-signal/40 text-signal",
@@ -32,29 +33,41 @@ export function WorkspaceSwitcher() {
           />
         }
       >
-        <Building2 className="size-4" />
+        <span
+          className={cn(
+            "flex size-6 items-center justify-center rounded-lg bg-linear-to-br font-heading text-[10px] font-semibold text-white",
+            preset.classes,
+          )}
+        >
+          {initials}
+        </span>
       </PopoverTrigger>
 
       <PopoverContent side="right" align="start" className="w-64 space-y-3 p-3">
         <p className="px-1 font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
-          Workspaces
+          Teams
         </p>
         <div className="flex items-center gap-2.5 rounded-lg border bg-card/60 px-3 py-2">
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground">
-            <Building2 className="size-3.5" />
-          </div>
-          <span className="flex-1 text-sm font-medium">
-            {CURRENT_WORKSPACE}
+          <span
+            className={cn(
+              "flex size-7 shrink-0 items-center justify-center rounded-lg bg-linear-to-br font-heading text-[11px] font-semibold text-white",
+              preset.classes,
+            )}
+          >
+            {initials}
+          </span>
+          <span className="flex-1 truncate text-sm font-medium">
+            {teamName}
           </span>
           <Check className="size-4 shrink-0 text-signal" />
         </div>
         <Link
-          href="/dashboard/create-workspace"
+          href="/dashboard/create-team"
           onClick={() => setOpen(false)}
           className="flex w-full items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
         >
           <Plus className="size-4" />
-          Add Workspace
+          Create team
         </Link>
       </PopoverContent>
     </Popover>

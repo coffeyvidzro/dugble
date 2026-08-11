@@ -9,7 +9,7 @@ export function TeamMembers() {
             <TeamCardHeader
                 icon={Users}
                 title="Members"
-                description="Control who can view logs, configure webhooks, and change workspace settings."
+                description="Control who can view logs, configure webhooks, and change team settings."
             />
             <TeamMembersClient />
         </Card>

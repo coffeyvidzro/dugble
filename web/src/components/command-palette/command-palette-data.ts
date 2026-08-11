@@ -163,7 +163,7 @@ const marketingItems: CommandItem[] = [
   {
     group: "Account",
     title: "Start building",
-    description: "Create a workspace and get an API key.",
+    description: "Create a team and get an API key.",
     href: "/sign-up",
     keywords: ["sign up", "signup", "/sign-up", "/register", "create account"],
   },

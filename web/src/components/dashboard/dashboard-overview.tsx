@@ -17,8 +17,8 @@ import { requireSession } from "@/lib/session";
 
 const quickStart = [
     {
-        title: "Create workspace",
-        href: "/dashboard/create-workspace",
+        title: "Create team",
+        href: "/dashboard/create-team",
     },
     {
         title: "Generate API key",
@@ -74,8 +74,8 @@ export async function DashboardOverview() {
                     Welcome back, {displayName}
                 </h1>
                 <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
-                    Launch your messaging workspace, create API keys, and
-                    prepare your first customer notification flow.
+                    Create your team, generate API keys, and send your first
+                    customer notification.
                 </p>
             </div>
 
@@ -142,7 +142,7 @@ export async function DashboardOverview() {
                     <CardHeader>
                         <CardTitle>Recent activity</CardTitle>
                         <CardDescription>
-                            Message and workspace events will appear here.
+                            Message and team events will appear here.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="p-0">

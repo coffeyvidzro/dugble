@@ -11,7 +11,7 @@ export function TeamTokens() {
                 title="Management Tokens"
                 description={
                     <>
-                        Tokens for workspace administration. For sending Dugble
+                        Tokens for team administration. For sending Dugble
                         notifications, use a standard{" "}
                         <span className="rounded border border-border/50 bg-muted px-1 py-0.5 font-mono text-xs">
                             API Key

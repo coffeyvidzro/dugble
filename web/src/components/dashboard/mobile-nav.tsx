@@ -4,14 +4,13 @@ import type { CSSProperties } from "react";
 import { useEffect } from "react";
 import Link from "next/link";
 
-import { Building2, LayoutGrid, Plus, X } from "lucide-react";
+import { LayoutGrid, Plus, X } from "lucide-react";
 
 import { dashboardPortals, type DashboardPortal } from "./dashboard-nav";
 import { NavGroupList } from "./nav-group-list";
+import { AVATAR_PRESETS, initialsFromName } from "./team/team-avatar-picker";
 import type { SessionUser } from "@/lib/session";
 import { cn } from "@/lib/utils";
-
-const CURRENT_WORKSPACE = "My Workspace";
 
 export function MobileNav({
   user,
@@ -26,6 +25,9 @@ export function MobileNav({
 }) {
   const displayName = user.name.trim() || user.email;
   const initials = displayName.slice(0, 2).toUpperCase();
+  const teamName = `${displayName}'s Team`;
+  const teamInitials = initialsFromName(teamName) || "T";
+  const teamPreset = AVATAR_PRESETS[0];
 
   // Lock body scroll while the drawer is open.
   useEffect(() => {
@@ -99,16 +101,21 @@ export function MobileNav({
         </div>
 
         <div className="flex items-center gap-2.5 border-b px-4 py-3 md:hidden">
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground">
-            <Building2 className="size-3.5" />
-          </div>
+          <span
+            className={cn(
+              "flex size-7 shrink-0 items-center justify-center rounded-lg bg-linear-to-br font-heading text-[11px] font-semibold text-white",
+              teamPreset.classes,
+            )}
+          >
+            {teamInitials}
+          </span>
           <span className="flex-1 truncate text-sm font-medium">
-            {CURRENT_WORKSPACE}
+            {teamName}
           </span>
           <Link
-            href="/dashboard/create-workspace"
+            href="/dashboard/create-team"
             onClick={() => onOpenChange(false)}
-            aria-label="Add workspace"
+            aria-label="Create team"
             className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-dashed text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
           >
             <Plus className="size-3.5" />

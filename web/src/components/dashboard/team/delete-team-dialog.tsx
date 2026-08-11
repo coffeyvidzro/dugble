@@ -46,7 +46,7 @@ export function DeleteTeamDialog({ teamName }: { teamName: string }) {
                 onClick={() => setOpen(true)}
             >
                 <Trash2 className="mr-2 size-4" />
-                Delete Workspace
+                Delete Team
             </Button>
 
             <DialogContent className="border-danger/20 shadow-xl sm:max-w-md">
@@ -56,8 +56,8 @@ export function DeleteTeamDialog({ teamName }: { teamName: string }) {
                     </DialogTitle>
                     <DialogDescription>
                         All collaborators will lose access immediately, and
-                        production workflows relying on this workspace&apos;s
-                        APIs will fail. This action <strong>cannot</strong> be
+                        production workflows relying on this team&apos;s APIs
+                        will fail. This action <strong>cannot</strong> be
                         undone.
                     </DialogDescription>
                 </DialogHeader>
@@ -91,7 +91,7 @@ export function DeleteTeamDialog({ teamName }: { teamName: string }) {
                         variant="ghost"
                         onClick={() => setOpen(false)}
                     >
-                        Keep Workspace
+                        Keep Team
                     </Button>
                     <Button
                         type="button"
