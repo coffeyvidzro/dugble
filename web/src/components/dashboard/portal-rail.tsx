@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { LayoutGrid } from "lucide-react";
 
-import { WorkspaceSwitcher } from "./workspace/workspace-switcher";
+import { TeamSwitcher } from "./team/team-switcher";
 import type { DashboardPortal } from "./dashboard-nav";
 import type { SessionUser } from "@/lib/session";
 import {
@@ -31,6 +31,7 @@ export function PortalRail({
   const accountPortal = portals.find((p) => p.id === "account");
   const displayName = user.name.trim() || user.email;
   const initials = displayName.slice(0, 2).toUpperCase();
+  const teamName = `${displayName}'s Team`;
 
   return (
     <div className="hidden h-full w-14 shrink-0 flex-col items-center gap-2 border-r bg-sidebar py-3 md:flex">
@@ -60,7 +61,7 @@ export function PortalRail({
 
       <div className="h-px w-6 bg-border" />
 
-      <WorkspaceSwitcher />
+      <TeamSwitcher teamName={teamName} />
 
       {[smsPortal, emailPortal].filter(Boolean).map((portal) => (
         <RailButton
