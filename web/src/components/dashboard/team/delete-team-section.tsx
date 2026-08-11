@@ -9,7 +9,7 @@ export function DeleteTeamSection({ teamName }: { teamName: string }) {
             <TeamCardHeader
                 icon={AlertTriangle}
                 title="Danger Zone"
-                description="Permanently delete this workspace and everything in it including API keys, webhooks, delivery workflows, and historical logs."
+                description="Permanently delete this team and everything in it including API keys, webhooks, delivery workflows, and historical logs."
                 danger
             />
             <CardContent>
