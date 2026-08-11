@@ -49,16 +49,16 @@ function MemberActionDialog({
                 <AlertDialogHeader>
                     <AlertDialogTitle>
                         {action?.type === "leave"
-                            ? "Leave this workspace?"
+                            ? "Leave this team?"
                             : action?.type === "cancel_invite"
                               ? "Cancel invitation?"
                               : `Remove ${action?.type === "remove" ? action.member.email : ""}?`}
                     </AlertDialogTitle>
                     <AlertDialogDescription>
                         {action?.type === "leave"
-                            ? "You'll lose access to this workspace's dashboard, logs, and API keys immediately."
+                            ? "You'll lose access to this team's dashboard, logs, and API keys immediately."
                             : action?.type === "cancel_invite"
-                              ? "They will no longer be able to use the invitation link to join this workspace."
+                              ? "They will no longer be able to use the invitation link to join this team."
                               : "They will immediately lose access to this team's dashboard, logs, and API settings."}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
