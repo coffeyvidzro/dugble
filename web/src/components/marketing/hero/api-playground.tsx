@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const REQUEST_LINE = `curl https://api.dugble.com/v1/messages \\
-  -H "Authorization: Bearer sk_live_***" \\
+  -H "Authorization: Bearer dgb_team_***" \\
   -d channel="sms" -d to="+233 55 000 1234" \\
   -d template="login_otp"`;
 
