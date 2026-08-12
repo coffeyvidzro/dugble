@@ -39,10 +39,11 @@ const featuresLinks = [
 ];
 
 const resourceLinks = [
-  { href: "/quickstart", title: "Quickstart" },
-  { href: "/security", title: "Security" },
-  { href: "/pricing", title: "Pricing" },
-  { href: "/blog", title: "Blog" },
+    { href: "/quickstart", title: "Quickstart" },
+    { href: "/security", title: "Security" },
+    { href: "/pricing", title: "Pricing" },
+    { href: "/blog", title: "Blog" },
+    { href: "/custom-solutions", title: "Custom Solutions" },
 ];
 
 export function MarketingNav() {
