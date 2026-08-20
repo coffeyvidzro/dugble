@@ -1,10 +1,16 @@
 "use client";
 
-import { useTeamMembers } from "./team-members-context";
+import { useActiveMemberCount } from "@/hooks/queries/use-team-members";
 import { PortalHeroHeader } from "../portal-hero-header";
 
-export function TeamHeader({ teamName }: { teamName: string }) {
-    const { activeCount } = useTeamMembers();
+export function TeamHeader({
+    teamId,
+    teamName,
+}: {
+    teamId: string;
+    teamName: string;
+}) {
+    const { data: activeCount } = useActiveMemberCount(teamId);
 
     return (
         <PortalHeroHeader
@@ -17,7 +23,7 @@ export function TeamHeader({ teamName }: { teamName: string }) {
                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-75" />
                         <span className="relative inline-flex size-2 rounded-full bg-signal" />
                     </span>
-                    {activeCount} active{" "}
+                    {activeCount ?? 0} active{" "}
                     {activeCount === 1 ? "member" : "members"}
                 </>
             }
