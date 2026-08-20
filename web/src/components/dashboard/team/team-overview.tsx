@@ -3,24 +3,15 @@ import { Card } from "@/components/ui/card";
 import { TeamCardHeader } from "./team-card-header";
 import { TeamOverviewForm } from "./team-overview-form";
 
-export function TeamOverview({
-    initialName,
-    initialAvatarUrl,
-}: {
-    initialName: string;
-    initialAvatarUrl?: string;
-}) {
+export function TeamOverview({ teamId }: { teamId: string }) {
     return (
         <Card className="overflow-hidden border-border/40 shadow-sm">
             <TeamCardHeader
                 icon={Building2}
                 title="Team Overview"
-                description="This name and avatar appear across Dugble's dashboard and in emails sent on your behalf."
+                description="This name appears across Dugble's dashboard and in emails sent on your behalf."
             />
-            <TeamOverviewForm
-                initialName={initialName}
-                initialAvatarUrl={initialAvatarUrl}
-            />
+            <TeamOverviewForm teamId={teamId} />
         </Card>
     );
 }
