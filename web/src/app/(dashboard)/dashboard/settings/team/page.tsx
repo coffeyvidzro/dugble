@@ -10,14 +10,7 @@ export const metadata = constructMetadata({
 });
 
 export default async function Page() {
-    const session = await requireSession();
+    await requireSession();
 
-    return (
-        <TeamSettings
-            currentUser={{
-                email: session.user.email,
-                name: session.user.name,
-            }}
-        />
-    );
+    return <TeamSettings />;
 }
