@@ -2,31 +2,39 @@ import { AlertTriangle, Clock, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import {
-    formatDate,
-    TOKEN_EXPIRY_LABEL,
-    TOKEN_SCOPE_LABEL,
-    type ManagementToken,
-} from "./types";
+import type { TeamToken } from "@/types/team-token";
 
 const EXPIRING_SOON_DAYS = 7;
 
-function expiryState(token: ManagementToken): "expired" | "soon" | "normal" {
-    if (!token.expiresAt) return "normal";
-    const msRemaining = token.expiresAt.getTime() - Date.now();
+function formatDate(iso: string): string {
+    return new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    }).format(new Date(iso));
+}
+
+function expiryState(token: TeamToken): "expired" | "soon" | "normal" {
+    if (!token.expires_at) return "normal";
+    const msRemaining = new Date(token.expires_at).getTime() - Date.now();
     if (msRemaining < 0) return "expired";
     if (msRemaining < EXPIRING_SOON_DAYS * 24 * 60 * 60 * 1000) return "soon";
     return "normal";
+}
+
+function isElevated(permissions: string[]): boolean {
+    return permissions.includes("write");
 }
 
 export function TeamTokenRow({
     token,
     onRevoke,
 }: {
-    token: ManagementToken;
-    onRevoke: (token: ManagementToken) => void;
+    token: TeamToken;
+    onRevoke: (token: TeamToken) => void;
 }) {
     const state = expiryState(token);
+    const elevated = isElevated(token.permissions);
 
     return (
         <TableRow className="group border-b-0 transition-colors hover:bg-muted/30">
@@ -34,13 +42,13 @@ export function TeamTokenRow({
                 <div className="flex flex-col gap-0.5">
                     <span className="font-medium">{token.name}</span>
                     <span className="text-xs text-muted-foreground">
-                        Created {formatDate(token.createdAt)}
+                        Created {formatDate(token.created_at)}
                     </span>
                 </div>
             </TableCell>
             <TableCell>
                 <div className="inline-flex rounded-md border border-border/50 bg-muted/30 px-2 py-1 font-mono text-xs text-muted-foreground">
-                    {token.maskedToken}
+                    {token.token_prefix}
                 </div>
             </TableCell>
             <TableCell>
@@ -48,11 +56,11 @@ export function TeamTokenRow({
                     variant="outline"
                     className={cn(
                         "text-xs font-normal shadow-none",
-                        token.scope === "full_access" &&
+                        elevated &&
                             "border-pending/30 bg-pending/10 text-pending",
                     )}
                 >
-                    {TOKEN_SCOPE_LABEL[token.scope]}
+                    {token.permissions.join(", ") || "No permissions"}
                 </Badge>
             </TableCell>
             <TableCell>
@@ -68,11 +76,11 @@ export function TeamTokenRow({
                         <AlertTriangle className="size-3" />
                     )}
                     {state === "soon" && <Clock className="size-3" />}
-                    {token.expiresAt
+                    {token.expires_at
                         ? state === "expired"
-                            ? `Expired ${formatDate(token.expiresAt)}`
-                            : formatDate(token.expiresAt)
-                        : TOKEN_EXPIRY_LABEL.never}
+                            ? `Expired ${formatDate(token.expires_at)}`
+                            : formatDate(token.expires_at)
+                        : "Never"}
                 </span>
             </TableCell>
             <TableCell className="text-right">
