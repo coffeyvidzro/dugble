@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { TeamCardHeader } from "./team-card-header";
 import { TeamMembersClient } from "./team-members-client";
 
-export function TeamMembers() {
+export function TeamMembers({ teamId }: { teamId: string }) {
     return (
         <Card className="border-border/40 shadow-sm">
             <TeamCardHeader
@@ -11,7 +11,7 @@ export function TeamMembers() {
                 title="Members"
                 description="Control who can view logs, configure webhooks, and change team settings."
             />
-            <TeamMembersClient />
+            <TeamMembersClient teamId={teamId} />
         </Card>
     );
 }
