@@ -1,113 +1,76 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Building2, Check, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+
+import { useTeamPermissions } from "@/hooks/queries/use-team-permissions";
+import { useTeam, useUpdateTeam } from "@/hooks/queries/use-teams";
+import { updateTeamInputSchema } from "@/types/team";
 import { CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import {
-    AVATAR_PRESETS,
-    TeamAvatarPicker,
-    type AvatarPresetId,
-} from "./team-avatar-picker";
 
 const MAX_NAME_LENGTH = 60;
 
-function useTeamProfile(initialName: string, initialAvatarUrl?: string) {
-    const [savedName, setSavedName] = useState(initialName);
-    const [name, setName] = useState(initialName);
-    const [avatarUrl, setAvatarUrl] = useState<string | null>(
-        initialAvatarUrl ?? null,
-    );
-    const [savedAvatarUrl, setSavedAvatarUrl] = useState<string | null>(
-        initialAvatarUrl ?? null,
-    );
-    const [avatarColor, setAvatarColor] = useState<AvatarPresetId>(
-        AVATAR_PRESETS[0].id,
-    );
-    const [savedAvatarColor, setSavedAvatarColor] = useState<AvatarPresetId>(
-        AVATAR_PRESETS[0].id,
-    );
-    const [avatarError, setAvatarError] = useState<string | null>(null);
-    const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
+export function TeamOverviewForm({ teamId }: { teamId: string }) {
+    const { data: team, isPending, isError, error } = useTeam(teamId);
+    const updateTeam = useUpdateTeam(teamId);
+    const { canManageTeam } = useTeamPermissions();
+    const [name, setName] = useState<string | null>(null);
 
-    const isDirty =
-        (name.trim() !== savedName && name.trim().length > 0) ||
-        avatarUrl !== savedAvatarUrl ||
-        avatarColor !== savedAvatarColor;
-
-    function handleSave() {
-        if (!isDirty) return;
-        setStatus("saving");
-        window.setTimeout(() => {
-            setSavedName(name.trim());
-            setSavedAvatarUrl(avatarUrl);
-            setSavedAvatarColor(avatarColor);
-            setStatus("saved");
-            window.setTimeout(() => setStatus("idle"), 2000);
-        }, 600);
+    if (isPending) {
+        return (
+            <CardContent className="flex justify-center py-8">
+                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            </CardContent>
+        );
     }
 
-    return {
-        name,
-        setName,
-        savedName,
-        avatarUrl,
-        setAvatarUrl,
-        avatarColor,
-        setAvatarColor,
-        avatarError,
-        setAvatarError,
-        status,
-        isDirty,
-        handleSave,
-    };
-}
+    if (isError) {
+        return (
+            <CardContent className="py-8 text-center">
+                <p className="text-sm font-medium text-danger">
+                    Couldn&apos;t load this team.
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                    {error.message}
+                </p>
+            </CardContent>
+        );
+    }
 
-export function TeamOverviewForm({
-    initialName,
-    initialAvatarUrl,
-}: {
-    initialName: string;
-    initialAvatarUrl?: string;
-}) {
-    const {
-        name,
-        setName,
-        savedName,
-        avatarUrl,
-        setAvatarUrl,
-        avatarColor,
-        setAvatarColor,
-        avatarError,
-        setAvatarError,
-        status,
-        isDirty,
-        handleSave,
-    } = useTeamProfile(initialName, initialAvatarUrl);
+    const currentName = name ?? team.name;
+    const isDirty =
+        currentName.trim() !== team.name && currentName.trim().length > 0;
+
+    function handleSave() {
+        const result = updateTeamInputSchema.safeParse({
+            name: currentName.trim(),
+        });
+        if (!result.success) {
+            toast.error(
+                result.error.issues[0]?.message ?? "Invalid team name.",
+            );
+            return;
+        }
+        updateTeam.mutate(result.data, {
+            onSuccess: (updated) => {
+                setName(updated.name);
+                toast.success("Team name updated.");
+            },
+            onError: (err) => toast.error(err.message),
+        });
+    }
 
     return (
         <>
             <CardContent className="pt-6">
                 <div className="flex flex-col gap-8 sm:flex-row sm:items-center">
-                    <div className="flex flex-col items-center gap-2">
-                        <TeamAvatarPicker
-                            name={savedName}
-                            imageUrl={avatarUrl}
-                            color={avatarColor}
-                            onImageChange={setAvatarUrl}
-                            onColorChange={setAvatarColor}
-                            error={avatarError}
-                            onError={setAvatarError}
-                            size="lg"
-                        />
-                        {!avatarError && (
-                            <p className="font-mono text-[10px] text-muted-foreground">
-                                Max 1MB
-                            </p>
-                        )}
+                    <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl border border-border/50 bg-muted/30 text-muted-foreground">
+                        <Building2 className="size-6" />
                     </div>
 
                     <div className="flex-1 space-y-3">
@@ -119,49 +82,56 @@ export function TeamOverviewForm({
                                 Team name
                             </Label>
                             <span className="font-mono text-[11px] text-muted-foreground/70">
-                                {name.length}/{MAX_NAME_LENGTH}
+                                {currentName.length}/{MAX_NAME_LENGTH}
                             </span>
                         </div>
                         <Input
                             id="team-name"
-                            value={name}
+                            value={currentName}
                             onChange={(event) => setName(event.target.value)}
                             placeholder="e.g. Acme Corp"
                             maxLength={MAX_NAME_LENGTH}
-                            className="max-w-sm rounded-lg border border-border/60 bg-muted/20 py-2 pl-4 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
+                            disabled={!canManageTeam || updateTeam.isPending}
+                            className="max-w-sm rounded-lg border border-border/60 bg-muted/20 py-2 pl-4 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40 disabled:opacity-60"
                         />
                         <p className="text-xs text-muted-foreground">
-                            This name and avatar appear across your dashboard
-                            and in emails sent on this team&apos;s behalf.
+                            This name appears across your dashboard and in
+                            emails sent on this team&apos;s behalf.
                         </p>
                     </div>
                 </div>
             </CardContent>
-            <div className="flex items-center justify-end gap-4 border-t border-border/40 bg-muted/10 px-6 py-4">
-                {status === "saved" && (
-                    <span className="flex items-center gap-1.5 text-sm font-medium text-signal animate-fade-up">
-                        <Check className="size-4" />
-                        Saved successfully
-                    </span>
-                )}
-                <Button
-                    onClick={handleSave}
-                    disabled={!isDirty || status === "saving"}
-                    className={cn(
-                        "group/button relative inline-flex min-w-30 shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20",
-                        status === "saving" && "opacity-80",
-                    )}
-                >
-                    {status === "saving" ? (
-                        <Loader2 className="size-4 animate-spin" />
-                    ) : null}
-                    {status === "saving" ? "Saving..." : "Save changes"}
-                    <span
-                        aria-hidden
-                        className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-                    />
-                </Button>
-            </div>
+
+            {/* Only render the save button section if the user is an owner/admin */}
+            {canManageTeam && (
+                <div className="flex items-center justify-end gap-4 border-t border-border/40 bg-muted/10 px-6 py-4">
+                    {updateTeam.isSuccess &&
+                        !updateTeam.isPending &&
+                        !isDirty && (
+                            <span className="flex items-center gap-1.5 text-sm font-medium text-signal animate-fade-up">
+                                <Check className="size-4" />
+                                Saved successfully
+                            </span>
+                        )}
+                    <Button
+                        onClick={handleSave}
+                        disabled={!isDirty || updateTeam.isPending}
+                        className={cn(
+                            "group/button relative inline-flex min-w-30 shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20",
+                            updateTeam.isPending && "opacity-80",
+                        )}
+                    >
+                        {updateTeam.isPending ? (
+                            <Loader2 className="size-4 animate-spin" />
+                        ) : null}
+                        {updateTeam.isPending ? "Saving..." : "Save changes"}
+                        <span
+                            aria-hidden
+                            className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
+                        />
+                    </Button>
+                </div>
+            )}
         </>
     );
 }
