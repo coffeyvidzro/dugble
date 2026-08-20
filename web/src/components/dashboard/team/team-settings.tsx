@@ -1,5 +1,3 @@
-// src/components/dashboard/team/team-settings.tsx
-
 "use client";
 
 import Link from "next/link";
