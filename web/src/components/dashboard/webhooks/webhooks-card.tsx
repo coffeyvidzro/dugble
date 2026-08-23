@@ -1,3 +1,5 @@
+// src/components/dashboard/webhooks/webhooks-card.tsx
+
 import { Radio } from "lucide-react";
 import {
     Card,
@@ -5,24 +7,9 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import type { Webhook } from "./types";
 import { WebhooksPanel } from "./webhooks-panel";
 
-export function WebhooksCard({
-    webhooks,
-    onCreate,
-    onEdit,
-    onRollSecret,
-    onToggleStatus,
-    onDelete,
-}: {
-    webhooks: Webhook[];
-    onCreate: (input: { url: string; events: string[] }) => string;
-    onEdit: (id: string, input: { url: string; events: string[] }) => void;
-    onRollSecret: (id: string) => string;
-    onToggleStatus: (id: string) => void;
-    onDelete: (id: string) => void;
-}) {
+export function WebhooksCard() {
     return (
         <Card className="border-border/40 shadow-sm">
             <CardHeader className="flex-row items-center gap-3 border-b border-border/40 bg-muted/10 pb-4">
@@ -37,14 +24,7 @@ export function WebhooksCard({
                     </CardDescription>
                 </div>
             </CardHeader>
-            <WebhooksPanel
-                webhooks={webhooks}
-                onCreate={onCreate}
-                onEdit={onEdit}
-                onRollSecret={onRollSecret}
-                onToggleStatus={onToggleStatus}
-                onDelete={onDelete}
-            />
+            <WebhooksPanel />
         </Card>
     );
 }
