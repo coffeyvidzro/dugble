@@ -1,3 +1,5 @@
+// src/components/dashboard/webhooks/confirm-dialog.tsx
+
 import {
     AlertDialog,
     AlertDialogAction,
@@ -15,6 +17,7 @@ export function ConfirmDialog({
     title,
     description,
     confirmLabel,
+    confirmPending = false,
     onConfirm,
 }: {
     open: boolean;
@@ -22,6 +25,7 @@ export function ConfirmDialog({
     title: React.ReactNode;
     description: React.ReactNode;
     confirmLabel: string;
+    confirmPending?: boolean;
     onConfirm: () => void;
 }) {
     return (
@@ -34,12 +38,18 @@ export function ConfirmDialog({
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel disabled={confirmPending}>
+                        Cancel
+                    </AlertDialogCancel>
                     <AlertDialogAction
                         className="bg-danger text-white hover:bg-danger/90"
-                        onClick={onConfirm}
+                        onClick={(event) => {
+                            event.preventDefault();
+                            onConfirm();
+                        }}
+                        disabled={confirmPending}
                     >
-                        {confirmLabel}
+                        {confirmPending ? "Deleting…" : confirmLabel}
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
