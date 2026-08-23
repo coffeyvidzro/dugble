@@ -1,7 +1,9 @@
+// src/components/dashboard/webhooks/webhooks-panel.tsx
+
 "use client";
 
 import { useState } from "react";
-import { Radio } from "lucide-react";
+import { AlertTriangle, Radio } from "lucide-react";
 import {
     Table,
     TableBody,
@@ -9,46 +11,88 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { useTeamPermissions } from "@/hooks/queries/use-team-permissions";
+import {
+    useDeleteWebhookEndpoint,
+    useWebhookEndpoints,
+} from "@/hooks/queries/use-webhooks";
+import type { WebhookEndpoint } from "@/types/webhook";
 import { AddWebhookDialog } from "./add-webhook-dialog";
 import { ConfirmDialog } from "./confirm-dialog";
 import { EditWebhookDialog } from "./edit-webhook-dialog";
 import { RollSecretDialog } from "./roll-secret-dialog";
-import type { Webhook } from "./types";
+import { TestWebhookDialog } from "./test-webhook-dialog";
 import { WebhookRow } from "./webhook-row";
 
-export function WebhooksPanel({
-    webhooks,
-    onCreate,
-    onEdit,
-    onRollSecret,
-    onToggleStatus,
-    onDelete,
-}: {
-    webhooks: Webhook[];
-    onCreate: (input: { url: string; events: string[] }) => string;
-    onEdit: (id: string, input: { url: string; events: string[] }) => void;
-    onRollSecret: (id: string) => string;
-    onToggleStatus: (id: string) => void;
-    onDelete: (id: string) => void;
-}) {
-    const [editingWebhook, setEditingWebhook] = useState<Webhook | null>(null);
-    const [rollingWebhook, setRollingWebhook] = useState<Webhook | null>(null);
-    const [deletingWebhook, setDeletingWebhook] = useState<Webhook | null>(
-        null,
-    );
+export function WebhooksPanel() {
+    const {
+        data: webhooks,
+        isLoading,
+        isError,
+        error,
+        refetch,
+    } = useWebhookEndpoints();
+    const { canManageTeam, isLoading: isPermissionsLoading } =
+        useTeamPermissions();
+
+    const [editingWebhook, setEditingWebhook] =
+        useState<WebhookEndpoint | null>(null);
+    const [rollingWebhook, setRollingWebhook] =
+        useState<WebhookEndpoint | null>(null);
+    const [testingWebhook, setTestingWebhook] =
+        useState<WebhookEndpoint | null>(null);
+    const [deletingWebhook, setDeletingWebhook] =
+        useState<WebhookEndpoint | null>(null);
+
+    const {
+        mutate: deleteWebhook,
+        isPending: isDeleting,
+        error: deleteError,
+    } = useDeleteWebhookEndpoint();
+
+    const count = webhooks?.length ?? 0;
 
     return (
         <>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 bg-muted/5 px-6 py-3">
                 <p className="font-mono text-xs text-muted-foreground">
-                    {webhooks.length === 0
-                        ? "No webhooks yet"
-                        : `${webhooks.length} ${webhooks.length === 1 ? "endpoint" : "endpoints"}`}
+                    {isLoading
+                        ? "Loading…"
+                        : count === 0
+                          ? "No webhooks yet"
+                          : `${count} ${count === 1 ? "endpoint" : "endpoints"}`}
                 </p>
-                <AddWebhookDialog onCreate={onCreate} />
+                {!isPermissionsLoading && canManageTeam && <AddWebhookDialog />}
             </div>
 
-            {webhooks.length === 0 ? (
+            {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                    <p className="text-sm text-muted-foreground">
+                        Loading webhook endpoints…
+                    </p>
+                </div>
+            ) : isError ? (
+                <div className="flex flex-col items-center justify-center gap-3 py-16 px-6 text-center animate-fade-up">
+                    <div className="mb-1 flex size-12 items-center justify-center rounded-full bg-danger/10 border border-dashed border-danger/40">
+                        <AlertTriangle className="size-5 text-danger" />
+                    </div>
+                    <h3 className="font-heading text-lg font-medium">
+                        Couldn&apos;t load webhooks
+                    </h3>
+                    <p className="max-w-sm text-sm text-muted-foreground">
+                        {error instanceof Error
+                            ? error.message
+                            : "Something went wrong while loading your webhook endpoints."}
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => refetch()}
+                        className="text-sm font-medium text-primary transition-colors hover:text-primary/80"
+                    >
+                        Try again
+                    </button>
+                </div>
+            ) : count === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 px-6 text-center animate-fade-up">
                     <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-muted/50 border border-dashed border-border">
                         <Radio className="size-5 text-muted-foreground" />
@@ -69,18 +113,17 @@ export function WebhooksPanel({
                                 <TableHead className="w-80">Endpoint</TableHead>
                                 <TableHead>Events</TableHead>
                                 <TableHead>Status</TableHead>
-                                <TableHead>Last delivery</TableHead>
                                 <TableHead className="w-10 text-right" />
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {webhooks.map((webhook) => (
+                            {webhooks?.map((webhook) => (
                                 <WebhookRow
                                     key={webhook.id}
                                     webhook={webhook}
                                     onEdit={setEditingWebhook}
                                     onRollSecret={setRollingWebhook}
-                                    onToggleStatus={onToggleStatus}
+                                    onTest={setTestingWebhook}
                                     onDelete={setDeletingWebhook}
                                 />
                             ))}
@@ -88,19 +131,20 @@ export function WebhooksPanel({
                     </Table>
                 </div>
             )}
+
             <EditWebhookDialog
                 webhook={editingWebhook}
                 onOpenChange={(open) => !open && setEditingWebhook(null)}
-                onSave={(id, input) => {
-                    onEdit(id, input);
-                    setEditingWebhook(null);
-                }}
             />
 
             <RollSecretDialog
                 webhook={rollingWebhook}
                 onOpenChange={(open) => !open && setRollingWebhook(null)}
-                onRoll={onRollSecret}
+            />
+
+            <TestWebhookDialog
+                webhook={testingWebhook}
+                onOpenChange={(open) => !open && setTestingWebhook(null)}
             />
 
             <ConfirmDialog
@@ -114,13 +158,22 @@ export function WebhooksPanel({
                             {deletingWebhook?.url}
                         </span>
                         . This cannot be undone.
+                        {deleteError && (
+                            <span className="mt-2 block text-danger">
+                                {deleteError instanceof Error
+                                    ? deleteError.message
+                                    : "Failed to delete the webhook."}
+                            </span>
+                        )}
                     </>
                 }
                 confirmLabel="Delete webhook"
+                confirmPending={isDeleting}
                 onConfirm={() => {
                     if (!deletingWebhook) return;
-                    onDelete(deletingWebhook.id);
-                    setDeletingWebhook(null);
+                    deleteWebhook(deletingWebhook.id, {
+                        onSuccess: () => setDeletingWebhook(null),
+                    });
                 }}
             />
         </>
