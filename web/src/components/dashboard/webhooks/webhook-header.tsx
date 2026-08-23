@@ -1,7 +1,15 @@
+// src/components/dashboard/webhooks/webhook-header.tsx
+
 import { Radio } from "lucide-react";
 import { PortalHeroHeader } from "../portal-hero-header";
 
-export function WebhookHeader({ endpointCount }: { endpointCount: number }) {
+export function WebhookHeader({
+    endpointCount,
+    isLoading = false,
+}: {
+    endpointCount: number;
+    isLoading?: boolean;
+}) {
     return (
         <PortalHeroHeader
             breadcrumb="Developers / Webhooks"
@@ -10,8 +18,9 @@ export function WebhookHeader({ endpointCount }: { endpointCount: number }) {
             badge={
                 <>
                     <Radio className="size-3.5" />
-                    {endpointCount}{" "}
-                    {endpointCount === 1 ? "endpoint" : "endpoints"}
+                    {isLoading
+                        ? "Loading…"
+                        : `${endpointCount} ${endpointCount === 1 ? "endpoint" : "endpoints"}`}
                 </>
             }
         />
