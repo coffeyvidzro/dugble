@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronDown, Search, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { WEBHOOK_EVENT_GROUPS } from "./types";
+import { WEBHOOK_EVENT_GROUPS } from "@/lib/webhook-events";
 
 export function EventsMultiSelect({
     value,
@@ -18,24 +18,6 @@ export function EventsMultiSelect({
 }) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState("");
-    const containerRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        if (!open) return;
-
-        function handlePointerDown(event: PointerEvent) {
-            if (
-                containerRef.current &&
-                !containerRef.current.contains(event.target as Node)
-            ) {
-                setOpen(false);
-            }
-        }
-
-        document.addEventListener("pointerdown", handlePointerDown);
-        return () =>
-            document.removeEventListener("pointerdown", handlePointerDown);
-    }, [open]);
 
     const filteredGroups = useMemo(() => {
         const q = query.trim().toLowerCase();
@@ -66,7 +48,7 @@ export function EventsMultiSelect({
     }
 
     return (
-        <div ref={containerRef} className="relative">
+        <div>
             <button
                 type="button"
                 onClick={() => setOpen((prev) => !prev)}
@@ -115,8 +97,8 @@ export function EventsMultiSelect({
             )}
 
             {open && (
-                <div className="absolute z-50 mt-2 w-full overflow-hidden rounded-lg border border-border/60 bg-popover shadow-lg animate-fade-up">
-                    <div className="border-b border-border/40 p-2">
+                <div className="mt-2 flex max-h-80 flex-col overflow-hidden rounded-lg border border-border/60 bg-popover shadow-sm animate-fade-up">
+                    <div className="shrink-0 border-b border-border/40 p-2">
                         <div className="relative">
                             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                             <Input
@@ -131,7 +113,7 @@ export function EventsMultiSelect({
                         </div>
                     </div>
 
-                    <div className="max-h-64 overflow-y-auto p-2">
+                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
                         {filteredGroups.length === 0 ? (
                             <p className="px-2 py-6 text-center text-sm text-muted-foreground">
                                 No events match &ldquo;{query}&rdquo;.
@@ -179,7 +161,7 @@ export function EventsMultiSelect({
                         )}
                     </div>
 
-                    <div className="flex items-center justify-between border-t border-border/40 bg-muted/10 px-3 py-2">
+                    <div className="flex shrink-0 items-center justify-between border-t border-border/40 bg-muted/10 px-3 py-2">
                         <button
                             type="button"
                             onClick={() => onChange([])}
