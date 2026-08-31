@@ -18,7 +18,7 @@
     "@hugeicons/react": "^1.1.9",
     "@mdx-js/loader": "^3.1.1",
     "@mdx-js/react": "^3.1.1",
-    "@next/mdx": "16.2.12",
+    "@next/mdx": "16.3.3",
     "@t3-oss/env-nextjs": "^0.13.11",
     "@types/mdx": "^2.0.14",
     "class-variance-authority": "^0.7.1",
