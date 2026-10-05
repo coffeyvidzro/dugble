@@ -2,12 +2,12 @@ import { TemplatesOverview } from "@/components/dashboard/email/templates/templa
 import { constructMetadata } from "@/utils/metadata";
 
 export const metadata = constructMetadata({
-    title: "Email Templates",
-    description: "Create and manage reusable transactional email templates.",
-    path: "/dashboard/email/templates",
-    preset: "dashboard",
+  title: "Email Templates",
+  description: "Create and manage reusable transactional email templates.",
+  path: "/dashboard/email/templates",
+  preset: "dashboard",
 });
 
 export default function Page() {
-    return <TemplatesOverview />;
+  return <TemplatesOverview />;
 }

@@ -1,17 +1,17 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { SessionUser } from "@/lib/session";
-import { PortalRail } from "./portal-rail";
-import { MobileNav } from "./mobile-nav";
-import { NavPanel } from "./nav-panel";
 import {
+  type DashboardPortal,
   dashboardPortals,
   findPortalForPath,
-  type DashboardPortal,
 } from "./dashboard-nav";
+import { MobileNav } from "./mobile-nav";
+import { NavPanel } from "./nav-panel";
+import { PortalRail } from "./portal-rail";
 
 export function AppSidebar({
   user,
@@ -28,11 +28,12 @@ export function AppSidebar({
     () => findPortalForPath(pathname)?.id ?? null,
   );
 
-  // Keeps the rail in sync when navigation happens.
-  useEffect(() => {
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
     const matched = findPortalForPath(pathname);
     if (matched) setActivePortalId(matched.id);
-  }, [pathname]);
+  }
 
   const activePortal: DashboardPortal | null =
     dashboardPortals.find((p) => p.id === activePortalId) ?? null;

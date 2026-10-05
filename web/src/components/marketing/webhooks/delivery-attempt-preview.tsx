@@ -7,10 +7,12 @@ import { cn } from "@/lib/utils";
 
 type Outcome = "fail" | "success";
 
-const attempts: { outcome: Outcome; code: string; label: string }[] = [
+type Attempt = { outcome: Outcome; code: string; label: string };
+
+const attempts = [
   { outcome: "fail", code: "500", label: "retrying in 2s" },
   { outcome: "success", code: "200", label: "received" },
-];
+] as const satisfies readonly Attempt[];
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -46,10 +48,10 @@ export function DeliveryAttemptPreview() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const attempt = attempts[attemptIndex];
+  const attempt: Attempt =
+    attempts[attemptIndex % attempts.length] ?? attempts[0];
   const showResult = phase === "result";
 
   return (

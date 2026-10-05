@@ -1,0 +1,15 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/app/**/{page,layout,loading,error,not-found,global-not-found,route,template,default,opengraph-image}.{ts,tsx}",
+    "src/app/{robots,sitemap}.ts",
+    "src/**/*.test.ts"
+  ],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignore": ["src/components/ui/**"],
+  "ignoreDependencies": ["tailwindcss", "tw-animate-css", "shadcn", "postcss"],
+  "rules": {
+    "exports": "warn",
+    "types": "warn"
+  }
+}

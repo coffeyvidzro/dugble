@@ -16,7 +16,6 @@ export default async function Image({
   const { slug } = await params;
   const post = await getBlogPost(slug);
 
-  // Fallbacks just in case of an invalid slug
   const title = post ? post.metadata.title : "Engineering & Product Updates";
   const category = post ? post.metadata.category : "BLOG";
 

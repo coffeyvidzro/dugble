@@ -1,0 +1,285 @@
+﻿bunx : src\components\auth\mfa-challenge-form.tsx:103:13 suppressions/unused 
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+At line:1 char:1
++ bunx biome check --max-diagnostics=200 2>&1 | Out-File -Encoding utf8 ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (src\components\...ÔöüÔöüÔöüÔöüÔöü:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+  ! Suppression comment has no effect. Remove the suppression or make sure you are suppressing the correct rule.
+  
+    101 Ôöé             inputMode={isTotp ? "numeric" : "text"}
+    102 Ôöé             maxLength={isTotp ? 7 : 64}
+  > 103 Ôöé             // biome-ignore lint/a11y/noAutofocus: focus follows the user from the password step to the 
+code step they must complete next.
+        Ôöé             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    104 Ôöé             autoFocus
+    105 Ôöé             aria-invalid={Boolean(error)}
+  
+
+src\components\command-palette\command-palette.tsx:138:7 suppressions/unused 
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+
+  ! Suppression comment has no effect. Remove the suppression or make sure you are suppressing the correct rule.
+  
+    136 Ôöé   return (
+    137 Ôöé     <div
+  > 138 Ôöé       // biome-ignore lint/a11y/useSemanticElements: custom modal with its own focus, scroll-lock and 
+Escape handling; <dialog> would change behaviour.
+        Ôöé       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    139 Ôöé       role="dialog"
+    140 Ôöé       aria-modal="true"
+  
+
+src\components\dashboard\mobile-nav.tsx:55:8 suppressions/unused 
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+
+  ! Suppression comment has no effect. Remove the suppression or make sure you are suppressing the correct rule.
+  
+    53 Ôöé       {/* Backdrop */}
+    54 Ôöé       {/* Pointer-only affordance: keyboard users close via Escape or the close button. */}
+  > 55 Ôöé       {/* biome-ignore lint/a11y/useKeyWithClickEvents: see above */}
+       Ôöé        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    56 Ôöé       {/* biome-ignore lint/a11y/noStaticElementInteractions: see above */}
+    57 Ôöé       <div
+  
+
+src\components\dashboard\mobile-nav.tsx:56:8 suppressions/unused 
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+
+  ! Suppression comment has no effect. Remove the suppression or make sure you are suppressing the correct rule.
+  
+    54 Ôöé       {/* Pointer-only affordance: keyboard users close via Escape or the close button. */}
+    55 Ôöé       {/* biome-ignore lint/a11y/useKeyWithClickEvents: see above */}
+  > 56 Ôöé       {/* biome-ignore lint/a11y/noStaticElementInteractions: see above */}
+       Ôöé        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    57 Ôöé       <div
+    58 Ôöé         aria-hidden
+  
+
+src\components\dashboard\mobile-nav.tsx:68:9 suppressions/unused 
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+
+  ! Suppression comment has no effect. Remove the suppression or make sure you are suppressing the correct rule.
+  
+    66 Ôöé       {/* Panel */}
+    67 Ôöé       <div
+  > 68 Ôöé         // biome-ignore lint/a11y/useSemanticElements: custom modal with its own focus, scroll-lock and 
+Escape handling; <dialog> would change behaviour.
+       Ôöé         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    69 Ôöé         role="dialog"
+    70 Ôöé         aria-modal="true"
+  
+
+src\components\dashboard\webhooks\events-multi-select.tsx:103:17 suppressions/unused 
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+
+  ! Suppression comment has no effect. Remove the suppression or make sure you are suppressing the correct rule.
+  
+    101 Ôöé                 placeholder="Search events"
+    102 Ôöé                 className="h-8 bg-background pl-8 text-sm"
+  > 103 Ôöé                 // biome-ignore lint/a11y/noAutofocus: search field of a just-opened picker; typing to 
+filter is the expected first action.
+        Ôöé                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    104 Ôöé                 autoFocus
+    105 Ôöé               />
+  
+
+src\components\json-ld.tsx:15:7 suppressions/unused ÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔ
+öüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+
+  ! Suppression comment has no effect. Remove the suppression or make sure you are suppressing the correct rule.
+  
+    13 Ôöé     <script
+    14 Ôöé       id={id}
+  > 15 Ôöé       // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD data block; serializeSchema escapes 
+"<" so it cannot close the script element.
+       Ôöé       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    16 Ôöé       type="application/ld+json"
+    17 Ôöé       dangerouslySetInnerHTML={{ __html: serializeSchema(schema) }}
+  
+
+src\components\marketing\mobile-nav.tsx:33:7 suppressions/unused 
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+
+  ! Suppression comment has no effect. Remove the suppression or make sure you are suppressing the correct rule.
+  
+    31 Ôöé   return (
+    32 Ôöé     <div
+  > 33 Ôöé       // biome-ignore lint/a11y/useSemanticElements: custom modal with its own focus, scroll-lock and 
+Escape handling; <dialog> would change behaviour.
+       Ôöé       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    34 Ôöé       role="dialog"
+    35 Ôöé       aria-modal="true"
+  
+
+src\lib\active-team-cookie.ts:33:3 suppressions/unused ÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔ
+öüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+
+  ! Suppression comment has no effect. Remove the suppression or make sure you are suppressing the correct rule.
+  
+    31 Ôöé export function readActiveTeamCookie(): string | null {
+    32 Ôöé   if (typeof document === "undefined") return null;
+  > 33 Ôöé   // biome-ignore lint/suspicious/noDocumentCookie: the async Cookie Store API is not universally supported 
+and the store needs a synchronous read at startup.
+       Ôöé   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    34 Ôöé   const match = document.cookie
+    35 Ôöé     .split("; ")
+  
+
+src\components\dashboard\email\templates\editor\template-editor.tsx:166:13 lint/a11y/noLabelWithoutControl 
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+
+  ├ù A form label must be associated with an input.
+  
+    164 Ôöé         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    165 Ôöé           <div className="space-y-1.5">
+  > 166 Ôöé             <label className="text-xs font-medium text-muted-foreground">
+        Ôöé             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  > 167 Ôöé               Alias
+  > 168 Ôöé             </label>
+        Ôöé             ^^^^^^^^
+    169 Ôöé             <input
+    170 Ôöé               value={form.alias}
+  
+  i Consider adding a "for" or "htmlFor" attribute to the label element or moving the input element to inside the 
+label element.
+  
+
+src\components\dashboard\email\templates\editor\template-editor.tsx:177:13 lint/a11y/noLabelWithoutControl 
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+
+  ├ù A form label must be associated with an input.
+  
+    175 Ôöé           </div>
+    176 Ôöé           <div className="space-y-1.5">
+  > 177 Ôöé             <label className="text-xs font-medium text-muted-foreground">
+        Ôöé             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  > 178 Ôöé               From
+  > 179 Ôöé             </label>
+        Ôöé             ^^^^^^^^
+    180 Ôöé             <input
+    181 Ôöé               value={form.from}
+  
+  i Consider adding a "for" or "htmlFor" attribute to the label element or moving the input element to inside the 
+label element.
+  
+
+Checked 634 files in 3s. No fixes applied.
+Found 7 errors.
+Found 9 warnings.
+src\components\dashboard\email\templates\editor\template-editor.tsx:188:13 lint/a11y/noLabelWithoutControl 
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+
+  ├ù A form label must be associated with an input.
+  
+    186 Ôöé           </div>
+    187 Ôöé           <div className="space-y-1.5 sm:col-span-2">
+  > 188 Ôöé             <label className="text-xs font-medium text-muted-foreground">
+        Ôöé             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  > 189 Ôöé               Reply-to (comma-separated)
+  > 190 Ôöé             </label>
+        Ôöé             ^^^^^^^^
+    191 Ôöé             <input
+    192 Ôöé               value={form.replyTo}
+  
+  i Consider adding a "for" or "htmlFor" attribute to the label element or moving the input element to inside the 
+label element.
+  
+
+src\components\dashboard\team\permission-picker.tsx:242:25 lint/a11y/noLabelWithoutControl 
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+
+  ├ù A form label must be associated with an input.
+  
+    240 Ôöé                     <div className="grid grid-cols-1 gap-1 px-3 pb-3 pl-9 sm:grid-cols-2">
+    241 Ôöé                       {category.permissions.map((perm) => (
+  > 242 Ôöé                         <label
+        Ôöé                         ^^^^^^
+  > 243 Ôöé                           key={perm.value}
+         ...
+  > 259 Ôöé                           </span>
+  > 260 Ôöé                         </label>
+        Ôöé                         ^^^^^^^^
+    261 Ôöé                       ))}
+    262 Ôöé                     </div>
+  
+  i Consider adding a "for" or "htmlFor" attribute to the label element or moving the input element to inside the 
+label element.
+  
+
+src\components\dashboard\webhooks\events-multi-select.tsx:121:21 lint/a11y/noLabelWithoutControl 
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+
+  ├ù A form label must be associated with an input.
+  
+    119 Ôöé                 return (
+    120 Ôöé                   <div key={group.id} className="mb-3 last:mb-0">
+  > 121 Ôöé                     <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 
+text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:bg-muted/40">
+        Ôöé                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  > 122 Ôöé                       <Checkbox
+         ...
+  > 126 Ôöé                       {group.label}
+  > 127 Ôöé                     </label>
+        Ôöé                     ^^^^^^^^
+    128 Ôöé                     {group.events.map((event) => (
+    129 Ôöé                       <label
+  
+  i Consider adding a "for" or "htmlFor" attribute to the label element or moving the input element to inside the 
+label element.
+  
+
+src\components\dashboard\webhooks\events-multi-select.tsx:129:23 lint/a11y/noLabelWithoutControl 
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+
+  ├ù A form label must be associated with an input.
+  
+    127 Ôöé                     </label>
+    128 Ôöé                     {group.events.map((event) => (
+  > 129 Ôöé                       <label
+        Ôöé                       ^^^^^^
+  > 130 Ôöé                         key={event}
+         ...
+  > 139 Ôöé                         </span>
+  > 140 Ôöé                       </label>
+        Ôöé                       ^^^^^^^^
+    141 Ôöé                     ))}
+    142 Ôöé                   </div>
+  
+  i Consider adding a "for" or "htmlFor" attribute to the label element or moving the input element to inside the 
+label element.
+  
+
+src\components\json-ld.tsx:17:7 lint/security/noDangerouslySetInnerHtml 
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+
+  ├ù Avoid passing content using the dangerouslySetInnerHTML prop.
+  
+    15 Ôöé       // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD data block; serializeSchema escapes 
+"<" so it cannot close the script element.
+    16 Ôöé       type="application/ld+json"
+  > 17 Ôöé       dangerouslySetInnerHTML={{ __html: serializeSchema(schema) }}
+       Ôöé       ^^^^^^^^^^^^^^^^^^^^^^^
+    18 Ôöé     />
+    19 Ôöé   );
+  
+  ! Setting content using code can expose users to cross-site scripting (XSS) attacks
+  
+
+check ÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔö
+üÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔ
+öüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+
+  ├ù Some errors were emitted while running checks.
+  
+

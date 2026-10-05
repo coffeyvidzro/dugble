@@ -1,6 +1,5 @@
-"use client";
-
 import type { DashboardPortal } from "./dashboard-nav";
+import { LogoutButton } from "./logout-button";
 import { NavGroupList } from "./nav-group-list";
 
 export function NavPanel({ portal }: { portal: DashboardPortal }) {
@@ -10,6 +9,11 @@ export function NavPanel({ portal }: { portal: DashboardPortal }) {
         {portal.label}
       </p>
       <NavGroupList groups={portal.groups} />
+      {portal.id === "account" && (
+        <div className="mt-auto border-t pt-3">
+          <LogoutButton />
+        </div>
+      )}
     </div>
   );
 }

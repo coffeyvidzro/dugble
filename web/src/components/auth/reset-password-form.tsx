@@ -8,7 +8,6 @@ import type * as React from "react";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
-import * as z from "zod";
 
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -20,18 +19,12 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { csrfFetch } from "@/lib/csrf-fetch";
+import { useResetPassword } from "@/hooks/mutations/use-auth";
 import { cn } from "@/lib/utils";
-
-export const formSchema = z
-  .object({
-    password: z.string().min(12, "Password must be at least 12 characters."),
-    confirmPassword: z.string().min(1, "Please confirm your password."),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match.",
-    path: ["confirmPassword"],
-  });
+import {
+  type NewPasswordFormValues,
+  newPasswordFormSchema,
+} from "@/lib/validation/password";
 
 export function ResetPasswordForm({
   className,
@@ -43,40 +36,31 @@ export function ResetPasswordForm({
   const token = searchParams.get("token");
   const linkValid = Boolean(email && token);
 
-  const [loading, setLoading] = useState(false);
+  const resetPassword = useResetPassword();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<NewPasswordFormValues>({
+    resolver: zodResolver(newPasswordFormSchema),
     defaultValues: { password: "", confirmPassword: "" },
   });
 
-  async function onSubmit(data: z.infer<typeof formSchema>) {
+  function onSubmit(data: NewPasswordFormValues) {
     if (!email || !token) return;
 
-    setLoading(true);
-    try {
-      const response = await csrfFetch("/api/v1/auth/password/reset", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, token, password: data.password }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => null);
-        toast.error(error?.error?.message ?? "Unable to reset password.");
-        return;
-      }
-
-      toast.success("Password reset successfully. You can now sign in.");
-      router.push("/login");
-      router.refresh();
-    } catch {
-      toast.error("Unable to reset password. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    resetPassword.mutate(
+      { email, token, password: data.password },
+      {
+        onSuccess: () => {
+          toast.success("Password reset successfully. You can now sign in.");
+          router.push("/login");
+          router.refresh();
+        },
+        onError: (error) => {
+          toast.error(error.message);
+        },
+      },
+    );
   }
 
   return (
@@ -111,7 +95,7 @@ export function ResetPasswordForm({
                         placeholder="**************"
                         autoComplete="new-password"
                         type={showPassword ? "text" : "password"}
-                        disabled={loading}
+                        disabled={resetPassword.isPending}
                         className="pl-10 pr-10"
                       />
                       <button
@@ -158,7 +142,7 @@ export function ResetPasswordForm({
                         placeholder="**************"
                         autoComplete="new-password"
                         type={showConfirmPassword ? "text" : "password"}
-                        disabled={loading}
+                        disabled={resetPassword.isPending}
                         className="pl-10 pr-10"
                       />
                       <button
@@ -189,11 +173,13 @@ export function ResetPasswordForm({
               <Button
                 type="submit"
                 form="reset-password-form"
-                disabled={loading}
+                disabled={resetPassword.isPending}
                 size="lg"
                 className="w-full hover:cursor-pointer"
               >
-                {loading && <Loader2 className="size-4 animate-spin" />}
+                {resetPassword.isPending && (
+                  <Loader2 className="size-4 animate-spin" />
+                )}
                 Reset password
               </Button>
             </FieldGroup>

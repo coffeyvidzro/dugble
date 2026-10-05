@@ -1,6 +1,5 @@
-import Link from "next/link";
-
 import { ArrowLeft, Clock3 } from "lucide-react";
+import Link from "next/link";
 
 export function CreateTeamHeader() {
   return (

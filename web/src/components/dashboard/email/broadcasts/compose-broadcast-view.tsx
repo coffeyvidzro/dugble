@@ -1,191 +1,278 @@
 "use client";
 
 import { useState } from "react";
-
+import {
+  useCreateBroadcast,
+  useUpdateBroadcast,
+} from "@/hooks/queries/use-broadcasts-api";
+import { useSenderDomains } from "@/hooks/queries/use-sender-domains-api";
+import { apiMutate } from "@/lib/api/fetcher";
+import { errorMessage } from "@/lib/errors";
+import {
+  type Broadcast,
+  broadcastSchema,
+  sendBroadcastInputSchema,
+} from "@/types/broadcast-api";
 import { AudienceCard } from "./audience-card";
 import { BroadcastDetailsCard } from "./broadcast-details-card";
 import { ComposeActionsBar } from "./compose-actions-bar";
 import { ContentEditorCard } from "./content-editor-card";
+import { markdownToHtml, markdownToPlainText } from "./markdown-to-html";
 import { ScheduleCard, type SendTiming } from "./schedule-card";
-import { SENDING_DOMAINS } from "../email-dashboard/types";
-import { generateId, type Broadcast } from "./types";
-
-const VERIFIED_DOMAINS = SENDING_DOMAINS.filter((d) => d.status === "verified");
 
 function toDatetimeLocalValue(date: Date): string {
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 export function ComposeBroadcastView({
-    editingBroadcast,
-    currentUserEmail,
-    onCancel,
-    onSaveDraft,
-    onSubmit,
+  editingBroadcast,
+  onCancel,
+  onDone,
 }: {
-    editingBroadcast: Broadcast | null;
-    currentUserEmail: string;
-    onCancel: () => void;
-    onSaveDraft: (broadcast: Broadcast) => void;
-    onSubmit: (broadcast: Broadcast) => void;
+  editingBroadcast: Broadcast | null;
+  onCancel: () => void;
+  onDone: () => void;
 }) {
-    const [subject, setSubject] = useState(editingBroadcast?.subject ?? "");
-    const [previewText, setPreviewText] = useState(
-        editingBroadcast?.previewText ?? "",
-    );
-    const [fromName, setFromName] = useState(
-        editingBroadcast?.fromName ?? "Dugble",
-    );
-    const [fromLocalPart, setFromLocalPart] = useState(
-        editingBroadcast?.fromEmail.split("@")[0] ?? "news",
-    );
-    const [fromDomain, setFromDomain] = useState(
-        editingBroadcast?.fromEmail.split("@")[1] ??
-            VERIFIED_DOMAINS[0]?.domain ??
-            "",
-    );
-    const [audienceId, setAudienceId] = useState<string | null>(
-        editingBroadcast?.audienceId ?? null,
-    );
-    const [content, setContent] = useState(editingBroadcast?.content ?? "");
-    const [timing, setTiming] = useState<SendTiming>(
-        editingBroadcast?.scheduledAt ? "later" : "now",
-    );
-    const [scheduledAtInput, setScheduledAtInput] = useState(
-        editingBroadcast?.scheduledAt
-            ? toDatetimeLocalValue(editingBroadcast.scheduledAt)
-            : "",
-    );
+  const { data: domains } = useSenderDomains();
+  const verifiedDomains = (domains ?? []).filter(
+    (d) => d.status === "verified",
+  );
 
-    const [error, setError] = useState<string | null>(null);
-    const [savingDraft, setSavingDraft] = useState(false);
-    const [sendingTest, setSendingTest] = useState(false);
-    const [testSent, setTestSent] = useState(false);
-    const [submitting, setSubmitting] = useState(false);
+  const [subject, setSubject] = useState(editingBroadcast?.subject ?? "");
+  const [previewText, setPreviewText] = useState(
+    editingBroadcast?.preview_text ?? "",
+  );
+  const [fromName, setFromName] = useState(
+    editingBroadcast?.from_name ?? "Dugble",
+  );
+  const [fromLocalPart, setFromLocalPart] = useState(
+    editingBroadcast?.from_email?.split("@")[0] ?? "news",
+  );
+  const [fromDomainChoice, setFromDomain] = useState(
+    editingBroadcast?.from_email?.split("@")[1] ?? "",
+  );
+  // Fall back to the first available option until the user picks one —
+  // derived during render rather than written back from an effect.
+  const fromDomain = fromDomainChoice || (verifiedDomains[0]?.name ?? "");
+  const [segmentId, setSegmentId] = useState<string | null>(
+    editingBroadcast?.segment_id ?? null,
+  );
+  const [content, setContent] = useState(editingBroadcast?.text ?? "");
+  const [timing, setTiming] = useState<SendTiming>(
+    editingBroadcast?.scheduled_at ? "later" : "now",
+  );
+  const [scheduledAtInput, setScheduledAtInput] = useState(
+    editingBroadcast?.scheduled_at
+      ? toDatetimeLocalValue(new Date(editingBroadcast.scheduled_at))
+      : "",
+  );
 
-    function buildBroadcast(status: Broadcast["status"]): Broadcast {
-        const scheduledAt =
-            timing === "later" && scheduledAtInput
-                ? new Date(scheduledAtInput)
-                : undefined;
+  const [error, setError] = useState<string | null>(null);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-        return {
-            id: editingBroadcast?.id ?? generateId("bc"),
-            subject: subject.trim(),
-            previewText: previewText.trim(),
-            fromName: fromName.trim() || "Dugble",
-            fromEmail: `${fromLocalPart.trim() || "news"}@${fromDomain}`,
-            audienceId: audienceId ?? "",
-            content,
-            status,
-            recipientCount: editingBroadcast?.recipientCount ?? 0,
-            openRate: editingBroadcast?.openRate,
-            clickRate: editingBroadcast?.clickRate,
-            scheduledAt,
-            sentAt: editingBroadcast?.sentAt,
-            createdAt: editingBroadcast?.createdAt ?? new Date(),
-        };
+  const createBroadcast = useCreateBroadcast();
+  const updateBroadcast = useUpdateBroadcast(editingBroadcast?.id ?? "");
+
+  function validate(): boolean {
+    if (!subject.trim()) {
+      setError("Give your broadcast a subject line.");
+      return false;
     }
-
-    function validate(): boolean {
-        if (!subject.trim()) {
-            setError("Give your broadcast a subject line.");
-            return false;
-        }
-        if (!audienceId) {
-            setError("Choose an audience to send to.");
-            return false;
-        }
-        if (!content.trim()) {
-            setError("Write some content before sending.");
-            return false;
-        }
-        if (timing === "later" && !scheduledAtInput) {
-            setError("Pick a date and time to schedule this broadcast.");
-            return false;
-        }
-        setError(null);
-        return true;
+    if (!segmentId) {
+      setError("Choose a segment to send to.");
+      return false;
     }
+    if (!content.trim()) {
+      setError("Write some content before sending.");
+      return false;
+    }
+    if (!fromDomain) {
+      setError("Verify a sending domain before continuing.");
+      return false;
+    }
+    if (timing === "later" && !scheduledAtInput) {
+      setError("Pick a date and time to schedule this broadcast.");
+      return false;
+    }
+    setError(null);
+    return true;
+  }
 
-    function handleSaveDraft() {
-        setSavingDraft(true);
-        window.setTimeout(() => {
-            onSaveDraft(buildBroadcast("draft"));
+  function buildContentPayload() {
+    return {
+      html: markdownToHtml(content),
+      text: markdownToPlainText(content),
+    };
+  }
+
+  function handleSaveDraft() {
+    if (!subject.trim() || !segmentId) {
+      setError("Add a subject and choose a segment before saving a draft.");
+      return;
+    }
+    setError(null);
+    setSavingDraft(true);
+
+    const { html, text } = buildContentPayload();
+    const fromEmail = fromDomain
+      ? `${fromLocalPart || "news"}@${fromDomain}`
+      : undefined;
+
+    if (editingBroadcast) {
+      updateBroadcast.mutate(
+        {
+          revision: editingBroadcast.revision,
+          name: subject.trim(),
+          segment_id: segmentId,
+          from_email: fromEmail,
+          from_name: fromName.trim() || undefined,
+          subject: subject.trim(),
+          preview_text: previewText.trim() || null,
+          html,
+          text,
+        },
+        {
+          onSuccess: () => {
             setSavingDraft(false);
-        }, 500);
+            onDone();
+          },
+          onError: (err) => {
+            setSavingDraft(false);
+            setError(errorMessage(err, "Couldn't save your changes."));
+          },
+        },
+      );
+      return;
     }
 
-    function handleSendTest() {
-        setSendingTest(true);
-        window.setTimeout(() => {
-            setSendingTest(false);
-            setTestSent(true);
-            window.setTimeout(() => setTestSent(false), 3000);
-        }, 700);
-    }
-
-    function handleSubmit() {
-        if (!validate()) return;
-        setSubmitting(true);
-        window.setTimeout(() => {
-            setSubmitting(false);
-            onSubmit(
-                buildBroadcast(timing === "now" ? "sending" : "scheduled"),
-            );
-        }, 900);
-    }
-
-    return (
-        <div className="space-y-6 pb-24">
-            <BroadcastDetailsCard
-                subject={subject}
-                onSubjectChange={setSubject}
-                previewText={previewText}
-                onPreviewTextChange={setPreviewText}
-                fromName={fromName}
-                onFromNameChange={setFromName}
-                fromLocalPart={fromLocalPart}
-                onFromLocalPartChange={setFromLocalPart}
-                fromDomain={fromDomain}
-                onFromDomainChange={setFromDomain}
-            />
-
-            <AudienceCard selectedId={audienceId} onSelect={setAudienceId} />
-
-            <ContentEditorCard content={content} onChange={setContent} />
-
-            <ScheduleCard
-                timing={timing}
-                onTimingChange={setTiming}
-                scheduledAt={scheduledAtInput}
-                onScheduledAtChange={setScheduledAtInput}
-            />
-
-            {error && (
-                <p className="text-sm font-medium text-danger animate-fade-up">
-                    {error}
-                </p>
-            )}
-
-            <p className="text-xs text-muted-foreground">
-                Test emails are sent to{" "}
-                <span className="font-mono">{currentUserEmail}</span>.
-            </p>
-
-            <ComposeActionsBar
-                onCancel={onCancel}
-                onSaveDraft={handleSaveDraft}
-                savingDraft={savingDraft}
-                onSendTest={handleSendTest}
-                sendingTest={sendingTest}
-                testSent={testSent}
-                onSubmit={handleSubmit}
-                submitting={submitting}
-                timing={timing}
-                isEditing={!!editingBroadcast}
-            />
-        </div>
+    createBroadcast.mutate(
+      {
+        name: subject.trim(),
+        segment_id: segmentId,
+        from_email: fromEmail,
+        from_name: fromName.trim() || undefined,
+        subject: subject.trim(),
+        preview_text: previewText.trim() || undefined,
+        html,
+        text,
+      },
+      {
+        onSuccess: () => {
+          setSavingDraft(false);
+          onDone();
+        },
+        onError: (err) => {
+          setSavingDraft(false);
+          setError(errorMessage(err, "Couldn't create the broadcast."));
+        },
+      },
     );
+  }
+
+  async function handleSubmit() {
+    if (!validate() || !segmentId) return;
+    setSubmitting(true);
+    setError(null);
+
+    const { html, text } = buildContentPayload();
+    const fromEmail = `${fromLocalPart || "news"}@${fromDomain}`;
+    const scheduled_at =
+      timing === "later" ? new Date(scheduledAtInput).toISOString() : undefined;
+
+    try {
+      let targetId = editingBroadcast?.id;
+
+      if (editingBroadcast) {
+        await updateBroadcast.mutateAsync({
+          revision: editingBroadcast.revision,
+          name: subject.trim(),
+          segment_id: segmentId,
+          from_email: fromEmail,
+          from_name: fromName.trim() || undefined,
+          subject: subject.trim(),
+          preview_text: previewText.trim() || null,
+          html,
+          text,
+        });
+      } else {
+        const created = await createBroadcast.mutateAsync({
+          name: subject.trim(),
+          segment_id: segmentId,
+          from_email: fromEmail,
+          from_name: fromName.trim() || undefined,
+          subject: subject.trim(),
+          preview_text: previewText.trim() || undefined,
+          html,
+          text,
+        });
+        targetId = created.id;
+      }
+
+      await apiMutate(
+        `/broadcasts/${targetId}/send`,
+        "POST",
+        broadcastSchema,
+        sendBroadcastInputSchema.parse({ scheduled_at }),
+      );
+
+      setSubmitting(false);
+      onDone();
+    } catch (err) {
+      setSubmitting(false);
+      setError(
+        errorMessage(
+          err,
+          editingBroadcast
+            ? "Saved, but couldn't send/schedule. Try again from the broadcast list."
+            : "Created, but couldn't send/schedule. Find it in the broadcast list to retry.",
+        ),
+      );
+    }
+  }
+
+  return (
+    <div className="space-y-6 pb-24">
+      <BroadcastDetailsCard
+        subject={subject}
+        onSubjectChange={setSubject}
+        previewText={previewText}
+        onPreviewTextChange={setPreviewText}
+        fromName={fromName}
+        onFromNameChange={setFromName}
+        fromLocalPart={fromLocalPart}
+        onFromLocalPartChange={setFromLocalPart}
+        fromDomain={fromDomain}
+        onFromDomainChange={setFromDomain}
+      />
+
+      <AudienceCard selectedId={segmentId} onSelect={setSegmentId} />
+
+      <ContentEditorCard content={content} onChange={setContent} />
+
+      <ScheduleCard
+        timing={timing}
+        onTimingChange={setTiming}
+        scheduledAt={scheduledAtInput}
+        onScheduledAtChange={setScheduledAtInput}
+      />
+
+      {error && (
+        <p className="text-sm font-medium text-danger animate-fade-up">
+          {error}
+        </p>
+      )}
+
+      <ComposeActionsBar
+        onCancel={onCancel}
+        onSaveDraft={handleSaveDraft}
+        savingDraft={savingDraft}
+        onSubmit={handleSubmit}
+        submitting={submitting}
+        timing={timing}
+        isEditing={!!editingBroadcast}
+      />
+    </div>
+  );
 }

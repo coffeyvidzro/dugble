@@ -1,8 +1,7 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-
 import { Menu } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 import { SearchTrigger } from "@/components/command-palette/search-trigger";
 import { ThemeToggle } from "@/components/theme-toggle";

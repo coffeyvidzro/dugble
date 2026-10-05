@@ -1,90 +1,105 @@
 "use client";
 
+import { Check, Loader2, X } from "lucide-react";
 import { useState } from "react";
-import { Check, X } from "lucide-react";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import {
-    avatarStyle,
-    formatDate,
-    initialsFromName,
-    MEMBERSHIP_ROLE_LABEL,
-    type TeamInvite,
-} from "./types";
+  useAcceptInvitation,
+  useDeclineInvitation,
+} from "@/hooks/queries/use-my-invitations";
+import { avatarStyle, initialsFromName } from "@/lib/avatar";
+import { cn } from "@/lib/utils";
+import type { MyInvitation } from "@/types/team";
 
-export function InviteCard({
-    invite,
-    onAccept,
-    onDecline,
-}: {
-    invite: TeamInvite;
-    onAccept: (id: string) => void;
-    onDecline: (id: string) => void;
-}) {
-    const [responding, setResponding] = useState(false);
+function formatDate(iso: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(iso));
+}
 
-    function handleAccept() {
-        setResponding(true);
-        window.setTimeout(() => onAccept(invite.id), 400);
-    }
+export function InviteCard({ invite }: { invite: MyInvitation }) {
+  const [responding, setResponding] = useState(false);
+  const accept = useAcceptInvitation();
+  const decline = useDeclineInvitation();
 
-    function handleDecline() {
-        setResponding(true);
-        window.setTimeout(() => onDecline(invite.id), 300);
-    }
+  function handleAccept() {
+    setResponding(true);
+    accept.mutate(invite.id, {
+      onSuccess: () => toast.success(`Joined ${invite.team_name}.`),
+      onError: (err) => {
+        toast.error(err.message);
+        setResponding(false);
+      },
+    });
+  }
 
-    return (
-        <div
-            className={cn(
-                "flex flex-col gap-3 rounded-lg border border-pending/30 bg-pending/5 p-4 transition-opacity sm:flex-row sm:items-center sm:justify-between",
-                responding && "pointer-events-none opacity-50",
-            )}
-        >
-            <div className="flex items-center gap-3">
-                <Avatar className="size-10 shadow-sm">
-                    <AvatarFallback
-                        className={cn(
-                            "font-medium",
-                            avatarStyle(invite.teamName),
-                        )}
-                    >
-                        {initialsFromName(invite.teamName)}
-                    </AvatarFallback>
-                </Avatar>
-                <div>
-                    <p className="font-medium">{invite.teamName}</p>
-                    <p className="text-sm text-muted-foreground">
-                        {invite.memberCount}{" "}
-                        {invite.memberCount === 1 ? "member" : "members"} ·
-                        Invited by {invite.inviterEmail}
-                    </p>
-                    <p className="text-xs text-muted-foreground/70">
-                        {MEMBERSHIP_ROLE_LABEL[invite.role]} role ·{" "}
-                        {formatDate(invite.createdAt)}
-                    </p>
-                </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-                <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={handleDecline}
-                >
-                    <X className="mr-1.5 size-3.5" />
-                    Decline
-                </Button>
-                <Button
-                    type="button"
-                    size="sm"
-                    onClick={handleAccept}
-                    className="bg-signal text-white hover:bg-signal/90"
-                >
-                    <Check className="mr-1.5 size-3.5" />
-                    Accept
-                </Button>
-            </div>
+  function handleDecline() {
+    setResponding(true);
+    decline.mutate(invite.id, {
+      onSuccess: () => toast.success(`Declined invite to ${invite.team_name}.`),
+      onError: (err) => {
+        toast.error(err.message);
+        setResponding(false);
+      },
+    });
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-3 rounded-lg border border-pending/30 bg-pending/5 p-4 transition-opacity sm:flex-row sm:items-center sm:justify-between",
+        responding && "pointer-events-none opacity-50",
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <Avatar className="size-10 shadow-sm">
+          <AvatarFallback
+            className={cn("font-medium", avatarStyle(invite.team_name))}
+          >
+            {initialsFromName(invite.team_name)}
+          </AvatarFallback>
+        </Avatar>
+        <div>
+          <p className="font-medium">{invite.team_name}</p>
+          <p className="text-sm text-muted-foreground">
+            Invited as {invite.role} · Expires {formatDate(invite.expires_at)}
+          </p>
         </div>
-    );
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={handleDecline}
+          disabled={responding}
+        >
+          {decline.isPending ? (
+            <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+          ) : (
+            <X className="mr-1.5 size-3.5" />
+          )}
+          Decline
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          onClick={handleAccept}
+          disabled={responding}
+          className="bg-signal text-white hover:bg-signal/90"
+        >
+          {accept.isPending ? (
+            <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+          ) : (
+            <Check className="mr-1.5 size-3.5" />
+          )}
+          Accept
+        </Button>
+      </div>
+    </div>
+  );
 }

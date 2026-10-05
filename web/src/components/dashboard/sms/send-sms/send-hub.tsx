@@ -1,24 +1,34 @@
-import { SendHeader } from "./send-header";
-import { NewMessageCta } from "./new-message-cta";
-import { MessageTemplatesGrid } from "./message-templates-grid";
-import { RecentSendsList } from "./recent-sends-list";
-import { getMockMessagePool } from "../sms-dashboard/types";
+"use client";
 
-const ONE_DAY_MS = 1000 * 60 * 60 * 24;
+import { RequireActiveTeam } from "@/components/dashboard/shared/require-active-team";
+import { useSmsAnalytics } from "@/hooks/queries/use-sms-api";
+import { MessageTemplatesGrid } from "./message-templates-grid";
+import { NewMessageCta } from "./new-message-cta";
+import { RecentSendsList } from "./recent-sends-list";
+import { SendHeader } from "./send-header";
+
+function SendHubContent() {
+  const { data: analytics } = useSmsAnalytics();
+  const sevenDayWindow = analytics?.windows.find((w) => w.days === 7);
+  const todayPoint = sevenDayWindow?.series[sevenDayWindow.series.length - 1];
+  const sentToday = todayPoint ? todayPoint.total : null;
+
+  return (
+    <div className="mx-auto w-full max-w-6xl pb-6 animate-fade-up">
+      <SendHeader sentTodayCount={sentToday} />
+      <div className="space-y-6">
+        <NewMessageCta />
+        <MessageTemplatesGrid />
+        <RecentSendsList />
+      </div>
+    </div>
+  );
+}
 
 export function SendHub() {
-    const sentToday = getMockMessagePool().filter(
-        (message) => Date.now() - message.sentAt.getTime() < ONE_DAY_MS,
-    ).length;
-
-    return (
-        <div className="mx-auto w-full max-w-6xl pb-6 animate-fade-up">
-            <SendHeader sentTodayCount={sentToday} />
-            <div className="space-y-6">
-                <NewMessageCta />
-                <MessageTemplatesGrid />
-                <RecentSendsList />
-            </div>
-        </div>
-    );
+  return (
+    <RequireActiveTeam description="Create or select a team to send SMS.">
+      <SendHubContent />
+    </RequireActiveTeam>
+  );
 }

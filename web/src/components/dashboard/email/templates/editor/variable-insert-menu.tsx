@@ -2,78 +2,44 @@
 
 import { Braces, ChevronDown } from "lucide-react";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuGroup,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-    COMMON_VARIABLES,
-    CATEGORY_VARIABLES,
-    type TemplateVariable,
-} from "../template-content";
-import { CATEGORY_CONFIG, type TemplateCategory } from "../types";
+import type { EditorVariable } from "./editor-types";
 
 export function VariableInsertMenu({
-    category,
-    onInsert,
+  variables,
+  onInsert,
 }: {
-    category: TemplateCategory;
-    onInsert: (variable: TemplateVariable) => void;
+  variables: EditorVariable[];
+  onInsert: (key: string) => void;
 }) {
-    const categoryVariables = CATEGORY_VARIABLES[category];
-
-    return (
-        <DropdownMenu>
-            <DropdownMenuTrigger className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-muted/20 px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted/40">
-                <Braces className="size-3.5" />
-                Insert variable
-                <ChevronDown className="size-3.5 text-muted-foreground" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuGroup>
-                    <DropdownMenuLabel className="text-xs text-muted-foreground">
-                        {CATEGORY_CONFIG[category].label} variables
-                    </DropdownMenuLabel>
-                    {categoryVariables.map((variable) => (
-                        <DropdownMenuItem
-                            key={variable.key}
-                            onClick={() => onInsert(variable)}
-                            className="flex flex-col items-start gap-0.5"
-                        >
-                            <span className="font-mono text-xs font-medium text-foreground">
-                                {`{{${variable.key}}}`}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                                {variable.description}
-                            </span>
-                        </DropdownMenuItem>
-                    ))}
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                    <DropdownMenuLabel className="text-xs text-muted-foreground">
-                        Common variables
-                    </DropdownMenuLabel>
-                    {COMMON_VARIABLES.map((variable) => (
-                        <DropdownMenuItem
-                            key={variable.key}
-                            onClick={() => onInsert(variable)}
-                            className="flex flex-col items-start gap-0.5"
-                        >
-                            <span className="font-mono text-xs font-medium text-foreground">
-                                {`{{${variable.key}}}`}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                                {variable.description}
-                            </span>
-                        </DropdownMenuItem>
-                    ))}
-                </DropdownMenuGroup>
-            </DropdownMenuContent>
-        </DropdownMenu>
-    );
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        disabled={variables.length === 0}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-muted/20 px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted/40 disabled:pointer-events-none disabled:opacity-50"
+      >
+        <Braces className="size-3.5" />
+        Insert variable
+        <ChevronDown className="size-3.5 text-muted-foreground" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        {variables
+          .filter((v) => v.key.trim().length > 0)
+          .map((variable) => (
+            <DropdownMenuItem
+              key={variable.key}
+              onClick={() => onInsert(variable.key)}
+            >
+              <span className="font-mono text-xs font-medium text-foreground">
+                {`{{${variable.key}}}`}
+              </span>
+            </DropdownMenuItem>
+          ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }

@@ -1,57 +1,106 @@
+"use client";
+
+import { Loader2, Plus } from "lucide-react";
+import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
+import { useActiveTeam } from "@/hooks/queries/use-active-team";
+import { cn } from "@/lib/utils";
 import { DeleteTeamSection } from "./delete-team-section";
 import { TeamHeader } from "./team-header";
 import { TeamMembers } from "./team-members";
-import { TeamMembersProvider } from "./team-members-context";
 import { TeamOverview } from "./team-overview";
 import { TeamTokens } from "./team-tokens";
 
-function AnimatedSection({
-    children,
-    delay,
-}: {
-    children: React.ReactNode;
-    delay: number;
-}) {
-    return (
-        <div
-            className="animate-fade-up"
-            style={{ animationDelay: `${delay}ms`, animationFillMode: "both" }}
-        >
-            {children}
-        </div>
-    );
+function TeamSettingsSkeleton() {
+  return (
+    <div className="flex min-h-64 items-center justify-center">
+      <Loader2 className="size-6 animate-spin text-muted-foreground" />
+    </div>
+  );
 }
 
-export function TeamSettings({
-    currentUser,
+function AnimatedSection({
+  children,
+  delay,
 }: {
-    currentUser: { email: string; name: string };
+  children: React.ReactNode;
+  delay: number;
 }) {
-    const teamName = `${currentUser.name}'s Team`;
+  return (
+    <div
+      className="animate-fade-up"
+      style={{ animationDelay: `${delay}ms`, animationFillMode: "both" }}
+    >
+      {children}
+    </div>
+  );
+}
 
+export function TeamSettings() {
+  const activeTeam = useActiveTeam();
+
+  if (activeTeam.status === "pending") {
+    return <TeamSettingsSkeleton />;
+  }
+
+  if (activeTeam.status === "error") {
     return (
-        <TeamMembersProvider currentUser={currentUser}>
-            <div className="mx-auto w-full max-w-5xl pb-8">
-                <TeamHeader teamName={teamName} />
-
-                <div className="space-y-8">
-                    <AnimatedSection delay={100}>
-                        <TeamOverview initialName={teamName} />
-                    </AnimatedSection>
-
-                    <AnimatedSection delay={150}>
-                        <TeamMembers />
-                    </AnimatedSection>
-
-                    <AnimatedSection delay={200}>
-                        <TeamTokens />
-                    </AnimatedSection>
-
-                    <AnimatedSection delay={250}>
-                        <DeleteTeamSection teamName={teamName} />
-                    </AnimatedSection>
-                </div>
-            </div>
-        </TeamMembersProvider>
+      <div className="flex min-h-64 flex-col items-center justify-center gap-2 text-center">
+        <p className="text-sm font-medium text-danger">
+          Couldn&apos;t load your team.
+        </p>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          {activeTeam.error.message}
+        </p>
+      </div>
     );
+  }
+
+  if (activeTeam.status === "empty") {
+    return (
+      <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-center">
+        <div className="space-y-1">
+          <p className="text-sm font-medium">
+            You don&apos;t belong to a team yet.
+          </p>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Create a team to invite people and manage shared API keys.
+          </p>
+        </div>
+        <Link
+          href="/dashboard/create-team"
+          className={cn(buttonVariants({}), "mt-1 gap-2")}
+        >
+          <Plus className="size-4" />
+          Create a team
+        </Link>
+      </div>
+    );
+  }
+
+  const { team } = activeTeam;
+
+  return (
+    <div className="mx-auto w-full max-w-5xl pb-8">
+      <TeamHeader teamId={team.id} teamName={team.name} />
+
+      <div className="space-y-8">
+        <AnimatedSection delay={100}>
+          <TeamOverview teamId={team.id} />
+        </AnimatedSection>
+
+        <AnimatedSection delay={150}>
+          <TeamMembers teamId={team.id} />
+        </AnimatedSection>
+
+        <AnimatedSection delay={200}>
+          <TeamTokens />
+        </AnimatedSection>
+
+        <AnimatedSection delay={250}>
+          <DeleteTeamSection teamId={team.id} teamName={team.name} />
+        </AnimatedSection>
+      </div>
+    </div>
+  );
 }

@@ -128,7 +128,6 @@ function AlertDialogDescription({
     );
 }
 
-/** Confirms the destructive/primary action. Closes on click, same as Cancel — run your handler in onClick before it does. */
 function AlertDialogAction({
     className,
     ...props

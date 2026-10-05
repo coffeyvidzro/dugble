@@ -1,59 +1,71 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import {
-    Sheet,
-    SheetContent,
-    SheetHeader,
-    SheetTitle,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
 } from "@/components/ui/sheet";
+import { useTemplatePreview } from "@/hooks/queries/use-templates-api";
 import { InboxPreviewStrip } from "./inbox-preview-strip";
-import { interpolateHtml, variablesForCategory } from "../template-content";
-import type { EmailTemplate } from "../types";
 
 export function TemplatePreviewSheet({
-    template,
-    open,
-    onOpenChange,
+  templateId,
+  templateName,
+  open,
+  onOpenChange,
 }: {
-    template: EmailTemplate;
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
+  templateId: string;
+  templateName: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
-    const compiledHtml = interpolateHtml(
-        template.htmlBody,
-        variablesForCategory(template.category),
-    );
+  const preview = useTemplatePreview(templateId, { enabled: open });
 
-    return (
-        <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent className="overflow-y-auto sm:max-w-lg">
-                <SheetHeader>
-                    <SheetTitle>{template.name}</SheetTitle>
-                </SheetHeader>
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="overflow-y-auto sm:max-w-lg">
+        <SheetHeader>
+          <SheetTitle>{templateName}</SheetTitle>
+        </SheetHeader>
 
-                <div className="space-y-6 px-4 pb-6 sm:px-6">
-                    <div className="overflow-hidden rounded-lg border border-border/40">
-                        <InboxPreviewStrip
-                            subject={template.subject}
-                            previewText={template.previewText}
-                        />
-                    </div>
+        <div className="space-y-6 px-4 pb-6 sm:px-6">
+          {preview.isPending ? (
+            <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              Rendering preview…
+            </div>
+          ) : preview.isError ? (
+            <p className="py-16 text-center text-sm text-danger">
+              Couldn&apos;t render a preview for this template.
+            </p>
+          ) : preview.data ? (
+            <>
+              <div className="overflow-hidden rounded-lg border border-border/40">
+                <InboxPreviewStrip
+                  subject={preview.data.subject ?? ""}
+                  previewText=""
+                />
+              </div>
 
-                    <div>
-                        <p className="mb-1.5 text-xs font-medium text-muted-foreground">
-                            Preview
-                        </p>
-                        <div className="overflow-hidden rounded-lg border border-border/40 bg-muted/20 p-4">
-                            <iframe
-                                title={`Preview of ${template.name}`}
-                                srcDoc={compiledHtml}
-                                sandbox=""
-                                className="h-120 w-full rounded-lg border border-border/40 bg-white shadow-sm"
-                            />
-                        </div>
-                    </div>
+              <div>
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+                  Preview
+                </p>
+                <div className="overflow-hidden rounded-lg border border-border/40 bg-muted/20 p-4">
+                  <iframe
+                    title={`Preview of ${templateName}`}
+                    srcDoc={preview.data.html}
+                    sandbox=""
+                    className="h-120 w-full rounded-lg border border-border/40 bg-white shadow-sm"
+                  />
                 </div>
-            </SheetContent>
-        </Sheet>
-    );
+              </div>
+            </>
+          ) : null}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
 }

@@ -20,8 +20,8 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { csrfFetch } from "@/lib/csrf-fetch";
 import { cn } from "@/lib/utils";
+import { useRegister } from "../../hooks/mutations/use-auth";
 
 export const formSchema = z.object({
   name: z.string().trim().min(1, "Name is required."),
@@ -34,7 +34,7 @@ export function SignupForm({
   ...props
 }: React.ComponentProps<"div">) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const register = useRegister();
   const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -42,29 +42,17 @@ export function SignupForm({
     defaultValues: { name: "", email: "", password: "" },
   });
 
-  async function onSubmit(data: z.infer<typeof formSchema>) {
-    setLoading(true);
-    try {
-      const response = await csrfFetch("/api/v1/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => null);
-        toast.error(error?.error?.message ?? "Unable to create account.");
-        return;
-      }
-
-      toast.success("Account created. Check your email to verify it.");
-      router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
-      router.refresh();
-    } catch {
-      toast.error("Unable to create account. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+  function onSubmit(data: z.infer<typeof formSchema>) {
+    register.mutate(data, {
+      onSuccess: () => {
+        toast.success("Account created. Check your email to verify it.");
+        router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
+        router.refresh();
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
   }
 
   return (
@@ -114,7 +102,7 @@ export function SignupForm({
                       aria-invalid={fieldState.invalid}
                       placeholder="Enter your name"
                       autoComplete="name"
-                      disabled={loading}
+                      disabled={register.isPending}
                       className="pl-10"
                     />
                   </div>
@@ -140,7 +128,7 @@ export function SignupForm({
                       placeholder="youremail@example.com"
                       autoComplete="email"
                       type="email"
-                      disabled={loading}
+                      disabled={register.isPending}
                       className="pl-10"
                     />
                   </div>
@@ -166,7 +154,7 @@ export function SignupForm({
                       placeholder="**************"
                       autoComplete="new-password"
                       type={showPassword ? "text" : "password"}
-                      disabled={loading}
+                      disabled={register.isPending}
                       className="pl-10 pr-10"
                     />
                     <button
@@ -199,11 +187,13 @@ export function SignupForm({
             <Button
               type="submit"
               form="signup-form"
-              disabled={loading}
+              disabled={register.isPending}
               size="lg"
               className="w-full hover:cursor-pointer"
             >
-              {loading && <Loader2 className="size-4 animate-spin" />}
+              {register.isPending && (
+                <Loader2 className="size-4 animate-spin" />
+              )}
               Create account
             </Button>
 

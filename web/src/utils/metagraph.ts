@@ -338,11 +338,6 @@ export function getBlogPostingSchemaGraph({
   };
 }
 
-/** Escapes serialized schema so it cannot terminate the script element. */
 export function serializeSchema(schema: Graph | WithContext<Thing>): string {
   return JSON.stringify(schema).replace(/</g, "\\u003c");
-}
-
-export function serializeDugbleSchemaGraph(): string {
-  return serializeSchema(getDugbleSchemaGraph());
 }

@@ -1,4 +1,5 @@
 import { Reveal } from "@/components/marketing/reveal";
+import { cn } from "@/lib/utils";
 
 const stages = [
   {
@@ -54,7 +55,9 @@ export function MessagePipeline() {
             <span className="font-mono text-xs text-muted-foreground">
               {stage.n}
             </span>
-            <h3 className={`font-heading text-lg font-semibold ${stage.tone}`}>
+            <h3
+              className={cn("font-heading text-lg font-semibold", stage.tone)}
+            >
               {stage.name}
             </h3>
             <p className="text-sm leading-6 text-muted-foreground">

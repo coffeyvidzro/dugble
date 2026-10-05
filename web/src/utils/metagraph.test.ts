@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { baseUrl } from "@/lib/site";
 import {
   getBlogPostingSchemaGraph,
   getDugbleSchemaGraph,
@@ -31,9 +32,9 @@ describe("SEO schema graphs", () => {
     expect(organization).not.toHaveProperty("founders");
 
     const logo = organization?.logo as GraphNode;
-    expect(logo.url).toBe("https://dugble.com/dugble-logo.svg");
-    expect(logo.width).toBeGreaterThanOrEqual(112);
-    expect(logo.height).toBeGreaterThanOrEqual(112);
+    expect(logo.url).toBe(`${baseUrl}/dugble-logo.svg`);
+    expect(Number(logo.width)).toBeGreaterThanOrEqual(112);
+    expect(Number(logo.height)).toBeGreaterThanOrEqual(112);
   });
 
   test("connects blog posts to an emitted WebPage node", () => {

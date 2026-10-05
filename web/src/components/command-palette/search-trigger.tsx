@@ -29,22 +29,3 @@ export function SearchTrigger({ className }: { className?: string }) {
     </button>
   );
 }
-
-export function SearchHintText({ className }: { className?: string }) {
-  return (
-    <button
-      type="button"
-      onClick={openCommandPalette}
-      className={cn(
-        "inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground",
-        className,
-      )}
-    >
-      Press
-      <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground/80">
-        ⌘K
-      </kbd>
-      to search
-    </button>
-  );
-}

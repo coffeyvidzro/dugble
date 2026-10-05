@@ -28,7 +28,6 @@ type ConstructMetadataOptions = {
   description?: string;
   image?: MetadataImage;
   path?: string;
-  /** @deprecated Use path instead. */
   url?: string;
   preset?: MetadataPreset;
   noIndex?: boolean;

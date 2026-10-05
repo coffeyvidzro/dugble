@@ -11,6 +11,7 @@ export function JsonLd({ id, schema }: JsonLdProps) {
     <script
       id={id}
       type="application/ld+json"
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD data block; serializeSchema escapes "<" so it cannot close the script element.
       dangerouslySetInnerHTML={{ __html: serializeSchema(schema) }}
     />
   );

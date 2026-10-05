@@ -1,61 +1,44 @@
-import { CheckCircle2, Clock, MousePointerClick, Users } from "lucide-react";
-
+import { Clock, FileEdit, Megaphone, Send } from "lucide-react";
+import type { Broadcast } from "@/types/broadcast-api";
 import { BroadcastCountCard } from "./broadcast-count-card";
-import { BroadcastStatCard } from "./broadcast-stat-card";
-import { summarizeBroadcasts, type Broadcast } from "./types";
-
-const OPEN_RATE_SPARKLINE = [41.2, 42.0, 43.5, 44.1, 45.0, 46.3];
-const CLICK_RATE_SPARKLINE = [10.8, 11.2, 11.0, 11.6, 12.1, 12.4];
 
 export function BroadcastsStatsGrid({
-    broadcasts,
+  broadcasts,
 }: {
-    broadcasts: Broadcast[];
+  broadcasts: Broadcast[];
 }) {
-    const summary = summarizeBroadcasts(broadcasts);
+  const sentCount = broadcasts.filter((b) => b.status === "sent").length;
+  const scheduledCount = broadcasts.filter(
+    (b) => b.status === "scheduled",
+  ).length;
+  const draftCount = broadcasts.filter((b) => b.status === "draft").length;
 
-    return (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <BroadcastCountCard
-                icon={Users}
-                label="Recipients reached"
-                value={summary.recipientsReached.toLocaleString("en-US")}
-                footer="Across all sent broadcasts"
-            />
-            <BroadcastStatCard
-                icon={CheckCircle2}
-                label="Avg. open rate"
-                percentage={summary.avgOpenRate}
-                count={Math.round(
-                    (summary.avgOpenRate / 100) * summary.recipientsReached,
-                )}
-                countLabel="opens"
-                polarity="higher-is-better"
-                trend={{ direction: "up", points: 1.8 }}
-                sparkline={OPEN_RATE_SPARKLINE}
-            />
-            <BroadcastStatCard
-                icon={MousePointerClick}
-                label="Avg. click rate"
-                percentage={summary.avgClickRate}
-                count={Math.round(
-                    (summary.avgClickRate / 100) * summary.recipientsReached,
-                )}
-                countLabel="clicks"
-                polarity="higher-is-better"
-                trend={{ direction: "up", points: 0.6 }}
-                sparkline={CLICK_RATE_SPARKLINE}
-            />
-            <BroadcastCountCard
-                icon={Clock}
-                label="Scheduled"
-                value={String(summary.scheduledCount)}
-                footer={
-                    summary.scheduledCount > 0
-                        ? "Upcoming campaigns"
-                        : "Nothing queued"
-                }
-            />
-        </div>
-    );
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <BroadcastCountCard
+        icon={Megaphone}
+        label="Total broadcasts"
+        value={broadcasts.length.toLocaleString("en-US")}
+        footer="Across every status"
+      />
+      <BroadcastCountCard
+        icon={Send}
+        label="Sent"
+        value={sentCount.toLocaleString("en-US")}
+        footer="Fully delivered"
+      />
+      <BroadcastCountCard
+        icon={Clock}
+        label="Scheduled"
+        value={scheduledCount.toLocaleString("en-US")}
+        footer={scheduledCount > 0 ? "Upcoming sends" : "Nothing queued"}
+      />
+      <BroadcastCountCard
+        icon={FileEdit}
+        label="Drafts"
+        value={draftCount.toLocaleString("en-US")}
+        footer="Not yet sent"
+      />
+    </div>
+  );
 }

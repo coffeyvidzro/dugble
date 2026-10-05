@@ -1,4 +1,5 @@
 import { LoginForm } from "@/components/auth/login-form";
+import { safeRedirectPath } from "@/lib/security/safe-redirect";
 import { constructMetadata } from "@/utils/metadata";
 
 export const metadata = constructMetadata({
@@ -9,6 +10,13 @@ export const metadata = constructMetadata({
   preset: "auth",
 });
 
-export default function Page() {
-  return <LoginForm />;
+type LoginPageProps = {
+  searchParams: Promise<{ next?: string | string[] }>;
+};
+
+export default async function Page({ searchParams }: LoginPageProps) {
+  const { next } = await searchParams;
+
+  const redirectTo = safeRedirectPath(Array.isArray(next) ? next[0] : next);
+  return <LoginForm redirectTo={redirectTo} />;
 }
