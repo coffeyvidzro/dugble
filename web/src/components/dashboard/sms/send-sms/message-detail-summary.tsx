@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/send-sms/message-detail-summary.tsx
-
 import {
   Card,
   CardDescription,
@@ -11,9 +9,6 @@ import { calculateSegments, estimateCost } from "../../shared/sms-segments";
 import { SmsStatusBadge } from "../../shared/sms-status-badge";
 
 export function MessageDetailSummary({ message }: { message: SmsApiResource }) {
-  // `segments` is authoritative from the API; encoding and cost aren't
-  // part of the response, so they're derived client-side with the same
-  // heuristic used in the composer, and labeled as estimates.
   const segmentInfo = calculateSegments(message.body);
   const estimatedCost = estimateCost(message.segments, 1);
 

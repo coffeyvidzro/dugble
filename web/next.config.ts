@@ -8,11 +8,6 @@ const backendUrl = env.BACKEND_URL.replace(/\/+$/, "");
 
 const isDev = process.env.NODE_ENV === "development";
 
-/**
- * Baseline headers for every route. Authenticated and auth routes additionally
- * receive a nonce-based CSP from `src/proxy.ts`; when two CSP headers are
- * present browsers enforce both, so those routes end up with the strict one.
- */
 const securityHeaders = [
   {
     key: "Content-Security-Policy",
@@ -42,7 +37,6 @@ const nextConfig: NextConfig = {
   pageExtensions: ["md", "mdx", "ts", "tsx"],
   poweredByHeader: false,
   experimental: {
-    // Root-level 404 for unmatched URLs now that route groups own their root layouts.
     globalNotFound: true,
   },
   async headers() {

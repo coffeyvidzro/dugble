@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/campaigns/campaign-status-badge.tsx
-
 import {
   AlertTriangle,
   Check,

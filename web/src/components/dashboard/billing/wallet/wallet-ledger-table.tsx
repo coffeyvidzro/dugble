@@ -1,5 +1,3 @@
-// src/components/dashboard/billing/wallet/wallet-ledger-table.tsx
-
 import { Receipt } from "lucide-react";
 import {
   Card,

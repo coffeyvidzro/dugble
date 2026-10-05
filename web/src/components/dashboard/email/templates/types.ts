@@ -1,12 +1,9 @@
-// src/components/dashboard/email/templates/types.ts
-
 import {
   type TemplateApiCategory,
   type TemplateApiStatus,
   templateCategorySchema,
 } from "@/types/template-api";
 
-/** Template categories are owned by the API contract; the UI never invents its own. */
 export type TemplateCategory = TemplateApiCategory;
 export type TemplateStatus = TemplateApiStatus;
 export type TemplateViewMode = "grid" | "list";

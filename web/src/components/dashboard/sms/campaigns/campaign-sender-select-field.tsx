@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/campaigns/campaign-sender-select-field.tsx
-
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -10,12 +8,6 @@ import {
 } from "@/components/ui/select";
 import type { SenderId } from "@/types/sender-id";
 
-/**
- * Unlike the shared SenderSelectField (used by the SMS composer, where the
- * selected value must be the sender's display name for the `from` field
- * on POST /sms), the Campaign API's `sender_id` field is a UUID — so this
- * selector uses `senderId.id` as the option value, not `senderId.name`.
- */
 export function CampaignSenderSelectField({
   senderIds,
   value,

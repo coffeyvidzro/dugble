@@ -1,5 +1,3 @@
-// src/components/dashboard/shared/copy-button.tsx
-
 "use client";
 
 import { Check, Copy } from "lucide-react";
@@ -24,13 +22,11 @@ const VARIANT_CLASSES: Record<
 
 type CopyButtonProps = {
   value: string;
-  /** What is being copied, e.g. "record value" → aria-label "Copy record value". */
   label?: string;
   variant?: CopyButtonVariant;
   className?: string;
 };
 
-/** Icon-only copy control. */
 export function CopyButton({
   value,
   label,

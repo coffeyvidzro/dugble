@@ -1,13 +1,6 @@
-// src/components/dashboard/sms/history/history-pagination.tsx
-
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/**
- * The API's list endpoint doesn't return a total count, so pagination here
- * is "does another page exist" (a full page came back) rather than a known
- * total-pages figure.
- */
 export function HistoryPagination({
   page,
   pageSize,

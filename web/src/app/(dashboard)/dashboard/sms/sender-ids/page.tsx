@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/sms/sender-ids/page.tsx
-
 import { SenderIdStatsGrid } from "@/components/dashboard/sms/sender-ids/sender-id-stats-grid";
 import { SenderIdsHeader } from "@/components/dashboard/sms/sender-ids/sender-ids-header";
 import { SenderIdsList } from "@/components/dashboard/sms/sender-ids/sender-ids-list";

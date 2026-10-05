@@ -1,5 +1,3 @@
-// src/components/dashboard/mobile-nav.tsx
-
 "use client";
 
 import { LayoutGrid, Plus, X } from "lucide-react";
@@ -28,7 +26,6 @@ export function MobileNav({
   const displayName = user.name.trim() || user.email;
   const initials = displayName.slice(0, 2).toUpperCase();
 
-  // Lock body scroll while the drawer is open.
   useEffect(() => {
     if (!open) return;
     const original = document.body.style.overflow;
@@ -38,7 +35,6 @@ export function MobileNav({
     };
   }, [open]);
 
-  // Close on Escape.
   useEffect(() => {
     if (!open) return;
     function handleKeyDown(event: KeyboardEvent) {
@@ -50,7 +46,6 @@ export function MobileNav({
 
   return (
     <div className="lg:hidden">
-      {/* Backdrop */}
       <div
         aria-hidden
         onClick={() => onOpenChange(false)}
@@ -60,7 +55,6 @@ export function MobileNav({
         )}
       />
 
-      {/* Panel */}
       <div
         role="dialog"
         aria-modal="true"

@@ -1,5 +1,3 @@
-// src/components/dashboard/audience/shared/audience-page-shell.tsx
-
 import type { ReactNode } from "react";
 
 export function AudiencePageShell({

@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/sms-dashboard/stat-card.tsx
-
 import type { LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { SparklineChart } from "../../shared/sparkline-chart";

@@ -1,5 +1,3 @@
-// src/components/dashboard/email/shared/email-status-badge.tsx
-
 import {
   AlertTriangle,
   Ban,
@@ -39,12 +37,6 @@ function labelForRaw(status: string): string {
     : status;
 }
 
-/**
- * `status` here is a plain `string` because the list endpoint
- * (EmailSummary) types it as a bare string, not the closed enum used by
- * the detail resource's `last_event`. Unknown values fall back to a
- * generic label instead of crashing.
- */
 export function EmailStatusBadge({ status }: { status: string }) {
   const parsed = emailApiStatusSchema.safeParse(status);
 

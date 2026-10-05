@@ -1,5 +1,3 @@
-// src/components/dashboard/team/team-members-client.tsx
-
 "use client";
 
 import { Loader2 } from "lucide-react";

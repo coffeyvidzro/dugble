@@ -1,5 +1,3 @@
-// src/components/dashboard/profile/team-row.tsx
-
 import { LogOut, MoreVertical, Trash2 } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";

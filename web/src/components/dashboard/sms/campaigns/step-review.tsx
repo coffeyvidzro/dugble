@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/campaigns/step-review.tsx
-
 import {
   Card,
   CardDescription,

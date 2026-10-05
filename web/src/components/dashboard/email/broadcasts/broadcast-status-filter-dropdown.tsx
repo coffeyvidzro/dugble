@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/broadcast-status-filter-dropdown.tsx
-
 "use client";
 
 import { Check, ChevronDown, Filter } from "lucide-react";

@@ -1,5 +1,3 @@
-// src/lib/api/server.ts
-
 import "server-only";
 
 import type { z } from "zod";
@@ -61,7 +59,6 @@ export async function serverGet<T>(
   return schema.parse(unwrapEnvelope(await serverFetch(path, options)));
 }
 
-/** GET where `schema` validates the whole envelope (paginated endpoints). */
 export async function serverGetEnvelope<T>(
   path: string,
   schema: z.ZodType<T>,

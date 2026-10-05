@@ -1,5 +1,3 @@
-// src/components/dashboard/email/emails-page/detail/email-detail-header.tsx
-
 import { CopyButton } from "@/components/dashboard/shared/copy-button";
 import type { EmailApiResource } from "@/types/email-api";
 import { EmailStatusBadge } from "../../shared/email-status-badge";

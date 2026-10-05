@@ -1,5 +1,3 @@
-// src/components/dashboard/email/metrics/engagement-grid.tsx
-
 import { RateMetricCard } from "./rate-metric-card";
 import { BOUNCE_RISK_THRESHOLD, type RateStat } from "./types";
 

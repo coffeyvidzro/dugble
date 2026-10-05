@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/broadcast-count-card.tsx
-
 import type { LucideIcon } from "lucide-react";
 
 import { Card } from "@/components/ui/card";

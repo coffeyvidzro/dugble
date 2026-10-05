@@ -1,5 +1,3 @@
-// src/components/dashboard/profile/profile-header.tsx
-
 import { Building2 } from "lucide-react";
 import { PortalHeroHeader } from "../portal-hero-header";
 

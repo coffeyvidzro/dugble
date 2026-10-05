@@ -1,5 +1,3 @@
-// src/components/dashboard/team/delete-team-section.tsx
-
 "use client";
 
 import { AlertTriangle } from "lucide-react";
@@ -17,7 +15,6 @@ export function DeleteTeamSection({
 }) {
   const { isOwner } = useTeamPermissions();
 
-  // Completely block the Danger Zone from rendering for admins and basic members
   if (!isOwner) {
     return null;
   }

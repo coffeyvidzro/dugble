@@ -1,5 +1,3 @@
-// src/components/dashboard/team/team-header.tsx
-
 "use client";
 
 import { useActiveMemberCount } from "@/hooks/queries/use-team-members";

@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/template-search-input.tsx
-
 "use client";
 
 import { Search, X } from "lucide-react";

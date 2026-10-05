@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/compose-actions-bar.tsx
-
 import { Loader2, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";

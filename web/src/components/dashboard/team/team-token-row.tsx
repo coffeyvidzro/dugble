@@ -1,5 +1,3 @@
-// src/components/dashboard/team/team-token-row.tsx
-
 "use client";
 
 import { Key, Pencil, Trash2 } from "lucide-react";
@@ -14,7 +12,6 @@ function formatOptionalDate(iso: string | null | undefined, fallback: string) {
 
 type TeamTokenRowProps = {
   token: TeamToken;
-  /** Only owners may edit or revoke tokens. */
   canManage: boolean;
   onEdit: (token: TeamToken) => void;
   onRevoke: (token: TeamToken) => void;

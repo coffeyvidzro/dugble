@@ -1,5 +1,3 @@
-// src/components/dashboard/profile/profile-settings.tsx
-
 "use client";
 
 import { Loader2 } from "lucide-react";
@@ -11,14 +9,9 @@ import { PendingInvitesCard } from "./pending-invites-card";
 import { ProfileHeader } from "./profile-header";
 import { UserTeamsCard } from "./user-teams-card";
 
-// The "Pending Invites" card is back — the backend added GET
-// /users/me/invitations (list) plus accept/decline endpoints, resolving
-// the gap that got it pulled last round. See pending-invites-card.tsx.
-
 export function ProfileSettings() {
   const { data: user, isPending, isError, error } = useCurrentUser();
-  // limit:1 — this only needs pagination.total for the header badge, not
-  // the actual team rows (UserTeamsCard fetches those itself).
+
   const { data: teams } = useTeams({ page: 1, limit: 1 });
 
   if (isPending) {
@@ -82,16 +75,6 @@ export function ProfileSettings() {
         >
           <UserTeamsCard />
         </div>
-
-        {/* <div
-                    className="animate-fade-up"
-                    style={{
-                        animationDelay: "250ms",
-                        animationFillMode: "both",
-                    }}
-                >
-                    <TwoFactorAuthPanel />
-                </div> */}
 
         <div
           className="animate-fade-up"

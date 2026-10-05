@@ -1,4 +1,3 @@
-// src/hooks/queries/use-contacts.ts
 "use client";
 
 import {
@@ -28,14 +27,6 @@ import {
   updateContactTopicsInputSchema,
 } from "@/types/contact";
 
-// ---------------------------------------------------------------------------
-// List / detail
-// ---------------------------------------------------------------------------
-
-/**
- * GET /contacts only takes limit/offset and returns a flat array (no
- * has_more), so pagination is inferred: a full page means there may be more.
- */
 export function useContacts(limit: number = CONTACTS_PAGE_SIZE) {
   const activeTeamId = useActiveTeamId();
 
@@ -66,19 +57,9 @@ export function useContact(contactId: string) {
   });
 }
 
-/**
- * Contacts are loaded via useInfiniteQuery, which makes optimistic patching
- * of the paged cache more trouble than it's worth for create/update/delete.
- * Mutations below just invalidate every loaded list page instead, matching
- * the simpler pattern already used for templates and campaigns.
- */
 function invalidateContactLists(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: queryKeys.contacts.lists() });
 }
-
-// ---------------------------------------------------------------------------
-// Mutations
-// ---------------------------------------------------------------------------
 
 export function useCreateContact() {
   const queryClient = useQueryClient();
@@ -135,10 +116,6 @@ export function useDeleteContact() {
   });
 }
 
-// ---------------------------------------------------------------------------
-// Segment membership, viewed from a single contact
-// ---------------------------------------------------------------------------
-
 export function useContactSegments(contactId: string, enabled = true) {
   return useQuery({
     queryKey: queryKeys.contacts.segments(contactId),
@@ -185,11 +162,6 @@ export function useRemoveContactFromSegment(contactId: string) {
     },
   });
 }
-
-// ---------------------------------------------------------------------------
-// Topic subscriptions, viewed from a single contact
-// Ready for a future "Subscriptions" tab — not wired into the list UI yet.
-// ---------------------------------------------------------------------------
 
 export function useContactTopics(contactId: string, enabled = true) {
   return useQuery({

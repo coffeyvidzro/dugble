@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/editor/category-select.tsx
-
 "use client";
 
 import { Check, ChevronDown, Tag } from "lucide-react";

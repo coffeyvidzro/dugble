@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/templates-empty-state.tsx
-
 "use client";
 
 import { LayoutTemplate, SearchX } from "lucide-react";

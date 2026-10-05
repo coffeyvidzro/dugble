@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/sms-dashboard/sms-header.tsx
-
 import { MessageSquare } from "lucide-react";
 import { PortalHeroHeader } from "../../portal-hero-header";
 

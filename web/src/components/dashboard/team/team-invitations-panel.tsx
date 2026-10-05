@@ -1,5 +1,3 @@
-// src/components/dashboard/team/team-invitations-panel.tsx
-
 "use client";
 
 import { Loader2, X } from "lucide-react";

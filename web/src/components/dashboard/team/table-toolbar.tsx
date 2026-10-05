@@ -1,5 +1,3 @@
-// src/components/dashboard/team/table-toolbar.tsx
-
 import { Search } from "lucide-react";
 import type { ReactNode } from "react";
 import { Input } from "@/components/ui/input";

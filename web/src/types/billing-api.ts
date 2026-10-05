@@ -1,5 +1,3 @@
-// src/types/billing-api.ts
-
 import { z } from "zod";
 import { httpsUrlSchema } from "@/lib/security/safe-url";
 
@@ -15,7 +13,7 @@ export type PlanPrice = z.infer<typeof planPriceSchema>;
 export const planSchema = z.object({
   code: z.string(),
   name: z.string(),
-  // Omitted when no effective price exists for the team's billing market.
+
   price: planPriceSchema.optional(),
   available: z.boolean(),
   current: z.boolean(),
@@ -41,9 +39,6 @@ export const subscriptionSchema = z.object({
 });
 export type Subscription = z.infer<typeof subscriptionSchema>;
 
-// Kept as z.string() rather than a closed enum — the docs currently list
-// growth/scale/enterprise as supported, but this avoids a runtime parse
-// failure if the backend adds a plan before this client ships an update.
 export const changePlanInputSchema = z.object({
   plan: z.string().trim().min(1, "Choose a plan."),
 });
@@ -85,10 +80,6 @@ export const subscriptionChargesResponseSchema = z.object({
 
 export type SubscriptionChargesParams = { limit?: number; offset?: number };
 
-// ---------------------------------------------------------------------
-// Wallet
-// ---------------------------------------------------------------------
-
 export const walletSchema = z.object({
   team_id: z.string(),
   currency: z.string(),
@@ -128,7 +119,7 @@ export const topUpResponseSchema = z.object({
   transaction_id: z.string(),
   client_reference: z.string(),
   checkout_id: z.string(),
-  // We redirect users to these; anything but https is rejected at the boundary.
+
   checkout_url: httpsUrlSchema,
   checkout_direct_url: httpsUrlSchema,
 });

@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/campaigns/campaigns-table.tsx
-
 import { Copy, Loader2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import {

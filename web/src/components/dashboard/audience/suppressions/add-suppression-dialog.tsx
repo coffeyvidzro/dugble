@@ -1,5 +1,3 @@
-// src/components/dashboard/audience/suppressions/add-suppression-dialog.tsx
-
 "use client";
 
 import { Loader2 } from "lucide-react";

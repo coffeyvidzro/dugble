@@ -1,5 +1,3 @@
-// src/components/dashboard/email/domains/detail/verify-records-button.tsx
-
 "use client";
 
 import { RefreshCw } from "lucide-react";

@@ -1,5 +1,3 @@
-// src/components/dashboard/webhooks/webhook-header.tsx
-
 import { Radio } from "lucide-react";
 import { PortalHeroHeader } from "../portal-hero-header";
 

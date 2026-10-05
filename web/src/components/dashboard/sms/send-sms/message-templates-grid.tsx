@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/send-sms/message-templates-grid.tsx
-
 import { AlertTriangle, CalendarClock, KeyRound, Receipt } from "lucide-react";
 import Link from "next/link";
 import {

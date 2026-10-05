@@ -1,5 +1,3 @@
-// src/components/auth/verify-email-form.tsx
-
 "use client";
 
 import { CheckCircle2, Loader2, Mail, XCircle } from "lucide-react";
@@ -32,15 +30,10 @@ export function VerifyEmailForm({
   const resendVerification = useResendVerificationEmail();
   const [cooldown, setCooldown] = useState(0);
 
-  // If a verification link brought us here, confirm it immediately.
-  // useMutation already guards against setting state after unmount, so
-  // there's no need for the manual "cancelled" flag the plain-fetch version
-  // needed.
   const submittedToken = useRef<string | null>(null);
   useEffect(() => {
     if (!token || !email) return;
-    // Tokens are single-use: never submit the same one twice (StrictMode
-    // re-runs effects in development).
+
     if (submittedToken.current === token) return;
     submittedToken.current = token;
     verifyEmail.mutate({ token, email });
@@ -52,10 +45,6 @@ export function VerifyEmailForm({
     return () => clearTimeout(t);
   }, [cooldown]);
 
-  // A link with a token but no email is malformed — go straight to the
-  // error state instead of firing a request with a null email. Otherwise,
-  // status tracks the mutation directly rather than duplicating it in a
-  // separate variable that could drift out of sync.
   const status: Status = !token
     ? "pending"
     : !email

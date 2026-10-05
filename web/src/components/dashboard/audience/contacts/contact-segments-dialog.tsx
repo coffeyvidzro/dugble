@@ -1,5 +1,3 @@
-// src/components/dashboard/audience/contacts/contact-segments-dialog.tsx
-
 "use client";
 
 import { Loader2 } from "lucide-react";

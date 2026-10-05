@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/sms/campaigns/[id]/page.tsx
-
 import { notFound } from "next/navigation";
 import { CampaignDetail } from "@/components/dashboard/sms/campaigns/campaign-detail";
 import { isUuid } from "@/lib/security/route-params";
@@ -18,7 +16,7 @@ export default async function Page({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  // The ID becomes part of an API path — reject anything malformed up front.
+
   if (!isUuid(id)) notFound();
 
   return <CampaignDetail campaignId={id} />;

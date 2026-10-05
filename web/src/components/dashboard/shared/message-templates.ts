@@ -1,5 +1,3 @@
-// src/components/dashboard/shared/message-templates.ts
-
 export type MessageTemplateId = "otp" | "receipt" | "alert" | "reminder";
 
 export type MessageTemplate = {

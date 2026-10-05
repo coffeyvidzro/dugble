@@ -1,5 +1,3 @@
-// src/components/dashboard/audience/suppressions/suppressions-list.tsx
-
 "use client";
 
 import { Ban, Trash2 } from "lucide-react";

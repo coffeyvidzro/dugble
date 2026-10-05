@@ -1,5 +1,3 @@
-// src/components/dashboard/security/change-password-card.tsx
-
 import { KeyRound } from "lucide-react";
 import { SectionCardHeader } from "@/components/dashboard/profile/section-card-header";
 import { Card } from "@/components/ui/card";

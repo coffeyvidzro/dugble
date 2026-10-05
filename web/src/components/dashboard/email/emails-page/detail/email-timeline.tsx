@@ -1,5 +1,3 @@
-// src/components/dashboard/email/emails-page/detail/email-timeline.tsx
-
 import {
   AlertTriangle,
   Ban,
@@ -43,8 +41,6 @@ const ERROR_STATUSES: EmailApiStatus[] = [
   "failed",
 ];
 
-// Event `type` values may arrive bare ("delivered") or prefixed the way
-// webhook subscriptions name them ("email.delivered") — normalize both.
 function normalizeEventStatus(rawType: string): EmailApiStatus | null {
   const withoutPrefix = rawType.startsWith("email.")
     ? rawType.slice(6)

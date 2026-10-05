@@ -1,8 +1,3 @@
-// src/lib/api/endpoints.ts
-//
-// Isomorphic path builders shared by client hooks and server prefetching, so a
-// prefetched query and its client counterpart always hit the same URL.
-
 import type { WalletLedgerParams } from "@/types/billing-api";
 import type { TeamsQueryParams } from "@/types/team";
 
@@ -32,13 +27,11 @@ export const endpoints = {
     withQuery("/wallet/ledger", { limit: params.limit, offset: params.offset }),
 } as const;
 
-/** Page size of the team switcher's list — shared so the prefetch key matches. */
 export const TEAM_SWITCHER_PARAMS = {
   page: 1,
   limit: 50,
 } as const satisfies TeamsQueryParams;
 
-/** First page of the wallet ledger as rendered by the wallet page. */
 export const WALLET_LEDGER_FIRST_PAGE = {
   limit: 25,
   offset: 0,

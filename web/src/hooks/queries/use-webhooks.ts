@@ -1,5 +1,3 @@
-// src/hooks/queries/use-webhooks.ts
-
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -158,7 +156,6 @@ export function useRotateWebhookSecret() {
   const { canManageTeam } = useTeamPermissions();
 
   return useMutation({
-    // Holds the new signing secret — never retain it past the dialog.
     gcTime: 0,
     mutationFn: async (id: string) => {
       assertPermission(
@@ -174,7 +171,6 @@ export function useRotateWebhookSecret() {
   });
 }
 
-/** Fires a sample event at the endpoint; doesn't touch the list cache. */
 export function useSendTestWebhookEvent() {
   const { canManageTeam } = useTeamPermissions();
 

@@ -1,5 +1,3 @@
-// src/lib/webhook-events.ts
-
 export type WebhookEventGroupId =
   | "sms"
   | "email"

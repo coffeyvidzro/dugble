@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/format.ts
-
 export function formatDateTime(date: Date): string {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",

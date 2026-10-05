@@ -1,5 +1,3 @@
-// src/components/dashboard/email/metrics/metrics-toolbar.tsx
-
 import { EmailFilterSelect } from "../emails-page/email-filter-select";
 import { RefreshButton } from "../emails-page/refresh-button";
 import {

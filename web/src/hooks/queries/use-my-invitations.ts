@@ -1,5 +1,3 @@
-// src/hooks/queries/use-my-invitations.ts
-
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";

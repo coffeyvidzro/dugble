@@ -1,5 +1,3 @@
-// src/types/email-api.ts
-
 import { z } from "zod";
 
 export const emailApiStatusSchema = z.enum([
@@ -160,8 +158,6 @@ export type EmailListParams = {
   offset?: number;
 };
 
-// Statuses that won't change again without an explicit reschedule/cancel —
-// used to decide when it's safe to stop polling an email or its events.
 export const EMAIL_TERMINAL_STATUSES: EmailApiStatus[] = [
   "delivered",
   "bounced",

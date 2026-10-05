@@ -1,5 +1,3 @@
-// src/hooks/forms/use-webhook-form.ts
-
 "use client";
 
 import { useState } from "react";
@@ -39,13 +37,6 @@ export function useWebhookForm(
     setFormError(null);
   }
 
-  /**
-   * Validates the current url/events against the shared create-input
-   * schema (also used for edits — the wire shape is identical, only the
-   * HTTP verb differs at the call site). On failure, populates the
-   * per-field error state and returns `null`. On success, clears errors
-   * and returns the parsed, trimmed data ready to send.
-   */
   function validate() {
     setFormError(null);
 

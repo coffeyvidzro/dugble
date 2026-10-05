@@ -1,5 +1,3 @@
-// src/components/dashboard/shared/confirm-dialog.tsx
-
 "use client";
 
 import type { ReactNode } from "react";
@@ -21,15 +19,10 @@ type ConfirmDialogProps = {
   description: ReactNode;
   confirmLabel: string;
   onConfirm: () => void;
-  /**
-   * When provided, the dialog stays open after confirming so the caller can
-   * close it once the mutation settles; the buttons disable while pending.
-   */
   pending?: boolean;
   pendingLabel?: string;
 };
 
-/** Destructive confirmation shared across the dashboard. */
 export function ConfirmDialog({
   open,
   onOpenChange,

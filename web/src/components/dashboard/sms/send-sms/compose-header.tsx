@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/send-sms/compose-header.tsx
-
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 

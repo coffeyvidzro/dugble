@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/developers/webhooks/page.tsx
-
 import { WebhooksSettings } from "@/components/dashboard/webhooks/webhooks-settings";
 import { PrefetchBoundary } from "@/components/providers/prefetch-boundary";
 import { constructMetadata } from "@/utils/metadata";

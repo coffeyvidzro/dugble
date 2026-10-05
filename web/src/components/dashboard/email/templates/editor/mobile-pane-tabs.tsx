@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/editor/mobile-pane-tabs.tsx
-
 "use client";
 
 import { cn } from "@/lib/utils";

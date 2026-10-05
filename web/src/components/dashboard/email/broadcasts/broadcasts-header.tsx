@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/broadcasts-header.tsx
-
 import { Megaphone } from "lucide-react";
 import Link from "next/link";
 import { PortalHeroHeader } from "../../portal-hero-header";

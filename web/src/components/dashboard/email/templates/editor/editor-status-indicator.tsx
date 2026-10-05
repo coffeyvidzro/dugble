@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/editor/editor-status-indicator.tsx
-
 "use client";
 
 import { useIsClient } from "@/hooks/use-is-client";

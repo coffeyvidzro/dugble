@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/create-team/page.tsx
-
 import { CreateTeamForm } from "@/components/dashboard/create-team/create-team-form";
 import { CreateTeamHeader } from "@/components/dashboard/create-team/create-team-header";
 import { constructMetadata } from "@/utils/metadata";

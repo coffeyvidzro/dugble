@@ -1,5 +1,3 @@
-// src/lib/active-team.server.ts
-
 import "server-only";
 
 import { cookies } from "next/headers";
@@ -13,12 +11,6 @@ import { teamListItemSchema } from "@/types/team";
 const teamsPageSchema = paginatedEnvelopeSchema(teamListItemSchema);
 export type TeamsPage = ReturnType<typeof teamsPageSchema.parse>;
 
-/**
- * Resolves the team this request renders for: the cookie's team if the user
- * still belongs to it, otherwise their first team, otherwise none. Deduped per
- * request with React `cache`. The teams page is returned so the layout can
- * seed the team switcher without a second request.
- */
 export const resolveActiveTeam = cache(
   async (): Promise<{ teamId: string | null; teams: TeamsPage | null }> => {
     const cookieStore = await cookies();
@@ -31,7 +23,6 @@ export const resolveActiveTeam = cache(
         teamsPageSchema,
       );
     } catch {
-      // Degrade gracefully: trust the cookie; the client will self-heal.
       return { teamId: requested, teams: null };
     }
 

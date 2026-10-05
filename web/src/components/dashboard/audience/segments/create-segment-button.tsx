@@ -1,5 +1,3 @@
-// src/components/dashboard/audience/segments/create-segment-button.tsx
-
 "use client";
 
 import { Plus } from "lucide-react";

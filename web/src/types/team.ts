@@ -1,5 +1,3 @@
-// src/types/team.ts
-
 import { z } from "zod";
 
 export const teamStatusSchema = z.enum(["active", "disabled"]);
@@ -21,10 +19,6 @@ export type InvitationStatus = z.infer<typeof invitationStatusSchema>;
 
 export const invitableRoleSchema = z.enum(["admin", "member"]);
 export type InvitableRole = z.infer<typeof invitableRoleSchema>;
-
-// ---------------------------------------------------------------------------
-// Team
-// ---------------------------------------------------------------------------
 
 export const teamSchema = z.object({
   id: z.string(),
@@ -49,7 +43,7 @@ export interface TeamsQueryParams {
   page?: number;
   limit?: number;
   search?: string;
-  status?: "active" | "disabled" | string; // Ensure this exists
+  status?: "active" | "disabled" | string;
 }
 
 export const createTeamInputSchema = z.object({
@@ -83,10 +77,6 @@ export const updateTeamInputSchema = z.object({
     .max(60, "Keep it under 60 characters."),
 });
 export type UpdateTeamInput = z.infer<typeof updateTeamInputSchema>;
-
-// ---------------------------------------------------------------------------
-// Members
-// ---------------------------------------------------------------------------
 
 export const teamMemberUserSchema = z.object({
   id: z.string(),
@@ -137,10 +127,6 @@ export const updateMemberRoleInputSchema = z.object({
 export const leftResponseSchema = z.object({ left: z.boolean() });
 export const removedResponseSchema = z.object({ removed: z.boolean() });
 
-// ---------------------------------------------------------------------------
-// Invitations — a team admin's view of that team's outstanding invites
-// ---------------------------------------------------------------------------
-
 export const teamInvitationSchema = z.object({
   id: z.string(),
   team_id: z.string(),
@@ -155,17 +141,9 @@ export const teamInvitationSchema = z.object({
 export type TeamInvitation = z.infer<typeof teamInvitationSchema>;
 export const teamInvitationsListSchema = z.array(teamInvitationSchema);
 
-// DELETE .../invitations/:id's response includes team_name even though the
-// list above doesn't — matches the docs example exactly, not a guess.
 export const revokedInvitationSchema = teamInvitationSchema.extend({
   team_name: z.string(),
 });
-
-// ---------------------------------------------------------------------------
-// "My invitations" — the current user's own pending invites, across every
-// team they've been invited to (GET /users/me/invitations, and the
-// /teams/invitations alias of it)
-// ---------------------------------------------------------------------------
 
 export const myInvitationSchema = z.object({
   id: z.string(),
@@ -182,9 +160,6 @@ export const myInvitationSchema = z.object({
 export type MyInvitation = z.infer<typeof myInvitationSchema>;
 export const myInvitationsListSchema = z.array(myInvitationSchema);
 
-// Accept/decline responses carry the same fields plus whichever timestamp
-// applies — accepted_at for accept, declined_at for decline. Both optional
-// on one schema rather than two near-identical ones.
 export const invitationActionResponseSchema = myInvitationSchema.extend({
   accepted_at: z.string().optional(),
   declined_at: z.string().optional(),

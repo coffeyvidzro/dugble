@@ -1,10 +1,4 @@
-// src/types/contact.ts
-
 import { z } from "zod";
-
-// ---------------------------------------------------------------------------
-// Enums
-// ---------------------------------------------------------------------------
 
 export const smsConsentStatusSchema = z.enum([
   "unknown",
@@ -28,10 +22,6 @@ export const SMS_CONSENT_SOURCE_LABEL: Record<SmsConsentSource, string> = {
   manual: "Manual",
 };
 
-// ---------------------------------------------------------------------------
-// Contact resource — GET /contacts, GET /contacts/:id
-// ---------------------------------------------------------------------------
-
 export const contactSchema = z.object({
   id: z.string(),
   team_id: z.string(),
@@ -39,9 +29,7 @@ export const contactSchema = z.object({
   phone: z.string().nullish(),
   normalized_phone: z.string().nullish(),
   phone_country: z.string().nullish(),
-  // Defensive fallback: docs show this always present, but treat like the
-  // rest of this codebase treats "documented as required, occasionally
-  // absent" fields (see campaign-api's `currency`, `daily_send_limit`).
+
   sms_consent_status: smsConsentStatusSchema.catch("unknown"),
   sms_consent_updated_at: z.string().nullish(),
   sms_consent_source: smsConsentSourceSchema.nullish(),
@@ -54,13 +42,7 @@ export const contactSchema = z.object({
 });
 export type Contact = z.infer<typeof contactSchema>;
 
-// GET /contacts returns a flat array (no has_more/next_cursor envelope),
-// same shape family as /sms and /emails list endpoints.
 export const contactsListSchema = z.array(contactSchema);
-
-// ---------------------------------------------------------------------------
-// Create / update — POST /contacts, PATCH /contacts/:id
-// ---------------------------------------------------------------------------
 
 const optionalTrimmedString = z
   .string()
@@ -120,7 +102,6 @@ export const contactSegmentRemovedSchema = z.void();
 // Topics, as seen from a single contact — GET/PATCH /contacts/:id/topics
 // Exposed as ready-to-use hooks; not yet surfaced in the Contacts UI below
 // (a natural "Subscriptions" tab for a future contact detail view).
-// ---------------------------------------------------------------------------
 
 export const topicSubscriptionSchema = z.enum(["opt_in", "opt_out"]);
 export type TopicSubscription = z.infer<typeof topicSubscriptionSchema>;
@@ -150,10 +131,6 @@ export type UpdateContactTopicsInput = z.infer<
 >;
 
 export const contactTopicUpdateResponseSchema = z.object({ id: z.string() });
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 export function computeContactName(contact: Contact): string {
   const name = [contact.first_name, contact.last_name]

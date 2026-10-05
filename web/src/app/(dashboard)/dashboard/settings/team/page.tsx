@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/settings/team/page.tsx
-
 import { TeamSettings } from "@/components/dashboard/team/team-settings";
 import { requireSession } from "@/lib/session";
 import { constructMetadata } from "@/utils/metadata";

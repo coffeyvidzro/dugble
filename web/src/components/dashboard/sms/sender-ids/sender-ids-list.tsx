@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/sender-ids/sender-ids-list.tsx
-
 "use client";
 
 import { Loader2, Plus } from "lucide-react";
@@ -27,7 +25,6 @@ import { SenderIdsTable } from "./sender-ids-table";
 const FILTERS: SenderIdFilter[] = ["all", "approved", "pending", "rejected"];
 
 function SenderIdsListContent() {
-  // Filter lives in the URL (?status=…) so the view is shareable and survives reloads.
   const [filter, setFilter] = useQueryState(
     "status",
     parseAsStringLiteral(FILTERS).withDefault("all").withOptions({

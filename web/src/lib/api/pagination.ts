@@ -1,5 +1,3 @@
-// src/lib/api/pagination.ts
-
 import { z } from "zod";
 
 export const paginationSchema = z.object({

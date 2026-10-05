@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/template-status-badge.tsx
-
 import { Check, PenLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {

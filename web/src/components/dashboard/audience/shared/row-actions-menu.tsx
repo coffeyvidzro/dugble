@@ -1,5 +1,3 @@
-// src/components/dashboard/audience/shared/row-actions-menu.tsx
-
 import { MoreHorizontal } from "lucide-react";
 import type { ReactNode } from "react";
 import {

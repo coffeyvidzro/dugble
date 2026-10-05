@@ -1,5 +1,3 @@
-// src/components/not-found-view.tsx
-
 "use client";
 
 import { ArrowRight } from "lucide-react";
@@ -27,7 +25,6 @@ const dashboardLinks = [
 export function NotFoundView() {
   const pathname = usePathname();
 
-  // Determine the context based on the URL path
   const isDashboard = pathname?.startsWith("/dashboard");
 
   const quickLinks = isDashboard ? dashboardLinks : marketingLinks;

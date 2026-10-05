@@ -1,5 +1,3 @@
-// src/components/dashboard/email/domains/detail/domain-detail-header.tsx
-
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import {

@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/broadcasts-toolbar.tsx
-
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import type { BroadcastStatus } from "@/types/broadcast-api";

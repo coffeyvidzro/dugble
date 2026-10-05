@@ -1,5 +1,3 @@
-// src/lib/site.ts
-
 import { env } from "@/config/env";
 
 const configuredBaseUrl = env.NEXT_PUBLIC_BASE_URL.replace(/\/+$/, "");

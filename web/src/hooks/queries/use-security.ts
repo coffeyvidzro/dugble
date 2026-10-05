@@ -1,5 +1,3 @@
-// src/hooks/queries/use-security.ts
-
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -14,10 +12,6 @@ import {
   userSessionListSchema,
 } from "@/types/security";
 
-// ---------------------------------------------------------------------------
-// Two-factor authentication (user-scoped — no team header needed)
-// ---------------------------------------------------------------------------
-
 export function useMfaStatus() {
   return useQuery({
     queryKey: queryKeys.auth.mfa(),
@@ -27,7 +21,6 @@ export function useMfaStatus() {
   });
 }
 
-/** Starts enrollment. The returned secret is shown once and never cached. */
 export function useEnrollTotp() {
   return useMutation({
     mutationFn: () =>
@@ -44,7 +37,6 @@ export function useEnrollTotp() {
   });
 }
 
-/** Confirms enrollment with a code; returns one-time recovery codes. */
 export function useConfirmTotp() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -66,10 +58,6 @@ export function useConfirmTotp() {
   });
 }
 
-/**
- * Disables 2FA. The API treats this as a sensitive action, so the user proves
- * possession first (TOTP or recovery code step-up), then the factor is removed.
- */
 export function useDisableMfa() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -96,10 +84,6 @@ export function useDisableMfa() {
     },
   });
 }
-
-// ---------------------------------------------------------------------------
-// Sessions
-// ---------------------------------------------------------------------------
 
 export function useSessions() {
   return useQuery({

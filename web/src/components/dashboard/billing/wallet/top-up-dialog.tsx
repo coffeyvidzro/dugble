@@ -1,5 +1,3 @@
-// src/components/dashboard/billing/wallet/top-up-dialog.tsx
-
 "use client";
 
 import { AlertCircle, ExternalLink, Loader2 } from "lucide-react";

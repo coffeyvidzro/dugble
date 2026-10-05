@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/sms-dashboard/sms-overview.tsx
-
 "use client";
 
 import { useState } from "react";

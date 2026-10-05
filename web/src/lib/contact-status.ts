@@ -1,5 +1,3 @@
-// src/lib/contact-status.ts
-
 import {
   SMS_CONSENT_STATUS_LABEL,
   type SmsConsentStatus,

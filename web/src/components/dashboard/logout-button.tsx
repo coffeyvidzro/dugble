@@ -1,4 +1,3 @@
-// src/components/dashboard/logout-button.tsx
 "use client";
 
 import { LogOut } from "lucide-react";

@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/email/broadcasts/new/page.tsx
-
 import { Suspense } from "react";
 
 import { ComposeBroadcastPage } from "@/components/dashboard/email/broadcasts/compose-broadcast-page";

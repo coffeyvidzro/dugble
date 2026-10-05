@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/editor/editor-toolbar.tsx
-
 import type { TemplateApiCategory } from "@/types/template-api";
 import { CategorySelect } from "./category-select";
 import { DeviceToggle } from "./device-toggle";

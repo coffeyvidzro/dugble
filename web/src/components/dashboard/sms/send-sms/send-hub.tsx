@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/send-sms/send-hub.tsx
-
 "use client";
 
 import { RequireActiveTeam } from "@/components/dashboard/shared/require-active-team";

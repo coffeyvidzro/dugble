@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/send-sms/send-sidebar.tsx
-
 import {
   Card,
   CardDescription,

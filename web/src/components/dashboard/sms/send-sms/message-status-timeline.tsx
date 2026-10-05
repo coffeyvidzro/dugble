@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/send-sms/message-status-timeline.tsx
-
 import {
   AlertTriangle,
   Ban,
@@ -38,8 +36,6 @@ const ERROR_STATUSES: SmsApiStatus[] = [
   "expired",
 ];
 
-// Event `type` values may arrive either bare ("delivered") or prefixed the
-// way webhook subscriptions name them ("sms.delivered") — normalize both.
 function normalizeEventStatus(rawType: string): SmsApiStatus {
   const withoutPrefix = rawType.startsWith("sms.") ? rawType.slice(4) : rawType;
   const parsed = smsStatusSchema.safeParse(withoutPrefix);

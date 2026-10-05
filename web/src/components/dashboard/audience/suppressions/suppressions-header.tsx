@@ -1,5 +1,3 @@
-// src/components/dashboard/audience/suppressions/suppressions-header.tsx
-
 import { PortalHeroHeader } from "../../portal-hero-header";
 
 export function SuppressionsHeader() {

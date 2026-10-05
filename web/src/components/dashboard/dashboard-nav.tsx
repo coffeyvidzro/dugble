@@ -1,5 +1,3 @@
-// src/components/dashboard/dashboard-nav.tsx
-
 import type { LucideIcon } from "lucide-react";
 import {
   Ban,

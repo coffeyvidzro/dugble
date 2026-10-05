@@ -1,5 +1,3 @@
-// src/components/dashboard/email/metrics/metrics-breakdown-legend.tsx
-
 export type BreakdownItem = {
   label: string;
   count: number;

@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/template-actions-menu.tsx
-
 "use client";
 
 import {
@@ -27,7 +25,6 @@ import {
 import type { TemplateListItem } from "@/types/template-api";
 import { DeleteTemplateDialog } from "./editor/delete-template-dialog";
 
-// Rendered once per row — load the sheet (and its preview query) only when opened.
 const TemplatePreviewSheet = dynamic(
   () =>
     import("./editor/template-preview-sheet").then(

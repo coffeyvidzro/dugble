@@ -1,5 +1,3 @@
-// src/components/dashboard/email/emails-page/refresh-button.tsx
-
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

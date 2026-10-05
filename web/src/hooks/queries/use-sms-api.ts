@@ -1,4 +1,3 @@
-// src/hooks/queries/use-sms-api.ts
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -63,11 +62,6 @@ export function useSmsMessage(messageId: string) {
   });
 }
 
-/**
- * `poll` is threaded in by the caller (message-detail.tsx) based on whether
- * the parent message is still in a non-terminal state — the events list has
- * no status field of its own to make that call independently.
- */
 export function useSmsEvents(
   messageId: string,
   options: { poll?: boolean } = {},
@@ -97,12 +91,6 @@ export function useSmsAnalytics() {
   });
 }
 
-/**
- * POST /sms requires a unique Idempotency-Key header. We mint one per
- * mutation call so retries (e.g. React Query's own retry logic, or a user
- * double-clicking before the button disables) don't fan out into duplicate
- * sends.
- */
 export function useSendSms() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -122,7 +110,6 @@ export function useSendSms() {
   });
 }
 
-/** Same idempotency-key reasoning as useSendSms, applied to the batch endpoint. */
 export function useSendSmsBatch() {
   const queryClient = useQueryClient();
   return useMutation({

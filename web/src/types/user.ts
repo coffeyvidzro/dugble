@@ -1,5 +1,3 @@
-// src/types/user.ts
-
 import { z } from "zod";
 import { passwordSchema } from "@/lib/validation/password";
 

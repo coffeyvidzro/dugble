@@ -1,5 +1,3 @@
-// src/config/query-client.ts
-
 import {
   isServer,
   MutationCache,
@@ -24,11 +22,6 @@ function retryDelay(attempt: number): number {
   return Math.min(1000 * 2 ** attempt, 30_000);
 }
 
-/**
- * A 401 inside the dashboard means the session expired or was revoked — send
- * the user to sign in. On public/auth pages (login, MFA, reset links) a 401 is
- * an expected, inline-handled answer, so it must not trigger navigation.
- */
 function handleAuthExpiry(error: unknown): void {
   if (
     typeof window !== "undefined" &&
@@ -55,7 +48,7 @@ function makeQueryClient(): QueryClient {
         retry: false,
       },
     },
-    // A 401 from any query *or* mutation means the session is gone.
+
     queryCache: new QueryCache({ onError: handleAuthExpiry }),
     mutationCache: new MutationCache({ onError: handleAuthExpiry }),
   });

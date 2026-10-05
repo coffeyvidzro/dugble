@@ -1,5 +1,3 @@
-// src/components/dashboard/team/team-tokens-client.tsx
-
 "use client";
 
 import { Loader2, ShieldAlert } from "lucide-react";
@@ -32,7 +30,6 @@ export function TeamTokensClient() {
     isLoading: isPermissionsLoading,
   } = useTeamPermissions();
 
-  // Team tokens are owner/admin-only on the backend (members get a 403).
   const canViewTokens = isOwner || isAdmin;
 
   const { data: tokens, isPending, isError, error } = useTeamTokens();
@@ -50,7 +47,6 @@ export function TeamTokensClient() {
     );
   }
 
-  // Safely catch users who lack token reading capabilities
   if (!canViewTokens) {
     return (
       <div className="flex min-h-80 flex-col items-center justify-center gap-3 p-8 text-center">

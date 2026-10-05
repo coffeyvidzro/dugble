@@ -1,5 +1,3 @@
-// src/components/dashboard/billing/wallet/wallet-balance-card.tsx
-
 import { Loader2, Wallet as WalletIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import type { Wallet } from "@/types/billing-api";

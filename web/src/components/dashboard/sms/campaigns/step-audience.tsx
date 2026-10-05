@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/campaigns/step-audience.tsx
-
 import { Check, Loader2, Users } from "lucide-react";
 import {
   useSegmentAudienceSize,
@@ -66,8 +64,6 @@ function SegmentOption({
   isSelected: boolean;
   onSelect: () => void;
 }) {
-  // Only fetch the audience size for the currently selected segment,
-  // rather than firing one request per row on every render.
   const { data: audienceSize, isPending } = useSegmentAudienceSize(
     isSelected ? segment.id : null,
   );

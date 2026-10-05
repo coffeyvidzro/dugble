@@ -1,5 +1,3 @@
-// src/components/dashboard/webhooks/roll-secret-dialog.tsx
-
 "use client";
 
 import { AlertTriangle, RefreshCw, ShieldAlert } from "lucide-react";

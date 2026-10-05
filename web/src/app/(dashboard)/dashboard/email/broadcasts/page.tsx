@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/email/broadcasts/page.tsx
-
 import { BroadcastsListView } from "@/components/dashboard/email/broadcasts/broadcasts-list-view";
 import { constructMetadata } from "@/utils/metadata";
 

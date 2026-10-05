@@ -1,5 +1,3 @@
-// src/components/dashboard/security/describe-user-agent.ts
-
 const BROWSERS: ReadonlyArray<[RegExp, string]> = [
   [/Edg\//, "Edge"],
   [/OPR\/|Opera/, "Opera"],
@@ -16,7 +14,6 @@ const PLATFORMS: ReadonlyArray<[RegExp, string]> = [
   [/Linux/, "Linux"],
 ];
 
-/** Coarse, human-readable label ("Chrome on macOS") for a session's user agent. */
 export function describeUserAgent(
   userAgent: string | null | undefined,
 ): string {

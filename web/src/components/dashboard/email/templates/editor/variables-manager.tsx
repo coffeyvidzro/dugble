@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/editor/variables-manager.tsx
-
 "use client";
 
 import { Braces, Plus, Trash2 } from "lucide-react";

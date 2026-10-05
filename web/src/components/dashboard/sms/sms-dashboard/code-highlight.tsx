@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/sms-dashboard/code-highlight.tsx
-
 import type { ReactNode } from "react";
 
 export type CodeLanguage = "curl" | "node" | "python" | "php" | "ruby" | "go";
@@ -226,7 +224,6 @@ function highlightLine(
   return nodes;
 }
 
-/** Splits `code` into lines and tokenizes each one for syntax-highlighted rendering. */
 export function highlightCode(code: string, lang: CodeLanguage): ReactNode[][] {
   return code
     .split("\n")

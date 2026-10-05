@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/schedule-card.tsx
-
 import { Calendar, Send } from "lucide-react";
 
 import {

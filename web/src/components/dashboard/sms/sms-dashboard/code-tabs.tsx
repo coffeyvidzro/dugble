@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/sms-dashboard/code-tabs.tsx
-
 "use client";
 
 import { useState } from "react";

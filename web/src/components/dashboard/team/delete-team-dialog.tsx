@@ -1,5 +1,3 @@
-// src/components/dashboard/team/delete-team-dialog.tsx
-
 "use client";
 
 import { Loader2, Trash2 } from "lucide-react";

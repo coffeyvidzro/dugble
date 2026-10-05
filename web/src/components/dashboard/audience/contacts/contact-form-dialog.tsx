@@ -1,5 +1,3 @@
-// src/components/dashboard/audience/contacts/contact-form-dialog.tsx
-
 "use client";
 
 import { Loader2 } from "lucide-react";
@@ -93,10 +91,6 @@ export function ContactFormDialog({
       return;
     }
 
-    // The API requires sms_consent_source whenever an explicit consent
-    // status is set — "unknown" is the only status that can go without
-    // one, so we only attach a source once the operator has made a
-    // deliberate choice here.
     const payload = {
       email,
       first_name: form.first_name.trim() || undefined,
@@ -200,9 +194,6 @@ export function ContactFormDialog({
 
           <div className="space-y-2">
             <Label htmlFor="contact-sms-consent">SMS consent</Label>
-            {/* Native select to avoid assuming a shadcn Select
-                            component exists in this project — swap for yours
-                            if you have one. */}
             <select
               id="contact-sms-consent"
               value={form.sms_consent_status}

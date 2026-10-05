@@ -1,4 +1,3 @@
-// src/hooks/queries/use-billing-api.ts
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/history/history-header.tsx
-
 "use client";
 
 import { History } from "lucide-react";

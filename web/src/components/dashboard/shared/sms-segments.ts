@@ -1,5 +1,3 @@
-// src/components/dashboard/shared/sms-segments.ts
-
 export type SmsEncoding = "gsm7" | "unicode";
 
 const GSM_7_BASIC =

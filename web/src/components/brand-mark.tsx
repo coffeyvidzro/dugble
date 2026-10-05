@@ -1,5 +1,3 @@
-// src/components/brand-mark.tsx
-
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
@@ -8,10 +6,6 @@ const SIZES = {
   md: { px: 32, className: "size-8 rounded-xl" },
 } as const;
 
-/**
- * Dugble mark with light/dark variants swapped by CSS (no hydration flash).
- * Decorative: the surrounding link or tooltip carries the accessible name.
- */
 export function BrandMark({ size = "md" }: { size?: keyof typeof SIZES }) {
   const { px, className } = SIZES[size];
   return (

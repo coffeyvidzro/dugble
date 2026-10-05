@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/template-category-filter-select.tsx
-
 "use client";
 
 import { Check, ChevronDown, Layers } from "lucide-react";

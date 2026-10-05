@@ -1,5 +1,3 @@
-// src/components/dashboard/email/email-dashboard/email-header.tsx
-
 import { Mail } from "lucide-react";
 import { PortalHeroHeader } from "../../portal-hero-header";
 

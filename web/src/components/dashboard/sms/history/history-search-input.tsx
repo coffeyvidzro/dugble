@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/history/history-search-input.tsx
-
 "use client";
 
 import { Search, X } from "lucide-react";

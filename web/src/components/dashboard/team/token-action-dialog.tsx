@@ -1,5 +1,3 @@
-// src/components/dashboard/team/token-action-dialog.tsx
-
 "use client";
 
 import { ShieldAlert } from "lucide-react";

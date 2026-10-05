@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/sender-ids/sender-id-detail-sheet.tsx
-
 import { AlertTriangle, Loader2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import {

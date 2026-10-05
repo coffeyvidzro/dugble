@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/send-sms/recent-sends-list.tsx
-
 "use client";
 
 import { ArrowRight, Loader2 } from "lucide-react";

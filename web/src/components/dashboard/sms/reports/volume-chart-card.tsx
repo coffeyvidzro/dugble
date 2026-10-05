@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/reports/volume-chart-card.tsx
-
 import {
   Card,
   CardDescription,

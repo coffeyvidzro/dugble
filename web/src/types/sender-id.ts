@@ -1,5 +1,3 @@
-// src/types/sender-id.ts
-
 import { z } from "zod";
 
 export const senderIdStatusSchema = z.enum([
@@ -38,9 +36,6 @@ export type SenderId = z.infer<typeof senderIdSchema>;
 
 export const senderIdListSchema = z.array(senderIdSchema);
 
-// NOTE: `provider` is intentionally NOT included here. It is accepted by the
-// API but must not be sent from this dashboard — we don't expose provider
-// selection to customers.
 export const createSenderIdInputSchema = z.object({
   name: z.string().trim().min(1, "Sender ID is required."),
   country_code: z.string().trim().length(2, "Select a country.").toUpperCase(),

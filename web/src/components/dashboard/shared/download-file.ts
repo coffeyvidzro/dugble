@@ -1,5 +1,3 @@
-// src/components/dashboard/shared/download-file.ts
-
 export function downloadTextFile(
   content: string,
   filename: string,

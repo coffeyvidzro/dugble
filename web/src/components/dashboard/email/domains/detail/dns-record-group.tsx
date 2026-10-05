@@ -1,5 +1,3 @@
-// src/components/dashboard/email/domains/detail/dns-record-group.tsx
-
 import type { VerificationRecord } from "@/types/sender-domain-api";
 import { DnsRecordsTable } from "./dns-records-table";
 

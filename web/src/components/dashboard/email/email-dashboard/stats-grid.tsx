@@ -1,5 +1,3 @@
-// src/components/dashboard/email/email-dashboard/stats-grid.tsx
-
 import { CheckCircle2, MailOpen, MousePointerClick } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { type MetricTone, SparklineChart } from "../../shared/sparkline-chart";

@@ -1,5 +1,3 @@
-// src/types/campaign-api.ts
-
 import { z } from "zod";
 
 export const campaignSchema = z.object({
@@ -25,15 +23,12 @@ export const campaignSchema = z.object({
   preflight_allowance_segments: z.number(),
   actual_segments: z.number(),
   actual_charge_units: z.number(),
-  // The documented response always includes `currency`, but real
-  // responses omit it entirely until the campaign has an actual charge
-  // (e.g. still `draft`). Treat as optional rather than required.
+
   currency: z.string().optional(),
   preflight_balance_units: z.number().optional(),
   preflight_at: z.string().nullish(),
   rate_limit_per_second: z.number(),
-  // Same story as `currency` — omitted on fresh drafts rather than sent
-  // as 0/null, despite the docs implying it's always present.
+
   daily_send_limit: z.number().optional(),
   revision: z.number(),
   created_at: z.string(),
@@ -53,8 +48,6 @@ export const createCampaignInputSchema = z.object({
 });
 export type CreateCampaignInput = z.infer<typeof createCampaignInputSchema>;
 
-// Not yet surfaced in the UI — kept ready for an "edit draft" feature,
-// since PATCH /campaigns/:campaign is a documented endpoint.
 export const updateCampaignInputSchema = z.object({
   revision: z.number(),
   name: z.string().trim().min(1).optional(),

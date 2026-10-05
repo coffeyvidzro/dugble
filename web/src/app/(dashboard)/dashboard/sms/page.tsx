@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/sms/page.tsx
-
 import { SmsOverview } from "@/components/dashboard/sms/sms-dashboard/sms-overview";
 import { PrefetchBoundary } from "@/components/providers/prefetch-boundary";
 import { constructMetadata } from "@/utils/metadata";

@@ -1,5 +1,3 @@
-// src/lib/webhook-status.ts
-
 import { formatDate } from "@/lib/format-date";
 import type { WebhookEndpoint } from "@/types/webhook";
 

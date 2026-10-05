@@ -1,5 +1,3 @@
-// src/components/dashboard/email/domains/detail/configuration-section.tsx
-
 "use client";
 
 import {

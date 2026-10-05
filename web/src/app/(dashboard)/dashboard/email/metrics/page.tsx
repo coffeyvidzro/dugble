@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/email/metrics/page.tsx
-
 import { MetricsOverview } from "@/components/dashboard/email/metrics/metrics-overview";
 import { PrefetchBoundary } from "@/components/providers/prefetch-boundary";
 import { constructMetadata } from "@/utils/metadata";

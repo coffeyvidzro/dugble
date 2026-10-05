@@ -1,7 +1,3 @@
-// src/components/dashboard/sms/send-sms/types.ts
-
-// Recipients
-
 export type RecipientMode = "single" | "multiple";
 
 export function parseRecipients(raw: string, mode: RecipientMode): string[] {

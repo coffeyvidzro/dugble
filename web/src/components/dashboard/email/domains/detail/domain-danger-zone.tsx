@@ -1,5 +1,3 @@
-// src/components/dashboard/email/domains/detail/domain-danger-zone.tsx
-
 import {
   Card,
   CardDescription,

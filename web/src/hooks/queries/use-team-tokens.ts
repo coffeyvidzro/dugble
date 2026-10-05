@@ -1,5 +1,3 @@
-// src/hooks/queries/use-team-tokens.ts
-
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -24,8 +22,6 @@ export function useTeamTokens() {
   const activeTeamId = useActiveTeamId();
   const { isLoading, isOwner, isAdmin } = useTeamPermissions();
 
-  // Team tokens are owner/admin-only on the backend — members get a 403
-  // ("team permission is required"), so don't fire the request for them.
   const canViewTokens = isOwner || isAdmin;
 
   return useQuery({
@@ -46,8 +42,6 @@ export function useCreateTeamToken() {
   const { isOwner } = useTeamPermissions();
 
   return useMutation({
-    // The response carries the one-time token secret. Drop the finished
-    // mutation (and the secret) as soon as the dialog stops observing it.
     gcTime: 0,
     mutationFn: async (input: CreateTeamTokenInput) => {
       assertPermission(isOwner, "Only team owners can create team tokens.");

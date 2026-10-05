@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/campaigns/step-details.tsx
-
 import { Loader2 } from "lucide-react";
 import { useMemo } from "react";
 import { Input } from "@/components/ui/input";

@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/audience-card.tsx
-
 import { Users } from "lucide-react";
 
 import {

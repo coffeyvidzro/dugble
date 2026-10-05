@@ -1,5 +1,3 @@
-// src/components/json-ld.tsx
-
 import type { Graph, Thing, WithContext } from "schema-dts";
 import { serializeSchema } from "@/utils/metagraph";
 

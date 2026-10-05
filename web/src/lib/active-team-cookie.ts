@@ -1,10 +1,3 @@
-// src/lib/active-team-cookie.ts
-//
-// Isomorphic helpers for the active-team cookie. The team ID is not a secret
-// (the API authorises every request), but persisting it in a cookie rather
-// than localStorage lets the server render and prefetch for the right team,
-// eliminating the no-team → team flash and hydration mismatches.
-
 export const ACTIVE_TEAM_COOKIE = "dugble_active_team";
 
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
@@ -12,12 +5,10 @@ const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-/** Only well-formed UUIDs are accepted — the value is echoed into a request header. */
 export function parseTeamId(value: string | null | undefined): string | null {
   return value && UUID.test(value) ? value.toLowerCase() : null;
 }
 
-/** Browser-only: persist (or clear, with `null`) the active team. */
 export function writeActiveTeamCookie(teamId: string | null): void {
   if (typeof document === "undefined") return;
   const secure = window.location.protocol === "https:" ? "; Secure" : "";

@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/settings/security/page.tsx
-
 import { SecuritySettings } from "@/components/dashboard/security/security-settings";
 import { constructMetadata } from "@/utils/metadata";
 

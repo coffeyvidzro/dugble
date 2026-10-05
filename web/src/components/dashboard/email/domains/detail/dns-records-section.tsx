@@ -1,5 +1,3 @@
-// src/components/dashboard/email/domains/detail/dns-records-section.tsx
-
 import {
   Card,
   CardDescription,

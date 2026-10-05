@@ -1,5 +1,3 @@
-// src/components/dashboard/profile/user-teams-panel.tsx
-
 "use client";
 
 import {

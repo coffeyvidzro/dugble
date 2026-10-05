@@ -1,5 +1,3 @@
-// src/components/dashboard/email/emails-page/emails-toolbar.tsx
-
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { EmailFilterSelect } from "./email-filter-select";

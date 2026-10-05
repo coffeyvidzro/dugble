@@ -1,5 +1,3 @@
-// src/lib/api/query-keys.ts
-
 import type {
   SubscriptionChargesParams,
   WalletLedgerParams,
@@ -11,22 +9,10 @@ import type { SmsListParams } from "@/types/sms-api";
 import type { TeamsQueryParams } from "@/types/team";
 import type { TemplateListParams } from "@/types/template-api";
 
-/** Team a cached resource belongs to (`null` = no team selected yet). */
 export type TeamScope = string | null;
 
 const ROOT = ["dugble"] as const;
 
-/**
- * Query-key factory. Conventions:
- *
- * - Every key starts with `ROOT`, so `queryClient.clear()`/`removeQueries({ queryKey: ROOT })`
- *   reaches all Dugble data.
- * - Anything the API scopes by `X-Team-ID` and that is *not* addressed by a
- *   globally unique ID (lists, analytics, billing) carries the team in its key,
- *   so switching teams can never surface another team's cached data.
- * - `lists()` without a team is a prefix matching every team's lists — use it
- *   for invalidation after mutations.
- */
 export const queryKeys = {
   all: ROOT,
 
@@ -204,7 +190,6 @@ export const queryKeys = {
 
   billingApi: {
     all: () => [...ROOT, "billing"] as const,
-    /** Every billing key for one team; omit the team to match all teams. */
     team: (teamId?: TeamScope) =>
       teamId === undefined
         ? queryKeys.billingApi.all()

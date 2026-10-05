@@ -1,5 +1,3 @@
-// src/app/(marketing)/layout.tsx
-
 import type { ReactNode } from "react";
 import { Footer } from "@/components/footer";
 import { JsonLd } from "@/components/json-ld";
@@ -10,10 +8,6 @@ import { getDugbleSchemaGraph } from "@/utils/metagraph";
 
 export const metadata = constructMetadata();
 
-/**
- * Root layout for the public site. Reads no request data, so pages remain
- * statically rendered; they receive the static CSP from next.config.ts.
- */
 export default function MarketingLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {

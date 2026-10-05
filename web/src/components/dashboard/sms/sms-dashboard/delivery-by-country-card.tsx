@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/sms-dashboard/delivery-by-country-card.tsx
-
 import {
   Card,
   CardDescription,

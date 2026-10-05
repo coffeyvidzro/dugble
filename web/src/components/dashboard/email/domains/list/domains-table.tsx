@@ -1,5 +1,3 @@
-// src/components/dashboard/email/domains/list/domains-table.tsx
-
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import {

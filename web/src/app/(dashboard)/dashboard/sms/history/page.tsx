@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/sms/history/page.tsx
-
 import { HistoryHeader } from "@/components/dashboard/sms/history/history-header";
 import { HistoryOverview } from "@/components/dashboard/sms/history/history-overview";
 import { constructMetadata } from "@/utils/metadata";

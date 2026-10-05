@@ -1,5 +1,3 @@
-// src/components/dashboard/webhooks/webhooks-card.tsx
-
 import { Radio } from "lucide-react";
 import {
   Card,

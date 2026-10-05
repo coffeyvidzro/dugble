@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/templates-stats.tsx
-
 import { CheckCircle2, FileEdit, LayoutTemplate } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import type { TemplateListItem } from "@/types/template-api";

@@ -1,5 +1,3 @@
-// src/components/dashboard/email/domains/shared/record-status-badge.tsx
-
 import { Check, Clock, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { VerificationRecordStatus } from "@/types/sender-domain-api";

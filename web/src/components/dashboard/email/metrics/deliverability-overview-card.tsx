@@ -1,5 +1,3 @@
-// src/components/dashboard/email/metrics/deliverability-overview-card.tsx
-
 import {
   Card,
   CardDescription,

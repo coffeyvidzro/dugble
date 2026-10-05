@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/shared/sms-status-badge.tsx
-
 import {
   AlertTriangle,
   Ban,

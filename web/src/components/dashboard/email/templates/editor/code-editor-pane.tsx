@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/editor/code-editor-pane.tsx
-
 "use client";
 
 import { forwardRef } from "react";

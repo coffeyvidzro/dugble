@@ -1,5 +1,3 @@
-// src/components/dashboard/profile/delete-account-card.tsx
-
 import { AlertTriangle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { DeleteAccountPanel } from "./delete-account-panel";

@@ -1,5 +1,3 @@
-// src/app/(auth)/login/page.tsx
-
 import { LoginForm } from "@/components/auth/login-form";
 import { safeRedirectPath } from "@/lib/security/safe-redirect";
 import { constructMetadata } from "@/utils/metadata";
@@ -18,7 +16,7 @@ type LoginPageProps = {
 
 export default async function Page({ searchParams }: LoginPageProps) {
   const { next } = await searchParams;
-  // `next` is attacker-controllable; only allow-listed in-app paths survive.
+
   const redirectTo = safeRedirectPath(Array.isArray(next) ? next[0] : next);
   return <LoginForm redirectTo={redirectTo} />;
 }

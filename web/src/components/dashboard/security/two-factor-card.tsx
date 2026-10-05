@@ -1,5 +1,3 @@
-// src/components/dashboard/security/two-factor-card.tsx
-
 "use client";
 
 import { Loader2, ShieldCheck } from "lucide-react";
@@ -16,7 +14,6 @@ import {
 import { cn } from "@/lib/utils";
 import { DisableMfaDialog } from "./disable-mfa-dialog";
 
-// The QR-code library is only needed during enrolment — load it on demand.
 const EnrollTotpDialog = dynamic(
   () => import("./enroll-totp-dialog").then((mod) => mod.EnrollTotpDialog),
   { ssr: false },
@@ -41,7 +38,6 @@ export function TwoFactorCard() {
   function handleEnrollOpenChange(open: boolean) {
     setEnrollOpen(open);
     if (!open) {
-      // Discard the secret and recovery codes from memory.
       enrollment.reset();
       confirmation.reset();
     }

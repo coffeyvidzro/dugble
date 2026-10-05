@@ -1,5 +1,3 @@
-// src/components/dashboard/email/emails-page/detail/email-content-card.tsx
-
 import {
   Card,
   CardDescription,

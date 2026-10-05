@@ -104,9 +104,7 @@ function Packet({ run, pathD }: { run: boolean; pathD: string }) {
         animation: `a2p-travel ${CYCLE_MS - 300}ms linear forwards`,
       }}
     >
-      {/* Inner signal dot */}
       <circle r="1.5" className="fill-signal" />
-      {/* Soft outer glow */}
       <circle r="4" fill="rgba(62,217,142,0.4)" />
     </g>
   );

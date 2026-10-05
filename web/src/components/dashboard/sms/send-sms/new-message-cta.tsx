@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/send-sms/new-message-cta.tsx
-
 import { ArrowRight, Send } from "lucide-react";
 import Link from "next/link";
 import {

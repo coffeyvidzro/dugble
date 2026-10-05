@@ -1,5 +1,3 @@
-// src/components/dashboard/dashboard-overview.tsx
-
 import { requireSession } from "@/lib/session";
 import { DashboardOverviewClient } from "./dashboard-overview-client";
 

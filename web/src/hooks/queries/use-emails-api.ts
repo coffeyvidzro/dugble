@@ -1,4 +1,3 @@
-// src/hooks/queries/use-emails-api.ts
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -76,7 +75,6 @@ export function useEmailAnalytics() {
   });
 }
 
-/** POST /emails requires a unique Idempotency-Key header — minted per call. */
 export function useSendEmail() {
   const queryClient = useQueryClient();
   return useMutation({

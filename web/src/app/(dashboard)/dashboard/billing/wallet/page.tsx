@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/billing/wallet/page.tsx
-
 import { WalletSettings } from "@/components/dashboard/billing/wallet/wallet-settings";
 import { PrefetchBoundary } from "@/components/providers/prefetch-boundary";
 import { constructMetadata } from "@/utils/metadata";

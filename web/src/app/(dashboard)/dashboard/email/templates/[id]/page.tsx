@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/email/templates/[id]/page.tsx
-
 import { notFound } from "next/navigation";
 import { TemplateEditorLoader } from "@/components/dashboard/email/templates/editor/template-editor-loader";
 import { isTemplateIdentifier } from "@/lib/security/route-params";
@@ -18,7 +16,7 @@ export default async function Page({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  // The ID becomes part of an API path — reject anything malformed up front.
+
   if (!isTemplateIdentifier(id)) notFound();
 
   return (

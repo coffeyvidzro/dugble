@@ -1,5 +1,3 @@
-// src/lib/session.ts
-
 import "server-only";
 
 import { cookies } from "next/headers";
@@ -54,7 +52,6 @@ export const getSession = cache(async (): Promise<Session | null> => {
   return resolveSessionResponse(response);
 });
 
-/** Returns the current session or redirects unauthenticated users to login. */
 export async function requireSession(): Promise<Session> {
   const session = await getSession();
   if (!session) {

@@ -1,4 +1,3 @@
-// src/components/dashboard/team/edit-token-dialog.tsx
 "use client";
 
 import { useState } from "react";
@@ -43,7 +42,6 @@ export function EditTokenDialog({ token, onOpenChange }: EditTokenDialogProps) {
 
   const updateToken = useUpdateTeamToken();
 
-  // Load the selected token into the form — adjusted during render, not in an effect.
   const [prevToken, setPrevToken] = useState(token);
   if (token !== prevToken) {
     setPrevToken(token);

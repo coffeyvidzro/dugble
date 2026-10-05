@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/send-sms/send-header.tsx
-
 import { Send } from "lucide-react";
 import Link from "next/link";
 import { PortalHeroHeader } from "../../portal-hero-header";

@@ -1,5 +1,3 @@
-// src/components/dashboard/email/domains/detail/dns-records-table.tsx
-
 import { CopyButton } from "@/components/dashboard/shared/copy-button";
 import {
   Table,

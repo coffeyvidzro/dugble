@@ -1,5 +1,3 @@
-// src/components/dashboard/security/disable-mfa-dialog.tsx
-
 "use client";
 
 import { Loader2 } from "lucide-react";

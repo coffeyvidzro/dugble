@@ -1,5 +1,3 @@
-// src/components/dashboard/quick-start-card.tsx
-
 "use client";
 
 import { ArrowRight, CheckCircle2 } from "lucide-react";
@@ -19,7 +17,6 @@ import { useWebhookEndpoints } from "@/hooks/queries/use-webhooks";
 import { cn } from "@/lib/utils";
 import { useActiveTeamId } from "@/store/active-team-store";
 
-/** Smallest page that still answers "has this team sent anything yet?". */
 const PROBE = { limit: 1 } as const;
 
 export function QuickStartCard() {

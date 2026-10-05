@@ -1,5 +1,3 @@
-// src/components/dashboard/audience/segments/segments-header.tsx
-
 import { PortalHeroHeader } from "../../portal-hero-header";
 
 export function SegmentsHeader() {

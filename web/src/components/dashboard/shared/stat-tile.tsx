@@ -1,5 +1,3 @@
-// src/components/dashboard/shared/stat-tile.tsx
-
 import type { LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";

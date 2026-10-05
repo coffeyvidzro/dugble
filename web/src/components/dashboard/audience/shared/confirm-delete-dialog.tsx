@@ -1,5 +1,3 @@
-// src/components/dashboard/audience/shared/confirm-delete-dialog.tsx
-
 import { Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 import {
@@ -34,7 +32,6 @@ export function ConfirmDeleteDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        // Ignore attempts to close the dialog mid-mutation.
         if (!next && isPending) return;
         onOpenChange(next);
       }}

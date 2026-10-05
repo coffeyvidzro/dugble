@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/editor/send-test-dialog.tsx
-
 "use client";
 
 import { Check, Loader2, Send } from "lucide-react";

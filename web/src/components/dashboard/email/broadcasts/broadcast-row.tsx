@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/broadcast-row.tsx
-
 import { Copy, Eye, MoreVertical, Pencil, Trash2, XCircle } from "lucide-react";
 
 import {

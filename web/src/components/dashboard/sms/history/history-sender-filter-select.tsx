@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/history/history-sender-filter-select.tsx
-
 "use client";
 
 import { Check, ChevronDown, Phone } from "lucide-react";

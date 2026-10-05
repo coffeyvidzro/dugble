@@ -1,5 +1,3 @@
-// src/components/dashboard/email/metrics/event-series-legend.tsx
-
 import { cn } from "@/lib/utils";
 import {
   EMAIL_SERIES_COLOR,

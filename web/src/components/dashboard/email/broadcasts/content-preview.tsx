@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/content-preview.tsx
-
 import type { ReactNode } from "react";
 import { isSafeLinkUrl } from "@/lib/security/safe-url";
 
@@ -9,8 +7,6 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
   const nodes: ReactNode[] = [];
   let lastIndex = 0;
   let index = 0;
-
-  // matchAll iterates a copy of the regex: no shared lastIndex state between calls.
 
   for (const match of text.matchAll(INLINE_PATTERN)) {
     if (match.index > lastIndex) {

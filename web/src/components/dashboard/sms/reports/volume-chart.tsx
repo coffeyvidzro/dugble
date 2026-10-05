@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/reports/volume-chart.tsx
-
 import type { DailyVolumePoint } from "./types";
 
 const WIDTH = 720;

@@ -1,5 +1,3 @@
-// src/components/dashboard/audience/contacts/add-contact-button.tsx
-
 "use client";
 
 import { Plus } from "lucide-react";

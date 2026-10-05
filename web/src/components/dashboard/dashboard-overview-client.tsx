@@ -1,5 +1,3 @@
-// src/components/dashboard/dashboard-overview-client.tsx
-
 "use client";
 
 import { Gauge, KeyRound, MessagesSquare, XCircle } from "lucide-react";

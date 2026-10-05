@@ -1,5 +1,3 @@
-// src/components/dashboard/webhooks/webhook-row.tsx
-
 "use client";
 
 import {

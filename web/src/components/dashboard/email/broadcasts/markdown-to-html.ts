@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/markdown-to-html.ts
-
 import { isSafeLinkUrl } from "@/lib/security/safe-url";
 
 function escapeHtml(text: string): string {
@@ -83,7 +81,6 @@ export function markdownToHtml(content: string): string {
   return blocks.join("\n");
 }
 
-/** Naive Markdown-to-plaintext fallback, used for the optional `text` field. */
 export function markdownToPlainText(content: string): string {
   return content
     .split("\n")

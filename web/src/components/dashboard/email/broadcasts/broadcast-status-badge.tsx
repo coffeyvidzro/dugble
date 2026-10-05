@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/broadcast-status-badge.tsx
-
 import {
   AlertTriangle,
   Check,

@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/email/error.tsx
-
 "use client";
 
 import { SegmentError } from "@/components/dashboard/shared/segment-error";

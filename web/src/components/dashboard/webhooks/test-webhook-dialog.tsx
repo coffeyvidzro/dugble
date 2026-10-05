@@ -1,5 +1,3 @@
-// src/components/dashboard/webhooks/test-webhook-dialog.tsx
-
 "use client";
 
 import { AlertTriangle, CheckCircle2, Send } from "lucide-react";
@@ -20,10 +18,6 @@ type TestResult = Pick<
   "data" | "error" | "isPending"
 >;
 
-/**
- * Presentational: the parent fires the test from the click handler that opens
- * this dialog (an event, not an effect) and passes the mutation state down.
- */
 export function TestWebhookDialog({
   webhook,
   result,

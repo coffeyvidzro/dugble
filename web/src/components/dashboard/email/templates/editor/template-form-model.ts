@@ -1,8 +1,3 @@
-// src/components/dashboard/email/templates/editor/template-form-model.ts
-//
-// Pure mapping between the API's template resource and the editor's form
-// state. No React — unit-testable in isolation.
-
 import type { TemplateResource } from "@/types/template-api";
 import { defaultHtmlForCategory } from "../template-content";
 import type { TemplateFormState } from "./editor-types";
@@ -40,13 +35,6 @@ export function toFormState(template?: TemplateResource): TemplateFormState {
   };
 }
 
-/**
- * Local substitution used only to render the live preview pane while
- * editing — the docs show both {{{KEY}}} (broadcast-style) and {{key}}
- * (template creation example) placeholder syntax, so this tolerates both.
- * The actual send-time rendering is done server-side; this is purely for
- * WYSIWYG feedback before the template is saved.
- */
 export function interpolatePreview(
   html: string,
   variables: TemplateFormState["variables"],

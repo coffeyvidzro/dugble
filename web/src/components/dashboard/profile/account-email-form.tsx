@@ -1,5 +1,3 @@
-// src/components/dashboard/profile/account-email-form.tsx
-
 "use client";
 
 import { CheckCircle2, Loader2, RefreshCw, ShieldAlert, X } from "lucide-react";

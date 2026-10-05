@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/editor/template-editor.tsx
-
 "use client";
 
 import { useRouter } from "next/navigation";

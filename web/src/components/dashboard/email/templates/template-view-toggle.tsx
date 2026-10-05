@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/template-view-toggle.tsx
-
 "use client";
 
 import { LayoutGrid, List } from "lucide-react";

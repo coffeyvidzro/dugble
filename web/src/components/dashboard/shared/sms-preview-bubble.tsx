@@ -1,5 +1,3 @@
-// src/components/dashboard/shared/sms-preview-bubble.tsx
-
 export function SmsPreviewBubble({
   senderLabel,
   message,

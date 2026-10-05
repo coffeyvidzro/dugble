@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/template-content.ts
-
 import type { TemplateCategory } from "./types";
 
 function scaffold(heading: string, bodyHtml: string): string {

@@ -1,5 +1,3 @@
-// src/types/team-token.ts
-
 import { z } from "zod";
 
 export const teamTokenSchema = z.object({

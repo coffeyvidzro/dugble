@@ -1,5 +1,3 @@
-// src/app/(auth)/reset-password/page.tsx
-
 import { connection } from "next/server";
 import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 import { constructMetadata } from "@/utils/metadata";

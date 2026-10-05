@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/template-list.tsx
-
 import { Card } from "@/components/ui/card";
 import {
   Table,

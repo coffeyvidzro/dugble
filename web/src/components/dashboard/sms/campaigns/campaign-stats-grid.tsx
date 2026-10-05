@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/campaigns/campaign-stats-grid.tsx
-
 import { Check, Clock, Send, Users, XCircle } from "lucide-react";
 import type { CampaignAnalytics } from "@/types/campaign-api";
 import { StatTile } from "../../shared/stat-tile";

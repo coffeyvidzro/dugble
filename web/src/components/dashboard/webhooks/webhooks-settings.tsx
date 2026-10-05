@@ -1,5 +1,3 @@
-// src/components/dashboard/webhooks/webhooks-settings.tsx
-
 "use client";
 
 import { useWebhookEndpoints } from "@/hooks/queries/use-webhooks";

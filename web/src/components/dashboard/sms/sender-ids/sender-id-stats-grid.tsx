@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/sender-ids/sender-id-stats-grid.tsx
-
 "use client";
 
 import { CheckCircle2, Clock, Layers, Loader2, XCircle } from "lucide-react";

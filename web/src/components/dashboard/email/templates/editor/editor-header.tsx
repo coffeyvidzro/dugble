@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/editor/editor-header.tsx
-
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import type { TemplateApiStatus } from "@/types/template-api";

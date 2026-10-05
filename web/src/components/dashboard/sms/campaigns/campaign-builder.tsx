@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/campaigns/campaign-builder.tsx
-
 "use client";
 
 import {
@@ -87,9 +85,6 @@ export function CampaignBuilder() {
               {
                 onSuccess: goToCampaign,
                 onError: () => {
-                  // The draft still exists — land on its
-                  // page so the person can retry sending
-                  // from there instead of losing the work.
                   goToCampaign();
                 },
               },

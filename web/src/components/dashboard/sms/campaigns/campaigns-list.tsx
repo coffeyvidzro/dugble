@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/campaigns/campaigns-list.tsx
-
 "use client";
 
 import { Loader2, Plus } from "lucide-react";
@@ -32,7 +30,6 @@ const FILTERS: CampaignFilter[] = [
 ];
 
 function CampaignsListContent() {
-  // Filter lives in the URL (?status=…) so the view is shareable and survives reloads.
   const [filter, setFilter] = useQueryState(
     "status",
     parseAsStringLiteral(FILTERS).withDefault("all").withOptions({

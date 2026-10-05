@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/billing/plan/page.tsx
-
 import { PlanOverview } from "@/components/dashboard/billing/plan/plan-overview";
 import { PrefetchBoundary } from "@/components/providers/prefetch-boundary";
 import { constructMetadata } from "@/utils/metadata";

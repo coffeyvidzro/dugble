@@ -1,25 +1,15 @@
-// src/types/security.ts
-//
-// Contracts for `/auth/mfa*` and `/sessions*` (see authentication.md).
-
 import { z } from "zod";
 
-/** Six-digit TOTP code as typed by the user (spaces stripped). */
 export const totpCodeSchema = z
   .string()
   .transform((value) => value.replace(/\s+/g, ""))
   .pipe(z.string().regex(/^\d{6}$/, "Enter the 6-digit code."));
 
-/** Recovery codes are opaque; only trim and require a sensible length. */
 export const recoveryCodeSchema = z
   .string()
   .trim()
   .min(6, "Enter a recovery code.")
   .max(64, "That recovery code is too long.");
-
-// ---------------------------------------------------------------------------
-// MFA
-// ---------------------------------------------------------------------------
 
 export const mfaStatusSchema = z.object({ enabled: z.boolean() });
 export type MfaStatus = z.infer<typeof mfaStatusSchema>;
@@ -35,10 +25,6 @@ export const totpConfirmResponseSchema = z.object({
 });
 
 export const mfaVerifyResponseSchema = z.object({ verified: z.boolean() });
-
-// ---------------------------------------------------------------------------
-// Sessions
-// ---------------------------------------------------------------------------
 
 export const userSessionSchema = z.object({
   id: z.string(),

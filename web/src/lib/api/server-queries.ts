@@ -1,5 +1,3 @@
-// src/lib/api/server-queries.ts
-
 import "server-only";
 
 import type { QueryKey } from "@tanstack/react-query";
@@ -20,7 +18,6 @@ import { senderIdListSchema } from "@/types/sender-id";
 import { smsAnalyticsSchema } from "@/types/sms-api";
 import { webhookEndpointsListSchema } from "@/types/webhook";
 
-/** A query the server can prefetch; `queryKey` MUST equal the client hook's key. */
 export type ServerQuery = {
   queryKey: QueryKey;
   queryFn: () => Promise<unknown>;
@@ -38,7 +35,6 @@ function teamQuery<T>(
   };
 }
 
-/** Server counterparts of the client hooks, keyed identically. */
 export const serverQueries = {
   smsAnalytics: (teamId: TeamScope) =>
     teamQuery(

@@ -1,5 +1,3 @@
-// src/components/dashboard/email/email-dashboard/sending-domains-card.tsx
-
 "use client";
 
 import { ArrowRight, Loader2 } from "lucide-react";

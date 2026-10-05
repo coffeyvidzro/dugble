@@ -1,4 +1,3 @@
-// src/hooks/queries/use-campaigns-api.ts
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -251,7 +250,6 @@ export function useCampaignRecipients(campaignId: string) {
   });
 }
 
-/** Not yet wired into the UI — ready for a pre-send cost breakdown. */
 export function useCampaignCostEstimate(campaignId: string) {
   return useQuery({
     queryKey: queryKeys.campaignsApi.costEstimate(campaignId),
@@ -265,7 +263,6 @@ export function useCampaignCostEstimate(campaignId: string) {
   });
 }
 
-/** Not yet wired into the UI — ready for an exclusions breakdown. */
 export function useCampaignExclusions(campaignId: string) {
   return useQuery({
     queryKey: queryKeys.campaignsApi.exclusions(campaignId),

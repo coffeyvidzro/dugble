@@ -1,5 +1,3 @@
-// src/components/dashboard/email/domains/list/domains-overview.tsx
-
 "use client";
 
 import { Loader2 } from "lucide-react";

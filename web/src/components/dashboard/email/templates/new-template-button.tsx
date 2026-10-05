@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/new-template-button.tsx
-
 import { Plus } from "lucide-react";
 import Link from "next/link";
 

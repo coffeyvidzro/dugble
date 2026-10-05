@@ -1,5 +1,3 @@
-// src/components/dashboard/team/create-token-dialog.tsx
-
 "use client";
 
 import { Check, Copy, KeyRound, ShieldAlert } from "lucide-react";
@@ -22,9 +20,6 @@ import { TokenActionDialog } from "./token-action-dialog";
 type Step = "form" | "reveal";
 type ExpiryOption = "15d" | "30d" | "60d" | "90d" | "1y" | "never";
 
-// Returns `undefined` (not `null`) for "never". The create endpoint's
-// contract is: omit `expires_at` entirely to mean "no expiration" — sending
-// an explicit `null` causes the backend to fall back to a 90-day default.
 function expiryToIsoDate(expiry: ExpiryOption): string | undefined {
   if (expiry === "never") return undefined;
   const date = new Date();
@@ -93,8 +88,7 @@ export function CreateTokenDialog() {
       {
         name: name.trim(),
         permissions,
-        // Spread conditionally so the key is truly absent from the
-        // request body for "never" — not just `undefined`-valued.
+
         ...(isoExpiry ? { expires_at: isoExpiry } : {}),
       },
       {

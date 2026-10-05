@@ -1,5 +1,3 @@
-// src/components/dashboard/team/team-tokens.tsx
-
 import { KeySquare } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { TeamCardHeader } from "./team-card-header";

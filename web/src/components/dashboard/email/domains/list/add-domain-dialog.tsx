@@ -1,5 +1,3 @@
-// src/components/dashboard/email/domains/list/add-domain-dialog.tsx
-
 "use client";
 
 import { Plus } from "lucide-react";

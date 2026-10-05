@@ -1,5 +1,3 @@
-// src/components/dashboard/portal-rail.tsx
-
 "use client";
 
 import { LayoutGrid } from "lucide-react";

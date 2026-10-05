@@ -1,5 +1,3 @@
-// src/components/dashboard/webhooks/add-webhook-dialog.tsx
-
 "use client";
 
 import { Check, Plus } from "lucide-react";

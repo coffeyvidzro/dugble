@@ -1,4 +1,3 @@
-// src/hooks/queries/use-sender-domains-api.ts
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -98,7 +97,6 @@ export function useVerifySenderDomain(domainId: string) {
   });
 }
 
-/** Disables (soft-deletes) a domain. Disabled domains no longer appear in GET /domains. */
 export function useDeleteSenderDomain() {
   const queryClient = useQueryClient();
   return useMutation({

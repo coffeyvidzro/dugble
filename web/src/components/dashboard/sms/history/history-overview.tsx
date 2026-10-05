@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/history/history-overview.tsx
-
 "use client";
 
 import {
@@ -32,7 +30,6 @@ import {
 
 const SEARCH_DEBOUNCE_MS = 300;
 
-/** Filters and page live in the URL: shareable, back-button friendly, no sync effects. */
 const historySearchParams = {
   q: parseAsString.withDefault(""),
   status: parseAsStringLiteral(HISTORY_STATUS_FILTERS).withDefault("all"),
@@ -48,9 +45,6 @@ function HistoryOverviewContent() {
   const { q: search, status, range: dateRange, sender } = filters;
   const page = Math.max(1, filters.page);
 
-  // The input is local so typing stays instant; the URL (and therefore the
-  // request) updates once typing pauses. Every filter change resets paging
-  // in the same update — no follow-up effect needed.
   const [searchInput, setSearchInput] = useState(search);
   const commitSearch = useDebouncedCallback((value: string) => {
     void setFilters({ q: value || null, page: null });

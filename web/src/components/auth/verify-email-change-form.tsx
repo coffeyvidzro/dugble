@@ -1,5 +1,3 @@
-// src/components/auth/verify-email-change-form.tsx
-
 "use client";
 
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
@@ -27,18 +25,12 @@ export function VerifyEmailChangeForm({
   const submittedToken = useRef<string | null>(null);
   useEffect(() => {
     if (!token) return;
-    // Tokens are single-use: never submit the same one twice (StrictMode
-    // re-runs effects in development).
+
     if (submittedToken.current === token) return;
     submittedToken.current = token;
     verifyEmailChange.mutate({ token });
   }, [token, verifyEmailChange.mutate]);
 
-  // Completing this revokes every session for the account, including
-  // whichever one just made this call — so on success there's nothing
-  // left to do but send them to sign in again. Hard navigation, not
-  // router.push: the client-side session this app was running with is
-  // now genuinely dead, not just stale.
   useEffect(() => {
     if (!verifyEmailChange.isSuccess) return;
     const timeout = setTimeout(() => {

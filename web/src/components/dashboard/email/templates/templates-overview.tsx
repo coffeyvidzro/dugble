@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/templates-overview.tsx
-
 "use client";
 
 import { Loader2 } from "lucide-react";
@@ -38,7 +36,6 @@ function TemplatesOverviewContent() {
   const { data, isPending, isError } = useTemplatesApi({ limit: 100 });
   const templates = data?.data ?? [];
 
-  // Filters and view mode live in the URL: shareable and restored on reload.
   const [params, setParams] = useQueryStates(templateSearchParams, {
     history: "replace",
   });

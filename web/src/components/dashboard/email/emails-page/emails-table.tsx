@@ -1,5 +1,3 @@
-// src/components/dashboard/email/emails-page/emails-table.tsx
-
 import { Inbox } from "lucide-react";
 import {
   Table,

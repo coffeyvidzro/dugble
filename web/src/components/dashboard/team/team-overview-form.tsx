@@ -1,5 +1,3 @@
-// src/components/dashboard/team/team-overview-form.tsx
-
 "use client";
 
 import { Building2, Check, Loader2 } from "lucide-react";
@@ -96,7 +94,6 @@ export function TeamOverviewForm({ teamId }: { teamId: string }) {
         </div>
       </CardContent>
 
-      {/* Only render the save button section if the user is an owner/admin */}
       {canManageTeam && (
         <div className="flex items-center justify-end gap-4 border-t border-border/40 bg-muted/10 px-6 py-4">
           {updateTeam.isSuccess && !updateTeam.isPending && !isDirty && (

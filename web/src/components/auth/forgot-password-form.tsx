@@ -1,5 +1,3 @@
-// src/components/auth/forgot-password-form.tsx
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";

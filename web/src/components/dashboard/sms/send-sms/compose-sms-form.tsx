@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/send-sms/compose-sms-form.tsx
-
 "use client";
 
 import { Loader2, Send } from "lucide-react";

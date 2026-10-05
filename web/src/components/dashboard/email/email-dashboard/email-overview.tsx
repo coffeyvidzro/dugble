@@ -1,5 +1,3 @@
-// src/components/dashboard/email/email-dashboard/email-overview.tsx
-
 "use client";
 
 import { useMemo } from "react";

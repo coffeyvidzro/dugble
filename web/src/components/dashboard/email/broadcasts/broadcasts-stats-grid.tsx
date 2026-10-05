@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/broadcasts-stats-grid.tsx
-
 import { Clock, FileEdit, Megaphone, Send } from "lucide-react";
 import type { Broadcast } from "@/types/broadcast-api";
 import { BroadcastCountCard } from "./broadcast-count-card";

@@ -1,5 +1,3 @@
-// src/components/dashboard/email/emails-page/emails-log-view.tsx
-
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";

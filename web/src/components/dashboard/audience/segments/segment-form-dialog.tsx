@@ -1,5 +1,3 @@
-// src/components/dashboard/audience/segments/segment-form-dialog.tsx
-
 "use client";
 
 import { Loader2 } from "lucide-react";

@@ -1,5 +1,3 @@
-// src/components/dashboard/email/emails-page/send-email-dialog.tsx
-
 "use client";
 
 import { Loader2, Plus, Send } from "lucide-react";

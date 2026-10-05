@@ -1,5 +1,3 @@
-// src/components/dashboard/email/domains/list/empty-domains-state.tsx
-
 import { Globe } from "lucide-react";
 
 import { AddDomainDialog } from "./add-domain-dialog";

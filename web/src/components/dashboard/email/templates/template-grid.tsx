@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/template-grid.tsx
-
 import type { TemplateListItem } from "@/types/template-api";
 import { TemplateCard } from "./template-card";
 

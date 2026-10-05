@@ -1,5 +1,3 @@
-// src/app/(auth)/verify-email/page.tsx
-
 import { Suspense } from "react";
 import { VerifyEmailForm } from "@/components/auth/verify-email-form";
 import { constructMetadata } from "@/utils/metadata";

@@ -1,5 +1,3 @@
-// src/components/dashboard/audience/suppressions/add-suppression-button.tsx
-
 "use client";
 
 import { Plus } from "lucide-react";

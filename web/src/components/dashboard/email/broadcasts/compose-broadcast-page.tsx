@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/compose-broadcast-page.tsx
-
 "use client";
 
 import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";

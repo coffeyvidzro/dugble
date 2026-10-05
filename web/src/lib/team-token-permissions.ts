@@ -1,5 +1,3 @@
-// src/lib/team-token-permissions.ts
-
 export type TeamTokenPermission = {
   value: string;
   label: string;

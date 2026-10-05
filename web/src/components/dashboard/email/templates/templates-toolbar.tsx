@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/templates-toolbar.tsx
-
 import { NewTemplateButton } from "./new-template-button";
 import { TemplateFilters } from "./template-filters";
 import { TemplateSearchInput } from "./template-search-input";

@@ -1,5 +1,3 @@
-// src/types/suppression.ts
-
 import { z } from "zod";
 
 export const suppressionSchema = z.object({
@@ -7,13 +5,12 @@ export const suppressionSchema = z.object({
   object: z.string().optional().nullable(),
   email: z.string().email().optional().nullable(),
   origin: z.string().optional().nullable(),
-  source_id: z.string().optional().nullable(), // Fixed: allows null values from backend
+  source_id: z.string().optional().nullable(),
   created_at: z.string().datetime().optional().nullable(),
 });
 
 export type Suppression = z.infer<typeof suppressionSchema>;
 
-// Robust schema to handle arrays, wrapped { data: [...] }, or object maps { '0': {...}, '1': {...} }
 export const suppressionsListSchema = z
   .unknown()
   .transform((val): Suppression[] => {
@@ -21,7 +18,6 @@ export const suppressionsListSchema = z
       return val.map((item) => suppressionSchema.parse(item));
     }
     if (val && typeof val === "object") {
-      // Handle wrapper objects like { data: [...] } or dictionary objects { '0': {...} }
       const container = "data" in val ? (val as { data: unknown }).data : val;
       if (Array.isArray(container)) {
         return container.map((item) => suppressionSchema.parse(item));

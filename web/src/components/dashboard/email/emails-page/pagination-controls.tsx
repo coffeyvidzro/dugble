@@ -1,13 +1,6 @@
-// src/components/dashboard/email/emails-page/pagination-controls.tsx
-
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-/**
- * GET /emails has no total-count field — pagination here is "does another
- * page exist" (a full page came back) rather than a known total, same
- * pattern used for SMS History.
- */
 export function PaginationControls({
   page,
   itemCount,

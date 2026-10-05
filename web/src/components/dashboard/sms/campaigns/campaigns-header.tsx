@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/campaigns/campaigns-header.tsx
-
 "use client";
 
 import { Megaphone } from "lucide-react";

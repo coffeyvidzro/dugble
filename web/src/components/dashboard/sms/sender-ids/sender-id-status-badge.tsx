@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/sender-ids/sender-id-status-badge.tsx
-
 import { Check, Clock, Pause, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SENDER_ID_STATUS_LABEL, type SenderIdStatus } from "@/types/sender-id";

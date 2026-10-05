@@ -1,5 +1,3 @@
-// src/components/dashboard/audience/contacts/contacts-header.tsx
-
 import { PortalHeroHeader } from "../../portal-hero-header";
 
 export function ContactsHeader() {

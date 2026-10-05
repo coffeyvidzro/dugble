@@ -1,4 +1,3 @@
-// src/hooks/mutations/use-auth.ts
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -132,7 +131,6 @@ export function useLogout() {
   return useMutation({
     mutationFn: () => apiMutate("/auth/logout", "POST", logoutResponseSchema),
     onSuccess: () => {
-      // Nothing from this account may survive into the next session.
       queryClient.clear();
       resetActiveTeam();
     },

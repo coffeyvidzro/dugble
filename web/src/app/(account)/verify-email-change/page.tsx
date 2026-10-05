@@ -1,5 +1,3 @@
-// src/app/verify-email-change/page.tsx
-
 import { Suspense } from "react";
 import { VerifyEmailChangeForm } from "@/components/auth/verify-email-change-form";
 import { requireSession } from "@/lib/session";
@@ -21,8 +19,6 @@ function VerifyEmailChangeFallback() {
 }
 
 export default async function Page() {
-  // Signed-out visitors are redirected by proxy.ts to /login?next=<this URL>,
-  // so the token survives sign-in. This call is the authoritative check.
   await requireSession();
 
   return (

@@ -1,5 +1,3 @@
-// src/types/sms-api.ts
-
 import { z } from "zod";
 
 export const smsStatusSchema = z.enum([
@@ -31,8 +29,6 @@ export const SMS_API_STATUS_LABEL: Record<SmsApiStatus, string> = {
   canceled: "Canceled",
 };
 
-// Statuses that won't change again without an explicit resend/reschedule —
-// used to decide when it's safe to stop polling a message or its events.
 export const SMS_TERMINAL_STATUSES: SmsApiStatus[] = [
   "delivered",
   "undelivered",
@@ -88,9 +84,6 @@ export const sendSmsInputSchema = z.object({
 });
 export type SendSmsInput = z.infer<typeof sendSmsInputSchema>;
 
-// POST /sms/batch — a top-level array is the preferred wire shape (an
-// object with a `messages` array is also accepted by the API, but this
-// dashboard only ever sends the array form).
 export const sendSmsBatchInputSchema = z
   .array(sendSmsInputSchema)
   .min(1)

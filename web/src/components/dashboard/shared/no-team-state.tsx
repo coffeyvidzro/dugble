@@ -1,5 +1,3 @@
-// src/components/dashboard/shared/no-team-state.tsx
-
 import { Users } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";

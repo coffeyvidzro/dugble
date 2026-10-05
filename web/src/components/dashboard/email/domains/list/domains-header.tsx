@@ -1,5 +1,3 @@
-// src/components/dashboard/email/domains/list/domains-header.tsx
-
 import { Globe } from "lucide-react";
 import Link from "next/link";
 import type { SenderDomain } from "@/types/sender-domain-api";

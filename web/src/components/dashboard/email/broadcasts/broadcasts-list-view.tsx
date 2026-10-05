@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/broadcasts-list-view.tsx
-
 "use client";
 
 import { Loader2 } from "lucide-react";

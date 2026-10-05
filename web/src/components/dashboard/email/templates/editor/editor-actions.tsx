@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/editor/editor-actions.tsx
-
 "use client";
 
 import { Loader2 } from "lucide-react";

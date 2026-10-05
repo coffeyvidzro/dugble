@@ -1,5 +1,3 @@
-// src/components/dashboard/create-team/country-select.tsx
-
 "use client";
 
 import * as Flags from "country-flag-icons/react/3x2";

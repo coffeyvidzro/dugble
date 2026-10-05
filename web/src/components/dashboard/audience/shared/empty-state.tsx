@@ -1,5 +1,3 @@
-// src/components/dashboard/audience/shared/empty-state.tsx
-
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 

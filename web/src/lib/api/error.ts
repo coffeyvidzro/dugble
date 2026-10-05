@@ -1,5 +1,3 @@
-// src/lib/api/error.ts
-
 export type ApiErrorOptions = {
   code?: string;
   fields?: Record<string, string[]>;
@@ -39,7 +37,6 @@ export class ApiError extends Error {
   }
 }
 
-/** Network-level failure if the request never got a response at all. */
 export class NetworkError extends Error {
   constructor(cause: unknown) {
     super(
@@ -55,9 +52,7 @@ export async function parseApiError(response: Response): Promise<ApiError> {
 
   try {
     payload = await response.clone().json();
-  } catch {
-    // Non-JSON body — proxy error page, empty 500, etc. Fall through.
-  }
+  } catch {}
 
   const message =
     extractErrorMessage(payload) ??

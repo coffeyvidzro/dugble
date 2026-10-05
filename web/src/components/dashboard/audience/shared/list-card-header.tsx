@@ -1,5 +1,3 @@
-// src/components/dashboard/audience/shared/list-card-header.tsx
-
 import type { ReactNode } from "react";
 import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 

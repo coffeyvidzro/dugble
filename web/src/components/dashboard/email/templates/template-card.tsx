@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/template-card.tsx
-
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { formatRelativeTime } from "@/lib/format-date";

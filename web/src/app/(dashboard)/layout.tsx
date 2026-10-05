@@ -1,5 +1,3 @@
-// src/app/(dashboard)/layout.tsx
-
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
@@ -25,7 +23,6 @@ export default async function Layout({ children }: { children: ReactNode }) {
   const [session, nonce] = await Promise.all([requireSession(), getCspNonce()]);
   const { teamId, teams } = await resolveActiveTeam();
 
-  // Seed the team switcher so it renders the right team on first paint.
   const queryClient = getQueryClient();
   if (teams) {
     queryClient.setQueryData(queryKeys.teams.list(TEAM_SWITCHER_PARAMS), teams);

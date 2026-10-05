@@ -1,8 +1,4 @@
-// src/components/dashboard/sms/history/types.ts
-
 import { SMS_API_STATUS_LABEL, type SmsApiStatus } from "@/types/sms-api";
-
-// Status filter
 
 export type HistoryStatusFilter = "all" | SmsApiStatus;
 
@@ -11,8 +7,6 @@ export const HISTORY_STATUS_LABEL: Record<HistoryStatusFilter, string> = {
   ...SMS_API_STATUS_LABEL,
 };
 
-// "unknown" is a fallback state, not something worth surfacing as its own
-// filter chip — still a valid HistoryStatusFilter value, just not listed.
 export const HISTORY_STATUS_FILTERS: HistoryStatusFilter[] = [
   "all",
   "queued",
@@ -26,8 +20,6 @@ export const HISTORY_STATUS_FILTERS: HistoryStatusFilter[] = [
   "expired",
   "canceled",
 ];
-
-// Date range filter
 
 export type HistoryDateFilter = "24h" | "7d" | "30d" | "90d" | "all";
 
@@ -55,7 +47,6 @@ const DATE_FILTER_WINDOW_MS: Record<HistoryDateFilter, number | null> = {
   all: null,
 };
 
-/** Converts the selected date-range filter into a `start_date` for the API, or undefined for "all time". */
 export function dateFilterToStartDate(
   filter: HistoryDateFilter,
 ): string | undefined {
@@ -63,7 +54,5 @@ export function dateFilterToStartDate(
   if (windowMs === null) return undefined;
   return new Date(Date.now() - windowMs).toISOString();
 }
-
-// Pagination
 
 export const HISTORY_PAGE_SIZE = 25;

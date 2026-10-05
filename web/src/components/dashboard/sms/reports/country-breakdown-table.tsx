@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/reports/country-breakdown-table.tsx
-
 import {
   Card,
   CardDescription,

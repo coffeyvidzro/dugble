@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/sms/send/page.tsx
-
 import { SendHub } from "@/components/dashboard/sms/send-sms/send-hub";
 import { constructMetadata } from "@/utils/metadata";
 

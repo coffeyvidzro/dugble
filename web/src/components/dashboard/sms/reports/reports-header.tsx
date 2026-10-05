@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/reports/reports-header.tsx
-
 import { BarChart3 } from "lucide-react";
 import Link from "next/link";
 import { PortalHeroHeader } from "../../portal-hero-header";

@@ -1,5 +1,3 @@
-// src/components/auth/login-form.tsx
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -39,14 +37,13 @@ export function LoginForm({
   redirectTo = "/dashboard",
   ...props
 }: React.ComponentProps<"div"> & {
-  /** Already validated by `safeRedirectPath` on the server. */
   redirectTo?: string;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const login = useLogin();
   const [showPassword, setShowPassword] = useState(false);
-  // Held in memory only: the challenge token must never reach storage or the URL.
+
   const [challenge, setChallenge] = useState<MfaChallenge | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({

@@ -1,5 +1,3 @@
-// src/components/dashboard/email/emails-page/types.ts
-
 import { EMAIL_API_STATUS_LABEL, type EmailApiStatus } from "@/types/email-api";
 
 export type EmailApiStatusFilter = "all" | EmailApiStatus;

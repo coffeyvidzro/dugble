@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/compose-broadcast-header.tsx
-
 import { PenSquare } from "lucide-react";
 import type { Broadcast } from "@/types/broadcast-api";
 import { PortalHeroHeader } from "../../portal-hero-header";

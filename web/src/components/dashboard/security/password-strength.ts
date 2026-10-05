@@ -1,5 +1,3 @@
-// src/components/dashboard/security/password-strength.ts
-
 export type PasswordStrengthScore = 0 | 1 | 2 | 3 | 4;
 
 const LABELS: Record<PasswordStrengthScore, string> = {
@@ -10,7 +8,6 @@ const LABELS: Record<PasswordStrengthScore, string> = {
   4: "Strong",
 };
 
-/** Heuristic strength meter for UX feedback only — the API enforces the real policy. */
 export function getPasswordStrength(password: string): {
   score: PasswordStrengthScore;
   label: string;

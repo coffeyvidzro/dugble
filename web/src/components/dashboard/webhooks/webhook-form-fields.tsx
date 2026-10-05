@@ -1,5 +1,3 @@
-// src/components/dashboard/webhooks/webhook-form-fields.tsx
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EventsMultiSelect } from "./events-multi-select";

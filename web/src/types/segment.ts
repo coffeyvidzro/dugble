@@ -1,5 +1,3 @@
-// src/types/segment.ts
-
 import { z } from "zod";
 
 export const segmentSchema = z.object({

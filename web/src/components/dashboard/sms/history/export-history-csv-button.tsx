@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/history/export-history-csv-button.tsx
-
 "use client";
 
 import { Download } from "lucide-react";
@@ -32,10 +30,6 @@ function messagesToCsv(messages: SmsApiResource[]): string {
   );
 }
 
-/**
- * Exports whatever page of results is currently loaded — there's no bulk
- * export endpoint documented, so the full history can't be pulled in one shot.
- */
 export function ExportHistoryCsvButton({
   messages,
 }: {

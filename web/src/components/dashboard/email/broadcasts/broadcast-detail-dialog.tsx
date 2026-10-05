@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/broadcast-detail-dialog.tsx
-
 "use client";
 
 import {

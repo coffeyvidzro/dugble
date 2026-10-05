@@ -1,5 +1,3 @@
-// src/components/dashboard/email/metrics/rate-metric-card.tsx
-
 import { HelpCircle, Minus, TrendingDown, TrendingUp } from "lucide-react";
 import {
   Card,

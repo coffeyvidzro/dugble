@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/history/history-filters.tsx
-
 import { DashboardRangeSelector } from "../../shared/dashboard-range-selector";
 import { HistorySearchInput } from "./history-search-input";
 import { HistorySenderFilterSelect } from "./history-sender-filter-select";

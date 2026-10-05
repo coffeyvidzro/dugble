@@ -1,15 +1,8 @@
-// src/config/env.ts
-
 import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
 
 const isProduction = process.env.NODE_ENV === "production";
 
-/**
- * In production a missing or plain-HTTP backend URL is a deployment error, not
- * something to paper over with a localhost default — the session cookie is
- * forwarded to this origin on every server-side request.
- */
 const backendUrl = isProduction
   ? z.url().refine((value) => value.startsWith("https://"), {
       message: "BACKEND_URL must use https:// in production.",

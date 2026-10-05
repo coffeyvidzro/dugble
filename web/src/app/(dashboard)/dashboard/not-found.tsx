@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/not-found.tsx
-
 import Link from "next/link";
 
 export default function DashboardNotFound() {

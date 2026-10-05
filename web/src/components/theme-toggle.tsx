@@ -1,5 +1,3 @@
-// src/components/theme-toggle.tsx
-
 "use client";
 
 import { Monitor, Moon, Sun } from "lucide-react";

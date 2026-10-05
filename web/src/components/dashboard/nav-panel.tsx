@@ -1,5 +1,3 @@
-// src/components/dashboard/nav-panel.tsx
-
 import type { DashboardPortal } from "./dashboard-nav";
 import { LogoutButton } from "./logout-button";
 import { NavGroupList } from "./nav-group-list";

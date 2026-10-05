@@ -1,5 +1,3 @@
-// src/components/dashboard/billing/wallet/wallet-header.tsx
-
 import { Wallet as WalletIcon } from "lucide-react";
 import { PortalHeroHeader } from "../../portal-hero-header";
 

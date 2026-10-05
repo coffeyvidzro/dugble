@@ -1,5 +1,3 @@
-// src/components/dashboard/email/emails-page/email-filter-select.tsx
-
 import { Filter } from "lucide-react";
 import {
   Select,

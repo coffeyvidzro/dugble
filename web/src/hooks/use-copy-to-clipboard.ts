@@ -1,5 +1,3 @@
-// src/hooks/use-copy-to-clipboard.ts
-
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -7,11 +5,6 @@ import { toast } from "sonner";
 
 const DEFAULT_RESET_MS = 1800;
 
-/**
- * Copies text and exposes a transient `copied` flag for feedback UI.
- * Failures (denied permission, insecure context) surface as a toast rather
- * than being swallowed, and the reset timer is cleared on unmount.
- */
 export function useCopyToClipboard(resetMs: number = DEFAULT_RESET_MS) {
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);

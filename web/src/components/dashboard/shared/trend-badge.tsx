@@ -1,5 +1,3 @@
-// src/components/dashboard/shared/trend-badge.tsx
-
 import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { MetricTone } from "./sparkline-chart";

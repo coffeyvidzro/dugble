@@ -1,5 +1,3 @@
-// src/components/dashboard/email/metrics/rate-mini-chart.tsx
-
 "use client";
 
 import { useMemo, useRef, useState } from "react";

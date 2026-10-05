@@ -1,5 +1,3 @@
-// src/components/dashboard/audience/contacts/contacts-list.tsx
-
 "use client";
 
 import { Layers, Loader2, Pencil, Search, Trash2, Users } from "lucide-react";
@@ -58,8 +56,7 @@ export function ContactsList() {
 
   // GET /contacts doesn't take a search query, so this filters whatever
   // pages have already been loaded — good enough for the common "find one
-  // person in what I've already paged through" case. "Load more" fetches
-  // additional pages from the API as usual.
+
   const filteredContacts = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return contacts;

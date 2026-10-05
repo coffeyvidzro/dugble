@@ -1,5 +1,3 @@
-// src/components/dashboard/profile/invite-card.tsx
-
 "use client";
 
 import { Check, Loader2, X } from "lucide-react";

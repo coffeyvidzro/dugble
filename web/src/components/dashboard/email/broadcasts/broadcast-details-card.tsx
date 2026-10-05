@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/broadcast-details-card.tsx
-
 "use client";
 
 import { Loader2, Mail } from "lucide-react";

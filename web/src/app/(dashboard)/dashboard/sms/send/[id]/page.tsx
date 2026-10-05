@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/sms/send/[id]/page.tsx
-
 import { notFound } from "next/navigation";
 import { MessageDetail } from "@/components/dashboard/sms/send-sms/message-detail";
 import { isUuid } from "@/lib/security/route-params";
@@ -18,7 +16,7 @@ export default async function Page({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  // The ID becomes part of an API path — reject anything malformed up front.
+
   if (!isUuid(id)) notFound();
 
   return <MessageDetail messageId={id} />;

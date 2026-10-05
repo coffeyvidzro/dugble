@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/audience-picker.tsx
-
 "use client";
 
 import { Check, Loader2, Users } from "lucide-react";
@@ -68,8 +66,6 @@ function SegmentOption({
   active: boolean;
   onSelect: () => void;
 }) {
-  // Only fetch audience size for the currently selected segment — not
-  // one request per row on every render.
   const { data: audienceSize, isPending } = useSegmentAudienceSize(
     active ? segment.id : null,
   );

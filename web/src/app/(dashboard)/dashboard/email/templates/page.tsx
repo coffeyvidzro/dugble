@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/email/templates/page.tsx
-
 import { TemplatesOverview } from "@/components/dashboard/email/templates/templates-overview";
 import { constructMetadata } from "@/utils/metadata";
 

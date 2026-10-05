@@ -1,5 +1,3 @@
-// src/components/dashboard/audience/shared/shimmer-pill-button.tsx
-
 import type { ReactNode } from "react";
 
 interface ShimmerPillButtonProps {

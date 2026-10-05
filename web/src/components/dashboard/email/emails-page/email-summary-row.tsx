@@ -1,5 +1,3 @@
-// src/components/dashboard/email/emails-page/email-summary-row.tsx
-
 import { ArrowUpRight, Copy, MoreVertical } from "lucide-react";
 import Link from "next/link";
 import {

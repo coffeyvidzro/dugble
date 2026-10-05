@@ -1,5 +1,3 @@
-// src/components/dashboard/dashboard-header.tsx
-
 "use client";
 
 import { Menu } from "lucide-react";

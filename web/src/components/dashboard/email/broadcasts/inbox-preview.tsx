@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/inbox-preview.tsx
-
 function initialFromName(name: string): string {
   const trimmed = name.trim();
   return trimmed.charAt(0).toUpperCase() || "D";

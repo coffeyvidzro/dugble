@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/campaigns/step-schedule.tsx
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DashboardRangeSelector } from "../../shared/dashboard-range-selector";

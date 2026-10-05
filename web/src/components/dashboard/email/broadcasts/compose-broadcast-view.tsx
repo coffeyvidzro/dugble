@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/compose-broadcast-view.tsx
-
 "use client";
 
 import { useState } from "react";
@@ -212,11 +210,6 @@ export function ComposeBroadcastView({
         targetId = created.id;
       }
 
-      // Sending targets whichever broadcast id is now known (either
-      // the just-created draft or the existing one being edited) —
-      // this can't go through a fixed-id hook the way Campaigns'
-      // useSendCampaignByIdMutation does, since a brand-new
-      // broadcast's id doesn't exist until the create call resolves.
       await apiMutate(
         `/broadcasts/${targetId}/send`,
         "POST",

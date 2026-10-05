@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/editor/template-not-found.tsx
-
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { AnimatedGrid } from "@/components/marketing/hero/animated-grid";

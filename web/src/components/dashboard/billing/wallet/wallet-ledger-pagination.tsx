@@ -1,13 +1,6 @@
-// src/components/dashboard/billing/wallet/wallet-ledger-pagination.tsx
-
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-/**
- * GET /wallet/ledger has no total-count field — pagination here is "does
- * another page exist" (a full page came back), same pattern as SMS
- * History and the Emails list.
- */
 export function WalletLedgerPagination({
   page,
   itemCount,

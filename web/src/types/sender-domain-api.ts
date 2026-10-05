@@ -1,5 +1,3 @@
-// src/types/sender-domain-api.ts
-
 import { z } from "zod";
 
 export const domainRegionSchema = z.enum(["us-east-1", "eu-north-1"]);
@@ -89,9 +87,6 @@ export type DomainProvisioningResponse = z.infer<
   typeof domainProvisioningResponseSchema
 >;
 
-// POST /domains can return either the full record (201) or a provisioning
-// placeholder (202) while customer email infrastructure is still being
-// prepared. Try the full record first; fall back to the placeholder shape.
 export const createDomainResponseSchema = z.union([
   senderDomainSchema,
   domainProvisioningResponseSchema,

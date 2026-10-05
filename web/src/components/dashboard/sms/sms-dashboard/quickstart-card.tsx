@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/sms-dashboard/quickstart-card.tsx
-
 import {
   Card,
   CardDescription,

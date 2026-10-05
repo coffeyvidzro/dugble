@@ -1,15 +1,8 @@
-// src/components/dashboard/shared/segment-error.tsx
-
 "use client";
 
 import { AlertTriangle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-/**
- * Error-boundary UI for dashboard route segments. Shows the digest (a
- * correlation ID) but never the raw error message, which may contain
- * server internals in production.
- */
 export function SegmentError({
   error,
   reset,

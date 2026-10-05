@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/editor/email-preview-pane.tsx
-
 import { cn } from "@/lib/utils";
 import type { PreviewViewport } from "./editor-types";
 import { InboxPreviewStrip } from "./inbox-preview-strip";

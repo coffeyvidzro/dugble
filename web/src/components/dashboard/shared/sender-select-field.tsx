@@ -1,5 +1,3 @@
-// src/components/dashboard/shared/sender-select-field.tsx
-
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -11,7 +9,6 @@ import {
 import type { SenderId } from "@/types/sender-id";
 
 type SenderSelectFieldProps = {
-  /** Approved sender IDs; the API expects the sender ID *name* as `from`. */
   senders: readonly SenderId[];
   value: string;
   onChange: (value: string) => void;

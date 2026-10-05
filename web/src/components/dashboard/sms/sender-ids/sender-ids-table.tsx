@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/sender-ids/sender-ids-table.tsx
-
 import { Eye, Trash2 } from "lucide-react";
 import {
   Table,

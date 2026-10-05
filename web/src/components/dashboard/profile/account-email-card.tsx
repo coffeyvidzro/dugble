@@ -1,5 +1,3 @@
-// src/components/dashboard/profile/account-email-card.tsx
-
 import { Mail } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { AccountEmailForm } from "./account-email-form";

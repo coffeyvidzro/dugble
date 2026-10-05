@@ -1,4 +1,3 @@
-// src/hooks/queries/use-active-team.ts
 "use client";
 
 import { useEffect } from "react";

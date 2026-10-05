@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/editor/device-toggle.tsx
-
 "use client";
 
 import { Monitor, Smartphone } from "lucide-react";

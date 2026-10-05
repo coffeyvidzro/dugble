@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/templates-header.tsx
-
 import { LayoutTemplate } from "lucide-react";
 import Link from "next/link";
 import { PortalHeroHeader } from "../../portal-hero-header";

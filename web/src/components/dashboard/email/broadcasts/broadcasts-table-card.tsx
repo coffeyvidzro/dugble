@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/broadcasts-table-card.tsx
-
 "use client";
 
 import { ArrowDown, ArrowUp, Megaphone } from "lucide-react";

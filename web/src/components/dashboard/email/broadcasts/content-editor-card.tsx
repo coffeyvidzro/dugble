@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/content-editor-card.tsx
-
 "use client";
 
 import {

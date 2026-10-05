@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/sms/send/new/page.tsx
-
 import { getTemplateById } from "@/components/dashboard/shared/message-templates";
 import { ComposeHeader } from "@/components/dashboard/sms/send-sms/compose-header";
 import { ComposeSmsForm } from "@/components/dashboard/sms/send-sms/compose-sms-form";

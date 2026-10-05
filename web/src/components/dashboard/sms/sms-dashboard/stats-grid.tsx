@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/sms-dashboard/stats-grid.tsx
-
 import { CheckCircle2, TriangleAlert } from "lucide-react";
 import { StatCard } from "./stat-card";
 import type { SmsStat, SmsStatId } from "./types";

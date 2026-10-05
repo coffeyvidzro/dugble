@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/email/emails/page.tsx
-
 import { EmailsLogView } from "@/components/dashboard/email/emails-page/emails-log-view";
 import { constructMetadata } from "@/utils/metadata";
 

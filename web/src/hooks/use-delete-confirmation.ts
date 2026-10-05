@@ -1,5 +1,3 @@
-// src/hooks/use-delete-confirmation.ts
-
 "use client";
 
 import { useCallback, useState } from "react";
@@ -23,10 +21,7 @@ export function useDeleteConfirmation<T>(
     try {
       await deleteFn(pendingItem);
       setPendingItem(null);
-    } catch {
-      // Error state is surfaced via the mutation itself (toast, etc).
-      // Keep the dialog open so the user can retry.
-    }
+    } catch {}
   }, [pendingItem, deleteFn]);
 
   return { pendingItem, requestDelete, cancelDelete, confirmDelete };

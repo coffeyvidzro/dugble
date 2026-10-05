@@ -1,5 +1,3 @@
-// src/components/dashboard/webhooks/copy-button.tsx
-
 "use client";
 
 import { Check, Copy } from "lucide-react";

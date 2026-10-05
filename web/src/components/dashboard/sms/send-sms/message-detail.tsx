@@ -1,4 +1,3 @@
-// src/components/dashboard/sms/send-sms/message-detail.tsx
 "use client";
 
 import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";

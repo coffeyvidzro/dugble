@@ -1,5 +1,3 @@
-// src/components/dashboard/email/domains/detail/delete-domain-button.tsx
-
 "use client";
 
 import { Trash2 } from "lucide-react";

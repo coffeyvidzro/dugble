@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/template-filters.tsx
-
 import { TemplateCategoryFilterSelect } from "./template-category-filter-select";
 import { TemplateStatusFilter } from "./template-status-filter";
 import type { TemplateCategory, TemplateStatus } from "./types";

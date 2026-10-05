@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/template-list-row.tsx
-
 import Link from "next/link";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { formatRelativeTime } from "@/lib/format-date";

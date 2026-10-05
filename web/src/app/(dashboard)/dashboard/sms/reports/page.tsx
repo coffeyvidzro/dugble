@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/sms/reports/page.tsx
-
 import { ReportsHeader } from "@/components/dashboard/sms/reports/reports-header";
 import { ReportsOverview } from "@/components/dashboard/sms/reports/reports-overview";
 import { constructMetadata } from "@/utils/metadata";

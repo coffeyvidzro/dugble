@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/sms/sender-ids/new/page.tsx
-
 import { RequestHeader } from "@/components/dashboard/sms/sender-ids/request-header";
 import { SenderIdRequestForm } from "@/components/dashboard/sms/sender-ids/sender-id-request-form";
 

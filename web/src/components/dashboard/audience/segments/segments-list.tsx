@@ -1,5 +1,3 @@
-// src/components/dashboard/audience/segments/segments-list.tsx
-
 "use client";
 
 import { Layers, Trash2 } from "lucide-react";
@@ -91,7 +89,6 @@ export function SegmentsList() {
                     </TableCell>
                     <TableCell className="text-right">
                       <RowActionsMenu>
-                        {/* Edit removed: PATCH /segments/:id is not a supported route */}
                         <DropdownMenuItem
                           className="text-danger focus:text-danger"
                           onClick={() => requestDelete(segment)}

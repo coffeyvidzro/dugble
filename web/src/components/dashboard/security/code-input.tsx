@@ -1,5 +1,3 @@
-// src/components/dashboard/security/code-input.tsx
-
 "use client";
 
 import { Input } from "@/components/ui/input";
@@ -13,7 +11,6 @@ type CodeInputProps = {
   invalid?: boolean;
 };
 
-/** Single input for TOTP or recovery codes with the right keyboard and autofill hints. */
 export function CodeInput({
   id,
   value,

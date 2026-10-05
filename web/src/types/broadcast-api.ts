@@ -1,5 +1,3 @@
-// src/types/broadcast-api.ts
-
 import { z } from "zod";
 
 export const broadcastStatusSchema = z.enum([
@@ -70,8 +68,6 @@ export const createBroadcastInputSchema = z.object({
 });
 export type CreateBroadcastInput = z.infer<typeof createBroadcastInputSchema>;
 
-// PATCH /broadcasts/:broadcast — every content field optional, revision
-// required for optimistic-concurrency control.
 export const updateBroadcastInputSchema = z.object({
   revision: z.number(),
   name: z.string().trim().min(1).optional(),

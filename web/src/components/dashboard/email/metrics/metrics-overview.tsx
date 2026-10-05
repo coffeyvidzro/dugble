@@ -1,5 +1,3 @@
-// src/components/dashboard/email/metrics/metrics-overview.tsx
-
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";

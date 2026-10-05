@@ -48,7 +48,6 @@ export function DeliveryAttemptPreview() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const attempt: Attempt =

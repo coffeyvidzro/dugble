@@ -1,5 +1,3 @@
-// src/types/template-api.ts
-
 import { z } from "zod";
 
 export const templateCategorySchema = z.enum([
@@ -42,9 +40,6 @@ export type TemplateVariableResource = z.infer<
   typeof templateVariableResourceSchema
 >;
 
-// GET /templates — list items are intentionally thin. No subject, no html,
-// no variables, no has_unpublished_versions — only the full resource
-// (GET /templates/:template) carries those.
 export const templateListItemSchema = z.object({
   id: z.string(),
   name: z.string(),

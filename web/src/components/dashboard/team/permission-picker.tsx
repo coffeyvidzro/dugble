@@ -1,5 +1,3 @@
-// src/components/dashboard/team/permission-picker.tsx
-
 "use client";
 
 import { Check, ChevronDown, Search, X } from "lucide-react";
@@ -98,7 +96,6 @@ export function PermissionPicker({
 
   return (
     <div className="space-y-4">
-      {/* Presets */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -157,7 +154,6 @@ export function PermissionPicker({
         </div>
       </div>
 
-      {/* Search */}
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -179,7 +175,6 @@ export function PermissionPicker({
         )}
       </div>
 
-      {/* Category list */}
       <div className="overflow-hidden rounded-lg border border-input">
         <div className="max-h-80 overflow-y-auto divide-y divide-border/60">
           {filteredCategories.length === 0 ? (
@@ -268,7 +263,6 @@ export function PermissionPicker({
         </div>
       </div>
 
-      {/* Summary bar */}
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-input bg-muted/20 px-3 py-2">
         <span className="text-xs text-muted-foreground">
           {value.length === 0

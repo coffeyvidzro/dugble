@@ -1,5 +1,3 @@
-// src/components/dashboard/email/metrics/last-updated-note.tsx
-
 export function LastUpdatedNote({ lastUpdated }: { lastUpdated: Date }) {
   const formatted = new Intl.DateTimeFormat("en-US", {
     hour: "numeric",

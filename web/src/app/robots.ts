@@ -1,5 +1,3 @@
-// src/app/robots.ts
-
 import type { MetadataRoute } from "next";
 import { baseUrl } from "@/lib/site";
 

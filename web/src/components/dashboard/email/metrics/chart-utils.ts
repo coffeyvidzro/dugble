@@ -1,5 +1,3 @@
-// src/components/dashboard/email/metrics/chart-utils.ts
-
 export type ChartPoint = { x: number; y: number };
 export type TimeSeriesPoint = { date: Date; value: number };
 
@@ -69,7 +67,6 @@ export function buildAreaPath(
   return `${linePath} L ${last.x.toFixed(2)},${height} L ${first.x.toFixed(2)},${height} Z`;
 }
 
-// Picks up to `maxTicks` evenly spaced indices out of `length` items.
 export function pickTickIndices(length: number, maxTicks: number): number[] {
   if (length <= 0) return [];
   if (length <= maxTicks) return Array.from({ length }, (_, i) => i);

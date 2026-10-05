@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/template-status-filter.tsx
-
 import { cn } from "@/lib/utils";
 import type { TemplateStatus } from "./types";
 

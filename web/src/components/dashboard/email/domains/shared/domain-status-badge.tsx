@@ -1,5 +1,3 @@
-// src/components/dashboard/email/domains/shared/domain-status-badge.tsx
-
 import {
   AlertTriangle,
   Ban,

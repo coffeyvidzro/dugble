@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/history/history-table.tsx
-
 import { Inbox } from "lucide-react";
 import Link from "next/link";
 import {

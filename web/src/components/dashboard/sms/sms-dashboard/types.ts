@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/sms-dashboard/types.ts
-
 import type { SmsAnalyticsWindow } from "@/types/sms-api";
 
 export type SmsRange = "7d" | "30d" | "90d";
@@ -23,8 +21,6 @@ export type MetricTrend = {
   points: number;
 };
 
-// The real analytics endpoint only exposes delivery_rate and failure_rate —
-// there is no click-through or opt-out tracking for SMS.
 export type SmsStatId = "delivery_rate" | "failure_rate";
 
 export type SmsStat = {
@@ -63,13 +59,6 @@ function dailyRate(
   return (point[metric] / point.total) * 100;
 }
 
-/**
- * Compares the average daily rate across the first vs second half of the
- * window's series to derive a trend direction. There's no server-computed
- * trend in the API response, so this is a client-side approximation — flat
- * within 0.05 percentage points to avoid noisy up/down flicker on small
- * day-to-day variance.
- */
 function computeTrend(
   series: SmsAnalyticsWindow["series"],
   metric: "delivered" | "failed",
@@ -91,11 +80,6 @@ function computeTrend(
   return { direction: diff > 0 ? "up" : "down", points: Math.abs(diff) };
 }
 
-/**
- * Builds the two stat cards the real SMS analytics endpoint supports.
- * Click-rate and opt-out-rate cards are intentionally absent: the API does
- * not report them for SMS.
- */
 export function computeSmsStats(window: SmsAnalyticsWindow): SmsStat[] {
   const deliveryRate = window.rates.find((r) => r.name === "delivery_rate");
   const failureRate = window.rates.find((r) => r.name === "failure_rate");

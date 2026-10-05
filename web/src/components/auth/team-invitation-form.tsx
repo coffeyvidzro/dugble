@@ -1,5 +1,3 @@
-// src/components/auth/team-invitation-form.tsx
-
 "use client";
 
 import { CheckCircle2, Loader2, Users, XCircle } from "lucide-react";
@@ -107,9 +105,6 @@ export function TeamInvitationForm({
     <div className={cn("flex h-full flex-col", className)} {...props}>
       <AuthShell
         title="You've been invited"
-        // GET /teams/invitations/:token doesn't return a team name
-        // (only /users/me/invitations does) — see the note in
-        // use-invitation-by-token.ts. Role is what's available.
         subtitle={`Join as ${invitation.role} on Dugble.`}
         backHref="/dashboard"
         backLabel="Back to dashboard"

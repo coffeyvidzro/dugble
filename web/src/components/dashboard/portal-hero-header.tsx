@@ -1,5 +1,3 @@
-// src/components/dashboard/portal-hero-header.tsx
-
 import type { ReactNode } from "react";
 
 interface PortalHeroHeaderProps {

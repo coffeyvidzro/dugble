@@ -1,5 +1,3 @@
-// src/components/dashboard/team/invite-member-dialog.tsx
-
 "use client";
 
 import { Send, ShieldCheck, User, UserPlus } from "lucide-react";
@@ -68,11 +66,6 @@ export function InviteMemberDialog({
       return;
     }
 
-    // No client-side "already a member" check anymore — the members
-    // list doesn't include email addresses (see team-member-row.tsx),
-    // so there's nothing to compare against here. A duplicate invite
-    // surfaces as whatever error the backend returns (most likely a
-    // 409), shown via the mutation's onError in team-members-client.tsx.
     onInvite(trimmedEmail, role);
     setOpen(false);
     reset();

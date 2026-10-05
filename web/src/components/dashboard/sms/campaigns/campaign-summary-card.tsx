@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/campaigns/campaign-summary-card.tsx
-
 "use client";
 
 import {

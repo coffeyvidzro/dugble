@@ -1,5 +1,3 @@
-// src/components/dashboard/team/team-member-row.tsx
-
 "use client";
 
 import { LogOut, MoreVertical, Trash2 } from "lucide-react";

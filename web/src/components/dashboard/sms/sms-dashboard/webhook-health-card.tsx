@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/sms-dashboard/webhook-health-card.tsx
-
 "use client";
 
 import { AlertTriangle, ArrowRight, Loader2, PlusCircle } from "lucide-react";

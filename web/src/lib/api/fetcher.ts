@@ -1,5 +1,3 @@
-// src/lib/api/fetcher.ts
-
 import "client-only";
 
 import type { z } from "zod";
@@ -13,12 +11,6 @@ const API_BASE = "/api/v1";
 type ApiEnvelope = { success: true; data: unknown };
 
 type FetchOptions = Omit<RequestInit, "method" | "body"> & {
-  /**
-   * Team the request is scoped to. Queries pass the team captured in their
-   * query key so the header can never disagree with the cache entry, even if
-   * the user switches teams while a request is in flight. When omitted, the
-   * currently selected team is used (mutations triggered by user actions).
-   */
   teamId?: string | null;
 };
 

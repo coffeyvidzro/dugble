@@ -1,5 +1,3 @@
-// src/components/auth/mfa-challenge-form.tsx
-
 "use client";
 
 import { KeyRound, Loader2, ShieldCheck } from "lucide-react";
@@ -15,7 +13,6 @@ import {
 import { recoveryCodeSchema, totpCodeSchema } from "@/types/security";
 
 export type MfaChallenge = {
-  /** Short-lived token from `POST /auth/login`; kept in memory only. */
   token: string;
   methods: readonly string[];
 };
@@ -28,7 +25,6 @@ type MfaChallengeFormProps = {
   onCancel: () => void;
 };
 
-/** Second login step for accounts with two-factor authentication enabled. */
 export function MfaChallengeForm({
   challenge,
   onVerified,

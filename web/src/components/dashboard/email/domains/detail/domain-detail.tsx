@@ -1,5 +1,3 @@
-// src/components/dashboard/email/domains/detail/domain-detail.tsx
-
 "use client";
 
 import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";

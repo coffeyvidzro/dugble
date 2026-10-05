@@ -1,5 +1,3 @@
-// src/components/dashboard/email/emails-page/detail/email-actions.tsx
-
 "use client";
 
 import { AlertCircle, Loader2, XCircle } from "lucide-react";

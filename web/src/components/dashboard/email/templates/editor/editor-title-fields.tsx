@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/editor/editor-title-fields.tsx
-
 "use client";
 
 interface EditorTitleFieldsProps {

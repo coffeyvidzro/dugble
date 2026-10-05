@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/editor/variable-insert-menu.tsx
-
 "use client";
 
 import { Braces, ChevronDown } from "lucide-react";

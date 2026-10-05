@@ -1,5 +1,3 @@
-// src/hooks/mutations/use-optimistic-list-mutation.ts
-
 "use client";
 
 import {
@@ -39,9 +37,6 @@ export function useOptimisticListMutation<TVariables, TData, TItem>({
   const queryClient = useQueryClient();
 
   return useMutation({
-    // Responses may include one-time secrets (e.g. webhook signing secrets);
-    // they are stripped before touching the list cache, and the mutation
-    // itself is discarded once unobserved.
     gcTime: 0,
     mutationFn,
 

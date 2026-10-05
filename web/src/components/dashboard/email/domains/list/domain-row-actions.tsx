@@ -1,5 +1,3 @@
-// src/components/dashboard/email/domains/list/domain-row-actions.tsx
-
 "use client";
 
 import { Check, Copy, MoreVertical, Trash2 } from "lucide-react";

@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/campaigns/campaign-detail.tsx
-
 "use client";
 
 import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";

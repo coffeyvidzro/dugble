@@ -1,5 +1,3 @@
-// src/components/dashboard/profile/pending-invites-card.tsx
-
 import { Inbox, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useMyInvitations } from "@/hooks/queries/use-my-invitations";

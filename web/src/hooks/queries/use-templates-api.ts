@@ -1,4 +1,3 @@
-// src/hooks/queries/use-templates-api.ts
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -117,11 +116,6 @@ export function useDeleteTemplate() {
   });
 }
 
-/**
- * Publishes a template's current version. The ID is passed at `mutate` time
- * (not captured at render) so "create & publish" can publish the template it
- * just created in the same interaction.
- */
 export function usePublishTemplate() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -142,10 +136,6 @@ export function usePublishTemplate() {
   });
 }
 
-/**
- * Variables-based (id travels with the call) since duplicate is fired from
- * the templates list, where the target varies per row.
- */
 export function useDuplicateTemplate() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -163,12 +153,6 @@ export function useDuplicateTemplate() {
   });
 }
 
-/**
- * Server-rendered preview of the template's current version. The endpoint is
- * a POST but has no side effects, so it is modelled as a query: it loads when
- * `enabled`, is cached per template, and refetches instead of being re-fired
- * imperatively from an effect.
- */
 export function useTemplatePreview(
   templateId: string,
   {

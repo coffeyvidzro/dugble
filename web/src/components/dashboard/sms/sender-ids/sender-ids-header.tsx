@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/sender-ids/sender-ids-header.tsx
-
 "use client";
 
 import { Fingerprint } from "lucide-react";

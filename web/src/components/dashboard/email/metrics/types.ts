@@ -1,10 +1,6 @@
-// src/components/dashboard/email/metrics/types.ts
-
 import type { EmailAnalyticsWindow } from "@/types/email-api";
 import type { TimeSeriesPoint } from "./chart-utils";
 
-// The real API only exposes fixed 7/30/90-day windows — no 24h or 15d
-// window exists in GET /emails/analytics.
 export type MetricsRange = "7d" | "30d" | "90d";
 
 export const METRICS_RANGE_OPTIONS: { value: MetricsRange; label: string }[] = [
@@ -25,9 +21,6 @@ export const METRICS_RANGE_SHORT_LABEL: Record<MetricsRange, string> = {
   "90d": "90 days",
 };
 
-// The daily series fields the real API actually returns. "total" stands in
-// for "sent" — there's no separate sent/queued breakdown, just a running
-// daily total.
 export type EmailSeriesId =
   | "total"
   | "delivered"
@@ -76,13 +69,6 @@ function average(values: number[]): number {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-/**
- * Derives a trend direction from the window's daily series by comparing
- * the average daily rate across the first vs second half. The API only
- * gives an aggregate rate for the whole window, not a day-by-day rate
- * series, so this — like SMS Reports' trend computation — is a client-side
- * approximation rather than a server-computed figure.
- */
 function computeRate(
   series: EmailAnalyticsWindow["series"],
   numerator: (point: EmailAnalyticsWindow["series"][number]) => number,

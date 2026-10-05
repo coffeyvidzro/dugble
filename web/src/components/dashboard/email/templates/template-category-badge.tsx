@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/template-category-badge.tsx
-
 import { cn } from "@/lib/utils";
 import { CATEGORY_CONFIG, type TemplateCategory } from "./types";
 

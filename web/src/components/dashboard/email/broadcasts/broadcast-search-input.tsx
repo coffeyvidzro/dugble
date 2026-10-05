@@ -1,5 +1,3 @@
-// src/components/dashboard/email/broadcasts/broadcast-search-input.tsx
-
 "use client";
 
 import { Search, X } from "lucide-react";

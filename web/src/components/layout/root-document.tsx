@@ -1,5 +1,3 @@
-// src/components/layout/root-document.tsx
-
 import type { ReactNode } from "react";
 import { LazyCommandPalette } from "@/components/command-palette/lazy-command-palette";
 import { AppProviders } from "@/components/providers/app-providers";
@@ -10,19 +8,11 @@ import { fontHeading, fontMono, fontSans } from "@/utils/fonts";
 import "@/app/globals.css";
 import { cn } from "@/lib/utils";
 
-/**
- * The <html> shell shared by every root layout.
- *
- * Route groups own their root layouts so that authenticated/auth areas can
- * read the per-request CSP nonce (which forces dynamic rendering) while the
- * marketing site stays statically generated.
- */
 export function RootDocument({
   children,
   nonce,
 }: {
   children: ReactNode;
-  /** CSP nonce from `proxy.ts`; omitted on statically rendered pages. */
   nonce?: string;
 }) {
   return (

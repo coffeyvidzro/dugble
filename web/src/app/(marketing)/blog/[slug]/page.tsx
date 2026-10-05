@@ -32,7 +32,6 @@ export async function generateMetadata({
     return {};
   }
 
-  // Pass both the title & label to dynamic OG route
   const ogUrl = `/og?title=${encodeURIComponent(
     post.metadata.title,
   )}&label=${encodeURIComponent("Dugble Blog")}`;

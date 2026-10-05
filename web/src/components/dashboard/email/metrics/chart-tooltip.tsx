@@ -1,5 +1,3 @@
-// src/components/dashboard/email/metrics/chart-tooltip.tsx
-
 type TooltipItem = {
   label: string;
   value: string;

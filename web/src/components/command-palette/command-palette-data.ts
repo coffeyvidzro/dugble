@@ -31,7 +31,6 @@ export const DASHBOARD_GROUP_ORDER = [
 ];
 
 const marketingItems: CommandItem[] = [
-  // Features
   {
     group: "Features",
     title: "A2P API",
@@ -67,7 +66,7 @@ const marketingItems: CommandItem[] = [
     href: "/pricing",
     keywords: ["cost", "billing", "plan"],
   },
-  // Resources
+
   {
     group: "Resources",
     title: "Documentation",
@@ -110,7 +109,6 @@ const marketingItems: CommandItem[] = [
     keywords: ["pages", "site map", "directory"],
   },
 
-  // Company
   {
     group: "Company",
     title: "About",
@@ -146,7 +144,6 @@ const marketingItems: CommandItem[] = [
     keywords: ["enterprise", "dedicated", "volume"],
   },
 
-  // Legal
   {
     group: "Legal",
     title: "Terms of service",
@@ -160,7 +157,6 @@ const marketingItems: CommandItem[] = [
     keywords: ["privacy", "gdpr", "data"],
   },
 
-  // Account
   {
     group: "Account",
     title: "Sign in",

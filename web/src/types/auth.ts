@@ -1,11 +1,5 @@
-// src/types/auth.ts
-
 import { z } from "zod";
 import { userSchema } from "@/types/user";
-
-// ---------------------------------------------------------------------------
-// Register
-// ---------------------------------------------------------------------------
 
 export const registerInputSchema = z.object({
   email: z.email(),
@@ -15,10 +9,6 @@ export const registerInputSchema = z.object({
 export type RegisterInput = z.infer<typeof registerInputSchema>;
 
 export const registerResponseSchema = z.object({ user: userSchema });
-
-// ---------------------------------------------------------------------------
-// Login (+ MFA challenge)
-// ---------------------------------------------------------------------------
 
 export const loginInputSchema = z.object({
   email: z.email(),
@@ -46,10 +36,6 @@ export const verifyRecoveryInputSchema = z.object({
 });
 export type VerifyRecoveryInput = z.infer<typeof verifyRecoveryInputSchema>;
 
-// ---------------------------------------------------------------------------
-// Email verification
-// ---------------------------------------------------------------------------
-
 export const verifyEmailInputSchema = z.object({
   email: z.email(),
   token: z.string(),
@@ -67,10 +53,6 @@ export type ResendVerificationInput = z.infer<
 
 export const resendVerificationResponseSchema = z.object({ sent: z.boolean() });
 
-// ---------------------------------------------------------------------------
-// Password reset
-// ---------------------------------------------------------------------------
-
 export const forgotPasswordInputSchema = z.object({ email: z.email() });
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordInputSchema>;
 
@@ -86,9 +68,5 @@ export type ResetPasswordInput = z.infer<typeof resetPasswordInputSchema>;
 export const resetPasswordResponseSchema = z.object({
   password_reset: z.boolean(),
 });
-
-// ---------------------------------------------------------------------------
-// Logout
-// ---------------------------------------------------------------------------
 
 export const logoutResponseSchema = z.object({ logged_out: z.boolean() });

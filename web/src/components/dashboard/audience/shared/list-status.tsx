@@ -1,5 +1,3 @@
-// src/components/dashboard/audience/shared/list-status.tsx
-
 import { Card } from "@/components/ui/card";
 
 export function ListLoadingState({ label }: { label: string }) {

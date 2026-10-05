@@ -1,5 +1,3 @@
-// src/components/dashboard/email/emails-page/detail/email-meta-grid.tsx
-
 import { Card } from "@/components/ui/card";
 import type { EmailApiResource } from "@/types/email-api";
 

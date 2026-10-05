@@ -1,5 +1,3 @@
-// src/components/dashboard/email/email-dashboard/recent-emails-card.tsx
-
 "use client";
 
 import { ArrowRight, Inbox, Loader2 } from "lucide-react";

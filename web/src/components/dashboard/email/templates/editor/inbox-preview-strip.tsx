@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/editor/inbox-preview-strip.tsx
-
 export function InboxPreviewStrip({
   subject,
   previewText,

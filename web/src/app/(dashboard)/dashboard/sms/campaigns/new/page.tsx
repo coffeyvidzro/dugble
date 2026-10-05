@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/sms/campaigns/new/page.tsx
-
 import { BuilderHeader } from "@/components/dashboard/sms/campaigns/builder-header";
 import { CampaignBuilder } from "@/components/dashboard/sms/campaigns/campaign-builder";
 import { constructMetadata } from "@/utils/metadata";

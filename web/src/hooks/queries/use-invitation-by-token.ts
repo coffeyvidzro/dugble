@@ -1,4 +1,3 @@
-// src/hooks/queries/use-invitation-by-token.ts
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

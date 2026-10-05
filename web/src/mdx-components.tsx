@@ -1,5 +1,3 @@
-// src/mdx-components.tsx
-
 import type { MDXComponents } from "mdx/types";
 
 const components: MDXComponents = {

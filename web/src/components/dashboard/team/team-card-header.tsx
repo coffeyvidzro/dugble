@@ -1,5 +1,3 @@
-// src/components/dashboard/team/team-card-header.tsx
-
 import type { LucideIcon } from "lucide-react";
 import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";

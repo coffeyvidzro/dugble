@@ -1,11 +1,8 @@
-// src/components/dashboard/shared/page-skeleton.tsx
-
 import { Skeleton } from "@/components/ui/skeleton";
 
 const STAT_SLOTS = [0, 1, 2, 3] as const;
 const ROW_SLOTS = [0, 1, 2, 3, 4, 5] as const;
 
-/** Server-rendered placeholder matching the common header → stats → table layout. */
 export function PageSkeleton({ stats = true }: { stats?: boolean }) {
   return (
     <div

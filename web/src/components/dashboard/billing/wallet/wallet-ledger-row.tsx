@@ -1,5 +1,3 @@
-// src/components/dashboard/billing/wallet/wallet-ledger-row.tsx
-
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";

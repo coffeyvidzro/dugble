@@ -1,5 +1,3 @@
-// src/components/dashboard/security/enroll-totp-dialog.tsx
-
 "use client";
 
 import { Download, Loader2 } from "lucide-react";
@@ -27,16 +25,10 @@ import { CodeInput } from "./code-input";
 type EnrollTotpDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Started by the "Enable" click in the parent (an event, not an effect). */
   enrollment: ReturnType<typeof useEnrollTotp>;
   confirmation: ReturnType<typeof useConfirmTotp>;
 };
 
-/**
- * Two-step enrolment: scan + confirm, then show recovery codes exactly once.
- * The secret and codes exist only in mutation state and are discarded when the
- * dialog closes (the parent resets both mutations).
- */
 export function EnrollTotpDialog({
   open,
   onOpenChange,

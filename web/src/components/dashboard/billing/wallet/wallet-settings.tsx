@@ -1,5 +1,3 @@
-// src/components/dashboard/billing/wallet/wallet-settings.tsx
-
 "use client";
 
 import { Loader2 } from "lucide-react";

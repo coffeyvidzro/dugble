@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/send-sms/use-sms-composer.ts
-
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -16,14 +14,8 @@ import {
   type ScheduleMode,
 } from "./types";
 
-/** Maximum messages accepted by `POST /sms/batch`. */
 export const SMS_BATCH_LIMIT = 50;
 
-/**
- * State, derived values and submission for the SMS composer. Keeps
- * `ComposeSmsForm` purely presentational: it lays out fields and wires them
- * to what this hook returns.
- */
 export function useSmsComposer(initialTemplate?: MessageTemplate) {
   const router = useRouter();
   const { data: senders } = useApprovedSenderIds();

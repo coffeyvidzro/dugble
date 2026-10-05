@@ -1,5 +1,3 @@
-// src/components/dashboard/profile/typed-confirm-dialog.tsx
-
 "use client";
 
 import { Loader2 } from "lucide-react";

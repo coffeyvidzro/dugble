@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/sender-ids/sender-id-request-form.tsx
-
 "use client";
 
 import { AlertCircle, Loader2, Send } from "lucide-react";

@@ -1,5 +1,3 @@
-// src/components/dashboard/webhooks/webhooks-panel.tsx
-
 "use client";
 
 import { AlertTriangle, Radio } from "lucide-react";

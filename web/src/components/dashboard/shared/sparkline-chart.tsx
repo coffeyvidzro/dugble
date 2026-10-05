@@ -1,5 +1,3 @@
-// src/components/dashboard/shared/sparkline-chart.tsx
-
 import { cn } from "@/lib/utils";
 
 export type MetricTone = "positive" | "negative" | "neutral";

@@ -1,10 +1,4 @@
-// src/types/webhook.ts
-
 import { z } from "zod";
-
-// ---------------------------------------------------------------------------
-// Webhook endpoints
-// ---------------------------------------------------------------------------
 
 export const webhookEndpointSchema = z.object({
   id: z.string(),
@@ -65,12 +59,7 @@ export const rotateWebhookSecretResponseSchema = z.object({
   signing_secret: z.string(),
 });
 
-// DELETE /webhook-endpoints/:id returns 204 No Content.
 export const webhookEndpointDeletedSchema = z.void();
-
-// ---------------------------------------------------------------------------
-// Test deliveries — POST /webhook-endpoints/:id/test
-// ---------------------------------------------------------------------------
 
 export const webhookDeliverySchema = z.object({
   id: z.string(),

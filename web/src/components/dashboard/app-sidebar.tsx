@@ -1,5 +1,3 @@
-// src/components/dashboard/app-sidebar.tsx
-
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
@@ -30,7 +28,6 @@ export function AppSidebar({
     () => findPortalForPath(pathname)?.id ?? null,
   );
 
-  // Follow navigation: when the path changes, snap the rail to its portal.
   const [prevPathname, setPrevPathname] = useState(pathname);
   if (pathname !== prevPathname) {
     setPrevPathname(pathname);

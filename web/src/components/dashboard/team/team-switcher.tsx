@@ -1,5 +1,3 @@
-// src/components/dashboard/team/team-switcher.tsx
-
 "use client";
 
 import { Check, Plus } from "lucide-react";

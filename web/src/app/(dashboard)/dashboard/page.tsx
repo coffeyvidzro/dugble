@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/page.tsx
-
 import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
 import { PrefetchBoundary } from "@/components/providers/prefetch-boundary";
 import { constructMetadata } from "@/utils/metadata";

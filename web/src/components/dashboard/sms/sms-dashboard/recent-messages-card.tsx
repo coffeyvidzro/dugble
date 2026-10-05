@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/sms-dashboard/recent-messages-card.tsx
-
 "use client";
 
 import { ArrowRight, Loader2, MessageSquareOff } from "lucide-react";

@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/sms-dashboard/message-log-row.tsx
-
 import Link from "next/link";
 import { TableCell, TableRow } from "@/components/ui/table";
 import type { SmsApiResource } from "@/types/sms-api";

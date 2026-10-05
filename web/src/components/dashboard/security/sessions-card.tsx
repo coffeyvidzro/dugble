@@ -1,5 +1,3 @@
-// src/components/dashboard/security/sessions-card.tsx
-
 "use client";
 
 import { Loader2, LogOut, MonitorSmartphone } from "lucide-react";

@@ -1,5 +1,3 @@
-// src/app/(dashboard)/dashboard/email/templates/[id]/not-found.tsx
-
 import { TemplateNotFound } from "@/components/dashboard/email/templates/editor/template-not-found";
 
 export default function NotFound() {

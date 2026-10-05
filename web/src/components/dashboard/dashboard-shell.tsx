@@ -1,5 +1,3 @@
-// src/components/dashboard/dashboard-shell.tsx
-
 "use client";
 
 import { type ReactNode, useState } from "react";

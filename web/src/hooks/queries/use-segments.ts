@@ -1,5 +1,3 @@
-// src/hooks/queries/use-segments.ts
-
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

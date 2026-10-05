@@ -1,5 +1,3 @@
-// src/components/dashboard/security/security-header.tsx
-
 import { PortalHeroHeader } from "../portal-hero-header";
 
 export function SecurityHeader() {

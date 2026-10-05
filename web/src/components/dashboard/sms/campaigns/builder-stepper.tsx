@@ -1,5 +1,3 @@
-// src/components/dashboard/sms/campaigns/builder-stepper.tsx
-
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 

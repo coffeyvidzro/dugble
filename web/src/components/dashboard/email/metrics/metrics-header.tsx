@@ -1,5 +1,3 @@
-// src/components/dashboard/email/metrics/metrics-header.tsx
-
 import { Activity } from "lucide-react";
 import Link from "next/link";
 import { PortalHeroHeader } from "../../portal-hero-header";

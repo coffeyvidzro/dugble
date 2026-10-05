@@ -1,5 +1,3 @@
-// src/components/dashboard/shared/dashboard-range-selector.tsx
-
 "use client";
 
 import { cn } from "@/lib/utils";

@@ -1,5 +1,3 @@
-// src/components/dashboard/email/templates/editor/delete-template-dialog.tsx
-
 "use client";
 
 import { Loader2, Trash2 } from "lucide-react";
