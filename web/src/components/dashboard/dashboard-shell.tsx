@@ -1,9 +1,10 @@
+// src/components/dashboard/dashboard-shell.tsx
+
 "use client";
 
-import { useState, type ReactNode } from "react";
-
-import { DashboardHeader } from "@/components/dashboard/dashboard-header";
+import { type ReactNode, useState } from "react";
 import { AppSidebar } from "@/components/dashboard/app-sidebar";
+import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import type { SessionUser } from "@/lib/session";
 
 export function DashboardShell({

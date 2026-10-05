@@ -1,265 +1,268 @@
+// src/components/dashboard/email/emails-page/send-email-dialog.tsx
+
 "use client";
 
-import { useState } from "react";
 import { Loader2, Plus, Send } from "lucide-react";
-import { z } from "zod";
+import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useSendEmail } from "@/hooks/queries/use-emails-api";
 
-const emailSchema = z.string().email();
+function parseAddressList(raw: string): string[] {
+  return raw
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
 
-export type SendEmailInput = {
-    from: string;
-    to: string[];
-    subject: string;
-    body: string;
-};
+export function SendEmailDialog() {
+  const sendEmail = useSendEmail();
+  const [open, setOpen] = useState(false);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [cc, setCc] = useState("");
+  const [bcc, setBcc] = useState("");
+  const [replyTo, setReplyTo] = useState("");
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [isHtml, setIsHtml] = useState(false);
+  const [scheduledAt, setScheduledAt] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-export function SendEmailDialog({
-    fromAddresses,
-    onSend,
-}: {
-    fromAddresses: string[];
-    onSend: (input: SendEmailInput) => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const [from, setFrom] = useState(fromAddresses[0] ?? "");
-    const [to, setTo] = useState("");
-    const [subject, setSubject] = useState("");
-    const [body, setBody] = useState("");
-    const [toError, setToError] = useState<string | null>(null);
-    const [subjectError, setSubjectError] = useState<string | null>(null);
-    const [sending, setSending] = useState(false);
+  function reset() {
+    setFrom("");
+    setTo("");
+    setCc("");
+    setBcc("");
+    setReplyTo("");
+    setSubject("");
+    setBody("");
+    setIsHtml(false);
+    setScheduledAt("");
+    setError(null);
+    sendEmail.reset();
+  }
 
-    function reset() {
-        setFrom(fromAddresses[0] ?? "");
-        setTo("");
-        setSubject("");
-        setBody("");
-        setToError(null);
-        setSubjectError(null);
-        setSending(false);
+  function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    const recipients = parseAddressList(to);
+
+    if (recipients.length === 0) {
+      setError("Enter at least one recipient.");
+      return;
     }
-
-    function handleSubmit(event: React.FormEvent) {
-        event.preventDefault();
-
-        const recipients = to
-            .split(",")
-            .map((r) => r.trim())
-            .filter(Boolean);
-
-        let hasError = false;
-
-        if (recipients.length === 0) {
-            setToError("Enter at least one recipient.");
-            hasError = true;
-        } else {
-            const invalid = recipients.find(
-                (r) => !emailSchema.safeParse(r).success,
-            );
-            if (invalid) {
-                setToError(`"${invalid}" isn't a valid email address.`);
-                hasError = true;
-            } else {
-                setToError(null);
-            }
-        }
-
-        if (!subject.trim()) {
-            setSubjectError("Enter a subject line.");
-            hasError = true;
-        } else {
-            setSubjectError(null);
-        }
-
-        if (hasError) return;
-
-        setSending(true);
-        window.setTimeout(() => {
-            onSend({
-                from,
-                to: recipients,
-                subject: subject.trim(),
-                body: body.trim(),
-            });
-            setOpen(false);
-            reset();
-        }, 500);
+    if (!subject.trim()) {
+      setError("Enter a subject line.");
+      return;
     }
+    if (!body.trim()) {
+      setError("Write a message body.");
+      return;
+    }
+    setError(null);
 
-    return (
-        <Dialog
-            open={open}
-            onOpenChange={(next) => {
-                setOpen(next);
-                if (!next) reset();
-            }}
-        >
-            <DialogTrigger
-                render={
-                    <Button className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20" />
-                }
-            >
-                <Plus className="size-4" />
-                Send email
-                <span
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-                />
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-lg border-border/40 shadow-xl">
-                <form onSubmit={handleSubmit}>
-                    <DialogHeader>
-                        <DialogTitle>Send email</DialogTitle>
-                        <DialogDescription>
-                            Send a one-off transactional email from a verified
-                            address. For production sending, use the Dugble API
-                            instead.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="space-y-4 py-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="send-email-from">From</Label>
-                            <Select
-                                value={from}
-                                onValueChange={(value) =>
-                                    value !== null && setFrom(value)
-                                }
-                            >
-                                <SelectTrigger
-                                    id="send-email-from"
-                                    className="w-full border-foreground/15 bg-background focus:ring-primary/50"
-                                >
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {fromAddresses.map((address) => (
-                                        <SelectItem
-                                            key={address}
-                                            value={address}
-                                        >
-                                            {address}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="send-email-to">To</Label>
-                            <Input
-                                id="send-email-to"
-                                type="text"
-                                placeholder="jane@example.com, sam@example.com"
-                                value={to}
-                                onChange={(event) => {
-                                    setTo(event.target.value);
-                                    setToError(null);
-                                }}
-                                className="border-foreground/15 bg-background font-mono text-sm focus-visible:ring-primary/50"
-                            />
-                            {toError ? (
-                                <p className="text-xs font-medium text-danger animate-fade-up">
-                                    {toError}
-                                </p>
-                            ) : (
-                                <p className="text-xs text-muted-foreground">
-                                    Separate multiple recipients with commas.
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="send-email-subject">Subject</Label>
-                            <Input
-                                id="send-email-subject"
-                                value={subject}
-                                onChange={(event) => {
-                                    setSubject(event.target.value);
-                                    setSubjectError(null);
-                                }}
-                                placeholder="Your verification code"
-                                className="border-foreground/15 bg-background focus-visible:ring-primary/50"
-                            />
-                            {subjectError && (
-                                <p className="text-xs font-medium text-danger animate-fade-up">
-                                    {subjectError}
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="send-email-body">Body</Label>
-                            <Textarea
-                                id="send-email-body"
-                                value={body}
-                                onChange={(event) =>
-                                    setBody(event.target.value)
-                                }
-                                placeholder="Write your message..."
-                                rows={6}
-                                className="border-foreground/15 bg-background text-sm focus-visible:ring-primary/50"
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                Plain text only. For rich HTML emails, send via
-                                the API with a template.
-                            </p>
-                        </div>
-                    </div>
-
-                    <DialogFooter className="border-t border-border/40 pt-4">
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={() => setOpen(false)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            type="submit"
-                            disabled={sending}
-                            className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
-                        >
-                            {sending ? (
-                                <Loader2
-                                    className="size-4 animate-spin"
-                                    data-icon="inline-start"
-                                />
-                            ) : (
-                                <Send
-                                    className="size-4"
-                                    data-icon="inline-start"
-                                />
-                            )}
-                            {sending ? "Sending..." : "Send"}
-                            <span
-                                aria-hidden
-                                className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-                            />
-                        </Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
+    sendEmail.mutate(
+      {
+        from: from.trim() || undefined,
+        to: recipients,
+        cc: cc.trim() ? parseAddressList(cc) : undefined,
+        bcc: bcc.trim() ? parseAddressList(bcc) : undefined,
+        reply_to: replyTo.trim() ? parseAddressList(replyTo) : undefined,
+        subject: subject.trim(),
+        html: isHtml ? body : undefined,
+        text: isHtml ? undefined : body,
+        scheduled_at: scheduledAt
+          ? new Date(scheduledAt).toISOString()
+          : undefined,
+      },
+      {
+        onSuccess: () => {
+          setOpen(false);
+          reset();
+        },
+        onError: (err) =>
+          setError(
+            err instanceof Error ? err.message : "Couldn't send that email.",
+          ),
+      },
     );
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) reset();
+      }}
+    >
+      <DialogTrigger
+        render={
+          <Button className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20" />
+        }
+      >
+        <Plus className="size-4" />
+        Send email
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
+        />
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-lg border-border/40 shadow-xl max-h-[90dvh] flex flex-col">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <DialogHeader className="shrink-0">
+            <DialogTitle>Send email</DialogTitle>
+            <DialogDescription>
+              Send a one-off transactional email through the Dugble API.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-6 overflow-y-auto flex-1 px-1 no-scrollbar">
+            {error && (
+              <p className="text-xs font-medium text-danger animate-fade-up">
+                {error}
+              </p>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="send-email-from">From (optional)</Label>
+              <Input
+                id="send-email-from"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                placeholder="Acme <hello@yourdomain.com>"
+                className="border-foreground/15 bg-background focus-visible:ring-primary/50"
+              />
+              <p className="text-xs text-muted-foreground">
+                Leave blank to use your workspace&apos;s default sender.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="send-email-to">To</Label>
+              <Input
+                id="send-email-to"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                placeholder="jane@example.com, sam@example.com"
+                className="border-foreground/15 bg-background font-mono text-sm focus-visible:ring-primary/50"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="send-email-cc">Cc</Label>
+                <Input
+                  id="send-email-cc"
+                  value={cc}
+                  onChange={(e) => setCc(e.target.value)}
+                  className="border-foreground/15 bg-background font-mono text-sm focus-visible:ring-primary/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="send-email-bcc">Bcc</Label>
+                <Input
+                  id="send-email-bcc"
+                  value={bcc}
+                  onChange={(e) => setBcc(e.target.value)}
+                  className="border-foreground/15 bg-background font-mono text-sm focus-visible:ring-primary/50"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="send-email-reply-to">Reply-to</Label>
+              <Input
+                id="send-email-reply-to"
+                value={replyTo}
+                onChange={(e) => setReplyTo(e.target.value)}
+                className="border-foreground/15 bg-background font-mono text-sm focus-visible:ring-primary/50"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="send-email-subject">Subject</Label>
+              <Input
+                id="send-email-subject"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Your verification code"
+                className="border-foreground/15 bg-background focus-visible:ring-primary/50"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="send-email-body">Body</Label>
+                <button
+                  type="button"
+                  onClick={() => setIsHtml((v) => !v)}
+                  className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {isHtml ? "Sending as HTML" : "Sending as plain text"} ·
+                  toggle
+                </button>
+              </div>
+              <Textarea
+                id="send-email-body"
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                placeholder={isHtml ? "<p>Hello!</p>" : "Write your message..."}
+                rows={7}
+                className="border-foreground/15 bg-background font-mono text-sm focus-visible:ring-primary/50"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="send-email-schedule">Send at (optional)</Label>
+              <Input
+                id="send-email-schedule"
+                type="datetime-local"
+                value={scheduledAt}
+                onChange={(e) => setScheduledAt(e.target.value)}
+                className="border-foreground/15 bg-background focus-visible:ring-primary/50"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="border-t border-border/40 pt-4 shrink-0">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={sendEmail.isPending}
+              className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
+            >
+              {sendEmail.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Send className="size-4" />
+              )}
+              {sendEmail.isPending ? "Sending..." : "Send"}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
+              />
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 }

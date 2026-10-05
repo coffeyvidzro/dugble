@@ -1,15 +1,20 @@
+// src/components/auth/verify-email-form.tsx
+
 "use client";
 
 import { CheckCircle2, Loader2, Mail, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type * as React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { csrfFetch } from "@/lib/csrf-fetch";
 import { cn } from "@/lib/utils";
+import {
+  useResendVerificationEmail,
+  useVerifyEmail,
+} from "../../hooks/mutations/use-auth";
 
 type Status = "pending" | "verifying" | "success" | "error";
 
@@ -23,35 +28,23 @@ export function VerifyEmailForm({
   const token = searchParams.get("token");
   const email = searchParams.get("email");
 
-  const [status, setStatus] = useState<Status>(token ? "verifying" : "pending");
-  const [resending, setResending] = useState(false);
+  const verifyEmail = useVerifyEmail();
+  const resendVerification = useResendVerificationEmail();
   const [cooldown, setCooldown] = useState(0);
 
   // If a verification link brought us here, confirm it immediately.
+  // useMutation already guards against setting state after unmount, so
+  // there's no need for the manual "cancelled" flag the plain-fetch version
+  // needed.
+  const submittedToken = useRef<string | null>(null);
   useEffect(() => {
-    if (!token) return;
-    let cancelled = false;
-
-    async function verify() {
-      try {
-        // TODO
-        // Add real endpoints later after backend deployment.
-        const response = await csrfFetch("/api/v1/auth/email/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, email }),
-        });
-        if (!cancelled) setStatus(response.ok ? "success" : "error");
-      } catch {
-        if (!cancelled) setStatus("error");
-      }
-    }
-
-    verify();
-    return () => {
-      cancelled = true;
-    };
-  }, [token, email]);
+    if (!token || !email) return;
+    // Tokens are single-use: never submit the same one twice (StrictMode
+    // re-runs effects in development).
+    if (submittedToken.current === token) return;
+    submittedToken.current = token;
+    verifyEmail.mutate({ token, email });
+  }, [token, email, verifyEmail.mutate]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -59,19 +52,26 @@ export function VerifyEmailForm({
     return () => clearTimeout(t);
   }, [cooldown]);
 
-  async function resend() {
+  // A link with a token but no email is malformed — go straight to the
+  // error state instead of firing a request with a null email. Otherwise,
+  // status tracks the mutation directly rather than duplicating it in a
+  // separate variable that could drift out of sync.
+  const status: Status = !token
+    ? "pending"
+    : !email
+      ? "error"
+      : verifyEmail.isSuccess
+        ? "success"
+        : verifyEmail.isError
+          ? "error"
+          : "verifying";
+
+  function resend() {
     if (!email || cooldown > 0) return;
-    setResending(true);
-    try {
-      const response = await csrfFetch("/api/v1/auth/email/resend", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      if (response.ok) setCooldown(RESEND_COOLDOWN_SECONDS);
-    } finally {
-      setResending(false);
-    }
+    resendVerification.mutate(
+      { email },
+      { onSuccess: () => setCooldown(RESEND_COOLDOWN_SECONDS) },
+    );
   }
 
   return (
@@ -118,11 +118,15 @@ export function VerifyEmailForm({
             <div className="w-full space-y-3">
               <Button
                 onClick={resend}
-                disabled={resending || cooldown > 0 || !email}
+                disabled={
+                  resendVerification.isPending || cooldown > 0 || !email
+                }
                 size="lg"
                 className="w-full hover:cursor-pointer"
               >
-                {resending && <Loader2 className="size-4 animate-spin" />}
+                {resendVerification.isPending && (
+                  <Loader2 className="size-4 animate-spin" />
+                )}
                 {cooldown > 0 ? `Resend in ${cooldown}s` : "Send a new link"}
               </Button>
               <Link
@@ -142,12 +146,16 @@ export function VerifyEmailForm({
               </p>
               <Button
                 onClick={resend}
-                disabled={resending || cooldown > 0 || !email}
+                disabled={
+                  resendVerification.isPending || cooldown > 0 || !email
+                }
                 variant="outline"
                 size="lg"
                 className="w-full hover:cursor-pointer"
               >
-                {resending && <Loader2 className="size-4 animate-spin" />}
+                {resendVerification.isPending && (
+                  <Loader2 className="size-4 animate-spin" />
+                )}
                 {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend email"}
               </Button>
             </div>

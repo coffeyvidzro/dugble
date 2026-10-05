@@ -1,4 +1,5 @@
 import { Reveal } from "@/components/marketing/reveal";
+import { cn } from "@/lib/utils";
 
 const rows = [
   {
@@ -99,7 +100,10 @@ export function DashboardPreview() {
                   </td>
                   <td className="px-5 py-3">
                     <span
-                      className={`rounded-full px-2 py-0.5 font-mono text-[11px] uppercase tracking-wide ${statusStyles[row.status]}`}
+                      className={cn(
+                        "rounded-full px-2 py-0.5 font-mono text-[11px] uppercase tracking-wide",
+                        statusStyles[row.status],
+                      )}
                     >
                       {row.status}
                     </span>

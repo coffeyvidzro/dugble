@@ -1,3 +1,5 @@
+// src/utils/metadata.ts
+
 import type { Metadata } from "next";
 import { baseUrl } from "@/lib/site";
 

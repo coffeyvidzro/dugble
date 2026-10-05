@@ -1,10 +1,11 @@
+// src/components/dashboard/nav-group-list.tsx
+
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-import type { DashboardNavGroup } from "./dashboard-nav";
 import { cn } from "@/lib/utils";
+import type { DashboardNavGroup } from "./dashboard-nav";
 
 export function NavGroupList({
   groups,

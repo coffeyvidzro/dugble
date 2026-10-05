@@ -1,16 +1,18 @@
+// src/components/dashboard/mobile-nav.tsx
+
 "use client";
 
+import { LayoutGrid, Plus, X } from "lucide-react";
+import Link from "next/link";
 import type { CSSProperties } from "react";
 import { useEffect } from "react";
-import Link from "next/link";
-
-import { LayoutGrid, Plus, X } from "lucide-react";
-
-import { dashboardPortals, type DashboardPortal } from "./dashboard-nav";
-import { NavGroupList } from "./nav-group-list";
-import { AVATAR_PRESETS, initialsFromName } from "./team/team-avatar-picker";
+import { BrandMark } from "@/components/brand-mark";
 import type { SessionUser } from "@/lib/session";
 import { cn } from "@/lib/utils";
+import { type DashboardPortal, dashboardPortals } from "./dashboard-nav";
+import { LogoutButton } from "./logout-button";
+import { NavGroupList } from "./nav-group-list";
+import { TeamSwitcher } from "./team/team-switcher";
 
 export function MobileNav({
   user,
@@ -25,9 +27,6 @@ export function MobileNav({
 }) {
   const displayName = user.name.trim() || user.email;
   const initials = displayName.slice(0, 2).toUpperCase();
-  const teamName = `${displayName}'s Team`;
-  const teamInitials = initialsFromName(teamName) || "T";
-  const teamPreset = AVATAR_PRESETS[0];
 
   // Lock body scroll while the drawer is open.
   useEffect(() => {
@@ -78,16 +77,7 @@ export function MobileNav({
             onClick={() => onOpenChange(false)}
             className="flex items-center gap-2"
           >
-            <img
-              src="/brand/mark-light-bg.svg"
-              alt=""
-              className="size-7 rounded-lg dark:hidden"
-            />
-            <img
-              src="/brand/mark-dark-bg.svg"
-              alt=""
-              className="hidden size-7 rounded-lg dark:block"
-            />
+            <BrandMark size="sm" />
             <span className="font-heading text-sm font-semibold">Dugble</span>
           </Link>
           <button
@@ -101,16 +91,9 @@ export function MobileNav({
         </div>
 
         <div className="flex items-center gap-2.5 border-b px-4 py-3 md:hidden">
-          <span
-            className={cn(
-              "flex size-7 shrink-0 items-center justify-center rounded-lg bg-linear-to-br font-heading text-[11px] font-semibold text-white",
-              teamPreset.classes,
-            )}
-          >
-            {teamInitials}
-          </span>
-          <span className="flex-1 truncate text-sm font-medium">
-            {teamName}
+          <TeamSwitcher />
+          <span className="flex-1 truncate text-sm text-muted-foreground">
+            Active team
           </span>
           <Link
             href="/dashboard/create-team"
@@ -196,11 +179,16 @@ export function MobileNav({
 
         <div className="flex-1 overflow-y-auto px-3 py-4">
           {activePortal ? (
-            <div className="flex flex-col gap-6">
+            <div className="flex min-h-full flex-col gap-6">
               <NavGroupList
                 groups={activePortal.groups}
                 onNavigate={() => onOpenChange(false)}
               />
+              {activePortal.id === "account" && (
+                <div className="mt-auto border-t pt-3">
+                  <LogoutButton />
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-2.5 px-6 text-center">

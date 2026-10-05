@@ -1,10 +1,11 @@
+// src/components/auth/forgot-password-form.tsx
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type * as React from "react";
-import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
@@ -18,8 +19,8 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { csrfFetch } from "@/lib/csrf-fetch";
 import { cn } from "@/lib/utils";
+import { useForgotPassword } from "../../hooks/mutations/use-auth";
 
 export const formSchema = z.object({
   email: z.email("Please enter a valid email address."),
@@ -30,37 +31,23 @@ export function ForgotPasswordForm({
   ...props
 }: React.ComponentProps<"div">) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const forgotPassword = useForgotPassword();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { email: "" },
   });
 
-  async function onSubmit(data: z.infer<typeof formSchema>) {
-    setLoading(true);
-    try {
-      const response = await csrfFetch("/api/v1/auth/password/forgot", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => null);
-        toast.error(
-          error?.error?.message ?? "Unable to request a password reset.",
-        );
-        return;
-      }
-
-      toast.info("If an account exists, reset instructions are on the way.");
-      router.push("/login");
-    } catch {
-      toast.error("Unable to request a password reset. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+  function onSubmit(data: z.infer<typeof formSchema>) {
+    forgotPassword.mutate(data, {
+      onSuccess: () => {
+        toast.info("If an account exists, reset instructions are on the way.");
+        router.push("/login");
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
   }
 
   return (
@@ -92,7 +79,7 @@ export function ForgotPasswordForm({
                       placeholder="youremail@example.com"
                       autoComplete="email"
                       type="email"
-                      disabled={loading}
+                      disabled={forgotPassword.isPending}
                       className="pl-10"
                     />
                   </div>
@@ -106,11 +93,13 @@ export function ForgotPasswordForm({
             <Button
               type="submit"
               form="forgot-password-form"
-              disabled={loading}
+              disabled={forgotPassword.isPending}
               size="lg"
               className="w-full hover:cursor-pointer"
             >
-              {loading && <Loader2 className="size-4 animate-spin" />}
+              {forgotPassword.isPending && (
+                <Loader2 className="size-4 animate-spin" />
+              )}
               Send reset link
             </Button>
           </FieldGroup>

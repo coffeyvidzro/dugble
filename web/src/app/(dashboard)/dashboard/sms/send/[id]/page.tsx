@@ -1,25 +1,25 @@
-import { constructMetadata } from "@/utils/metadata";
+// src/app/(dashboard)/dashboard/sms/send/[id]/page.tsx
+
+import { notFound } from "next/navigation";
 import { MessageDetail } from "@/components/dashboard/sms/send-sms/message-detail";
-import { getMessageById } from "@/components/dashboard/sms/send-sms/types";
+import { isUuid } from "@/lib/security/route-params";
+import { constructMetadata } from "@/utils/metadata";
 
 export const metadata = constructMetadata({
-    title: "Message",
-    description: "Delivery status for a sent SMS message.",
-    path: "/dashboard/sms/send",
-    preset: "dashboard",
+  title: "Message",
+  description: "Delivery status for a sent SMS message.",
+  path: "/dashboard/sms/send",
+  preset: "dashboard",
 });
 
 export default async function Page({
-    params,
-    searchParams,
+  params,
 }: {
-    params: Promise<{ id: string }>;
-    searchParams: Promise<{ live?: string }>;
+  params: Promise<{ id: string }>;
 }) {
-    const { id } = await params;
-    const { live } = await searchParams;
+  const { id } = await params;
+  // The ID becomes part of an API path — reject anything malformed up front.
+  if (!isUuid(id)) notFound();
 
-    const message = getMessageById(id);
-
-    return <MessageDetail message={message} isLive={live === "1"} />;
+  return <MessageDetail messageId={id} />;
 }

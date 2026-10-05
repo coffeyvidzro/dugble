@@ -1,19 +1,21 @@
-import { constructMetadata } from "@/utils/metadata";
+// src/app/(dashboard)/dashboard/sms/campaigns/new/page.tsx
+
 import { BuilderHeader } from "@/components/dashboard/sms/campaigns/builder-header";
 import { CampaignBuilder } from "@/components/dashboard/sms/campaigns/campaign-builder";
+import { constructMetadata } from "@/utils/metadata";
 
 export const metadata = constructMetadata({
-    title: "New Campaign",
-    description: "Build a new SMS campaign for your audience.",
-    path: "/dashboard/sms/campaigns/new",
-    preset: "dashboard",
+  title: "New Campaign",
+  description: "Build a new SMS campaign for your audience.",
+  path: "/dashboard/sms/campaigns/new",
+  preset: "dashboard",
 });
 
 export default function Page() {
-    return (
-        <div className="mx-auto w-full max-w-4xl pb-6">
-            <BuilderHeader />
-            <CampaignBuilder />
-        </div>
-    );
+  return (
+    <div className="mx-auto w-full max-w-4xl pb-6">
+      <BuilderHeader />
+      <CampaignBuilder />
+    </div>
+  );
 }

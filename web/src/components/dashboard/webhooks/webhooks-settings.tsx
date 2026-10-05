@@ -7,20 +7,20 @@ import { WebhookHeader } from "./webhook-header";
 import { WebhooksCard } from "./webhooks-card";
 
 export function WebhooksSettings() {
-    const { data: webhooks, isLoading } = useWebhookEndpoints();
+  const { data: webhooks, isLoading } = useWebhookEndpoints();
 
-    return (
-        <div className="mx-auto w-full max-w-5xl  pb-6">
-            <WebhookHeader
-                endpointCount={webhooks?.length ?? 0}
-                isLoading={isLoading}
-            />
-            <div
-                className="animate-fade-up"
-                style={{ animationDelay: "100ms", animationFillMode: "both" }}
-            >
-                <WebhooksCard />
-            </div>
-        </div>
-    );
+  return (
+    <div className="mx-auto w-full max-w-5xl  pb-6">
+      <WebhookHeader
+        endpointCount={webhooks?.length ?? 0}
+        isLoading={isLoading}
+      />
+      <div
+        className="animate-fade-up"
+        style={{ animationDelay: "100ms", animationFillMode: "both" }}
+      >
+        <WebhooksCard />
+      </div>
+    </div>
+  );
 }

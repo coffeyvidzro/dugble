@@ -1,3 +1,5 @@
+// src/app/(auth)/sign-up/page.tsx
+
 import { SignupForm } from "@/components/auth/signup-form";
 import { constructMetadata } from "@/utils/metadata";
 

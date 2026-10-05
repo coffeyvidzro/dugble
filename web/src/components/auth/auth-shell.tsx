@@ -1,4 +1,4 @@
-"use client";
+// src/components/auth/auth-shell.tsx
 
 import { ArrowLeft } from "lucide-react";
 import Image from "next/image";

@@ -1,3 +1,5 @@
+// src/utils/fonts.ts
+
 import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 
 export const fontSans = Inter({

@@ -1,80 +1,99 @@
+// src/components/dashboard/sms/send-sms/message-detail.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import {
-    Card,
-    CardDescription,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
+import { useSmsEvents, useSmsMessage } from "@/hooks/queries/use-sms-api";
+import { isTerminalSmsStatus } from "@/types/sms-api";
 import { MessageDetailSummary } from "./message-detail-summary";
 import { MessageStatusTimeline } from "./message-status-timeline";
-import type { MessageDetail as MessageDetailData } from "./types";
 
-const REVEAL_DELAY_MS = 1100;
+export function MessageDetail({ messageId }: { messageId: string }) {
+  const messageQuery = useSmsMessage(messageId);
+  const isTerminal = messageQuery.data
+    ? isTerminalSmsStatus(messageQuery.data.last_event)
+    : false;
 
-export function MessageDetail({
-    message,
-    isLive,
-}: {
-    message: MessageDetailData;
-    isLive: boolean;
-}) {
-    const [visibleCount, setVisibleCount] = useState(
-        isLive ? 1 : message.events.length,
-    );
+  const eventsQuery = useSmsEvents(messageId, { poll: !isTerminal });
 
-    useEffect(() => {
-        if (!isLive || visibleCount >= message.events.length) return;
-        const timer = window.setTimeout(() => {
-            setVisibleCount((count) => Math.min(count + 1, message.events.length));
-        }, REVEAL_DELAY_MS);
-        return () => window.clearTimeout(timer);
-    }, [isLive, visibleCount, message.events.length]);
-
-    const visibleEvents = message.events.slice(0, visibleCount);
-    const currentStatus = visibleEvents[visibleEvents.length - 1]?.status ?? "queued";
-    const isSettling = visibleCount < message.events.length;
-
+  if (messageQuery.isPending) {
     return (
-        <div className="mx-auto w-full max-w-3xl pb-6">
-            <div className="mb-6 space-y-1">
-                <Link
-                    href="/dashboard/sms/send"
-                    className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-                >
-                    <ArrowLeft className="size-3.5" />
-                    Send
-                </Link>
-                <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                    Message details
-                </h1>
-            </div>
-
-            <div className="space-y-6">
-                <MessageDetailSummary message={message} currentStatus={currentStatus} />
-
-                <Card className="border-border/40 shadow-sm">
-                    <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
-                        <CardTitle className="text-xl">
-                            Delivery timeline
-                        </CardTitle>
-                        <CardDescription>
-                            {isSettling
-                                ? "Live status from your webhook feed."
-                                : "Full delivery history for this message."}
-                        </CardDescription>
-                    </CardHeader>
-                    <div className="p-4">
-                        <MessageStatusTimeline
-                            events={visibleEvents}
-                            isSettling={isSettling}
-                        />
-                    </div>
-                </Card>
-            </div>
-        </div>
+      <div className="mx-auto flex w-full max-w-3xl items-center justify-center gap-2 pb-6 pt-16 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        Loading message…
+      </div>
     );
+  }
+
+  if (messageQuery.isError || !messageQuery.data) {
+    return (
+      <div className="mx-auto w-full max-w-3xl pb-6">
+        <div className="mb-6 space-y-1">
+          <Link
+            href="/dashboard/sms/send"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ArrowLeft className="size-3.5" />
+            Send
+          </Link>
+        </div>
+        <div className="flex items-center gap-2 rounded-lg border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
+          <AlertCircle className="size-4 shrink-0" />
+          Couldn&apos;t find that message. It may not exist, or you may not have
+          access to it.
+        </div>
+      </div>
+    );
+  }
+
+  const message = messageQuery.data;
+  const events = eventsQuery.data?.data ?? [];
+
+  return (
+    <div className="mx-auto w-full max-w-3xl pb-6">
+      <div className="mb-6 space-y-1">
+        <Link
+          href="/dashboard/sms/send"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="size-3.5" />
+          Send
+        </Link>
+        <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          Message details
+        </h1>
+      </div>
+
+      <div className="space-y-6">
+        <MessageDetailSummary message={message} />
+
+        <Card className="border-border/40 shadow-sm">
+          <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
+            <CardTitle className="text-xl">Delivery timeline</CardTitle>
+            <CardDescription>
+              {isTerminal
+                ? "Full delivery history for this message."
+                : "Live status from the carrier feed."}
+            </CardDescription>
+          </CardHeader>
+          <div className="p-4">
+            {eventsQuery.isPending ? (
+              <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                Loading delivery events…
+              </div>
+            ) : (
+              <MessageStatusTimeline events={events} isPolling={!isTerminal} />
+            )}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
 }

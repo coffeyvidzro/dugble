@@ -1,6 +1,9 @@
+// src/components/auth/login-form.tsx
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
 import { Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,6 +14,10 @@ import { toast } from "sonner";
 import * as z from "zod";
 
 import { AuthShell } from "@/components/auth/auth-shell";
+import {
+  type MfaChallenge,
+  MfaChallengeForm,
+} from "@/components/auth/mfa-challenge-form";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -19,50 +26,76 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { csrfFetch } from "@/lib/csrf-fetch";
+import { useLogin } from "@/hooks/mutations/use-auth";
 import { cn } from "@/lib/utils";
 
-export const formSchema = z.object({
+const formSchema = z.object({
   email: z.email("Please enter a valid email address."),
   password: z.string().min(1, "Password is required."),
 });
 
 export function LoginForm({
   className,
+  redirectTo = "/dashboard",
   ...props
-}: React.ComponentProps<"div">) {
+}: React.ComponentProps<"div"> & {
+  /** Already validated by `safeRedirectPath` on the server. */
+  redirectTo?: string;
+}) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
+  const login = useLogin();
   const [showPassword, setShowPassword] = useState(false);
+  // Held in memory only: the challenge token must never reach storage or the URL.
+  const [challenge, setChallenge] = useState<MfaChallenge | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { email: "", password: "" },
   });
 
-  async function onSubmit(data: z.infer<typeof formSchema>) {
-    setLoading(true);
-    try {
-      const response = await csrfFetch("/api/v1/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+  function completeSignIn() {
+    // Drop anything cached for a previous account on this device.
+    queryClient.clear();
+    setChallenge(null);
+    toast.success("Signed in successfully.");
+    router.push(redirectTo);
+    router.refresh();
+  }
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => null);
-        toast.error(error?.error?.message ?? "Invalid email or password.");
-        return;
-      }
+  function onSubmit(data: z.infer<typeof formSchema>) {
+    login.mutate(data, {
+      onSuccess: (result) => {
+        if (result.mfa_required) {
+          if (!result.challenge_token) {
+            toast.error("Sign-in couldn't continue. Try again.");
+            return;
+          }
+          form.resetField("password");
+          setChallenge({
+            token: result.challenge_token,
+            methods: result.methods ?? [],
+          });
+          return;
+        }
+        completeSignIn();
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
+  }
 
-      toast.success("Signed in successfully.");
-      router.push("/dashboard");
-      router.refresh();
-    } catch {
-      toast.error("Unable to sign in. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+  if (challenge) {
+    return (
+      <div className={cn("flex h-full flex-col", className)} {...props}>
+        <MfaChallengeForm
+          challenge={challenge}
+          onVerified={completeSignIn}
+          onCancel={() => setChallenge(null)}
+        />
+      </div>
+    );
   }
 
   return (
@@ -113,7 +146,7 @@ export function LoginForm({
                       placeholder="youremail@example.com"
                       autoComplete="email"
                       type="email"
-                      disabled={loading}
+                      disabled={login.isPending}
                       className="pl-10"
                     />
                   </div>
@@ -147,7 +180,7 @@ export function LoginForm({
                       placeholder="**************"
                       autoComplete="current-password"
                       type={showPassword ? "text" : "password"}
-                      disabled={loading}
+                      disabled={login.isPending}
                       className="pl-10 pr-10"
                     />
                     <button
@@ -176,11 +209,11 @@ export function LoginForm({
             <Button
               type="submit"
               form="login-form"
-              disabled={loading}
+              disabled={login.isPending}
               size="lg"
               className="w-full hover:cursor-pointer"
             >
-              {loading && <Loader2 className="size-4 animate-spin" />}
+              {login.isPending && <Loader2 className="size-4 animate-spin" />}
               Sign in
             </Button>
 

@@ -1,13 +1,20 @@
+// src/app/(dashboard)/dashboard/developers/webhooks/page.tsx
+
 import { WebhooksSettings } from "@/components/dashboard/webhooks/webhooks-settings";
+import { PrefetchBoundary } from "@/components/providers/prefetch-boundary";
 import { constructMetadata } from "@/utils/metadata";
 
 export const metadata = constructMetadata({
-    title: "Webhooks",
-    description: "Configure webhook endpoints for real-time delivery events.",
-    path: "/dashboard/developers/webhooks",
-    preset: "dashboard",
+  title: "Webhooks",
+  description: "Configure webhook endpoints for real-time delivery events.",
+  path: "/dashboard/developers/webhooks",
+  preset: "dashboard",
 });
 
 export default function Page() {
-    return <WebhooksSettings />;
+  return (
+    <PrefetchBoundary queries={["webhooks"]}>
+      <WebhooksSettings />
+    </PrefetchBoundary>
+  );
 }

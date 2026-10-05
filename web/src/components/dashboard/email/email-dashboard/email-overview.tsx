@@ -1,82 +1,102 @@
+// src/components/dashboard/email/email-dashboard/email-overview.tsx
+
 "use client";
 
-import { useState } from "react";
-
-import { SendingDomainsCard } from "./sending-domains-card";
-import { RecentEmailsCard } from "./recent-emails-card";
-import { RangeSelector } from "./range-selector";
-import { EmailHeader } from "./email-header";
-import { StatsGrid } from "./stats-grid";
+import { useMemo } from "react";
+import { RequireActiveTeam } from "@/components/dashboard/shared/require-active-team";
+import { useEmailAnalytics } from "@/hooks/queries/use-emails-api";
 import {
-    EMAIL_RANGE_DAYS,
-    getEmailStats,
-    SENDING_DOMAINS,
-    type EmailRange,
-} from "./types";
-import { generateEmailLog } from "../emails-page/types";
+  computeClickStat,
+  computeDeliverabilityStat,
+  computeOpenStat,
+  METRICS_RANGE_DAYS,
+} from "../metrics/types";
+import { EmailHeader } from "./email-header";
+import { RecentEmailsCard } from "./recent-emails-card";
+import { SendingDomainsCard } from "./sending-domains-card";
+import { StatsGrid } from "./stats-grid";
 
-const INITIAL_LOG_SEED = 42;
+const OVERVIEW_RANGE_DAYS = METRICS_RANGE_DAYS["30d"];
+
+function EmailOverviewContent() {
+  const { data: analytics, isPending, isError } = useEmailAnalytics();
+
+  const activeWindow = analytics?.windows.find(
+    (w) => w.days === OVERVIEW_RANGE_DAYS,
+  );
+
+  const deliverability = useMemo(
+    () => (activeWindow ? computeDeliverabilityStat(activeWindow) : null),
+    [activeWindow],
+  );
+  const open = useMemo(
+    () => (activeWindow ? computeOpenStat(activeWindow) : null),
+    [activeWindow],
+  );
+  const click = useMemo(
+    () => (activeWindow ? computeClickStat(activeWindow) : null),
+    [activeWindow],
+  );
+
+  return (
+    <div className="mx-auto w-full max-w-6xl pb-6">
+      <EmailHeader deliverabilityPct={deliverability?.percentage ?? 0} />
+
+      <div className="space-y-6">
+        <div
+          className="animate-fade-up"
+          style={{
+            animationDelay: "100ms",
+            animationFillMode: "both",
+          }}
+        >
+          {isError ? (
+            <p className="py-8 text-center text-sm text-danger">
+              Couldn&apos;t load email analytics. Try refreshing the page.
+            </p>
+          ) : isPending || !deliverability || !open || !click ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="h-32 animate-pulse rounded-xl border border-border/40 bg-muted/20" />
+              <div className="h-32 animate-pulse rounded-xl border border-border/40 bg-muted/20" />
+              <div className="h-32 animate-pulse rounded-xl border border-border/40 bg-muted/20" />
+            </div>
+          ) : (
+            <StatsGrid
+              deliverability={deliverability}
+              open={open}
+              click={click}
+            />
+          )}
+        </div>
+
+        <div
+          className="animate-fade-up"
+          style={{
+            animationDelay: "200ms",
+            animationFillMode: "both",
+          }}
+        >
+          <RecentEmailsCard />
+        </div>
+
+        <div
+          className="animate-fade-up"
+          style={{
+            animationDelay: "250ms",
+            animationFillMode: "both",
+          }}
+        >
+          <SendingDomainsCard />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function EmailOverview() {
-    const [range, setRange] = useState<EmailRange>("30d");
-    const stats = getEmailStats(range);
-
-    const recentEmails = generateEmailLog(50, INITIAL_LOG_SEED).slice(0, 5);
-
-    const deliverability = stats.find((s) => s.id === "deliverability");
-
-    return (
-        <div className="mx-auto w-full max-w-6xl pb-6">
-            <EmailHeader deliverabilityPct={deliverability?.percentage ?? 0} />
-
-            <div className="space-y-6">
-                <div
-                    className="flex flex-wrap items-center justify-between gap-3 animate-fade-up"
-                    style={{
-                        animationDelay: "100ms",
-                        animationFillMode: "both",
-                    }}
-                >
-                    <p className="text-sm text-muted-foreground">
-                        Showing stats for the last{" "}
-                        <span className="font-medium text-foreground">
-                            {EMAIL_RANGE_DAYS[range]} days
-                        </span>
-                        .
-                    </p>
-                    <RangeSelector value={range} onChange={setRange} />
-                </div>
-
-                <div
-                    className="animate-fade-up"
-                    style={{
-                        animationDelay: "150ms",
-                        animationFillMode: "both",
-                    }}
-                >
-                    <StatsGrid stats={stats} />
-                </div>
-
-                <div
-                    className="animate-fade-up"
-                    style={{
-                        animationDelay: "200ms",
-                        animationFillMode: "both",
-                    }}
-                >
-                    <RecentEmailsCard emails={recentEmails} />
-                </div>
-
-                <div
-                    className="animate-fade-up"
-                    style={{
-                        animationDelay: "250ms",
-                        animationFillMode: "both",
-                    }}
-                >
-                    <SendingDomainsCard domains={SENDING_DOMAINS} />
-                </div>
-            </div>
-        </div>
-    );
+  return (
+    <RequireActiveTeam description="Create or select a team to see your email overview.">
+      <EmailOverviewContent />
+    </RequireActiveTeam>
+  );
 }

@@ -1,26 +1,26 @@
+// src/components/dashboard/email/domains/detail/dns-record-group.tsx
+
+import type { VerificationRecord } from "@/types/sender-domain-api";
 import { DnsRecordsTable } from "./dns-records-table";
-import type { DnsRecord } from "@/components/dashboard/email/domains/utils/types";
 
 export function DnsRecordGroup({
-    title,
-    description,
-    records,
-    showPriority = true,
+  title,
+  description,
+  records,
 }: {
-    title: string;
-    description: string;
-    records: DnsRecord[];
-    showPriority?: boolean;
+  title: string;
+  description: string;
+  records: VerificationRecord[];
 }) {
-    return (
-        <div className="space-y-2">
-            <div>
-                <h3 className="font-heading text-sm font-semibold text-foreground">
-                    {title}
-                </h3>
-                <p className="text-xs text-muted-foreground">{description}</p>
-            </div>
-            <DnsRecordsTable records={records} showPriority={showPriority} />
-        </div>
-    );
+  return (
+    <div className="space-y-2">
+      <div>
+        <h3 className="font-heading text-sm font-semibold text-foreground">
+          {title}
+        </h3>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+      <DnsRecordsTable records={records} />
+    </div>
+  );
 }

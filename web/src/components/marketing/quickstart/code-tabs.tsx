@@ -28,7 +28,7 @@ export function CodeTabs({ snippets }: { snippets: Snippet[] }) {
         ))}
       </div>
       <pre className="overflow-x-auto p-4 font-mono text-[13px] leading-6 text-foreground/90">
-        {snippets[active].code}
+        {snippets[active]?.code}
       </pre>
     </div>
   );

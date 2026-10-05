@@ -37,7 +37,7 @@ export function ChangelogEntry({
       </h3>
       <p className="max-w-2xl leading-7 text-muted-foreground">{description}</p>
 
-      {details && details.length > 0 && (
+      {details?.length ? (
         <ul className="space-y-2">
           {details.map((detail) => (
             <li
@@ -49,7 +49,7 @@ export function ChangelogEntry({
             </li>
           ))}
         </ul>
-      )}
+      ) : null}
 
       {code && (
         <pre className="overflow-x-auto rounded-xl border bg-card p-4 font-mono text-[13px] leading-6 text-foreground/90">

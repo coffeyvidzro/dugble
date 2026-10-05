@@ -1,3 +1,5 @@
+// src/lib/session-resolver.ts
+
 import { z } from "zod";
 
 const sessionSchema = z.object({

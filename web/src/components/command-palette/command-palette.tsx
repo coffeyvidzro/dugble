@@ -97,14 +97,20 @@ export function CommandPalette() {
       return () => clearTimeout(t);
     }
     document.body.style.overflow = "";
+    return undefined;
   }, [open]);
 
   // Reset the active row whenever the scope changes (e.g. the palette was
-  // opened on a different route) so we never point at a stale index into
-  // the previous list.
-  useEffect(() => {
+
+  // opened on a different route) — adjusted during render, not in an effect.
+
+  const [prevScope, setPrevScope] = useState(scope);
+
+  if (scope !== prevScope) {
+    setPrevScope(scope);
+
     setActiveIndex(0);
-  }, [scope]);
+  }
 
   function onKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Escape") {

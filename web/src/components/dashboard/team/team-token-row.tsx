@@ -1,98 +1,98 @@
-import { AlertTriangle, Clock, Trash2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+// src/components/dashboard/team/team-token-row.tsx
+
+"use client";
+
+import { Key, Pencil, Trash2 } from "lucide-react";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/format-date";
+import { getPermissionLabel } from "@/lib/team-token-permissions";
 import type { TeamToken } from "@/types/team-token";
 
-const EXPIRING_SOON_DAYS = 7;
-
-function formatDate(iso: string): string {
-    return new Intl.DateTimeFormat("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-    }).format(new Date(iso));
+function formatOptionalDate(iso: string | null | undefined, fallback: string) {
+  return iso ? formatDate(iso) : fallback;
 }
 
-function expiryState(token: TeamToken): "expired" | "soon" | "normal" {
-    if (!token.expires_at) return "normal";
-    const msRemaining = new Date(token.expires_at).getTime() - Date.now();
-    if (msRemaining < 0) return "expired";
-    if (msRemaining < EXPIRING_SOON_DAYS * 24 * 60 * 60 * 1000) return "soon";
-    return "normal";
-}
-
-function isElevated(permissions: string[]): boolean {
-    return permissions.includes("write");
-}
+type TeamTokenRowProps = {
+  token: TeamToken;
+  /** Only owners may edit or revoke tokens. */
+  canManage: boolean;
+  onEdit: (token: TeamToken) => void;
+  onRevoke: (token: TeamToken) => void;
+};
 
 export function TeamTokenRow({
-    token,
-    onRevoke,
-}: {
-    token: TeamToken;
-    onRevoke: (token: TeamToken) => void;
-}) {
-    const state = expiryState(token);
-    const elevated = isElevated(token.permissions);
-
-    return (
-        <TableRow className="group border-b-0 transition-colors hover:bg-muted/30">
-            <TableCell className="border-l-2 border-l-transparent transition-colors group-hover:border-l-signal/50">
-                <div className="flex flex-col gap-0.5">
-                    <span className="font-medium">{token.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                        Created {formatDate(token.created_at)}
-                    </span>
-                </div>
-            </TableCell>
-            <TableCell>
-                <div className="inline-flex rounded-md border border-border/50 bg-muted/30 px-2 py-1 font-mono text-xs text-muted-foreground">
-                    {token.token_prefix}
-                </div>
-            </TableCell>
-            <TableCell>
-                <Badge
-                    variant="outline"
-                    className={cn(
-                        "text-xs font-normal shadow-none",
-                        elevated &&
-                            "border-pending/30 bg-pending/10 text-pending",
-                    )}
-                >
-                    {token.permissions.join(", ") || "No permissions"}
-                </Badge>
-            </TableCell>
-            <TableCell>
-                <span
-                    className={cn(
-                        "inline-flex items-center gap-1.5 text-sm font-medium",
-                        state === "expired" && "text-danger",
-                        state === "soon" && "text-pending",
-                        state === "normal" && "text-muted-foreground",
-                    )}
-                >
-                    {state === "expired" && (
-                        <AlertTriangle className="size-3" />
-                    )}
-                    {state === "soon" && <Clock className="size-3" />}
-                    {token.expires_at
-                        ? state === "expired"
-                            ? `Expired ${formatDate(token.expires_at)}`
-                            : formatDate(token.expires_at)
-                        : "Never"}
-                </span>
-            </TableCell>
-            <TableCell className="text-right">
-                <button
-                    type="button"
-                    onClick={() => onRevoke(token)}
-                    className="rounded-md p-2 text-muted-foreground transition-all hover:bg-danger/10 hover:text-danger focus:outline-none focus:ring-2 focus:ring-danger"
-                    aria-label={`Revoke ${token.name}`}
-                >
-                    <Trash2 className="size-4" />
-                </button>
-            </TableCell>
-        </TableRow>
-    );
+  token,
+  canManage,
+  onEdit,
+  onRevoke,
+}: TeamTokenRowProps) {
+  return (
+    <TableRow className="group border-b-0 transition-colors hover:bg-muted/30">
+      <TableCell className="border-l-2 border-l-transparent transition-colors group-hover:border-l-signal/50">
+        <div className="flex items-center gap-2.5 font-medium">
+          <Key className="size-4 text-muted-foreground" />
+          <span>{token.name}</span>
+        </div>
+      </TableCell>
+      <TableCell>
+        <code className="rounded bg-muted px-2 py-0.5 text-xs font-mono text-foreground">
+          {token.token_prefix}
+        </code>
+      </TableCell>
+      <TableCell>
+        <div className="flex max-w-64 flex-wrap gap-1">
+          {token.permissions.slice(0, 2).map((perm) => (
+            <span
+              key={perm}
+              title={perm}
+              className="rounded-full border border-border/50 bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"
+            >
+              {getPermissionLabel(perm)}
+            </span>
+          ))}
+          {token.permissions.length > 2 && (
+            <span
+              title={token.permissions
+                .slice(2)
+                .map(getPermissionLabel)
+                .join(", ")}
+              className="rounded-full border border-border/50 bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"
+            >
+              +{token.permissions.length - 2} more
+            </span>
+          )}
+        </div>
+      </TableCell>
+      <TableCell className="text-sm text-muted-foreground">
+        {formatOptionalDate(token.last_used_at, "Never")}
+      </TableCell>
+      <TableCell className="text-sm text-muted-foreground">
+        {token.expires_at
+          ? formatOptionalDate(token.expires_at, "Never")
+          : "Never"}
+      </TableCell>
+      <TableCell className="text-right">
+        {canManage && (
+          <div className="flex items-center justify-end gap-1">
+            <button
+              type="button"
+              onClick={() => onEdit(token)}
+              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              aria-label={`Edit ${token.name}`}
+            >
+              <Pencil className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onRevoke(token)}
+              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger focus:outline-none focus:ring-2 focus:ring-ring"
+              aria-label={`Revoke ${token.name}`}
+            >
+              <Trash2 className="size-4" />
+            </button>
+          </div>
+        )}
+      </TableCell>
+    </TableRow>
+  );
 }

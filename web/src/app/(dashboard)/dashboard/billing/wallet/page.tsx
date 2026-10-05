@@ -1,16 +1,20 @@
+// src/app/(dashboard)/dashboard/billing/wallet/page.tsx
+
 import { WalletSettings } from "@/components/dashboard/billing/wallet/wallet-settings";
+import { PrefetchBoundary } from "@/components/providers/prefetch-boundary";
 import { constructMetadata } from "@/utils/metadata";
-import { requireSession } from "@/lib/session";
 
 export const metadata = constructMetadata({
-    title: "Wallet",
-    description: "Review workspace wallet balance and top-ups.",
-    path: "/dashboard/billing/wallet",
-    preset: "dashboard",
+  title: "Wallet",
+  description: "Review workspace wallet balance and top-ups.",
+  path: "/dashboard/billing/wallet",
+  preset: "dashboard",
 });
 
-export default async function Page() {
-    await requireSession();
-
-    return <WalletSettings />;
+export default function Page() {
+  return (
+    <PrefetchBoundary queries={["wallet", "walletLedgerFirstPage"]}>
+      <WalletSettings />
+    </PrefetchBoundary>
+  );
 }

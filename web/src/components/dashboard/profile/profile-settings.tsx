@@ -1,115 +1,89 @@
+// src/components/dashboard/profile/profile-settings.tsx
+
 "use client";
 
-import { useState } from "react";
-
-import { TwoFactorAuthPanel } from "./two-factor-auth-panel";
-import { PendingInvitesCard } from "./pending-invites-card";
-import { DeleteAccountCard } from "./delete-account-card";
+import { Loader2 } from "lucide-react";
+import { useTeams } from "@/hooks/queries/use-teams";
+import { useCurrentUser } from "@/hooks/queries/use-user";
 import { AccountEmailCard } from "./account-email-card";
-import type { TeamInvite, UserTeam } from "./types";
-import { UserTeamsCard } from "./user-teams-card";
+import { DeleteAccountCard } from "./delete-account-card";
+import { PendingInvitesCard } from "./pending-invites-card";
 import { ProfileHeader } from "./profile-header";
+import { UserTeamsCard } from "./user-teams-card";
 
-export function ProfileSettings({
-    currentUser,
-}: {
-    currentUser: { email: string; name: string };
-}) {
-    const [teams, setTeams] = useState<UserTeam[]>([
-        {
-            id: "team-coffeyvidzro",
-            name: "coffeyvidzro",
-            role: "admin",
-            memberCount: 1,
-        },
-    ]);
+// The "Pending Invites" card is back — the backend added GET
+// /users/me/invitations (list) plus accept/decline endpoints, resolving
+// the gap that got it pulled last round. See pending-invites-card.tsx.
 
-    const [invites, setInvites] = useState<TeamInvite[]>([
-        {
-            id: "invite-1",
-            teamName: "Team Prosper",
-            inviterEmail: "prosper@dugble.com",
-            role: "member",
-            memberCount: 6,
-            createdAt: new Date(),
-        },
-    ]);
+export function ProfileSettings() {
+  const { data: user, isPending, isError, error } = useCurrentUser();
+  // limit:1 — this only needs pagination.total for the header badge, not
+  // the actual team rows (UserTeamsCard fetches those itself).
+  const { data: teams } = useTeams({ page: 1, limit: 1 });
 
-    function handleAcceptInvite(id: string) {
-        const invite = invites.find((i) => i.id === id);
-        if (!invite) return;
-        setTeams((prev) => [
-            ...prev,
-            {
-                id: crypto.randomUUID(),
-                name: invite.teamName,
-                role: invite.role,
-                memberCount: invite.memberCount + 1,
-            },
-        ]);
-        setInvites((prev) => prev.filter((i) => i.id !== id));
-    }
-
-    function handleDeclineInvite(id: string) {
-        setInvites((prev) => prev.filter((i) => i.id !== id));
-    }
-
-    function handleLeaveTeam(id: string) {
-        setTeams((prev) => prev.filter((t) => t.id !== id));
-    }
-
-    function handleDeleteTeam(id: string) {
-        setTeams((prev) => prev.filter((t) => t.id !== id));
-    }
-
-    function handleDeleteAccount() {
-        console.log("Account deleted (local only).");
-    }
-
+  if (isPending) {
     return (
-        <div className="mx-auto w-full max-w-5xl pb-8">
-            <ProfileHeader name={currentUser.name} teamCount={teams.length} />
+      <div className="flex min-h-64 items-center justify-center">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
-            <div className="space-y-8">
-                <div
-                    className="animate-fade-up"
-                    style={{
-                        animationDelay: "100ms",
-                        animationFillMode: "both",
-                    }}
-                >
-                    <AccountEmailCard initialEmail={currentUser.email} />
-                </div>
+  if (isError) {
+    return (
+      <div className="flex min-h-64 flex-col items-center justify-center gap-2 text-center">
+        <p className="text-sm font-medium text-danger">
+          Couldn&apos;t load your profile.
+        </p>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          {error.message}
+        </p>
+      </div>
+    );
+  }
 
-                <div
-                    className="animate-fade-up"
-                    style={{
-                        animationDelay: "150ms",
-                        animationFillMode: "both",
-                    }}
-                >
-                    <PendingInvitesCard
-                        invites={invites}
-                        onAccept={handleAcceptInvite}
-                        onDecline={handleDeclineInvite}
-                    />
-                </div>
+  return (
+    <div className="mx-auto w-full max-w-5xl pb-8">
+      <ProfileHeader
+        name={user.name}
+        teamCount={teams?.pagination.total ?? 0}
+      />
 
-                <div
-                    className="animate-fade-up"
-                    style={{
-                        animationDelay: "200ms",
-                        animationFillMode: "both",
-                    }}
-                >
-                    <UserTeamsCard
-                        teams={teams}
-                        onLeaveTeam={handleLeaveTeam}
-                        onDeleteTeam={handleDeleteTeam}
-                    />
-                </div>
+      <div className="space-y-8">
+        <div
+          className="animate-fade-up"
+          style={{
+            animationDelay: "100ms",
+            animationFillMode: "both",
+          }}
+        >
+          <AccountEmailCard
+            email={user.email}
+            emailVerified={user.email_verified}
+          />
+        </div>
 
-                {/* <div
+        <div
+          className="animate-fade-up"
+          style={{
+            animationDelay: "150ms",
+            animationFillMode: "both",
+          }}
+        >
+          <PendingInvitesCard />
+        </div>
+
+        <div
+          className="animate-fade-up"
+          style={{
+            animationDelay: "200ms",
+            animationFillMode: "both",
+          }}
+        >
+          <UserTeamsCard />
+        </div>
+
+        {/* <div
                     className="animate-fade-up"
                     style={{
                         animationDelay: "250ms",
@@ -119,21 +93,16 @@ export function ProfileSettings({
                     <TwoFactorAuthPanel />
                 </div> */}
 
-                <div
-                    className="animate-fade-up"
-                    style={{
-                        animationDelay: "300ms",
-                        animationFillMode: "both",
-                    }}
-                >
-                    <DeleteAccountCard
-                        teams={teams}
-                        currentEmail={currentUser.email}
-                        onDeleteTeam={handleDeleteTeam}
-                        onDeleteAccount={handleDeleteAccount}
-                    />
-                </div>
-            </div>
+        <div
+          className="animate-fade-up"
+          style={{
+            animationDelay: "300ms",
+            animationFillMode: "both",
+          }}
+        >
+          <DeleteAccountCard currentEmail={user.email} />
         </div>
-    );
+      </div>
+    </div>
+  );
 }

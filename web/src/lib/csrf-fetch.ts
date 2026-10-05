@@ -1,3 +1,5 @@
+// src/lib/csrf-fetch.ts
+
 type CSRFTokenResponse = {
   success?: unknown;
   data?: {

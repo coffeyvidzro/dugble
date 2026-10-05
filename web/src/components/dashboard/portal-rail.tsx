@@ -1,18 +1,19 @@
+// src/components/dashboard/portal-rail.tsx
+
 "use client";
 
-import Link from "next/link";
-
 import { LayoutGrid } from "lucide-react";
-
-import { TeamSwitcher } from "./team/team-switcher";
-import type { DashboardPortal } from "./dashboard-nav";
-import type { SessionUser } from "@/lib/session";
+import Link from "next/link";
+import { BrandMark } from "@/components/brand-mark";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { SessionUser } from "@/lib/session";
 import { cn } from "@/lib/utils";
+import type { DashboardPortal } from "./dashboard-nav";
+import { TeamSwitcher } from "./team/team-switcher";
 
 export function PortalRail({
   portals,
@@ -27,11 +28,11 @@ export function PortalRail({
 }) {
   const smsPortal = portals.find((p) => p.id === "sms");
   const emailPortal = portals.find((p) => p.id === "email");
+  const audiencePortal = portals.find((p) => p.id === "audience");
   const walletPortal = portals.find((p) => p.id === "wallet");
   const accountPortal = portals.find((p) => p.id === "account");
   const displayName = user.name.trim() || user.email;
   const initials = displayName.slice(0, 2).toUpperCase();
-  const teamName = `${displayName}'s Team`;
 
   return (
     <div className="hidden h-full w-14 shrink-0 flex-col items-center gap-2 border-r bg-sidebar py-3 md:flex">
@@ -45,32 +46,33 @@ export function PortalRail({
             />
           }
         >
-          <img
-            src="/brand/mark-light-bg.svg"
-            alt=""
-            className="size-8 rounded-xl dark:hidden"
-          />
-          <img
-            src="/brand/mark-dark-bg.svg"
-            alt=""
-            className="hidden size-8 rounded-xl dark:block"
-          />
+          <BrandMark size="md" />
         </TooltipTrigger>
         <TooltipContent side="right">Overview</TooltipContent>
       </Tooltip>
 
       <div className="h-px w-6 bg-border" />
 
-      <TeamSwitcher teamName={teamName} />
+      <TeamSwitcher />
 
-      {[smsPortal, emailPortal].filter(Boolean).map((portal) => (
+      {[smsPortal, emailPortal]
+        .filter((portal): portal is DashboardPortal => portal !== undefined)
+        .map((portal) => (
+          <RailButton
+            key={portal.id}
+            portal={portal}
+            active={activePortalId === portal.id}
+            onClick={() => onSelectPortal(portal)}
+          />
+        ))}
+
+      {audiencePortal && (
         <RailButton
-          key={portal!.id}
-          portal={portal!}
-          active={activePortalId === portal!.id}
-          onClick={() => onSelectPortal(portal!)}
+          portal={audiencePortal}
+          active={activePortalId === audiencePortal.id}
+          onClick={() => onSelectPortal(audiencePortal)}
         />
-      ))}
+      )}
 
       <div className="flex-1" />
 
