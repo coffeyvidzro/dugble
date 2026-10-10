@@ -3,7 +3,7 @@ import { PrefetchBoundary } from "@/components/providers/prefetch-boundary";
 import { constructMetadata } from "@/utils/metadata";
 
 export const metadata = constructMetadata({
-  title: "Email Metrics",
+  title: "Email Analytics",
   description: "Analyze transactional email performance and delivery metrics.",
   path: "/dashboard/email/metrics",
   preset: "dashboard",

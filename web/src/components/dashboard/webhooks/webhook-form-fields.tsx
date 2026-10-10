@@ -33,9 +33,7 @@ export function WebhookFormFields({
           autoFocus
         />
         {urlError && (
-          <p className="text-xs font-medium text-danger animate-fade-up">
-            {urlError}
-          </p>
+          <p className="text-xs font-medium text-danger">{urlError}</p>
         )}
       </div>
 

@@ -8,7 +8,7 @@ export function AudiencePageShell({
   children: ReactNode;
 }) {
   return (
-    <div className="mx-auto w-full max-w-6xl pb-6">
+    <div className="mx-auto w-full max-w-7xl pb-6">
       {header}
       <div className="mt-6 space-y-6">{children}</div>
     </div>

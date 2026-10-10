@@ -1,8 +1,12 @@
 "use client";
 
-import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import {
+  ErrorState,
+  LoadingBlock,
+} from "@/components/dashboard/shared/data-states";
 import {
   useCampaignAnalytics,
   useCampaignApi,
@@ -23,10 +27,11 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
 
   if (campaignQuery.isPending) {
     return (
-      <div className="mx-auto flex w-full max-w-5xl items-center justify-center gap-2 pb-6 pt-16 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Loading campaign…
-      </div>
+      <LoadingBlock
+        label="Loading campaign…"
+        variant="page"
+        className="mx-auto w-full max-w-5xl pb-6 pt-16"
+      />
     );
   }
 
@@ -90,14 +95,9 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
         </div>
 
         {analyticsQuery.isPending ? (
-          <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            Loading analytics…
-          </div>
+          <LoadingBlock label="Loading analytics…" />
         ) : analyticsQuery.isError || !analyticsQuery.data ? (
-          <p className="py-8 text-center text-sm text-danger">
-            Couldn&apos;t load campaign analytics.
-          </p>
+          <ErrorState title="Couldn't load campaign analytics" />
         ) : (
           <CampaignStatsGrid analytics={analyticsQuery.data} />
         )}

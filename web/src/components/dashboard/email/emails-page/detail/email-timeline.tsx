@@ -59,12 +59,12 @@ export function EmailTimeline({
   isPending: boolean;
 }) {
   return (
-    <Card className="border-border/40 shadow-sm">
-      <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
-        <CardTitle className="text-lg">Delivery timeline</CardTitle>
+    <Card>
+      <CardHeader className="border-b pb-4">
+        <CardTitle>Delivery timeline</CardTitle>
         <CardDescription>
           {isPolling
-            ? "Live status from the provider feed."
+            ? "In progress. New events appear when you refresh this page."
             : "Full delivery history for this email."}
         </CardDescription>
       </CardHeader>
@@ -130,11 +130,11 @@ export function EmailTimeline({
             })}
             {isPolling && (
               <li className="flex items-center gap-3 pl-1 text-xs text-muted-foreground">
-                <span className="relative flex size-2" aria-hidden="true">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-pending opacity-75" />
-                  <span className="relative inline-flex size-2 rounded-full bg-pending" />
-                </span>
-                Waiting for provider update…
+                <span
+                  className="size-2 rounded-full border-2 border-dashed border-pending"
+                  aria-hidden="true"
+                />
+                Waiting for the provider to report the next update
               </li>
             )}
           </ol>

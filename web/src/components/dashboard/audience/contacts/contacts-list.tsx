@@ -80,7 +80,7 @@ export function ContactsList() {
 
   return (
     <>
-      <Card className="border-border/40 shadow-sm">
+      <Card>
         <ListCardHeader
           title="All contacts"
           description={`${contacts.length} contact${
@@ -90,7 +90,7 @@ export function ContactsList() {
         />
 
         {contacts.length > 0 && (
-          <div className="border-b border-border/40 bg-muted/10 px-6 py-3">
+          <div className="border-b px-6 py-3">
             <div className="relative max-w-xs">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input

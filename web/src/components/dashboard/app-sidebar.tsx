@@ -2,7 +2,6 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-
 import type { SessionUser } from "@/lib/session";
 import {
   type DashboardPortal,
@@ -17,13 +16,16 @@ export function AppSidebar({
   user,
   mobileNavOpen,
   onMobileNavOpenChange,
+  panelCollapsed,
 }: {
   user: SessionUser;
   mobileNavOpen: boolean;
   onMobileNavOpenChange: (open: boolean) => void;
+  panelCollapsed: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const isHome = pathname === "/dashboard";
   const [activePortalId, setActivePortalId] = useState<string | null>(
     () => findPortalForPath(pathname)?.id ?? null,
   );
@@ -33,6 +35,7 @@ export function AppSidebar({
     setPrevPathname(pathname);
     const matched = findPortalForPath(pathname);
     if (matched) setActivePortalId(matched.id);
+    else if (pathname === "/dashboard") setActivePortalId(null);
   }
 
   const activePortal: DashboardPortal | null =
@@ -49,11 +52,12 @@ export function AppSidebar({
       <div className="flex h-full shrink-0">
         <PortalRail
           portals={dashboardPortals}
-          activePortalId={activePortalId}
+          activePortalId={isHome ? null : activePortalId}
+          isHome={isHome}
           onSelectPortal={selectPortal}
           user={user}
         />
-        {activePortal && <NavPanel portal={activePortal} />}
+        {activePortal && !panelCollapsed && <NavPanel portal={activePortal} />}
       </div>
 
       <MobileNav

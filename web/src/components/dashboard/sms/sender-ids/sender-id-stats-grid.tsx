@@ -1,6 +1,7 @@
 "use client";
 
-import { CheckCircle2, Clock, Layers, Loader2, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, Layers, XCircle } from "lucide-react";
+import { LoadingBlock } from "@/components/dashboard/shared/data-states";
 import { useSenderIds } from "@/hooks/queries/use-sender-ids";
 import { computeSenderIdStats } from "@/types/sender-id";
 import { StatTile } from "../../shared/stat-tile";
@@ -9,12 +10,7 @@ export function SenderIdStatsGrid() {
   const { data: senderIds, isPending } = useSenderIds();
 
   if (isPending) {
-    return (
-      <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Loading…
-      </div>
-    );
+    return <LoadingBlock label="Loading…" />;
   }
 
   const stats = computeSenderIdStats(senderIds ?? []);

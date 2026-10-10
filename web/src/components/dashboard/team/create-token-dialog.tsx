@@ -106,7 +106,7 @@ export function CreateTokenDialog() {
   }
 
   const revealContent = (
-    <div className="flex min-h-0 flex-1 flex-col animate-fade-up">
+    <div className="flex min-h-0 flex-1 flex-col">
       <DialogHeader className="shrink-0 px-6 pt-6">
         <DialogTitle>
           Save your token
@@ -177,15 +177,11 @@ export function CreateTokenDialog() {
       trigger={
         <DialogTrigger
           render={
-            <Button className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20" />
+            <Button className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90" />
           }
         >
           <KeyRound className="size-4" />
           Generate Token
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-          />
         </DialogTrigger>
       }
       title="Create Management Token"
@@ -211,13 +207,9 @@ export function CreateTokenDialog() {
         <Button
           type="submit"
           disabled={createToken.isPending || !isFormValid}
-          className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20 disabled:pointer-events-none disabled:opacity-50"
+          className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all disabled:pointer-events-none disabled:opacity-50 hover:bg-primary/90"
         >
           {createToken.isPending ? "Generating..." : "Generate Token"}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-          />
         </Button>
       }
       showReveal={step === "reveal"}

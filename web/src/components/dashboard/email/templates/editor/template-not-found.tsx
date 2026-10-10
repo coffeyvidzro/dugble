@@ -11,7 +11,7 @@ export function TemplateNotFound() {
       <AnimatedGrid />
       <FloatingOrbs />
 
-      <div className="relative flex w-full max-w-lg animate-fade-up flex-col items-center text-center">
+      <div className="relative flex w-full max-w-lg flex-col items-center text-center">
         <span className="mb-6 font-mono text-6xl font-semibold tracking-tight text-foreground/10 md:text-7xl">
           404
         </span>

@@ -50,11 +50,9 @@ export function StepReview({
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
       <div className="lg:col-span-3">
-        <Card className="border-border/40 shadow-sm">
-          <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
-            <CardTitle className="text-xl">
-              {name || "Untitled campaign"}
-            </CardTitle>
+        <Card>
+          <CardHeader className="border-b pb-4">
+            <CardTitle>{name || "Untitled campaign"}</CardTitle>
             <CardDescription>
               Double-check everything before it goes out.
             </CardDescription>

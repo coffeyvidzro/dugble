@@ -1,9 +1,13 @@
 "use client";
 
-import { Loader2, ShieldAlert } from "lucide-react";
+import { KeyRound, ShieldAlert } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/dashboard/shared/confirm-dialog";
+import {
+  EmptyState,
+  TableSkeleton,
+} from "@/components/dashboard/shared/data-states";
 import {
   Table,
   TableBody,
@@ -41,9 +45,10 @@ export function TeamTokensClient() {
 
   if (isPermissionsLoading) {
     return (
-      <div className="flex min-h-32 items-center justify-center py-10">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
-      </div>
+      <TableSkeleton
+        rows={4}
+        columns={["10rem", "8rem", "minmax(0,1fr)", "6rem", "6rem"]}
+      />
     );
   }
 
@@ -67,9 +72,10 @@ export function TeamTokensClient() {
 
   if (isPending) {
     return (
-      <div className="flex min-h-32 items-center justify-center py-10">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
-      </div>
+      <TableSkeleton
+        rows={4}
+        columns={["10rem", "8rem", "minmax(0,1fr)", "6rem", "6rem"]}
+      />
     );
   }
 
@@ -113,28 +119,35 @@ export function TeamTokensClient() {
         actionNode={<CreateTokenDialog />}
       />
 
-      <div className="overflow-x-auto">
+      <div>
         <Table>
           <TableHeader>
-            <TableRow className="border-b border-border/40 hover:bg-transparent">
+            <TableRow className="hover:bg-transparent">
               <TableHead className="w-56">Name</TableHead>
-              <TableHead>Prefix</TableHead>
+              <TableHead>Token</TableHead>
               <TableHead>Permissions</TableHead>
-              <TableHead>Last Used</TableHead>
+              <TableHead>Last used</TableHead>
               <TableHead>Expires</TableHead>
-              <TableHead className="w-20 text-right" />
+              <TableHead className="w-24">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredTokens.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell
-                  colSpan={6}
-                  className="py-10 text-center text-sm text-muted-foreground"
-                >
-                  {query
-                    ? `No tokens match "${query}".`
-                    : "No active API tokens generated yet."}
+                <TableCell colSpan={6} className="p-0 whitespace-normal">
+                  <EmptyState
+                    icon={KeyRound}
+                    title={
+                      query ? `No tokens match "${query}"` : "No API tokens yet"
+                    }
+                    description={
+                      query
+                        ? "Try a different name."
+                        : "Create a token to call the Dugble API from your servers and scripts."
+                    }
+                  />
                 </TableCell>
               </TableRow>
             ) : (

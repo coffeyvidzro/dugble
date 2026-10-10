@@ -14,7 +14,7 @@ function SendHubContent() {
   const sentToday = todayPoint ? todayPoint.total : null;
 
   return (
-    <div className="mx-auto w-full max-w-6xl pb-6 animate-fade-up">
+    <div className="mx-auto w-full max-w-7xl pb-6">
       <SendHeader sentTodayCount={sentToday} />
       <div className="space-y-6">
         <NewMessageCta />

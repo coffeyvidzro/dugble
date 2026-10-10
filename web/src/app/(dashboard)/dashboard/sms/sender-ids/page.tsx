@@ -14,9 +14,9 @@ export const metadata = constructMetadata({
 export default function Page() {
   return (
     <PrefetchBoundary queries={["senderIds"]}>
-      <div className="mx-auto w-full max-w-6xl pb-6">
+      <div className="mx-auto w-full max-w-7xl pb-6">
         <SenderIdsHeader />
-        <div className="space-y-6 animate-fade-up">
+        <div className="space-y-6">
           <SenderIdStatsGrid />
           <SenderIdsList />
         </div>

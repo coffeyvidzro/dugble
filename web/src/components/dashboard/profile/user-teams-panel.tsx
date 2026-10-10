@@ -11,7 +11,6 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/dashboard/shared/confirm-dialog";
-
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -131,7 +130,7 @@ export function UserTeamsPanel() {
       </div>
 
       {teams.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 px-6 text-center animate-fade-up">
+        <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
           <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-muted/50 border border-dashed border-border">
             <Building2 className="size-5 text-muted-foreground" />
           </div>

@@ -89,7 +89,7 @@ export function CampaignActions({ campaign }: { campaign: Campaign }) {
               type="button"
               onClick={handleSchedule}
               disabled={!sendAt || isBusy}
-              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:-translate-y-0.5 disabled:pointer-events-none disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors disabled:pointer-events-none disabled:opacity-50 hover:bg-primary/90"
             >
               {scheduleCampaign.isPending && (
                 <Loader2 className="size-3.5 animate-spin" />
@@ -110,7 +110,7 @@ export function CampaignActions({ campaign }: { campaign: Campaign }) {
               type="button"
               onClick={handleSendNow}
               disabled={isBusy}
-              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:-translate-y-0.5 disabled:pointer-events-none disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors disabled:pointer-events-none disabled:opacity-50 hover:bg-primary/90"
             >
               {sendCampaign.isPending ? (
                 <Loader2 className="size-3.5 animate-spin" />

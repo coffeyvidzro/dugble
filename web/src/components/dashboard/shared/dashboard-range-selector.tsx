@@ -14,7 +14,7 @@ export function DashboardRangeSelector<TRange extends string>({
   onChange: (range: TRange) => void;
 }) {
   return (
-    <div className="inline-flex items-center gap-1 rounded-lg border border-border/60 bg-muted/20 p-1 py-1.5">
+    <div className="inline-flex h-9 items-center gap-0.5 rounded-[10px] border bg-muted/50 p-[3px]">
       {ranges.map((range) => {
         const selected = value === range;
         return (
@@ -24,9 +24,9 @@ export function DashboardRangeSelector<TRange extends string>({
             onClick={() => onChange(range)}
             aria-pressed={selected}
             className={cn(
-              "rounded-md px-2.5 py-1 text-xs font-medium transition-all",
+              "h-7 rounded-[7px] px-3 text-[13px] font-medium transition-colors",
               selected
-                ? "bg-card text-foreground shadow-sm"
+                ? "bg-background text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >

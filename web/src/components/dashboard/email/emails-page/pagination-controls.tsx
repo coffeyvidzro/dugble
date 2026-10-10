@@ -13,7 +13,7 @@ export function PaginationControls({
   onPageChange: (page: number) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/40 bg-muted/5 px-6 py-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-2.5">
       <p className="text-xs text-muted-foreground">
         {itemCount === 0
           ? "0 results"

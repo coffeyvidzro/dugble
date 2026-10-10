@@ -1,4 +1,7 @@
-import { Eye, Trash2 } from "lucide-react";
+import { Eye, Fingerprint, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { EmptyState } from "@/components/dashboard/shared/data-states";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -13,18 +16,37 @@ import { SenderIdStatusBadge } from "./sender-id-status-badge";
 
 export function SenderIdsTable({
   senderIds,
+  filterLabel,
   onViewSenderId,
   onDeleteSenderId,
 }: {
   senderIds: SenderId[];
+  /** Active status filter, lowercase (e.g. "pending"); null for all. */
+  filterLabel: string | null;
   onViewSenderId: (senderId: SenderId) => void;
   onDeleteSenderId: (senderId: SenderId) => void;
 }) {
   if (senderIds.length === 0) {
-    return (
-      <p className="py-16 text-center text-sm text-muted-foreground">
-        No sender IDs match this filter yet.
-      </p>
+    return filterLabel ? (
+      <EmptyState
+        icon={Fingerprint}
+        title={`No ${filterLabel} sender IDs`}
+        description="Try another status, or request a new sender ID."
+      />
+    ) : (
+      <EmptyState
+        icon={Fingerprint}
+        title="No sender IDs yet"
+        description="Request a sender ID so recipients see your brand name instead of a number."
+        actions={
+          <Link
+            href="/dashboard/sms/sender-ids/new"
+            className={buttonVariants()}
+          >
+            Request sender ID
+          </Link>
+        }
+      />
     );
   }
 
@@ -32,30 +54,29 @@ export function SenderIdsTable({
     <div className="overflow-x-auto">
       <Table>
         <TableHeader>
-          <TableRow className="border-b border-border/40 hover:bg-transparent">
-            <TableHead className="w-48">Name</TableHead>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="w-56">Name</TableHead>
             <TableHead>Country</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Created</TableHead>
-            <TableHead className="w-20 text-right" />
+            <TableHead className="w-24">
+              <span className="sr-only">Actions</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {senderIds.map((senderId) => (
-            <TableRow
-              key={senderId.id}
-              className="border-b border-border/40 last:border-0"
-            >
-              <TableCell className="font-mono text-sm text-foreground">
+            <TableRow key={senderId.id}>
+              <TableCell className="font-mono text-[13px] font-medium text-foreground">
                 {senderId.name}
               </TableCell>
-              <TableCell className="text-sm text-muted-foreground">
+              <TableCell className="text-[13px] text-muted-foreground">
                 {senderId.country_code}
               </TableCell>
               <TableCell>
                 <SenderIdStatusBadge status={senderId.status} />
               </TableCell>
-              <TableCell className="text-sm text-muted-foreground">
+              <TableCell className="text-[13px] text-muted-foreground">
                 {formatDate(senderId.created_at)}
               </TableCell>
               <TableCell className="text-right">

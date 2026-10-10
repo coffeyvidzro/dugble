@@ -1,8 +1,10 @@
 "use client";
 
-import { History } from "lucide-react";
+import { History, Send } from "lucide-react";
 import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
 import { useSmsAnalytics } from "@/hooks/queries/use-sms-api";
+import { cn } from "@/lib/utils";
 import { PortalHeroHeader } from "../../portal-hero-header";
 
 export function HistoryHeader() {
@@ -14,25 +16,19 @@ export function HistoryHeader() {
 
   return (
     <PortalHeroHeader
-      breadcrumb={
-        <>
-          <Link
-            href="/dashboard/sms"
-            className="transition-colors hover:text-foreground"
-          >
-            SMS
-          </Link>
-          {" > History"}
-        </>
-      }
-      title="History"
+      title="SMS logs"
       description="Search and review every SMS your workspace has sent."
+      actions={
+        <Link
+          href="/dashboard/sms/send/new"
+          className={cn(buttonVariants(), "gap-1.5")}
+        >
+          <Send className="size-4" />
+          Send SMS
+        </Link>
+      }
       badge={
         <>
-          <span className="relative flex size-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-75" />
-            <span className="relative inline-flex size-2 rounded-full bg-signal" />
-          </span>
           <History className="size-3.5" />
           {total === null
             ? "Loading…"

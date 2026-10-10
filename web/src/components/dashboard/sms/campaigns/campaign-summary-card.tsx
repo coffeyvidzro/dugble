@@ -17,10 +17,10 @@ export function CampaignSummaryCard({ campaign }: { campaign: Campaign }) {
   const { data: sender } = useSenderId(campaign.sender_id);
 
   return (
-    <Card className="border-border/40 shadow-sm">
-      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 border-b border-border/40 bg-muted/10 pb-4">
+    <Card>
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 border-b pb-4">
         <div className="space-y-1">
-          <CardTitle className="text-xl">{campaign.name}</CardTitle>
+          <CardTitle>{campaign.name}</CardTitle>
           <CardDescription>
             {segment?.name ?? campaign.segment_id} ·{" "}
             {campaign.audience_count.toLocaleString()} recipients

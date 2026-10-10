@@ -8,15 +8,10 @@ export function EmailHeader({
 }) {
   return (
     <PortalHeroHeader
-      breadcrumb="Email"
-      title="Overview"
+      title="Email overview"
       description="Transactional delivery, domains, and engagement at a glance."
       badge={
         <>
-          <span className="relative flex size-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-75" />
-            <span className="relative inline-flex size-2 rounded-full bg-signal" />
-          </span>
           <Mail className="size-3.5" />
           {deliverabilityPct.toFixed(1)}% delivered
         </>

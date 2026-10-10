@@ -11,9 +11,13 @@ import { cn } from "@/lib/utils";
 export function RootDocument({
   children,
   nonce,
+  surface,
 }: {
   children: ReactNode;
   nonce?: string;
+  /** Scopes surface-specific style overrides in globals.css (dialogs and
+   * popovers portal into <body>, so the attribute lives here). */
+  surface?: "dashboard";
 }) {
   return (
     <html
@@ -22,6 +26,7 @@ export function RootDocument({
       className={cn(fontSans.variable, fontMono.variable, fontHeading.variable)}
     >
       <body
+        data-surface={surface}
         suppressHydrationWarning
         className="flex min-h-full flex-col bg-background text-foreground antialiased"
       >

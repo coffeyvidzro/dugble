@@ -91,7 +91,7 @@ export function EventsMultiSelect({
       )}
 
       {open && (
-        <div className="mt-2 flex max-h-80 flex-col overflow-hidden rounded-lg border border-border/60 bg-popover shadow-sm animate-fade-up">
+        <div className="mt-2 flex max-h-80 flex-col overflow-hidden rounded-lg border border-border/60 bg-popover shadow-sm">
           <div className="shrink-0 border-b border-border/40 p-2">
             <div className="relative">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -164,9 +164,7 @@ export function EventsMultiSelect({
       )}
 
       {error && (
-        <p className="mt-1.5 text-xs font-medium text-danger animate-fade-up">
-          {error}
-        </p>
+        <p className="mt-1.5 text-xs font-medium text-danger">{error}</p>
       )}
     </div>
   );

@@ -17,9 +17,9 @@ const STATUS_TONE: Record<string, string> = {
 
 export function ChargesTable({ charges }: { charges: SubscriptionCharge[] }) {
   return (
-    <Card className="overflow-hidden border-border/40 shadow-sm">
-      <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
-        <CardTitle className="text-lg">Billing history</CardTitle>
+    <Card className="overflow-hidden">
+      <CardHeader className="border-b pb-4">
+        <CardTitle>Billing history</CardTitle>
         <CardDescription>
           Every charge applied to your subscription.
         </CardDescription>

@@ -55,9 +55,9 @@ export function ComposeSmsForm({
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
       <div className="lg:col-span-3">
-        <Card className="border-border/40 shadow-sm">
-          <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
-            <CardTitle className="text-xl">Compose</CardTitle>
+        <Card>
+          <CardHeader className="border-b pb-4">
+            <CardTitle>Compose</CardTitle>
             <CardDescription>
               Fill in the details below. The preview updates as you type.
             </CardDescription>
@@ -140,7 +140,7 @@ export function ComposeSmsForm({
               type="submit"
               disabled={!canSubmit}
               className={cn(
-                "group/button relative inline-flex w-full items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2.5 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 disabled:pointer-events-none disabled:opacity-50 dark:hover:shadow-black/20",
+                "group/button relative inline-flex w-full items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-all disabled:pointer-events-none disabled:opacity-50",
               )}
             >
               {isSubmitting ? (
@@ -149,10 +149,6 @@ export function ComposeSmsForm({
                 <Send className="size-4" />
               )}
               {submitLabel}
-              <span
-                aria-hidden
-                className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-              />
             </button>
           </form>
         </Card>

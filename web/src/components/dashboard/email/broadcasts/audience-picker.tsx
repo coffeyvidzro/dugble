@@ -2,6 +2,10 @@
 
 import { Check, Loader2, Users } from "lucide-react";
 import {
+  ErrorState,
+  LoadingBlock,
+} from "@/components/dashboard/shared/data-states";
+import {
   useSegmentAudienceSize,
   useSegments,
 } from "@/hooks/queries/use-segments";
@@ -18,19 +22,15 @@ export function AudiencePicker({
   const { data: segments, isPending, isError } = useSegments();
 
   if (isPending) {
-    return (
-      <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Loading segments…
-      </div>
-    );
+    return <LoadingBlock label="Loading segments…" />;
   }
 
   if (isError) {
     return (
-      <p className="py-10 text-center text-sm text-danger">
-        Couldn&apos;t load segments. Try refreshing the page.
-      </p>
+      <ErrorState
+        title="Couldn't load segments"
+        description="Try refreshing the page."
+      />
     );
   }
 

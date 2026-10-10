@@ -1,4 +1,5 @@
 import { Receipt } from "lucide-react";
+import { EmptyState } from "@/components/dashboard/shared/data-states";
 import {
   Card,
   CardDescription,
@@ -30,32 +31,26 @@ export function WalletLedgerTable({
   onPageChange: (page: number) => void;
 }) {
   return (
-    <Card className="overflow-hidden border-border/40 shadow-sm">
-      <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
-        <CardTitle className="text-xl">Wallet activity</CardTitle>
+    <Card className="gap-0 py-0">
+      <CardHeader className="gap-1 border-b py-4">
+        <CardTitle>Activity</CardTitle>
         <CardDescription>
-          Every credit and debit against your wallet balance.
+          Every credit and debit against your wallet balance, newest first.
         </CardDescription>
       </CardHeader>
 
       {entries.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-          <div className="mb-4 flex size-12 items-center justify-center rounded-full border border-dashed border-border bg-muted/50">
-            <Receipt className="size-5 text-muted-foreground" />
-          </div>
-          <h3 className="mb-1 font-heading text-lg font-medium">
-            No activity yet
-          </h3>
-          <p className="max-w-sm text-sm text-muted-foreground">
-            Top up your wallet to see activity appear here.
-          </p>
-        </div>
+        <EmptyState
+          icon={Receipt}
+          title="No activity yet"
+          description="Top up your wallet to see credits and debits appear here."
+        />
       ) : (
         <>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-border/40 hover:bg-transparent">
+                <TableRow className="hover:bg-transparent">
                   <TableHead>Description</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="text-right">Amount</TableHead>

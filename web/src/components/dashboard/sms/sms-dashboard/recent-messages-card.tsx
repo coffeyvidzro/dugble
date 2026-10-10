@@ -1,7 +1,11 @@
 "use client";
 
-import { ArrowRight, Loader2, MessageSquareOff } from "lucide-react";
+import { ArrowRight, MessageSquareOff } from "lucide-react";
 import Link from "next/link";
+import {
+  ErrorState,
+  LoadingBlock,
+} from "@/components/dashboard/shared/data-states";
 import {
   Card,
   CardDescription,
@@ -22,38 +26,29 @@ export function RecentMessagesCard() {
   const { data: messages, isPending, isError } = useSmsMessages({ limit: 5 });
 
   return (
-    <Card className="h-full border-border/40 shadow-sm">
-      <CardHeader className="flex flex-col items-start gap-4 border-b border-border/40 bg-muted/10 pb-4 sm:flex-row sm:items-center sm:justify-between">
+    <Card className="h-full">
+      <CardHeader className="flex flex-col items-start gap-4 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <CardTitle className="text-xl">Recent Messages</CardTitle>
+          <CardTitle>Recent Messages</CardTitle>
           <CardDescription>
             The latest SMS sent from your workspace.
           </CardDescription>
         </div>
         <Link
           href="/dashboard/sms/history"
-          className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
+          className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
         >
           View all
           <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-          />
         </Link>
       </CardHeader>
 
       {isPending ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading…
-        </div>
+        <LoadingBlock label="Loading…" />
       ) : isError ? (
-        <p className="py-16 text-center text-sm text-danger">
-          Couldn&apos;t load recent messages.
-        </p>
+        <ErrorState title="Couldn't load recent messages" />
       ) : messages?.length === 0 ? (
-        <div className="flex flex-col items-center justify-center px-6 py-16 text-center animate-fade-up">
+        <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
           <div className="mb-4 flex size-12 items-center justify-center rounded-full border border-dashed border-border bg-muted/50">
             <MessageSquareOff className="size-5 text-muted-foreground" />
           </div>

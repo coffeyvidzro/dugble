@@ -6,7 +6,7 @@ const ROW_SLOTS = [0, 1, 2, 3, 4, 5] as const;
 export function PageSkeleton({ stats = true }: { stats?: boolean }) {
   return (
     <div
-      className="mx-auto flex w-full max-w-6xl flex-col gap-6"
+      className="mx-auto flex w-full max-w-7xl flex-col gap-6"
       aria-busy="true"
       aria-live="polite"
     >

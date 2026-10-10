@@ -1,51 +1,53 @@
 import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 interface PortalHeroHeaderProps {
-  breadcrumb: ReactNode;
   title: string;
   description: string;
+  /** Small meta chip shown beside the title (counts, plan status). */
   badge?: ReactNode;
+  /** Page-level actions, right-aligned (primary action last). */
+  actions?: ReactNode;
+  className?: string;
 }
 
+/**
+ * The shared page header: 24px title, one-line description, actions on the
+ * right. Compact on purpose so the first row of data sits near the fold.
+ */
 export function PortalHeroHeader({
-  breadcrumb,
   title,
   description,
   badge,
+  actions,
+  className,
 }: PortalHeroHeaderProps) {
   return (
     <div
-      className="relative mb-10 overflow-hidden animate-fade-up py-6 px-6 md:px-0 rounded-2xl"
-      style={{ animationDelay: "50ms", animationFillMode: "both" }}
+      className={cn(
+        "mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-4",
+        className,
+      )}
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-24 left-1/2 h-56 w-136 -translate-x-1/2 rounded-full bg-signal/10 blur-3xl dark:bg-signal/15"
-      />
-      <div className="relative flex flex-wrap items-end justify-between gap-6 border-b border-border/40 pb-6">
-        <div className="space-y-2">
-          <p className="font-mono text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground">
-            {breadcrumb}
-          </p>
-          <h1 className="font-heading text-3xl font-semibold tracking-tight text-foreground">
+      <div className="min-w-0 space-y-1">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <h1 className="font-heading text-2xl leading-8 font-semibold tracking-tight text-foreground">
             {title}
-            <span
-              aria-hidden="true"
-              className="ml-1 inline-block animate-caret text-primary/30"
-            >
-              _
-            </span>
           </h1>
-          <p className="max-w-xl text-base text-muted-foreground">
-            {description}
-          </p>
+          {badge && (
+            <div className="inline-flex h-6 items-center gap-1.5 rounded-full border bg-background px-2.5 text-xs font-medium text-muted-foreground [&_svg]:size-3.5">
+              {badge}
+            </div>
+          )}
         </div>
-        {badge && (
-          <div className="flex items-center gap-2 rounded-full border border-border/50 bg-card px-3.5 py-1.5 text-xs font-medium text-muted-foreground shadow-sm">
-            {badge}
-          </div>
-        )}
+        <p className="max-w-2xl text-sm text-muted-foreground">{description}</p>
       </div>
+      {actions && (
+        <div className="flex flex-wrap items-center gap-2">{actions}</div>
+      )}
     </div>
   );
 }
+
+/** Alias used by newer pages; same component. */
+export const PageHeader = PortalHeroHeader;

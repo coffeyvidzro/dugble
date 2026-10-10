@@ -1,5 +1,7 @@
-import { Copy, Loader2, Trash2 } from "lucide-react";
+import { Copy, Loader2, Megaphone, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { EmptyState } from "@/components/dashboard/shared/data-states";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -20,18 +22,36 @@ import { CampaignStatusBadge } from "./campaign-status-badge";
 export function CampaignsTable({
   campaigns,
   segmentsById,
+  isFiltered = false,
 }: {
   campaigns: Campaign[];
   segmentsById: Map<string, Segment>;
+  isFiltered?: boolean;
 }) {
   const duplicateCampaign = useDuplicateCampaign();
   const deleteCampaign = useDeleteCampaign();
 
   if (campaigns.length === 0) {
-    return (
-      <p className="py-16 text-center text-sm text-muted-foreground">
-        No campaigns match this filter yet.
-      </p>
+    return isFiltered ? (
+      <EmptyState
+        icon={Megaphone}
+        title="No campaigns with this status"
+        description="Try another status filter."
+      />
+    ) : (
+      <EmptyState
+        icon={Megaphone}
+        title="No campaigns yet"
+        description="Send one SMS to a whole segment and track delivery as it goes out."
+        actions={
+          <Link
+            href="/dashboard/sms/campaigns/new"
+            className={buttonVariants()}
+          >
+            New campaign
+          </Link>
+        }
+      />
     );
   }
 

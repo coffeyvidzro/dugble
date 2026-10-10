@@ -1,15 +1,15 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { Inbox } from "lucide-react";
 import Link from "next/link";
-import { NoTeamState } from "@/components/dashboard/shared/no-team-state";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  EmptyState,
+  ErrorState,
+  RefetchBar,
+  TableSkeleton,
+} from "@/components/dashboard/shared/data-states";
+import { NoTeamState } from "@/components/dashboard/shared/no-team-state";
+import { Card } from "@/components/ui/card";
 import { useEmails } from "@/hooks/queries/use-emails-api";
 import { useSmsMessages } from "@/hooks/queries/use-sms-api";
 import { formatRelativeTime } from "@/lib/format-date";
@@ -22,38 +22,11 @@ type ActivityRow = {
   id: string;
   channel: "SMS" | "Email";
   recipient: string;
+  preview: string;
   href: string;
   createdAt: string;
   badge: React.ReactNode;
 };
-
-function ErrorState({
-  compact,
-  title,
-  onRetry,
-}: {
-  compact?: boolean;
-  title: string;
-  onRetry: () => void;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex flex-col items-center justify-center gap-2 px-6 text-center",
-        compact ? "min-h-40 py-8" : "py-10",
-      )}
-    >
-      <p className="text-sm text-danger">{title}</p>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="text-xs font-medium text-primary underline-offset-4 hover:underline"
-      >
-        Try again
-      </button>
-    </div>
-  );
-}
 
 export function RecentActivityCard() {
   const smsQuery = useSmsMessages({ limit: 5 });
@@ -70,6 +43,7 @@ export function RecentActivityCard() {
         id: `sms-${message.id}`,
         channel: "SMS",
         recipient: message.to,
+        preview: message.body,
         href: `/dashboard/sms/send/${message.id}`,
         createdAt: message.created_at,
         badge: <SmsStatusBadge status={message.last_event} />,
@@ -80,6 +54,7 @@ export function RecentActivityCard() {
         id: `email-${email.id}`,
         channel: "Email",
         recipient: email.to_email,
+        preview: email.subject,
         href: `/dashboard/email/emails/${email.id}`,
         createdAt: email.created_at,
         badge: <EmailStatusBadge status={email.status} />,
@@ -92,79 +67,113 @@ export function RecentActivityCard() {
     )
     .slice(0, 5);
 
-  return (
-    <Card className="overflow-hidden">
-      <CardHeader>
-        <CardTitle>Recent activity</CardTitle>
-        <CardDescription>
-          The latest SMS and emails sent from your workspace.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-0">
-        {!activeTeamId ? (
-          <NoTeamState
-            compact
-            description="Create or select a team to see recent activity."
-          />
-        ) : (
-          <>
-            <div className="grid grid-cols-4 border-y bg-muted/20 px-3 py-2 font-mono text-[11px] text-muted-foreground sm:px-4">
-              <span>Recipient</span>
-              <span>Channel</span>
-              <span>Status</span>
-              <span className="text-right">Time</span>
-            </div>
+  const isFetching = smsQuery.isFetching || emailQuery.isFetching;
+  const columns =
+    "grid grid-cols-[7.5rem_minmax(0,1fr)_4.5rem] items-center gap-4 px-5 md:grid-cols-[7.5rem_minmax(0,14rem)_4.5rem_minmax(0,1fr)_5.5rem]";
 
-            {isPending ? (
-              <div className="flex min-h-40 items-center justify-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" />
-                Loading…
-              </div>
-            ) : isError ? (
-              <ErrorState
-                compact
-                title="Couldn't load recent activity"
-                onRetry={() => {
-                  smsQuery.refetch();
-                  emailQuery.refetch();
-                }}
-              />
-            ) : rows.length === 0 ? (
-              <div className="flex min-h-40 flex-col items-center justify-center gap-2 px-6 py-10 text-center">
-                <p className="text-sm font-medium">No messages yet</p>
-                <p className="max-w-56 text-xs text-muted-foreground">
-                  Send a test message to see it traced here in real time.
-                </p>
-              </div>
-            ) : (
-              <ul>
-                {rows.map((row) => (
-                  <li key={row.id} className="border-b last:border-0">
-                    <Link
-                      href={row.href}
-                      className="grid grid-cols-4 items-center px-3 py-2.5 text-sm transition-colors hover:bg-muted/30 sm:px-4"
-                    >
-                      <span className="truncate font-mono text-xs text-foreground">
-                        {row.recipient}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {row.channel}
-                      </span>
-                      <span>{row.badge}</span>
-                      <span
-                        className="text-right text-xs text-muted-foreground"
-                        suppressHydrationWarning
-                      >
-                        {formatRelativeTime(row.createdAt)}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+  return (
+    <Card className="gap-0 py-0">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-4">
+        <div>
+          <h2 className="font-heading text-base leading-6 font-semibold tracking-tight">
+            Recent activity
+          </h2>
+          <p className="text-[13px] text-muted-foreground">
+            The latest SMS and emails sent from your workspace.
+          </p>
+        </div>
+        <div className="flex gap-4 text-[13px] font-medium">
+          <Link
+            href="/dashboard/sms/history"
+            className="text-signal hover:underline"
+          >
+            SMS logs
+          </Link>
+          <Link
+            href="/dashboard/email/emails"
+            className="text-signal hover:underline"
+          >
+            Email logs
+          </Link>
+        </div>
+      </div>
+      {!activeTeamId ? (
+        <NoTeamState
+          compact
+          className="border-t"
+          description="Create or select a team to see recent activity."
+        />
+      ) : (
+        <>
+          <div
+            className={cn(
+              columns,
+              "h-10 border-y bg-muted/40 font-mono text-[11px] font-medium tracking-[0.06em] text-muted-foreground uppercase",
             )}
-          </>
-        )}
-      </CardContent>
+          >
+            <span>Status</span>
+            <span>Recipient</span>
+            <span className="hidden md:block">Channel</span>
+            <span className="hidden md:block">Preview</span>
+            <span className="text-right">Time</span>
+          </div>
+          <RefetchBar active={isFetching && !isPending} />
+          {isPending ? (
+            <TableSkeleton
+              rows={5}
+              columns={["7rem", "minmax(0,1fr)", "minmax(0,2fr)", "4rem"]}
+            />
+          ) : isError ? (
+            <ErrorState
+              title="Couldn't load recent activity"
+              onRetry={() => {
+                smsQuery.refetch();
+                emailQuery.refetch();
+              }}
+            />
+          ) : rows.length === 0 ? (
+            <EmptyState
+              icon={Inbox}
+              title="No messages yet"
+              description="Send a test message to see it traced here in real time."
+            />
+          ) : (
+            <ul>
+              {rows.map((row) => (
+                <li
+                  key={row.id}
+                  className="border-b border-border/60 last:border-0"
+                >
+                  <Link
+                    href={row.href}
+                    className={cn(
+                      columns,
+                      "h-11 text-[13px] transition-colors hover:bg-muted/50",
+                    )}
+                  >
+                    <span>{row.badge}</span>
+                    <span className="truncate font-mono text-xs">
+                      {row.recipient}
+                    </span>
+                    <span className="hidden text-muted-foreground md:block">
+                      {row.channel}
+                    </span>
+                    <span className="hidden truncate text-muted-foreground md:block">
+                      {row.preview}
+                    </span>
+                    <span
+                      className="text-right text-muted-foreground tabular-nums"
+                      suppressHydrationWarning
+                    >
+                      {formatRelativeTime(row.createdAt)}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
     </Card>
   );
 }

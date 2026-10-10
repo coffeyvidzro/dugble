@@ -19,21 +19,8 @@ function TeamSettingsSkeleton() {
   );
 }
 
-function AnimatedSection({
-  children,
-  delay,
-}: {
-  children: React.ReactNode;
-  delay: number;
-}) {
-  return (
-    <div
-      className="animate-fade-up"
-      style={{ animationDelay: `${delay}ms`, animationFillMode: "both" }}
-    >
-      {children}
-    </div>
-  );
+function AnimatedSection({ children }: { children: React.ReactNode }) {
+  return <div>{children}</div>;
 }
 
 export function TeamSettings() {
@@ -85,19 +72,19 @@ export function TeamSettings() {
       <TeamHeader teamId={team.id} teamName={team.name} />
 
       <div className="space-y-8">
-        <AnimatedSection delay={100}>
+        <AnimatedSection>
           <TeamOverview teamId={team.id} />
         </AnimatedSection>
 
-        <AnimatedSection delay={150}>
+        <AnimatedSection>
           <TeamMembers teamId={team.id} />
         </AnimatedSection>
 
-        <AnimatedSection delay={200}>
+        <AnimatedSection>
           <TeamTokens />
         </AnimatedSection>
 
-        <AnimatedSection delay={250}>
+        <AnimatedSection>
           <DeleteTeamSection teamId={team.id} teamName={team.name} />
         </AnimatedSection>
       </div>

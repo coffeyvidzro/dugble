@@ -23,17 +23,17 @@ export function SendSidebar({
 }) {
   return (
     <div className="space-y-6">
-      <Card className="overflow-hidden border-border/40 shadow-sm">
-        <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
-          <CardTitle className="text-xl">Preview</CardTitle>
+      <Card className="overflow-hidden">
+        <CardHeader className="border-b pb-4">
+          <CardTitle>Preview</CardTitle>
           <CardDescription>How it lands on their phone.</CardDescription>
         </CardHeader>
         <SmsPreviewBubble senderLabel={senderLabel} message={message} />
       </Card>
 
-      <Card className="border-border/40 shadow-sm">
-        <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
-          <CardTitle className="text-xl">Summary</CardTitle>
+      <Card>
+        <CardHeader className="border-b pb-4">
+          <CardTitle>Summary</CardTitle>
           <CardDescription>Segments and cost for this send.</CardDescription>
         </CardHeader>
         <div className="space-y-3 p-4 text-sm">

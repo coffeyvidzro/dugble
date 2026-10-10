@@ -5,7 +5,7 @@ import { ChangePasswordForm } from "./change-password-form";
 
 export function ChangePasswordCard() {
   return (
-    <Card className="overflow-hidden border-border/40 shadow-sm">
+    <Card className="overflow-hidden">
       <SectionCardHeader
         icon={KeyRound}
         title="Password"

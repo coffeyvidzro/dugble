@@ -1,9 +1,9 @@
 "use client";
 
-import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-
+import { LoadingBlock } from "@/components/dashboard/shared/data-states";
 import { useBroadcastApi } from "@/hooks/queries/use-broadcasts-api";
 import { ComposeBroadcastHeader } from "./compose-broadcast-header";
 import { ComposeBroadcastView } from "./compose-broadcast-view";
@@ -21,10 +21,11 @@ export function ComposeBroadcastPage() {
 
   if (editId && broadcastQuery.isPending) {
     return (
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-center gap-2 pb-6 pt-16 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Loading broadcast…
-      </div>
+      <LoadingBlock
+        label="Loading broadcast…"
+        variant="page"
+        className="mx-auto w-full max-w-7xl pb-6 pt-16"
+      />
     );
   }
 
@@ -36,7 +37,7 @@ export function ComposeBroadcastPage() {
     broadcast.status !== "scheduled";
 
   return (
-    <div className="mx-auto w-full max-w-6xl pb-6 animate-fade-up">
+    <div className="mx-auto w-full max-w-7xl pb-6">
       <Link
         href="/dashboard/email/broadcasts"
         className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"

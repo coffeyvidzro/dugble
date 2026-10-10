@@ -1,30 +1,21 @@
-import { Check, PenLine } from "lucide-react";
-import { cn } from "@/lib/utils";
+import {
+  StatusBadge,
+  type StatusTone,
+} from "@/components/dashboard/shared/status-badge";
 import {
   TEMPLATE_STATUS_LABEL,
   type TemplateApiStatus,
 } from "@/types/template-api";
 
-const STATUS_STYLE: Record<
-  TemplateApiStatus,
-  { icon: typeof Check; className: string }
-> = {
-  published: { icon: Check, className: "text-signal" },
-  draft: { icon: PenLine, className: "text-muted-foreground" },
+const STATUS_TONE: Record<TemplateApiStatus, StatusTone> = {
+  published: "success",
+  draft: "neutral",
 };
 
 export function TemplateStatusBadge({ status }: { status: TemplateApiStatus }) {
-  const { icon: Icon, className } = STATUS_STYLE[status];
-
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 text-xs font-medium",
-        className,
-      )}
-    >
-      <Icon className="size-3" />
+    <StatusBadge tone={STATUS_TONE[status]}>
       {TEMPLATE_STATUS_LABEL[status]}
-    </span>
+    </StatusBadge>
   );
 }

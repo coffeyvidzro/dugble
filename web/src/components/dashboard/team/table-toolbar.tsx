@@ -28,8 +28,8 @@ export function TableToolbar({
   const showSearch = !hideSearchWhenEmpty || totalCount > 0;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 bg-muted/5 px-6 py-3">
-      <p className="font-mono text-xs text-muted-foreground">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
+      <p className="text-xs text-muted-foreground">
         {totalCount === 0
           ? `No ${itemNamePlural} yet`
           : `${totalCount} ${totalCount === 1 ? itemNameSingular : itemNamePlural}`}
@@ -43,7 +43,7 @@ export function TableToolbar({
               value={searchQuery}
               onChange={(event) => onSearchChange(event.target.value)}
               placeholder={searchPlaceholder}
-              className="max-w-sm rounded-lg border border-border/60 bg-muted/20 py-4 pl-8 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
+              className="h-[34px] w-64 max-w-sm pr-3 pl-8 text-[13px]"
             />
           </div>
         )}

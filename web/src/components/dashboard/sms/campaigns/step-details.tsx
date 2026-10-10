@@ -1,5 +1,5 @@
-import { Loader2 } from "lucide-react";
 import { useMemo } from "react";
+import { LoadingBlock } from "@/components/dashboard/shared/data-states";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useApprovedSenderIds } from "@/hooks/queries/use-approved-sender-ids";
@@ -41,10 +41,7 @@ export function StepDetails({
       </div>
 
       {isPending ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading sender IDs…
-        </div>
+        <LoadingBlock label="Loading sender IDs…" />
       ) : !approvedSenderIds || approvedSenderIds.length === 0 ? (
         <div className="rounded-lg border border-border/40 bg-muted/10 p-3 text-sm text-muted-foreground">
           You don&apos;t have an approved sender ID yet.{" "}

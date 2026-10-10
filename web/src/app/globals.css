@@ -49,6 +49,9 @@
   --color-signal: var(--signal);
   --color-pending: var(--pending);
   --color-danger: var(--danger);
+  --color-signal-subtle: var(--signal-subtle);
+  --color-pending-subtle: var(--pending-subtle);
+  --color-danger-subtle: var(--danger-subtle);
 }
 
 :root {
@@ -87,6 +90,10 @@
   --signal: hsl(152 55% 34%);
   --pending: hsl(32 90% 42%);
   --danger: hsl(0 68% 48%);
+  /* Derived tints (no new hues): status fills, banners, selected states. */
+  --signal-subtle: color-mix(in oklch, var(--signal) 12%, transparent);
+  --pending-subtle: color-mix(in oklch, var(--pending) 12%, transparent);
+  --danger-subtle: color-mix(in oklch, var(--danger) 10%, transparent);
 }
 
 .dark {
@@ -124,6 +131,9 @@
   --signal: hsl(152 62% 55%);
   --pending: hsl(38 100% 68%);
   --danger: hsl(0 100% 73%);
+  --signal-subtle: color-mix(in oklch, var(--signal) 14%, transparent);
+  --pending-subtle: color-mix(in oklch, var(--pending) 14%, transparent);
+  --danger-subtle: color-mix(in oklch, var(--danger) 14%, transparent);
 }
 
 @layer base {
@@ -228,7 +238,56 @@
   animation: caret-blink 1s steps(1) infinite;
 }
 
+/* Dashboard: indeterminate refetch line and skeleton shimmer. */
+@keyframes progress-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+.animate-progress {
+  animation: progress-slide 1.1s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -480px 0;
+  }
+  100% {
+    background-position: 480px 0;
+  }
+}
+.animate-skeleton {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0,
+    color-mix(in oklch, var(--foreground) 5%, transparent) 40%,
+    transparent 80%
+  );
+  background-size: 960px 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-shimmer 1.5s linear infinite;
+}
+
+@keyframes row-highlight {
+  from {
+    background-color: var(--signal-subtle);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+.animate-row-highlight {
+  animation: row-highlight 1.5s ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .animate-progress,
+  .animate-skeleton,
+  .animate-row-highlight,
+  .animate-ping,
   .animate-grid-pan,
   .animate-orb-drift-a,
   .animate-orb-drift-b,
@@ -244,4 +303,42 @@
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/*
+ * Dashboard surface overrides.
+ * Scoped to [data-surface="dashboard"] (set on the dashboard shell) so the
+ * marketing site and auth screens keep their current look. Unlayered on
+ * purpose: these rules win over per-component utility classes.
+ */
+[data-surface="dashboard"] [data-slot="button"]:hover {
+  /* No hover lift or drop shadow on dashboard buttons. */
+  translate: none;
+  --tw-shadow: 0 0 #0000;
+}
+[data-surface="dashboard"] [data-slot="button"] > [data-shimmer] {
+  display: none;
+}
+[data-surface="dashboard"] [data-slot="button"][data-cta] > [data-shimmer] {
+  display: block;
+}
+[data-surface="dashboard"] [data-slot="button"]:focus-visible,
+[data-surface="dashboard"]
+  [data-slot="input"]:focus-visible:not([aria-invalid="true"]) {
+  border-color: var(--signal);
+  --tw-ring-color: color-mix(in oklch, var(--signal) 30%, transparent);
+}
+[data-surface="dashboard"] [data-slot="input"] {
+  border-radius: var(--radius-md);
+}
+[data-surface="dashboard"] [data-slot="input"]:not([aria-invalid="true"]) {
+  border-color: var(--input);
+  background-color: var(--background);
+}
+[data-surface="dashboard"]
+  :is(a, button, summary, [role="button"], [role="switch"], [tabindex="0"]):not(
+    [data-slot]
+  ):focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
 }

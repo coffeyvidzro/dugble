@@ -1,7 +1,10 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { useMemo } from "react";
+import {
+  ErrorState,
+  LoadingBlock,
+} from "@/components/dashboard/shared/data-states";
 import { RequireActiveTeam } from "@/components/dashboard/shared/require-active-team";
 import { useBroadcastsApi } from "@/hooks/queries/use-broadcasts-api";
 import { useSegments } from "@/hooks/queries/use-segments";
@@ -30,21 +33,13 @@ function BroadcastsListViewContent() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-6xl pb-6">
+    <div className="mx-auto w-full max-w-7xl pb-6">
       <BroadcastsHeader scheduledCount={scheduledCount} />
 
       <div className="space-y-6">
-        <div
-          className="animate-fade-up"
-          style={{
-            animationDelay: "100ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div>
           {isError ? (
-            <p className="py-8 text-center text-sm text-danger">
-              Couldn&apos;t load broadcasts.
-            </p>
+            <ErrorState title="Couldn't load broadcasts" />
           ) : isPending ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {SKELETON_SLOTS.map((slot) => (
@@ -58,18 +53,9 @@ function BroadcastsListViewContent() {
             <BroadcastsStatsGrid broadcasts={list} />
           )}
         </div>
-        <div
-          className="animate-fade-up"
-          style={{
-            animationDelay: "150ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div>
           {isPending ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              Loading broadcasts…
-            </div>
+            <LoadingBlock label="Loading broadcasts…" />
           ) : (
             <BroadcastsTableCard
               broadcasts={list}

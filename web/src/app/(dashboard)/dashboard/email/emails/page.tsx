@@ -2,7 +2,7 @@ import { EmailsLogView } from "@/components/dashboard/email/emails-page/emails-l
 import { constructMetadata } from "@/utils/metadata";
 
 export const metadata = constructMetadata({
-  title: "Emails",
+  title: "Email Logs",
   description:
     "Browse sent and received email activity, filter by status or date, and send a one-off transactional email.",
   path: "/dashboard/email/emails",

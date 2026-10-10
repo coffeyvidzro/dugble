@@ -1,5 +1,8 @@
-import { Loader2, Wallet as WalletIcon } from "lucide-react";
+import { Plus } from "lucide-react";
+import Link from "next/link";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Wallet } from "@/types/billing-api";
 import { formatMinorUnits, formatRelativeTime } from "../shared/format";
 
@@ -15,24 +18,22 @@ export function WalletBalanceCard({
   onTopUp: () => void;
 }) {
   return (
-    <Card className="overflow-hidden border-border/40 shadow-sm">
-      <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-2">
-          <div className="flex size-9 items-center justify-center rounded-lg border border-border/50 bg-muted/40 text-muted-foreground">
-            <WalletIcon className="size-4" />
-          </div>
+    <Card className="py-0">
+      <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-1">
+          <p className="text-[13px] text-muted-foreground">Available balance</p>
           {isPending ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              Loading balance…
-            </div>
+            <>
+              <Skeleton className="h-12 w-56" />
+              <Skeleton className="h-3 w-24" />
+            </>
           ) : isError || !wallet ? (
-            <p className="text-sm text-danger">
+            <p className="py-2 text-sm text-danger">
               Couldn&apos;t load your wallet balance.
             </p>
           ) : (
             <>
-              <p className="font-heading text-4xl font-semibold tracking-tight text-foreground">
+              <p className="font-heading text-[40px] leading-12 font-semibold tracking-tight text-foreground tabular-nums">
                 {formatMinorUnits(wallet.balance_units, wallet.currency)}
               </p>
               <p
@@ -44,17 +45,18 @@ export function WalletBalanceCard({
             </>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onTopUp}
-          className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
-        >
-          Top up
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-          />
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard/billing/plan"
+            className={buttonVariants({ variant: "outline" })}
+          >
+            View plans
+          </Link>
+          <Button type="button" cta onClick={onTopUp} className="gap-1.5">
+            <Plus className="size-4" />
+            Top up
+          </Button>
+        </div>
       </div>
     </Card>
   );

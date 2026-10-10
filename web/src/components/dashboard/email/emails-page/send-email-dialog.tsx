@@ -107,15 +107,11 @@ export function SendEmailDialog() {
     >
       <DialogTrigger
         render={
-          <Button className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20" />
+          <Button className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90" />
         }
       >
         <Plus className="size-4" />
         Send email
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-        />
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg border-border/40 shadow-xl max-h-[90dvh] flex flex-col">
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
@@ -128,9 +124,7 @@ export function SendEmailDialog() {
 
           <div className="space-y-4 py-6 overflow-y-auto flex-1 px-1 no-scrollbar">
             {error && (
-              <p className="text-xs font-medium text-danger animate-fade-up">
-                {error}
-              </p>
+              <p className="text-xs font-medium text-danger">{error}</p>
             )}
 
             <div className="space-y-2">
@@ -245,7 +239,7 @@ export function SendEmailDialog() {
             <Button
               type="submit"
               disabled={sendEmail.isPending}
-              className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
+              className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
             >
               {sendEmail.isPending ? (
                 <Loader2 className="size-4 animate-spin" />
@@ -253,10 +247,6 @@ export function SendEmailDialog() {
                 <Send className="size-4" />
               )}
               {sendEmail.isPending ? "Sending..." : "Send"}
-              <span
-                aria-hidden
-                className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-              />
             </Button>
           </DialogFooter>
         </form>

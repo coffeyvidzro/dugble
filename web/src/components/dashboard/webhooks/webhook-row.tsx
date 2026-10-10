@@ -2,18 +2,19 @@
 
 import {
   Ban,
-  MoreVertical,
+  MoreHorizontal,
   Pencil,
   PlayCircle,
   RefreshCw,
   Send,
   Trash2,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/dashboard/shared/status-badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -25,18 +26,22 @@ import {
 import { useTeamPermissions } from "@/hooks/queries/use-team-permissions";
 import { useUpdateWebhookEndpoint } from "@/hooks/queries/use-webhooks";
 import { formatDate } from "@/lib/format-date";
-import { cn } from "@/lib/utils";
 import { getWebhookStatusDisplay } from "@/lib/webhook-status";
 import type { WebhookEndpoint } from "@/types/webhook";
+import { EnabledSwitch } from "./enabled-switch";
 
 export function WebhookRow({
   webhook,
+  selected = false,
+  onOpen,
   onEdit,
   onRollSecret,
   onTest,
   onDelete,
 }: {
   webhook: WebhookEndpoint;
+  selected?: boolean;
+  onOpen: (webhook: WebhookEndpoint) => void;
   onEdit: (webhook: WebhookEndpoint) => void;
   onRollSecret: (webhook: WebhookEndpoint) => void;
   onTest: (webhook: WebhookEndpoint) => void;
@@ -47,35 +52,38 @@ export function WebhookRow({
     useUpdateWebhookEndpoint();
 
   const status = getWebhookStatusDisplay(webhook);
-  const statusEl = (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 text-sm font-medium",
-        status.textClassName,
-      )}
-    >
-      <span className={cn("size-1.5 rounded-full", status.dotClassName)} />
-      {status.label}
-    </span>
-  );
+  const statusEl = <StatusBadge tone={status.tone}>{status.label}</StatusBadge>;
 
   return (
-    <TableRow className="group border-b-0 transition-colors hover:bg-muted/30">
-      <TableCell className="border-l-2 border-l-transparent transition-colors group-hover:border-l-signal/50">
-        <div className="flex flex-col gap-0.5">
-          <span className="max-w-55 truncate font-mono text-sm text-foreground sm:max-w-xs">
+    <TableRow data-state={selected ? "selected" : undefined}>
+      <TableCell className="max-w-0 py-2.5">
+        <button
+          type="button"
+          onClick={() => onOpen(webhook)}
+          className="block max-w-full rounded-sm text-left hover:underline hover:decoration-foreground/30 hover:underline-offset-4"
+        >
+          <span
+            className={
+              webhook.enabled
+                ? "block truncate font-mono text-[13px] text-foreground"
+                : "block truncate font-mono text-[13px] text-muted-foreground"
+            }
+          >
             {webhook.url}
           </span>
-          <span className="text-xs text-muted-foreground">
-            Created {formatDate(webhook.created_at)}
+          <span className="block text-xs text-muted-foreground">
+            Added {formatDate(webhook.created_at)}
           </span>
-        </div>
+        </button>
       </TableCell>
       <TableCell>
         <Tooltip>
           <TooltipTrigger
             render={
-              <Badge variant="outline" className="cursor-default shadow-none" />
+              <button
+                type="button"
+                className="inline-flex h-[22px] items-center rounded-md border px-2 text-xs text-foreground/80"
+              />
             }
           >
             {webhook.subscribed_events.length}{" "}
@@ -100,22 +108,33 @@ export function WebhookRow({
           statusEl
         )}
       </TableCell>
-      <TableCell className="text-right">
+      <TableCell>
+        <EnabledSwitch
+          checked={webhook.enabled}
+          pending={isToggling}
+          disabled={!canManageTeam}
+          label={`Enable ${webhook.url}`}
+          onCheckedChange={(enabled) =>
+            updateWebhook({ id: webhook.id, input: { enabled } })
+          }
+        />
+      </TableCell>
+      <TableCell className="w-12 py-2 pr-3 text-right">
         {canManageTeam && (
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
                 <button
                   type="button"
-                  className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+                  className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
                   aria-label={`Actions for ${webhook.url}`}
                   disabled={isToggling}
                 />
               }
             >
-              <MoreVertical className="size-4" />
+              <MoreHorizontal className="size-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52 shadow-lg">
+            <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuItem
                 className="cursor-pointer"
                 onClick={() => onEdit(webhook)}
@@ -158,8 +177,9 @@ export function WebhookRow({
                   </>
                 )}
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
-                className="text-danger focus:bg-danger/10 focus:text-danger cursor-pointer"
+                className="cursor-pointer text-danger focus:bg-danger-subtle focus:text-danger"
                 onClick={() => onDelete(webhook)}
               >
                 <Trash2 className="mr-2 size-4" />

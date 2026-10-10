@@ -9,11 +9,6 @@ export function ComposeBroadcastHeader({
 }) {
   return (
     <PortalHeroHeader
-      breadcrumb={
-        editingBroadcast
-          ? "Email > Broadcasts > Edit"
-          : "Email > Broadcasts > New"
-      }
       title={editingBroadcast ? "Edit Broadcast" : "New Broadcast"}
       description={
         editingBroadcast

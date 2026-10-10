@@ -8,17 +8,16 @@ export function WebhooksSettings() {
   const { data: webhooks, isLoading } = useWebhookEndpoints();
 
   return (
-    <div className="mx-auto w-full max-w-5xl  pb-6">
+    <div className="mx-auto w-full max-w-7xl pb-8">
       <WebhookHeader
         endpointCount={webhooks?.length ?? 0}
+        failingCount={
+          webhooks?.filter((w) => w.enabled && w.consecutive_failures > 0)
+            .length ?? 0
+        }
         isLoading={isLoading}
       />
-      <div
-        className="animate-fade-up"
-        style={{ animationDelay: "100ms", animationFillMode: "both" }}
-      >
-        <WebhooksCard />
-      </div>
+      <WebhooksCard />
     </div>
   );
 }

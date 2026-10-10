@@ -11,7 +11,6 @@ import {
   PenSquare,
 } from "lucide-react";
 import { useRef, useState } from "react";
-
 import {
   Card,
   CardContent,
@@ -90,14 +89,14 @@ export function ContentEditorCard({
   }
 
   return (
-    <Card className="border-border/40 shadow-sm">
-      <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
+    <Card>
+      <CardHeader className="border-b pb-4">
         <div className="flex items-center gap-3">
           <div className="flex size-9 items-center justify-center rounded-lg border border-border/50 bg-muted/40 text-muted-foreground">
             <PenSquare className="size-4" />
           </div>
           <div className="space-y-1">
-            <CardTitle className="text-xl">Content</CardTitle>
+            <CardTitle>Content</CardTitle>
             <CardDescription>
               Write in Markdown. We&apos;ll format it for the inbox.
             </CardDescription>

@@ -62,7 +62,7 @@ export function SenderIdRequestForm() {
 
   if (submitted) {
     return (
-      <Card className="border-border/40 shadow-sm">
+      <Card>
         <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
           <span className="flex size-12 items-center justify-center rounded-full bg-signal/10 text-signal">
             <Send className="size-5" />
@@ -79,7 +79,7 @@ export function SenderIdRequestForm() {
           <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/dashboard/sms/sender-ids"
-              className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
+              className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
             >
               Back to Sender IDs
             </Link>
@@ -97,9 +97,9 @@ export function SenderIdRequestForm() {
   }
 
   return (
-    <Card className="border-border/40 shadow-sm">
-      <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
-        <CardTitle className="text-xl">Request details</CardTitle>
+    <Card>
+      <CardHeader className="border-b pb-4">
+        <CardTitle>Request details</CardTitle>
         <CardDescription>
           Carriers review every request for compliance before approval.
         </CardDescription>
@@ -168,7 +168,7 @@ export function SenderIdRequestForm() {
         <button
           type="submit"
           disabled={!canSubmit}
-          className="group/button relative inline-flex w-full items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2.5 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 disabled:pointer-events-none disabled:opacity-50 dark:hover:shadow-black/20"
+          className="group/button relative inline-flex w-full items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-all disabled:pointer-events-none disabled:opacity-50 hover:bg-primary/90"
         >
           {createSenderId.isPending ? (
             <Loader2 className="size-4 animate-spin" />
@@ -176,10 +176,6 @@ export function SenderIdRequestForm() {
             <Send className="size-4" />
           )}
           {createSenderId.isPending ? "Submitting…" : "Submit for review"}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-          />
         </button>
       </form>
     </Card>

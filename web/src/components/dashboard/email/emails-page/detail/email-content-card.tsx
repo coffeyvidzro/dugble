@@ -8,9 +8,9 @@ import type { EmailApiResource } from "@/types/email-api";
 
 export function EmailContentCard({ email }: { email: EmailApiResource }) {
   return (
-    <Card className="overflow-hidden border-border/40 shadow-sm">
-      <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
-        <CardTitle className="text-lg">Preview</CardTitle>
+    <Card className="overflow-hidden">
+      <CardHeader className="border-b pb-4">
+        <CardTitle>Preview</CardTitle>
         <CardDescription>
           {email.html ? "Rendered HTML body." : "Plain text body."}
         </CardDescription>

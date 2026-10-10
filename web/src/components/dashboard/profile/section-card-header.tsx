@@ -1,5 +1,4 @@
 import type { LucideIcon } from "lucide-react";
-
 import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -10,15 +9,13 @@ const TONE_STYLES: Record<
   { header: string; chip: string; title: string; description: string }
 > = {
   neutral: {
-    header:
-      "flex-row items-center gap-3 border-b border-border/40 bg-muted/10 pb-4",
+    header: "flex-row items-center gap-3 border-b pb-4",
     chip: "border-border/50 bg-muted/40 text-muted-foreground",
     title: "",
     description: "",
   },
   positive: {
-    header:
-      "flex-row items-center gap-3 border-b border-border/40 bg-muted/10 pb-4",
+    header: "flex-row items-center gap-3 border-b pb-4",
     chip: "border-signal/30 bg-signal/10 text-signal",
     title: "",
     description: "",

@@ -39,7 +39,7 @@ export function CurrentPlanCard({
       : `${daysLeft} day${daysLeft === 1 ? "" : "s"} left`;
 
   return (
-    <Card className="overflow-hidden border-border/40 shadow-sm">
+    <Card className="overflow-hidden">
       <div className="p-5 sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
@@ -84,7 +84,7 @@ export function CurrentPlanCard({
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/40">
             <div
-              className="h-full rounded-full bg-primary transition-[width] duration-500"
+              className="h-full rounded-full bg-primary transition-[width] duration-500 hover:bg-primary/90"
               style={{ width: `${percent}%` }}
             />
           </div>

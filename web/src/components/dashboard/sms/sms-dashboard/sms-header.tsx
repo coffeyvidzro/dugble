@@ -1,18 +1,21 @@
 import { MessageSquare } from "lucide-react";
+import type { ReactNode } from "react";
 import { PortalHeroHeader } from "../../portal-hero-header";
 
-export function SmsHeader({ deliveryRatePct }: { deliveryRatePct: number }) {
+export function SmsHeader({
+  deliveryRatePct,
+  actions,
+}: {
+  deliveryRatePct: number;
+  actions?: ReactNode;
+}) {
   return (
     <PortalHeroHeader
-      breadcrumb="SMS"
-      title="Overview"
+      title="SMS overview"
       description="A2P delivery, sender IDs, and message performance at a glance."
+      actions={actions}
       badge={
         <>
-          <span className="relative flex size-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-75" />
-            <span className="relative inline-flex size-2 rounded-full bg-signal" />
-          </span>
           <MessageSquare className="size-3.5" />
           {deliveryRatePct.toFixed(1)}% delivered
         </>

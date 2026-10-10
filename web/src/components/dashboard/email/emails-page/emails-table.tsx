@@ -1,4 +1,5 @@
 import { Inbox } from "lucide-react";
+import { EmptyState } from "@/components/dashboard/shared/data-states";
 import {
   Table,
   TableBody,
@@ -16,28 +17,32 @@ export function EmailsTable({
   hasNextPage,
   onPageChange,
   hasActiveFilters,
+  selectedId,
+  onOpen,
 }: {
   emails: EmailSummary[];
   page: number;
   hasNextPage: boolean;
   onPageChange: (page: number) => void;
   hasActiveFilters: boolean;
+  selectedId?: string | null;
+  onOpen?: (emailId: string) => void;
 }) {
   if (emails.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-6 text-center animate-fade-up">
-        <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-muted/50 border border-dashed border-border">
-          <Inbox className="size-5 text-muted-foreground" />
-        </div>
-        <h3 className="mb-1 font-heading text-lg font-medium">
-          {hasActiveFilters ? "No emails match your filters" : "No emails yet"}
-        </h3>
-        <p className="max-w-sm text-sm text-muted-foreground">
-          {hasActiveFilters
-            ? "Try adjusting your search or filters, or check the next page."
-            : "Emails sent through the Dugble API will show up here."}
-        </p>
-      </div>
+      <EmptyState
+        icon={Inbox}
+        title={
+          hasActiveFilters
+            ? "No emails match your filters"
+            : "No emails sent yet"
+        }
+        description={
+          hasActiveFilters
+            ? "Try a different search or status, or check the next page."
+            : "Emails sent through the Dugble API will show up here."
+        }
+      />
     );
   }
 
@@ -46,17 +51,24 @@ export function EmailsTable({
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="border-b border-border/40 hover:bg-transparent">
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-36">Status</TableHead>
               <TableHead className="w-64">To</TableHead>
-              <TableHead>Status</TableHead>
               <TableHead>Subject</TableHead>
-              <TableHead className="w-32">Created</TableHead>
-              <TableHead className="w-10 text-right" />
+              <TableHead className="w-28 text-right">Created</TableHead>
+              <TableHead className="w-12">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {emails.map((email) => (
-              <EmailSummaryRow key={email.id} email={email} />
+              <EmailSummaryRow
+                key={email.id}
+                email={email}
+                selected={email.id === selectedId}
+                onOpen={onOpen}
+              />
             ))}
           </TableBody>
         </Table>

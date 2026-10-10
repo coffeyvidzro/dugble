@@ -97,7 +97,7 @@ export function TeamOverviewForm({ teamId }: { teamId: string }) {
       {canManageTeam && (
         <div className="flex items-center justify-end gap-4 border-t border-border/40 bg-muted/10 px-6 py-4">
           {updateTeam.isSuccess && !updateTeam.isPending && !isDirty && (
-            <span className="flex items-center gap-1.5 text-sm font-medium text-signal animate-fade-up">
+            <span className="flex items-center gap-1.5 text-sm font-medium text-signal">
               <Check className="size-4" />
               Saved successfully
             </span>
@@ -106,7 +106,7 @@ export function TeamOverviewForm({ teamId }: { teamId: string }) {
             onClick={handleSave}
             disabled={!isDirty || updateTeam.isPending}
             className={cn(
-              "group/button relative inline-flex min-w-30 shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20",
+              "group/button relative inline-flex min-w-30 shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all",
               updateTeam.isPending && "opacity-80",
             )}
           >
@@ -114,10 +114,6 @@ export function TeamOverviewForm({ teamId }: { teamId: string }) {
               <Loader2 className="size-4 animate-spin" />
             ) : null}
             {updateTeam.isPending ? "Saving..." : "Save changes"}
-            <span
-              aria-hidden
-              className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-            />
           </Button>
         </div>
       )}

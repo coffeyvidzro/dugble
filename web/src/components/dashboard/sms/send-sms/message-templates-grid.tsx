@@ -20,9 +20,9 @@ const TEMPLATE_ICONS: Record<MessageTemplateId, typeof KeyRound> = {
 
 export function MessageTemplatesGrid() {
   return (
-    <Card className="border-border/40 shadow-sm">
-      <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
-        <CardTitle className="text-xl">Start from a template</CardTitle>
+    <Card>
+      <CardHeader className="border-b pb-4">
+        <CardTitle>Start from a template</CardTitle>
         <CardDescription>
           Common message types, prefilled and ready to edit.
         </CardDescription>
@@ -34,7 +34,7 @@ export function MessageTemplatesGrid() {
             <Link
               key={template.id}
               href={`/dashboard/sms/send/new?template=${template.id}`}
-              className="group flex flex-col gap-2 rounded-lg border border-border/40 p-4 transition-all hover:-translate-y-0.5 hover:border-border hover:shadow-sm"
+              className="group flex flex-col gap-2 rounded-lg border border-border/40 p-4 transition-all hover:border-border hover:shadow-sm"
             >
               <div className="flex items-center gap-2">
                 <span className="flex size-8 items-center justify-center rounded-md bg-muted/60 text-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground">

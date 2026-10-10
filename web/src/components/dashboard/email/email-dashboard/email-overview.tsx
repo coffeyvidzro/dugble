@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { ErrorState } from "@/components/dashboard/shared/data-states";
 import { RequireActiveTeam } from "@/components/dashboard/shared/require-active-team";
 import { useEmailAnalytics } from "@/hooks/queries/use-emails-api";
 import {
@@ -37,21 +38,16 @@ function EmailOverviewContent() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-6xl pb-6">
+    <div className="mx-auto w-full max-w-7xl pb-6">
       <EmailHeader deliverabilityPct={deliverability?.percentage ?? 0} />
 
       <div className="space-y-6">
-        <div
-          className="animate-fade-up"
-          style={{
-            animationDelay: "100ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div>
           {isError ? (
-            <p className="py-8 text-center text-sm text-danger">
-              Couldn&apos;t load email analytics. Try refreshing the page.
-            </p>
+            <ErrorState
+              title="Couldn't load email analytics"
+              description="Try refreshing the page."
+            />
           ) : isPending || !deliverability || !open || !click ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="h-32 animate-pulse rounded-xl border border-border/40 bg-muted/20" />
@@ -67,23 +63,11 @@ function EmailOverviewContent() {
           )}
         </div>
 
-        <div
-          className="animate-fade-up"
-          style={{
-            animationDelay: "200ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div>
           <RecentEmailsCard />
         </div>
 
-        <div
-          className="animate-fade-up"
-          style={{
-            animationDelay: "250ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div>
           <SendingDomainsCard />
         </div>
       </div>

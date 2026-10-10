@@ -1,35 +1,28 @@
+import { AlertTriangle } from "lucide-react";
 import {
-  AlertTriangle,
-  Ban,
-  Check,
-  Clock,
-  HelpCircle,
-  Loader2,
-  Send,
-  X,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+  StatusBadge,
+  type StatusTone,
+} from "@/components/dashboard/shared/status-badge";
 import {
   EMAIL_API_STATUS_LABEL,
   type EmailApiStatus,
   emailApiStatusSchema,
 } from "@/types/email-api";
 
-const STATUS_CONFIG: Record<
-  EmailApiStatus,
-  { icon: typeof Check; className: string; pulse?: boolean; spin?: boolean }
-> = {
-  queued: { icon: Clock, className: "text-pending", pulse: true },
-  processing: { icon: Loader2, className: "text-pending", spin: true },
-  submitted: { icon: Send, className: "text-pending" },
-  delivered: { icon: Check, className: "text-signal" },
-  delayed: { icon: Clock, className: "text-pending" },
-  bounced: { icon: AlertTriangle, className: "text-danger" },
-  complained: { icon: AlertTriangle, className: "text-danger" },
-  rejected: { icon: X, className: "text-danger" },
-  failed: { icon: X, className: "text-danger" },
-  canceled: { icon: Ban, className: "text-muted-foreground" },
+const STATUS_TONE: Record<EmailApiStatus, StatusTone> = {
+  queued: "progress",
+  processing: "progress",
+  submitted: "progress",
+  delivered: "success",
+  delayed: "warning",
+  bounced: "danger",
+  complained: "danger",
+  rejected: "danger",
+  failed: "danger",
+  canceled: "neutral",
 };
+
+const TRIANGLE_STATUSES: EmailApiStatus[] = ["bounced", "complained"];
 
 function labelForRaw(status: string): string {
   return status.length > 0
@@ -37,37 +30,35 @@ function labelForRaw(status: string): string {
     : status;
 }
 
-export function EmailStatusBadge({ status }: { status: string }) {
+export function EmailStatusBadge({
+  status,
+  live = false,
+  size,
+}: {
+  status: string;
+  /** Pulse the mark while the email is being polled for updates. */
+  live?: boolean;
+  size?: "sm" | "md";
+}) {
   const parsed = emailApiStatusSchema.safeParse(status);
 
   if (!parsed.success) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-        <HelpCircle className="size-3.5" />
+      <StatusBadge tone="neutral" size={size}>
         {labelForRaw(status)}
-      </span>
+      </StatusBadge>
     );
   }
 
-  const config = STATUS_CONFIG[parsed.data];
-  const Icon = config.icon;
-
+  const tone = STATUS_TONE[parsed.data];
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 text-sm font-medium",
-        config.className,
-      )}
+    <StatusBadge
+      tone={tone}
+      size={size}
+      live={live && tone === "progress"}
+      icon={TRIANGLE_STATUSES.includes(parsed.data) ? AlertTriangle : undefined}
     >
-      {config.pulse ? (
-        <span className="relative flex size-1.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-pending opacity-75" />
-          <span className="relative inline-flex size-1.5 rounded-full bg-pending" />
-        </span>
-      ) : (
-        <Icon className={cn("size-3.5", config.spin && "animate-spin")} />
-      )}
       {EMAIL_API_STATUS_LABEL[parsed.data]}
-    </span>
+    </StatusBadge>
   );
 }

@@ -4,9 +4,12 @@ import { NavGroupList } from "./nav-group-list";
 
 export function NavPanel({ portal }: { portal: DashboardPortal }) {
   return (
-    <div className="hidden h-full w-64 shrink-0 flex-col gap-6 overflow-y-auto border-r bg-sidebar px-3 py-4 lg:flex">
-      <p className="px-2 font-heading text-sm font-semibold tracking-tight">
-        {portal.label}
+    <nav
+      aria-label={portal.shortLabel}
+      className="hidden h-full w-60 shrink-0 flex-col gap-5 overflow-y-auto border-r bg-sidebar px-3 py-4 lg:flex"
+    >
+      <p className="px-2 pt-1 font-heading text-sm font-semibold tracking-tight">
+        {portal.shortLabel}
       </p>
       <NavGroupList groups={portal.groups} />
       {portal.id === "account" && (
@@ -14,6 +17,6 @@ export function NavPanel({ portal }: { portal: DashboardPortal }) {
           <LogoutButton />
         </div>
       )}
-    </div>
+    </nav>
   );
 }

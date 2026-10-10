@@ -18,7 +18,7 @@ export function InboxPreview({
     <div className="space-y-2">
       <p className="text-xs font-medium text-muted-foreground">Inbox preview</p>
       <div className="flex items-start gap-3 rounded-lg border border-border/50 bg-background p-3 shadow-sm">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 font-heading text-sm font-semibold text-primary">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 font-heading text-sm font-semibold text-primary hover:bg-primary/90">
           {initialFromName(fromName)}
         </div>
         <div className="min-w-0 flex-1">

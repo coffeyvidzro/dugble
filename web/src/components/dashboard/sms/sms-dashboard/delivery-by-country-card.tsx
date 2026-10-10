@@ -14,9 +14,9 @@ export function DeliveryByCountryCard({
   const maxMessages = Math.max(...countries.map((c) => c.messages), 1);
 
   return (
-    <Card className="h-full border-border/40 shadow-sm">
-      <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
-        <CardTitle className="text-xl">Delivery by Country</CardTitle>
+    <Card className="h-full">
+      <CardHeader className="border-b pb-4">
+        <CardTitle>Delivery by Country</CardTitle>
         <CardDescription>
           Where your messages landed over the last 90 days.
         </CardDescription>

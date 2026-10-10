@@ -4,7 +4,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { SmsApiResource } from "@/types/sms-api";
+import { isTerminalSmsStatus, type SmsApiResource } from "@/types/sms-api";
 import { calculateSegments, estimateCost } from "../../shared/sms-segments";
 import { SmsStatusBadge } from "../../shared/sms-status-badge";
 
@@ -13,13 +13,16 @@ export function MessageDetailSummary({ message }: { message: SmsApiResource }) {
   const estimatedCost = estimateCost(message.segments, 1);
 
   return (
-    <Card className="border-border/40 shadow-sm">
-      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 border-b border-border/40 bg-muted/10 pb-4">
+    <Card>
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 border-b pb-4">
         <div className="space-y-1">
           <CardTitle className="font-mono text-base">{message.id}</CardTitle>
           <CardDescription>Sent to {message.to}</CardDescription>
         </div>
-        <SmsStatusBadge status={message.last_event} />
+        <SmsStatusBadge
+          status={message.last_event}
+          live={!isTerminalSmsStatus(message.last_event)}
+        />
       </CardHeader>
       <div className="space-y-4 p-4">
         <div className="rounded-lg border border-border/40 bg-muted/10 p-3 text-sm text-foreground">

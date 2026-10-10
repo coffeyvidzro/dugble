@@ -258,11 +258,7 @@ export function ComposeBroadcastView({
         onScheduledAtChange={setScheduledAtInput}
       />
 
-      {error && (
-        <p className="text-sm font-medium text-danger animate-fade-up">
-          {error}
-        </p>
-      )}
+      {error && <p className="text-sm font-medium text-danger">{error}</p>}
 
       <ComposeActionsBar
         onCancel={onCancel}

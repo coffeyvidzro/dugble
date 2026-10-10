@@ -1,6 +1,9 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import {
+  ErrorState,
+  LoadingBlock,
+} from "@/components/dashboard/shared/data-states";
 import { RequireActiveTeam } from "@/components/dashboard/shared/require-active-team";
 import { useSenderDomains } from "@/hooks/queries/use-sender-domains-api";
 import { AddDomainDialog } from "./add-domain-dialog";
@@ -13,17 +16,11 @@ function DomainsOverviewContent() {
   const list = domains ?? [];
 
   return (
-    <div className="mx-auto w-full max-w-6xl pb-6">
+    <div className="mx-auto w-full max-w-7xl pb-6">
       <DomainsHeader domains={list} />
 
       <div className="space-y-6">
-        <div
-          className="animate-fade-up flex flex-wrap items-center justify-between gap-3"
-          style={{
-            animationDelay: "100ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
             {isPending
               ? "Loading…"
@@ -34,22 +31,14 @@ function DomainsOverviewContent() {
           {list.length > 0 && <AddDomainDialog />}
         </div>
 
-        <div
-          className="animate-fade-up"
-          style={{
-            animationDelay: "150ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div>
           {isPending ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              Loading domains…
-            </div>
+            <LoadingBlock label="Loading domains…" />
           ) : isError ? (
-            <p className="py-16 text-center text-sm text-danger">
-              Couldn&apos;t load domains. Try refreshing the page.
-            </p>
+            <ErrorState
+              title="Couldn't load domains"
+              description="Try refreshing the page."
+            />
           ) : list.length === 0 ? (
             <EmptyDomainsState />
           ) : (

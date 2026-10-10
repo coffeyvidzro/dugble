@@ -45,7 +45,7 @@ export function SegmentsList() {
 
   return (
     <>
-      <Card className="border-border/40 shadow-sm">
+      <Card>
         <ListCardHeader
           title="All segments"
           description={`${segments.length} segment${

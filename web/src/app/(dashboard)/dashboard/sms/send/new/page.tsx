@@ -19,7 +19,7 @@ export default async function Page({
   const initialTemplate = getTemplateById(template);
 
   return (
-    <div className="mx-auto w-full max-w-6xl pb-6">
+    <div className="mx-auto w-full max-w-7xl pb-6">
       <ComposeHeader />
       <ComposeSmsForm initialTemplate={initialTemplate} />
     </div>

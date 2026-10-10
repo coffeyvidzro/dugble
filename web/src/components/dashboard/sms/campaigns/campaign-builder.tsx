@@ -123,7 +123,7 @@ export function CampaignBuilder() {
     <div className="space-y-6">
       <BuilderStepper currentStep={step} />
 
-      <Card className="border-border/40 shadow-sm">
+      <Card>
         <form onSubmit={handleSubmit} className="space-y-6 p-4 sm:p-6">
           {submitError && (
             <div className="flex items-start gap-2 rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger">
@@ -181,7 +181,7 @@ export function CampaignBuilder() {
                 type="button"
                 onClick={() => setStep((s) => Math.min(STEP_COUNT - 1, s + 1))}
                 disabled={!canGoNext}
-                className="group/button relative inline-flex items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-5 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 disabled:pointer-events-none disabled:opacity-50 dark:hover:shadow-black/20"
+                className="group/button relative inline-flex items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all disabled:pointer-events-none disabled:opacity-50 hover:bg-primary/90"
               >
                 Continue
                 <ArrowRight className="size-4 transition-transform duration-200 group-hover/button:translate-x-0.5" />
@@ -191,7 +191,7 @@ export function CampaignBuilder() {
                 type="submit"
                 disabled={isSubmitting}
                 className={cn(
-                  "group/button relative inline-flex items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-5 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 disabled:pointer-events-none disabled:opacity-50 dark:hover:shadow-black/20",
+                  "group/button relative inline-flex items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all disabled:pointer-events-none disabled:opacity-50",
                 )}
               >
                 {isSubmitting ? (
@@ -204,10 +204,6 @@ export function CampaignBuilder() {
                   : scheduleMode === "later"
                     ? "Schedule campaign"
                     : "Send campaign"}
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-                />
               </button>
             )}
           </div>

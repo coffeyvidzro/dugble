@@ -1,8 +1,11 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
+import {
+  ErrorState,
+  LoadingBlock,
+} from "@/components/dashboard/shared/data-states";
 import { RequireActiveTeam } from "@/components/dashboard/shared/require-active-team";
 import { useEmailAnalytics } from "@/hooks/queries/use-emails-api";
 import { queryKeys } from "@/lib/api/query-keys";
@@ -65,17 +68,11 @@ function MetricsOverviewContent() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl pb-6">
+    <div className="mx-auto w-full max-w-7xl pb-6">
       <MetricsHeader deliverabilityPct={deliverability?.percentage ?? 0} />
 
       <div className="space-y-6">
-        <div
-          className="animate-fade-up"
-          style={{
-            animationDelay: "100ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div>
           <MetricsToolbar
             range={range}
             onRangeChange={setRange}
@@ -85,28 +82,20 @@ function MetricsOverviewContent() {
         </div>
 
         {isError ? (
-          <p className="py-16 text-center text-sm text-danger">
-            Couldn&apos;t load email analytics. Try refreshing the page.
-          </p>
+          <ErrorState
+            title="Couldn't load email analytics"
+            description="Try refreshing the page."
+          />
         ) : isPending ||
           !activeWindow ||
           !deliverability ||
           !bounce ||
           !open ||
           !click ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            Loading analytics…
-          </div>
+          <LoadingBlock label="Loading analytics…" />
         ) : (
           <>
-            <div
-              className="animate-fade-up"
-              style={{
-                animationDelay: "150ms",
-                animationFillMode: "both",
-              }}
-            >
+            <div>
               <DeliverabilityOverviewCard
                 totalEmails={totalEmails}
                 deliverabilityPct={deliverability.percentage}
@@ -116,24 +105,12 @@ function MetricsOverviewContent() {
               />
             </div>
 
-            <div
-              className="animate-fade-up"
-              style={{
-                animationDelay: "200ms",
-                animationFillMode: "both",
-              }}
-            >
+            <div>
               <EngagementGrid bounce={bounce} open={open} click={click} />
             </div>
 
             {lastUpdated && (
-              <div
-                className="flex animate-fade-up justify-end"
-                style={{
-                  animationDelay: "250ms",
-                  animationFillMode: "both",
-                }}
-              >
+              <div className="flex justify-end">
                 <LastUpdatedNote lastUpdated={lastUpdated} />
               </div>
             )}

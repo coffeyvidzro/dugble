@@ -1,7 +1,10 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
+import {
+  ErrorState,
+  TableSkeleton,
+} from "@/components/dashboard/shared/data-states";
 import { RequireActiveTeam } from "@/components/dashboard/shared/require-active-team";
 import { useWallet, useWalletLedger } from "@/hooks/queries/use-billing-api";
 import { TopUpDialog } from "./top-up-dialog";
@@ -32,13 +35,7 @@ function WalletSettingsContent() {
       <WalletHeader />
 
       <div className="space-y-6">
-        <div
-          className="animate-fade-up"
-          style={{
-            animationDelay: "80ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div>
           <WalletBalanceCard
             wallet={walletQuery.data}
             isPending={walletQuery.isPending}
@@ -47,21 +44,19 @@ function WalletSettingsContent() {
           />
         </div>
 
-        <div
-          className="animate-fade-up"
-          style={{
-            animationDelay: "120ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div>
           {ledgerQuery.isError ? (
-            <p className="py-16 text-center text-sm text-danger">
-              Couldn&apos;t load wallet activity. Try refreshing the page.
-            </p>
+            <ErrorState
+              title="Couldn't load wallet activity"
+              onRetry={() => void ledgerQuery.refetch()}
+              className="rounded-xl border"
+            />
           ) : ledgerQuery.isPending ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              Loading wallet activity…
+            <div className="overflow-hidden rounded-xl border">
+              <TableSkeleton
+                rows={6}
+                columns={["minmax(0,1fr)", "10rem", "7rem"]}
+              />
             </div>
           ) : (
             <WalletLedgerTable

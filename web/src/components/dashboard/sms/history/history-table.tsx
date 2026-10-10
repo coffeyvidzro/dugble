@@ -1,5 +1,6 @@
-import { Inbox } from "lucide-react";
-import Link from "next/link";
+import type { ReactNode } from "react";
+import { countryCodeToFlag } from "@/components/dashboard/shared/country-flag";
+import { SmsStatusBadge } from "@/components/dashboard/shared/sms-status-badge";
 import {
   Table,
   TableBody,
@@ -9,74 +10,74 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { SmsApiResource } from "@/types/sms-api";
-import { countryCodeToFlag } from "../../shared/country-flag";
-import { SmsStatusBadge } from "../../shared/sms-status-badge";
 
-export function HistoryTable({ messages }: { messages: SmsApiResource[] }) {
-  if (messages.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
-        <span className="flex size-12 items-center justify-center rounded-full border border-dashed border-border bg-muted/50">
-          <Inbox className="size-5 text-muted-foreground" />
-        </span>
-        <h3 className="font-heading text-lg font-medium text-foreground">
-          No messages found
-        </h3>
-        <p className="max-w-sm text-sm text-muted-foreground">
-          Try adjusting your filters or search terms.
-        </p>
-      </div>
-    );
-  }
+export function HistoryTable({
+  messages,
+  emptyState,
+  selectedId,
+  onOpen,
+}: {
+  messages: SmsApiResource[];
+  /** Rendered instead of the table when there are no messages. */
+  emptyState: ReactNode;
+  selectedId?: string | null;
+  onOpen: (messageId: string) => void;
+}) {
+  if (messages.length === 0) return emptyState;
 
   return (
-    <div className="overflow-x-auto">
-      <Table className="table-fixed">
-        <TableHeader>
-          <TableRow className="border-b border-border/40 hover:bg-transparent">
-            <TableHead className="w-36">To</TableHead>
-            <TableHead className="w-32">Sender</TableHead>
-            <TableHead className="w-28">Status</TableHead>
-            <TableHead>Message</TableHead>
-            <TableHead className="w-24 text-right">Sent</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {messages.map((message) => (
-            <TableRow
-              key={message.id}
-              className="border-b border-border/40 last:border-0"
+    <Table className="table-fixed">
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead className="w-36">Status</TableHead>
+          <TableHead className="w-48">To</TableHead>
+          <TableHead>Message</TableHead>
+          <TableHead className="w-36">Sender</TableHead>
+          <TableHead className="w-24 text-right">Sent</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {messages.map((message) => (
+          <TableRow
+            key={message.id}
+            data-state={message.id === selectedId ? "selected" : undefined}
+          >
+            <TableCell>
+              <SmsStatusBadge status={message.last_event} />
+            </TableCell>
+            <TableCell className="py-2">
+              <button
+                type="button"
+                onClick={() => onOpen(message.id)}
+                className="flex max-w-full items-center gap-1.5 rounded-sm text-left font-mono text-[13px] text-foreground hover:underline hover:decoration-foreground/30 hover:underline-offset-4"
+              >
+                <span className="shrink-0">
+                  {countryCodeToFlag(message.destination.country)}
+                </span>
+                <span className="truncate">{message.to}</span>
+              </button>
+            </TableCell>
+            <TableCell
+              className="truncate text-[13px] text-muted-foreground"
+              title={message.body}
             >
-              <TableCell className="p-0">
-                <Link
-                  href={`/dashboard/sms/send/${message.id}`}
-                  className="flex items-center gap-1.5 truncate px-4 py-3 font-mono text-sm text-foreground transition-colors hover:text-primary"
-                >
-                  <span className="shrink-0">
-                    {countryCodeToFlag(message.destination.country)}
-                  </span>
-                  <span className="truncate">{message.to}</span>
-                </Link>
-              </TableCell>
-              <TableCell className="truncate font-mono text-sm text-muted-foreground">
-                {message.from}
-              </TableCell>
-              <TableCell className="truncate">
-                <SmsStatusBadge status={message.last_event} />
-              </TableCell>
-              <TableCell className="truncate text-sm text-muted-foreground">
-                {message.body}
-              </TableCell>
-              <TableCell className="text-right text-sm text-muted-foreground">
-                {new Date(message.created_at).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+              {message.body}
+            </TableCell>
+            <TableCell className="truncate font-mono text-[13px] text-muted-foreground">
+              {message.from}
+            </TableCell>
+            <TableCell
+              className="text-right text-[13px] text-muted-foreground tabular-nums"
+              suppressHydrationWarning
+            >
+              {new Date(message.created_at).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              })}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }

@@ -1,8 +1,13 @@
 "use client";
 
-import { AlertTriangle, Radio } from "lucide-react";
+import { Radio } from "lucide-react";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/dashboard/shared/confirm-dialog";
+import {
+  EmptyState,
+  ErrorState,
+  TableSkeleton,
+} from "@/components/dashboard/shared/data-states";
 import {
   Table,
   TableBody,
@@ -21,6 +26,7 @@ import { AddWebhookDialog } from "./add-webhook-dialog";
 import { EditWebhookDialog } from "./edit-webhook-dialog";
 import { RollSecretDialog } from "./roll-secret-dialog";
 import { TestWebhookDialog } from "./test-webhook-dialog";
+import { WebhookEndpointSheet } from "./webhook-endpoint-sheet";
 import { WebhookRow } from "./webhook-row";
 
 export function WebhooksPanel() {
@@ -45,6 +51,9 @@ export function WebhooksPanel() {
   );
   const [deletingWebhook, setDeletingWebhook] =
     useState<WebhookEndpoint | null>(null);
+  const [openWebhookId, setOpenWebhookId] = useState<string | null>(null);
+  // Read the open endpoint from the list so the sheet reflects updates.
+  const openWebhook = webhooks?.find((w) => w.id === openWebhookId) ?? null;
   const testWebhook = useSendTestWebhookEvent();
 
   function handleTest(webhook: WebhookEndpoint) {
@@ -63,83 +72,80 @@ export function WebhooksPanel() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 bg-muted/5 px-6 py-3">
-        <p className="font-mono text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
+        <p className="text-xs text-muted-foreground">
           {isLoading
             ? "Loading…"
             : count === 0
-              ? "No webhooks yet"
+              ? "No endpoints yet"
               : `${count} ${count === 1 ? "endpoint" : "endpoints"}`}
         </p>
         {!isPermissionsLoading && canManageTeam && <AddWebhookDialog />}
       </div>
 
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-          <p className="text-sm text-muted-foreground">
-            Loading webhook endpoints…
-          </p>
-        </div>
+        <TableSkeleton
+          rows={3}
+          columns={["minmax(0,2fr)", "5rem", "7rem", "3rem"]}
+        />
       ) : isError ? (
-        <div className="flex flex-col items-center justify-center gap-3 py-16 px-6 text-center animate-fade-up">
-          <div className="mb-1 flex size-12 items-center justify-center rounded-full bg-danger/10 border border-dashed border-danger/40">
-            <AlertTriangle className="size-5 text-danger" />
-          </div>
-          <h3 className="font-heading text-lg font-medium">
-            Couldn&apos;t load webhooks
-          </h3>
-          <p className="max-w-sm text-sm text-muted-foreground">
-            {error instanceof Error
+        <ErrorState
+          title="Couldn't load webhooks"
+          description={
+            error instanceof Error
               ? error.message
-              : "Something went wrong while loading your webhook endpoints."}
-          </p>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="text-sm font-medium text-primary transition-colors hover:text-primary/80"
-          >
-            Try again
-          </button>
-        </div>
+              : "Something went wrong while loading your webhook endpoints."
+          }
+          onRetry={() => void refetch()}
+        />
       ) : count === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 px-6 text-center animate-fade-up">
-          <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-muted/50 border border-dashed border-border">
-            <Radio className="size-5 text-muted-foreground" />
-          </div>
-          <h3 className="mb-1 font-heading text-lg font-medium">
-            No webhooks yet
-          </h3>
-          <p className="max-w-sm text-sm text-muted-foreground">
-            Add an endpoint to receive real-time events, deliveries, opens,
-            bounces, and more, the moment they happen.
-          </p>
-        </div>
+        <EmptyState
+          icon={Radio}
+          title="No endpoints yet"
+          description="Add an HTTPS endpoint to receive deliveries, opens, bounces and more the moment they happen."
+          actions={
+            !isPermissionsLoading && canManageTeam ? <AddWebhookDialog /> : null
+          }
+        />
       ) : (
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-b border-border/40 hover:bg-transparent">
-                <TableHead className="w-80">Endpoint</TableHead>
-                <TableHead>Events</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-10 text-right" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {webhooks?.map((webhook) => (
-                <WebhookRow
-                  key={webhook.id}
-                  webhook={webhook}
-                  onEdit={setEditingWebhook}
-                  onRollSecret={setRollingWebhook}
-                  onTest={handleTest}
-                  onDelete={setDeletingWebhook}
-                />
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Endpoint</TableHead>
+              <TableHead className="w-28">Events</TableHead>
+              <TableHead className="w-44">Status</TableHead>
+              <TableHead className="w-24">Enabled</TableHead>
+              <TableHead className="w-12">
+                <span className="sr-only">Actions</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {webhooks?.map((webhook) => (
+              <WebhookRow
+                key={webhook.id}
+                webhook={webhook}
+                selected={webhook.id === openWebhookId}
+                onOpen={(w) => setOpenWebhookId(w.id)}
+                onEdit={setEditingWebhook}
+                onRollSecret={setRollingWebhook}
+                onTest={handleTest}
+                onDelete={setDeletingWebhook}
+              />
+            ))}
+          </TableBody>
+        </Table>
       )}
+
+      <WebhookEndpointSheet
+        webhook={openWebhook}
+        canManage={!isPermissionsLoading && canManageTeam}
+        onOpenChange={(open) => !open && setOpenWebhookId(null)}
+        onEdit={setEditingWebhook}
+        onTest={handleTest}
+        onRollSecret={setRollingWebhook}
+        onDelete={setDeletingWebhook}
+      />
 
       <EditWebhookDialog
         webhook={editingWebhook}
@@ -186,7 +192,12 @@ export function WebhooksPanel() {
         onConfirm={() => {
           if (!deletingWebhook) return;
           deleteWebhook(deletingWebhook.id, {
-            onSuccess: () => setDeletingWebhook(null),
+            onSuccess: () => {
+              if (deletingWebhook.id === openWebhookId) {
+                setOpenWebhookId(null);
+              }
+              setDeletingWebhook(null);
+            },
           });
         }}
       />

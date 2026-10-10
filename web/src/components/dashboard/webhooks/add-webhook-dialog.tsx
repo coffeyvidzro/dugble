@@ -64,15 +64,11 @@ export function AddWebhookDialog() {
     >
       <DialogTrigger
         render={
-          <Button className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20" />
+          <Button className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90" />
         }
       >
         <Plus className="size-4" />
         Add webhook
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-        />
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg no-scrollbar border-border/40 shadow-xl max-h-[85vh] overflow-y-auto">
         {step === "form" ? (
@@ -96,7 +92,7 @@ export function AddWebhookDialog() {
                 eventsError={form.eventsError}
               />
               {form.formError && (
-                <p className="mt-4 text-xs font-medium text-danger animate-fade-up">
+                <p className="mt-4 text-xs font-medium text-danger">
                   {form.formError}
                 </p>
               )}
@@ -115,18 +111,14 @@ export function AddWebhookDialog() {
               <Button
                 type="submit"
                 disabled={isPending}
-                className="group/button relative inline-flex flex-1 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20 disabled:pointer-events-none disabled:opacity-60 sm:flex-initial"
+                className="group/button relative inline-flex flex-1 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all disabled:pointer-events-none disabled:opacity-60 sm:flex-initial hover:bg-primary/90"
               >
                 {isPending ? "Adding…" : "Add webhook"}
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-                />
               </Button>
             </DialogFooter>
           </form>
         ) : (
-          <div className="animate-fade-up">
+          <div>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Check className="size-5 text-signal" />
@@ -145,13 +137,9 @@ export function AddWebhookDialog() {
               <Button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="group/button relative inline-flex w-full sm:w-auto shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
+                className="group/button relative inline-flex w-full sm:w-auto shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
               >
                 I&apos;ve saved it securely
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-                />
               </Button>
             </DialogFooter>
           </div>

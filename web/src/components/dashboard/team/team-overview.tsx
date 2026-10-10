@@ -5,7 +5,7 @@ import { TeamOverviewForm } from "./team-overview-form";
 
 export function TeamOverview({ teamId }: { teamId: string }) {
   return (
-    <Card className="overflow-hidden border-border/40 shadow-sm">
+    <Card className="overflow-hidden">
       <TeamCardHeader
         icon={Building2}
         title="Team Overview"

@@ -1,7 +1,8 @@
 "use client";
 
-import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { LoadingBlock } from "@/components/dashboard/shared/data-states";
 import {
   Card,
   CardDescription,
@@ -23,10 +24,11 @@ export function MessageDetail({ messageId }: { messageId: string }) {
 
   if (messageQuery.isPending) {
     return (
-      <div className="mx-auto flex w-full max-w-3xl items-center justify-center gap-2 pb-6 pt-16 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Loading message…
-      </div>
+      <LoadingBlock
+        label="Loading message…"
+        variant="page"
+        className="mx-auto w-full max-w-3xl pb-6 pt-16"
+      />
     );
   }
 
@@ -72,9 +74,9 @@ export function MessageDetail({ messageId }: { messageId: string }) {
       <div className="space-y-6">
         <MessageDetailSummary message={message} />
 
-        <Card className="border-border/40 shadow-sm">
-          <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
-            <CardTitle className="text-xl">Delivery timeline</CardTitle>
+        <Card>
+          <CardHeader className="border-b pb-4">
+            <CardTitle>Delivery timeline</CardTitle>
             <CardDescription>
               {isTerminal
                 ? "Full delivery history for this message."
@@ -83,10 +85,7 @@ export function MessageDetail({ messageId }: { messageId: string }) {
           </CardHeader>
           <div className="p-4">
             {eventsQuery.isPending ? (
-              <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" />
-                Loading delivery events…
-              </div>
+              <LoadingBlock label="Loading delivery events…" />
             ) : (
               <MessageStatusTimeline events={events} isPolling={!isTerminal} />
             )}

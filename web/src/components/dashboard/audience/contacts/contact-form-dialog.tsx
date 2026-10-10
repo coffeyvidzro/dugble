@@ -243,7 +243,7 @@ export function ContactFormDialog({
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50 hover:bg-primary/90"
             >
               {mutation.isPending && (
                 <Loader2 className="size-4 animate-spin" />

@@ -44,7 +44,7 @@ export function TwoFactorCard() {
   }
 
   return (
-    <Card className="overflow-hidden border-border/40 shadow-sm">
+    <Card className="overflow-hidden">
       <SectionCardHeader
         icon={ShieldCheck}
         title="Two-factor authentication"

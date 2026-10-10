@@ -22,7 +22,7 @@ export function StatTile({
   tone?: "default" | "positive" | "negative";
 }) {
   return (
-    <Card className="border-border/40 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+    <Card className="border-border/40 p-4 shadow-sm transition-all">
       <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
         <Icon className="size-3.5" />
         {label}

@@ -86,6 +86,24 @@ type TokenType =
   | "variable"
   | "symbol";
 
+type CodePalette = "terminal" | "theme";
+
+/**
+ * "theme" maps tokens onto the app's color roles so dashboard code blocks
+ * follow light and dark mode. "terminal" (dark, fixed) stays the default
+ * for the marketing pages that share this highlighter.
+ */
+const THEME_TOKEN_CLASS: Record<TokenType, string> = {
+  comment: "text-muted-foreground italic",
+  string: "text-signal",
+  keyword: "text-chart-4 dark:text-chart-2",
+  fn: "text-foreground font-medium",
+  number: "text-pending",
+  flag: "text-chart-4 dark:text-chart-2",
+  variable: "text-foreground",
+  symbol: "text-muted-foreground",
+};
+
 const TOKEN_CLASS: Record<TokenType, string> = {
   comment: "text-zinc-500 italic",
   string: "text-emerald-400",
@@ -185,7 +203,9 @@ function highlightLine(
   line: string,
   lang: CodeLanguage,
   keyPrefix: string,
+  palette: CodePalette,
 ): ReactNode[] {
+  const tokenClass = palette === "theme" ? THEME_TOKEN_CLASS : TOKEN_CLASS;
   const matcher = MATCHERS[lang];
 
   const nodes: ReactNode[] = [];
@@ -203,10 +223,7 @@ function highlightLine(
 
     nodes.push(
       type ? (
-        <span
-          key={`${keyPrefix}-${tokenIndex++}`}
-          className={TOKEN_CLASS[type]}
-        >
+        <span key={`${keyPrefix}-${tokenIndex++}`} className={tokenClass[type]}>
           {match[0]}
         </span>
       ) : (
@@ -224,8 +241,14 @@ function highlightLine(
   return nodes;
 }
 
-export function highlightCode(code: string, lang: CodeLanguage): ReactNode[][] {
+export function highlightCode(
+  code: string,
+  lang: CodeLanguage,
+  palette: CodePalette = "terminal",
+): ReactNode[][] {
   return code
     .split("\n")
-    .map((line, lineIndex) => highlightLine(line, lang, `l${lineIndex}`));
+    .map((line, lineIndex) =>
+      highlightLine(line, lang, `l${lineIndex}`, palette),
+    );
 }

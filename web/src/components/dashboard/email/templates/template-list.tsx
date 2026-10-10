@@ -11,7 +11,7 @@ import { TemplateListRow } from "./template-list-row";
 
 export function TemplateList({ templates }: { templates: TemplateListItem[] }) {
   return (
-    <Card className="overflow-hidden border-border/40 shadow-sm">
+    <Card className="overflow-hidden">
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>

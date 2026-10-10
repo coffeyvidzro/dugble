@@ -30,7 +30,7 @@ function StatCard({
   const tone = trendTone(stat.trend, polarity);
 
   return (
-    <Card className="overflow-hidden border-border/40 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">
+    <Card className="overflow-hidden transition-all">
       <div className="flex items-center justify-between p-4 pb-0">
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
           <Icon className="size-4" />

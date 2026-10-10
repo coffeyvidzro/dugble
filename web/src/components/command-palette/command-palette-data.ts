@@ -20,14 +20,11 @@ export const MARKETING_GROUP_ORDER = [
   "Account",
 ];
 
+// Dashboard results are grouped by portal ("SMS", "Email", ...), so items
+// that share a title such as "Logs" stay unambiguous.
 export const DASHBOARD_GROUP_ORDER = [
-  "Overview",
-  "Communications",
-  "Sending",
-  "Finance",
-  "Settings",
-  "Security",
-  "Developers",
+  "Home",
+  ...dashboardPortals.map((portal) => portal.shortLabel),
 ];
 
 const marketingItems: CommandItem[] = [
@@ -182,16 +179,25 @@ const changelogItems: CommandItem[] = changelogEntries
     keywords: [entry.tag],
   }));
 
-const dashboardItems: CommandItem[] = dashboardPortals.flatMap((portal) =>
-  portal.groups.flatMap((group) =>
-    group.items.map((item) => ({
-      group: group.label,
-      title: item.title,
-      description: item.description,
-      href: item.href,
-    })),
+const dashboardItems: CommandItem[] = [
+  {
+    group: "Home",
+    title: "Overview",
+    description: "Delivery across SMS and email, setup, and recent activity.",
+    href: "/dashboard",
+  },
+  ...dashboardPortals.flatMap((portal) =>
+    portal.groups.flatMap((group) =>
+      group.items.map((item) => ({
+        group: portal.shortLabel,
+        title: item.title,
+        description: item.description,
+        href: item.href,
+        keywords: [portal.shortLabel, group.label],
+      })),
+    ),
   ),
-);
+];
 
 export function getCommandItems(scope: CommandPaletteScope): CommandItem[] {
   return scope === "dashboard"

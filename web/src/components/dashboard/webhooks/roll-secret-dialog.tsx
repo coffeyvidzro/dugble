@@ -107,7 +107,7 @@ export function RollSecretDialog({
             </DialogFooter>
           </>
         ) : (
-          <div className="animate-fade-up">
+          <div>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <ShieldAlert className="size-5 shrink-0 text-pending" />

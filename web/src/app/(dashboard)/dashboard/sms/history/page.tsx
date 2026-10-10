@@ -3,7 +3,7 @@ import { HistoryOverview } from "@/components/dashboard/sms/history/history-over
 import { constructMetadata } from "@/utils/metadata";
 
 export const metadata = constructMetadata({
-  title: "SMS History",
+  title: "SMS Logs",
   description: "Review A2P SMS delivery history and message details.",
   path: "/dashboard/sms/history",
   preset: "dashboard",
@@ -11,7 +11,7 @@ export const metadata = constructMetadata({
 
 export default function Page() {
   return (
-    <div className="mx-auto w-full max-w-6xl pb-6">
+    <div className="mx-auto w-full max-w-7xl pb-6">
       <HistoryHeader />
       <HistoryOverview />
     </div>

@@ -7,7 +7,7 @@ export function InboxPreviewStrip({
 }) {
   return (
     <div className="flex items-start gap-3 border-b border-border/40 px-4 py-3">
-      <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 font-mono text-xs font-semibold text-primary">
+      <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 font-mono text-xs font-semibold text-primary hover:bg-primary/90">
         D
       </div>
       <div className="min-w-0 flex-1">

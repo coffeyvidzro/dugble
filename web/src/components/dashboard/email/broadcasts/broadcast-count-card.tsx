@@ -1,5 +1,4 @@
 import type { LucideIcon } from "lucide-react";
-
 import { Card } from "@/components/ui/card";
 
 export function BroadcastCountCard({
@@ -14,7 +13,7 @@ export function BroadcastCountCard({
   footer: string;
 }) {
   return (
-    <Card className="flex h-full flex-col justify-center gap-2 overflow-hidden border-border/40 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+    <Card className="flex h-full flex-col justify-center gap-2 overflow-hidden border-border/40 p-4 shadow-sm transition-all">
       <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
         <Icon className="size-4" />
         {label}

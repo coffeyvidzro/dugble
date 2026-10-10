@@ -136,7 +136,7 @@ export function TemplateEditor({
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl pb-6">
+    <div className="mx-auto w-full max-w-7xl pb-6">
       <EditorHeader
         name={form.name}
         onNameChange={(value) => updateField("name", value)}
@@ -151,14 +151,9 @@ export function TemplateEditor({
         templateId={templateId}
       />
 
-      {saveError && (
-        <p className="mt-3 text-sm text-danger animate-fade-up">{saveError}</p>
-      )}
+      {saveError && <p className="mt-3 text-sm text-danger">{saveError}</p>}
 
-      <div
-        className="mt-6 animate-fade-up space-y-4"
-        style={{ animationDelay: "100ms", animationFillMode: "both" }}
-      >
+      <div className="mt-6 space-y-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <label
@@ -225,7 +220,7 @@ export function TemplateEditor({
           onMobilePaneChange={setMobilePane}
         />
 
-        <Card className="overflow-hidden border-border/40 shadow-sm">
+        <Card className="overflow-hidden">
           <div className="grid grid-cols-1 lg:min-h-140 lg:grid-cols-2 lg:divide-x lg:divide-border/40">
             <CodeEditorPane
               ref={textareaRef}

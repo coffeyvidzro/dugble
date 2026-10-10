@@ -118,9 +118,9 @@ export function BroadcastsTableCard({
   }
 
   return (
-    <Card className="overflow-hidden border-border/40 shadow-sm">
-      <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
-        <CardTitle className="text-xl">All Broadcasts</CardTitle>
+    <Card className="overflow-hidden">
+      <CardHeader className="border-b pb-4">
+        <CardTitle>All Broadcasts</CardTitle>
         <CardDescription>
           Every announcement and campaign sent, scheduled, or drafted.
         </CardDescription>
@@ -133,7 +133,7 @@ export function BroadcastsTableCard({
       />
 
       {sorted.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 px-6 text-center animate-fade-up">
+        <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
           <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-muted/50 border border-dashed border-border">
             <Megaphone className="size-5 text-muted-foreground" />
           </div>

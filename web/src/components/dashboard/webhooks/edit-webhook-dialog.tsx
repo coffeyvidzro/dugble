@@ -94,7 +94,7 @@ function EditWebhookForm({
           eventsError={form.eventsError}
         />
         {form.formError && (
-          <p className="mt-4 text-xs font-medium text-danger animate-fade-up">
+          <p className="mt-4 text-xs font-medium text-danger">
             {form.formError}
           </p>
         )}
@@ -113,13 +113,9 @@ function EditWebhookForm({
         <Button
           type="submit"
           disabled={isPending}
-          className="group/button relative inline-flex flex-1 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20 disabled:pointer-events-none disabled:opacity-60 sm:flex-initial"
+          className="group/button relative inline-flex flex-1 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all disabled:pointer-events-none disabled:opacity-60 sm:flex-initial hover:bg-primary/90"
         >
           {isPending ? "Saving…" : "Save changes"}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-          />
         </Button>
       </DialogFooter>
     </form>

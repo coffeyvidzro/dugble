@@ -43,46 +43,22 @@ export function ProfileSettings() {
       />
 
       <div className="space-y-8">
-        <div
-          className="animate-fade-up"
-          style={{
-            animationDelay: "100ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div>
           <AccountEmailCard
             email={user.email}
             emailVerified={user.email_verified}
           />
         </div>
 
-        <div
-          className="animate-fade-up"
-          style={{
-            animationDelay: "150ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div>
           <PendingInvitesCard />
         </div>
 
-        <div
-          className="animate-fade-up"
-          style={{
-            animationDelay: "200ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div>
           <UserTeamsCard />
         </div>
 
-        <div
-          className="animate-fade-up"
-          style={{
-            animationDelay: "300ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div>
           <DeleteAccountCard currentEmail={user.email} />
         </div>
       </div>

@@ -124,7 +124,7 @@ export function AccountEmailForm({
         </div>
 
         {pending ? (
-          <div className="flex flex-col gap-3 rounded-lg border border-pending/30 bg-pending/10 p-4 animate-fade-up sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 rounded-lg border border-pending/30 bg-pending/10 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
               <p className="text-sm font-medium text-pending">
                 Confirm your new email
@@ -200,9 +200,7 @@ export function AccountEmailForm({
               />
             </div>
             {error && (
-              <p className="text-xs font-medium text-danger animate-fade-up">
-                {error}
-              </p>
+              <p className="text-xs font-medium text-danger">{error}</p>
             )}
           </div>
         )}
@@ -213,7 +211,7 @@ export function AccountEmailForm({
             onClick={handleSave}
             disabled={!canSubmit || changeEmail.isPending}
             className={cn(
-              "group/button relative inline-flex min-w-30 shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20",
+              "group/button relative inline-flex min-w-30 shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all",
               changeEmail.isPending && "opacity-80",
             )}
           >
@@ -221,10 +219,6 @@ export function AccountEmailForm({
               <Loader2 className="size-4 animate-spin" />
             ) : null}
             {changeEmail.isPending ? "Sending..." : "Update email"}
-            <span
-              aria-hidden
-              className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-            />
           </Button>
         </div>
       )}

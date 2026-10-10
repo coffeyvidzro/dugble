@@ -1,5 +1,4 @@
 import { Loader2, Send } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { SendTiming } from "./schedule-card";
@@ -52,7 +51,7 @@ export function ComposeActionsBar({
           onClick={onSubmit}
           disabled={submitting || savingDraft}
           className={cn(
-            "group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20 min-w-40",
+            "group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all min-w-40",
             submitting && "opacity-80",
           )}
         >
@@ -62,10 +61,6 @@ export function ComposeActionsBar({
             <Send className="size-4" />
           )}
           {isEditing && timing === "later" ? "Update schedule" : submitLabel}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-          />
         </Button>
       </div>
     </div>

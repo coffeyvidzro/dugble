@@ -1,51 +1,33 @@
 import {
-  AlertTriangle,
-  Ban,
-  Check,
-  Clock,
-  HelpCircle,
-  XCircle,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+  StatusBadge,
+  type StatusTone,
+} from "@/components/dashboard/shared/status-badge";
 import {
   DOMAIN_STATUS_LABEL,
   type DomainStatus,
 } from "@/types/sender-domain-api";
 
-const STATUS_CONFIG: Record<
-  DomainStatus,
-  { icon: typeof Check; className: string; pulse?: boolean }
-> = {
-  not_started: { icon: HelpCircle, className: "text-muted-foreground" },
-  pending: { icon: Clock, className: "text-pending", pulse: true },
-  verified: { icon: Check, className: "text-signal" },
-  partially_verified: { icon: AlertTriangle, className: "text-pending" },
-  partially_failed: { icon: AlertTriangle, className: "text-danger" },
-  failed: { icon: XCircle, className: "text-danger" },
-  temporary_failure: { icon: AlertTriangle, className: "text-pending" },
-  disabled: { icon: Ban, className: "text-muted-foreground" },
+const STATUS_TONE: Record<DomainStatus, StatusTone> = {
+  not_started: "neutral",
+  pending: "progress",
+  verified: "success",
+  partially_verified: "warning",
+  partially_failed: "danger",
+  failed: "danger",
+  temporary_failure: "warning",
+  disabled: "neutral",
 };
 
-export function DomainStatusBadge({ status }: { status: DomainStatus }) {
-  const config = STATUS_CONFIG[status];
-  const Icon = config.icon;
-
+export function DomainStatusBadge({
+  status,
+  size,
+}: {
+  status: DomainStatus;
+  size?: "sm" | "md";
+}) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 text-sm font-medium",
-        config.className,
-      )}
-    >
-      {config.pulse ? (
-        <span className="relative flex size-1.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-pending opacity-75" />
-          <span className="relative inline-flex size-1.5 rounded-full bg-pending" />
-        </span>
-      ) : (
-        <Icon className="size-3.5" />
-      )}
+    <StatusBadge tone={STATUS_TONE[status]} size={size}>
       {DOMAIN_STATUS_LABEL[status]}
-    </span>
+    </StatusBadge>
   );
 }

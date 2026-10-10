@@ -81,15 +81,11 @@ export function InviteMemberDialog({
     >
       <DialogTrigger
         render={
-          <Button className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20" />
+          <Button className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90" />
         }
       >
         <UserPlus className="size-4" />
         Invite Member
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-        />
       </DialogTrigger>
       <DialogContent className="sm:max-w-md border-border/40 shadow-xl">
         <form onSubmit={handleSubmit}>
@@ -117,9 +113,7 @@ export function InviteMemberDialog({
                 autoFocus
               />
               {error && (
-                <p className="text-xs font-medium text-danger animate-fade-up">
-                  {error}
-                </p>
+                <p className="text-xs font-medium text-danger">{error}</p>
               )}
             </div>
 
@@ -171,14 +165,10 @@ export function InviteMemberDialog({
             </Button>
             <Button
               type="submit"
-              className="group/button relative inline-flex min-w-30 shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
+              className="group/button relative inline-flex min-w-30 shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
             >
               <Send className="size-4" />
               Send Invite
-              <span
-                aria-hidden
-                className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-              />
             </Button>
           </DialogFooter>
         </form>

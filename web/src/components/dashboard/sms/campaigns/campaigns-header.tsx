@@ -1,8 +1,10 @@
 "use client";
 
-import { Megaphone } from "lucide-react";
+import { Megaphone, Plus } from "lucide-react";
 import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
 import { useCampaignsApi } from "@/hooks/queries/use-campaigns-api";
+import { cn } from "@/lib/utils";
 import { PortalHeroHeader } from "../../portal-hero-header";
 
 export function CampaignsHeader() {
@@ -13,25 +15,19 @@ export function CampaignsHeader() {
 
   return (
     <PortalHeroHeader
-      breadcrumb={
-        <>
-          <Link
-            href="/dashboard/sms"
-            className="transition-colors hover:text-foreground"
-          >
-            SMS
-          </Link>
-          {" > Campaigns"}
-        </>
-      }
       title="Campaigns"
       description="One-time SMS sends to a segment, with delivery tracking."
+      actions={
+        <Link
+          href="/dashboard/sms/campaigns/new"
+          className={cn(buttonVariants(), "gap-1.5")}
+        >
+          <Plus className="size-4" />
+          New campaign
+        </Link>
+      }
       badge={
         <>
-          <span className="relative flex size-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-75" />
-            <span className="relative inline-flex size-2 rounded-full bg-signal" />
-          </span>
           <Megaphone className="size-3.5" />
           {activeCount} active
         </>

@@ -20,9 +20,9 @@ export function CountryBreakdownTable({
   countries: CountryDelivery[];
 }) {
   return (
-    <Card className="border-border/40 shadow-sm">
-      <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
-        <CardTitle className="text-xl">By Country</CardTitle>
+    <Card>
+      <CardHeader className="border-b pb-4">
+        <CardTitle>By Country</CardTitle>
         <CardDescription>Delivery performance by destination.</CardDescription>
       </CardHeader>
       <div className="overflow-x-auto">

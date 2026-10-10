@@ -17,7 +17,7 @@ function formatDomainDate(iso: string): string {
 
 export function DomainDetailHeader({ domain }: { domain: SenderDomain }) {
   return (
-    <div className="animate-fade-up mb-8 space-y-4">
+    <div className="mb-8 space-y-4">
       <Link
         href="/dashboard/email/domains"
         className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"

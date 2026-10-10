@@ -11,7 +11,7 @@ export const metadata = constructMetadata({
 
 export default function Page() {
   return (
-    <div className="mx-auto w-full max-w-6xl pb-6">
+    <div className="mx-auto w-full max-w-7xl pb-6">
       <CampaignsHeader />
       <CampaignsList />
     </div>

@@ -10,15 +10,15 @@ export function HistorySearchInput({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="relative w-full sm:w-64">
-      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+    <div className="relative w-full sm:w-64 lg:w-72">
+      <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Search by recipient or message…"
         aria-label="Search messages"
-        className="w-full rounded-lg border border-border/60 bg-muted/20 py-2 pl-9 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
+        className="h-[34px] w-full rounded-lg border bg-background pr-8 pl-8 font-mono text-[13px] text-foreground outline-none transition-shadow placeholder:font-sans placeholder:text-muted-foreground focus-visible:border-signal focus-visible:ring-3 focus-visible:ring-signal/20"
       />
       {value.length > 0 && (
         <button

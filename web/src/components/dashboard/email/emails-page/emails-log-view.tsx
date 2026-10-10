@@ -1,17 +1,18 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { RequireActiveTeam } from "@/components/dashboard/shared/require-active-team";
 import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  ErrorState,
+  RefetchBar,
+  TableSkeleton,
+} from "@/components/dashboard/shared/data-states";
+import { RequireActiveTeam } from "@/components/dashboard/shared/require-active-team";
+import { UpdatedAgo } from "@/components/dashboard/shared/updated-ago";
+import { Card } from "@/components/ui/card";
 import { useEmails } from "@/hooks/queries/use-emails-api";
 import { queryKeys } from "@/lib/api/query-keys";
+import { EmailDetailSheet } from "./email-detail-sheet";
 import { EmailsHeader } from "./emails-header";
 import { EmailsTable } from "./emails-table";
 import { EmailsToolbar } from "./emails-toolbar";
@@ -38,7 +39,15 @@ function EmailsLogViewContent() {
     [page],
   );
 
-  const { data: emails, isPending, isError } = useEmails(params);
+  const {
+    data: emails,
+    isPending,
+    isError,
+    isFetching,
+    dataUpdatedAt,
+    refetch,
+  } = useEmails(params);
+  const [openEmailId, setOpenEmailId] = useState<string | null>(null);
   const pageItems = emails ?? [];
   const hasNextPage = pageItems.length === EMAILS_LIST_PAGE_SIZE;
 
@@ -67,63 +76,66 @@ function EmailsLogViewContent() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl pb-6">
-      <EmailsHeader />
+    <div className="mx-auto w-full max-w-7xl pb-8">
+      <EmailsHeader
+        actions={
+          <>
+            <UpdatedAgo updatedAt={dataUpdatedAt} />
+            <RefreshButton refreshing={refreshing} onRefresh={handleRefresh} />
+            <SendEmailDialog />
+          </>
+        }
+      />
 
-      <div
-        className="animate-fade-up"
-        style={{ animationDelay: "100ms", animationFillMode: "both" }}
-      >
-        <Card className="border-border/40 shadow-sm">
-          <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-border/40 bg-muted/10 pb-4">
-            <div className="space-y-1">
-              <CardTitle className="text-xl">Email Log</CardTitle>
-              <CardDescription>
-                Search and send transactional emails.
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <RefreshButton
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-              />
-              <SendEmailDialog />
-            </div>
-          </CardHeader>
+      <Card className="gap-0 py-0">
+        <EmailsToolbar
+          query={query}
+          onQueryChange={(v) => {
+            setQuery(v);
+            setPage(1);
+          }}
+          statusFilter={statusFilter}
+          onStatusFilterChange={(v) => {
+            setStatusFilter(v);
+            setPage(1);
+          }}
+          resultLabel={
+            isPending
+              ? undefined
+              : `${filtered.length} result${filtered.length === 1 ? "" : "s"}, page ${page}`
+          }
+        />
+        <RefetchBar active={isFetching && !isPending} />
 
-          <EmailsToolbar
-            query={query}
-            onQueryChange={(v) => {
-              setQuery(v);
-              setPage(1);
-            }}
-            statusFilter={statusFilter}
-            onStatusFilterChange={(v) => {
-              setStatusFilter(v);
-              setPage(1);
-            }}
+        {isError ? (
+          <ErrorState
+            title="Couldn't load emails"
+            onRetry={() => void refetch()}
           />
+        ) : isPending ? (
+          <TableSkeleton
+            rows={8}
+            columns={["7rem", "14rem", "minmax(0,1fr)", "5rem"]}
+          />
+        ) : (
+          <EmailsTable
+            emails={filtered}
+            page={page}
+            hasNextPage={hasNextPage}
+            onPageChange={(next) => setPage(Math.max(1, next))}
+            hasActiveFilters={hasActiveFilters}
+            selectedId={openEmailId}
+            onOpen={setOpenEmailId}
+          />
+        )}
+      </Card>
 
-          {isError ? (
-            <p className="py-16 text-center text-sm text-danger">
-              Couldn&apos;t load emails. Try refreshing the page.
-            </p>
-          ) : isPending ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              Loading emails…
-            </div>
-          ) : (
-            <EmailsTable
-              emails={filtered}
-              page={page}
-              hasNextPage={hasNextPage}
-              onPageChange={(next) => setPage(Math.max(1, next))}
-              hasActiveFilters={hasActiveFilters}
-            />
-          )}
-        </Card>
-      </div>
+      <EmailDetailSheet
+        emailId={openEmailId}
+        onOpenChange={(open) => {
+          if (!open) setOpenEmailId(null);
+        }}
+      />
     </div>
   );
 }

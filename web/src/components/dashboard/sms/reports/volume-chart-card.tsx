@@ -10,10 +10,10 @@ import { VolumeChart } from "./volume-chart";
 
 export function VolumeChartCard({ points }: { points: DailyVolumePoint[] }) {
   return (
-    <Card className="border-border/40 shadow-sm">
-      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 border-b border-border/40 bg-muted/10 pb-4">
+    <Card>
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 border-b pb-4">
         <div className="space-y-1">
-          <CardTitle className="text-xl">Messages over time</CardTitle>
+          <CardTitle>Messages over time</CardTitle>
           <CardDescription>
             Sent vs. delivered for the selected period.
           </CardDescription>

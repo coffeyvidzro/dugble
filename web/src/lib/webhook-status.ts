@@ -1,7 +1,9 @@
+import type { StatusTone } from "@/components/dashboard/shared/status-badge";
 import { formatDate } from "@/lib/format-date";
 import type { WebhookEndpoint } from "@/types/webhook";
 
 export type WebhookStatusDisplay = {
+  tone: StatusTone;
   dotClassName: string;
   textClassName: string;
   label: string;
@@ -13,6 +15,7 @@ export function getWebhookStatusDisplay(
 ): WebhookStatusDisplay {
   if (!webhook.enabled) {
     return {
+      tone: webhook.disabled_reason ? "danger" : "neutral",
       dotClassName: "bg-muted-foreground/50",
       textClassName: "text-muted-foreground",
       label: webhook.disabled_reason ? "Auto-disabled" : "Disabled",
@@ -22,9 +25,10 @@ export function getWebhookStatusDisplay(
 
   if (webhook.consecutive_failures > 0) {
     return {
+      tone: "warning",
       dotClassName: "bg-pending",
       textClassName: "text-pending",
-      label: `Active — ${webhook.consecutive_failures} failing`,
+      label: `Failing (${webhook.consecutive_failures})`,
       tooltip: webhook.last_failure_at
         ? `Last failure ${formatDate(webhook.last_failure_at)}`
         : undefined,
@@ -32,6 +36,7 @@ export function getWebhookStatusDisplay(
   }
 
   return {
+    tone: "success",
     dotClassName: "bg-signal",
     textClassName: "text-signal",
     label: "Active",

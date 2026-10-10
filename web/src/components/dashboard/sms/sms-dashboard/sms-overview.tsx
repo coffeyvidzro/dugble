@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ErrorState } from "@/components/dashboard/shared/data-states";
 import { RequireActiveTeam } from "@/components/dashboard/shared/require-active-team";
 import { useSmsAnalytics } from "@/hooks/queries/use-sms-api";
 import { countryCodeToFlag } from "../../shared/country-flag";
@@ -45,43 +46,26 @@ function SmsOverviewContent() {
     .sort((a, b) => b.messages - a.messages);
 
   return (
-    <div className="mx-auto w-full max-w-6xl pb-6">
-      <SmsHeader deliveryRatePct={deliveryRate?.percentage ?? 0} />
-
-      <div className="space-y-6">
-        <div
-          className="flex flex-wrap items-center justify-between gap-3 animate-fade-up"
-          style={{
-            animationDelay: "100ms",
-            animationFillMode: "both",
-          }}
-        >
-          <p className="text-sm text-muted-foreground">
-            Showing stats for the last{" "}
-            <span className="font-medium text-foreground">
-              {SMS_RANGE_DAYS[range]} days
-            </span>
-            .
-          </p>
+    <div className="mx-auto w-full max-w-7xl pb-6">
+      <SmsHeader
+        deliveryRatePct={deliveryRate?.percentage ?? 0}
+        actions={
           <DashboardRangeSelector
             ranges={RANGES}
             labels={SMS_RANGE_LABEL}
             value={range}
             onChange={setRange}
           />
-        </div>
+        }
+      />
 
-        <div
-          className="animate-fade-up"
-          style={{
-            animationDelay: "150ms",
-            animationFillMode: "both",
-          }}
-        >
+      <div className="space-y-6">
+        <div>
           {isError ? (
-            <p className="py-8 text-center text-sm text-danger">
-              Couldn&apos;t load SMS analytics. Try refreshing the page.
-            </p>
+            <ErrorState
+              title="Couldn't load SMS analytics"
+              description="Try refreshing the page."
+            />
           ) : isPending ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="h-32 animate-pulse rounded-xl border border-border/40 bg-muted/20" />
@@ -92,54 +76,24 @@ function SmsOverviewContent() {
           )}
         </div>
 
-        <div
-          className="animate-fade-up"
-          style={{
-            animationDelay: "200ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div>
           <RecentMessagesCard />
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-          <div
-            className="animate-fade-up lg:col-span-3"
-            style={{
-              animationDelay: "225ms",
-              animationFillMode: "both",
-            }}
-          >
+          <div className="lg:col-span-3">
             <DeliveryByCountryCard countries={countryDelivery} />
           </div>
-          <div
-            className="animate-fade-up lg:col-span-2"
-            style={{
-              animationDelay: "250ms",
-              animationFillMode: "both",
-            }}
-          >
+          <div className="lg:col-span-2">
             <WebhookHealthCard />
           </div>
         </div>
 
-        <div
-          className="animate-fade-up"
-          style={{
-            animationDelay: "275ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div>
           <SenderNumbersCard />
         </div>
 
-        <div
-          className="animate-fade-up"
-          style={{
-            animationDelay: "300ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div>
           <QuickstartCard />
         </div>
       </div>

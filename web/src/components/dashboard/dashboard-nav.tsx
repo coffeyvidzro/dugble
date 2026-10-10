@@ -3,14 +3,15 @@ import {
   Ban,
   BarChart3,
   BookOpen,
+  Code2,
   Fingerprint,
   Globe,
-  History as HistoryIcon,
-  Inbox,
+  KeyRound,
   Layers,
   LayoutDashboard,
   LayoutTemplate,
   LineChart,
+  List,
   Mail,
   Megaphone,
   MessageCircle,
@@ -38,6 +39,8 @@ export type DashboardNavGroup = {
 export type DashboardPortal = {
   id: string;
   label: string;
+  /** Short name used in breadcrumbs and command palette groups. */
+  shortLabel: string;
   icon: LucideIcon;
   groups: DashboardNavGroup[];
 };
@@ -46,21 +49,28 @@ export const dashboardPortals: DashboardPortal[] = [
   {
     id: "sms",
     label: "SMS portal",
+    shortLabel: "SMS",
     icon: MessageCircle,
     groups: [
       {
         label: "Overview",
         items: [
           {
-            title: "Dashboard",
+            title: "Overview",
             href: "/dashboard/sms",
             icon: LayoutDashboard,
-            description: "SMS delivery and message logs.",
+            description: "SMS delivery at a glance.",
+          },
+          {
+            title: "Analytics",
+            href: "/dashboard/sms/reports",
+            icon: BarChart3,
+            description: "SMS delivery and engagement reports.",
           },
         ],
       },
       {
-        label: "Communications",
+        label: "Messaging",
         items: [
           {
             title: "Send SMS",
@@ -69,28 +79,27 @@ export const dashboardPortals: DashboardPortal[] = [
             description: "Compose and send an SMS message.",
           },
           {
+            title: "Logs",
+            href: "/dashboard/sms/history",
+            icon: List,
+            description: "Every SMS sent from this workspace.",
+          },
+          {
             title: "Campaigns",
             href: "/dashboard/sms/campaigns",
             icon: Megaphone,
             description: "Scheduled and recurring SMS sends.",
           },
+        ],
+      },
+      {
+        label: "Setup",
+        items: [
           {
             title: "Sender IDs",
             href: "/dashboard/sms/sender-ids",
             icon: Fingerprint,
             description: "Verified sender identities and numbers.",
-          },
-          {
-            title: "Reports",
-            href: "/dashboard/sms/reports",
-            icon: BarChart3,
-            description: "SMS delivery and engagement reports.",
-          },
-          {
-            title: "History",
-            href: "/dashboard/sms/history",
-            icon: HistoryIcon,
-            description: "Full SMS send history.",
           },
         ],
       },
@@ -99,25 +108,26 @@ export const dashboardPortals: DashboardPortal[] = [
   {
     id: "email",
     label: "Email portal",
+    shortLabel: "Email",
     icon: Mail,
     groups: [
       {
         label: "Overview",
         items: [
           {
-            title: "Dashboard",
+            title: "Overview",
             href: "/dashboard/email",
             icon: LayoutDashboard,
-            description: "Email delivery and message logs.",
+            description: "Email delivery at a glance.",
           },
           {
-            title: "Emails",
+            title: "Logs",
             href: "/dashboard/email/emails",
-            icon: Inbox,
-            description: "Outbox and compose.",
+            icon: List,
+            description: "Every email sent from this workspace.",
           },
           {
-            title: "Metrics",
+            title: "Analytics",
             href: "/dashboard/email/metrics",
             icon: LineChart,
             description: "Deliverability charts.",
@@ -152,6 +162,7 @@ export const dashboardPortals: DashboardPortal[] = [
   {
     id: "audience",
     label: "Audience",
+    shortLabel: "Audience",
     icon: Users,
     groups: [
       {
@@ -182,15 +193,52 @@ export const dashboardPortals: DashboardPortal[] = [
     ],
   },
   {
+    id: "developers",
+    label: "Developers",
+    shortLabel: "Developers",
+    icon: Code2,
+    groups: [
+      {
+        label: "Access",
+        items: [
+          {
+            title: "API tokens",
+            href: "/dashboard/developers/api-tokens",
+            icon: KeyRound,
+            description: "Create, scope, and revoke API tokens.",
+          },
+          {
+            title: "Webhooks",
+            href: "/dashboard/developers/webhooks",
+            icon: Radio,
+            description: "Configure delivery event endpoints.",
+          },
+        ],
+      },
+      {
+        label: "Reference",
+        items: [
+          {
+            title: "Documentation",
+            href: "/docs",
+            icon: BookOpen,
+            description: "Full API reference and guides.",
+          },
+        ],
+      },
+    ],
+  },
+  {
     id: "wallet",
-    label: "Wallet & Payment",
+    label: "Billing",
+    shortLabel: "Billing",
     icon: Wallet,
     groups: [
       {
-        label: "Finance",
+        label: "Billing",
         items: [
           {
-            title: "My wallet",
+            title: "Wallet",
             href: "/dashboard/billing/wallet",
             icon: Wallet,
             description: "Balance and top-ups.",
@@ -208,6 +256,7 @@ export const dashboardPortals: DashboardPortal[] = [
   {
     id: "account",
     label: "Account settings",
+    shortLabel: "Settings",
     icon: UserCircle,
     groups: [
       {
@@ -223,7 +272,7 @@ export const dashboardPortals: DashboardPortal[] = [
             title: "Team",
             href: "/dashboard/settings/team",
             icon: Users,
-            description: "Members, invitations, and API tokens.",
+            description: "Members, invitations, and team settings.",
           },
         ],
       },
@@ -238,44 +287,47 @@ export const dashboardPortals: DashboardPortal[] = [
           },
         ],
       },
-      {
-        label: "Developers",
-        items: [
-          {
-            title: "Webhooks",
-            href: "/dashboard/developers/webhooks",
-            icon: Radio,
-            description: "Configure delivery event endpoints.",
-          },
-          {
-            title: "Documentation",
-            href: "/docs",
-            icon: BookOpen,
-            description: "Full API reference and guides.",
-          },
-        ],
-      },
     ],
   },
 ];
 
-export function findPortalForPath(pathname: string): DashboardPortal | null {
+type DashboardNavMatch = {
+  portal: DashboardPortal;
+  item: DashboardNavItem;
+  /** True when the path sits below the item (a detail or "new" page). */
+  isNested: boolean;
+};
+
+function isWithin(pathname: string, href: string): boolean {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+/**
+ * Finds the nav item that owns a path by longest-prefix match, so detail
+ * routes such as `/dashboard/email/domains/[id]` resolve to "Domains".
+ */
+export function findNavMatch(pathname: string): DashboardNavMatch | null {
+  let best: DashboardNavMatch | null = null;
   for (const portal of dashboardPortals) {
     for (const group of portal.groups) {
-      if (group.items.some((item) => item.href === pathname)) {
-        return portal;
+      for (const item of group.items) {
+        if (!item.href.startsWith("/dashboard/")) continue;
+        if (!isWithin(pathname, item.href)) continue;
+        if (!best || item.href.length > best.item.href.length) {
+          best = { portal, item, isNested: pathname !== item.href };
+        }
       }
     }
   }
-  return null;
+  return best;
 }
 
-export function findNavTitle(pathname: string): string {
-  for (const portal of dashboardPortals) {
-    for (const group of portal.groups) {
-      const match = group.items.find((item) => item.href === pathname);
-      if (match) return match.title;
-    }
-  }
-  return "Dashboard";
+export function findPortalForPath(pathname: string): DashboardPortal | null {
+  return findNavMatch(pathname)?.portal ?? null;
+}
+
+/** Label for the segment below a nav item, e.g. `.../campaigns/new`. */
+export function nestedSegmentLabel(pathname: string, href: string): string {
+  const segment = pathname.slice(href.length + 1).split("/")[0] ?? "";
+  return segment === "new" ? "New" : "Details";
 }

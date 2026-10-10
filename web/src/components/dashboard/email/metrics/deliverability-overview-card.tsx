@@ -23,8 +23,8 @@ export function DeliverabilityOverviewCard({
   series: EmailAnalyticsWindow["series"];
 }) {
   return (
-    <Card className="border-border/40 shadow-sm">
-      <CardHeader className="flex flex-col gap-4 border-b border-border/40 bg-muted/10 pb-4 sm:flex-row sm:items-center sm:justify-between">
+    <Card>
+      <CardHeader className="flex flex-col gap-4 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-6 sm:gap-10">
           <div>
             <CardDescription className="font-mono text-[11px] uppercase tracking-widest">

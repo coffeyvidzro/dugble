@@ -1,7 +1,8 @@
 "use client";
 
-import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { LoadingBlock } from "@/components/dashboard/shared/data-states";
 import { useEmail, useEmailEvents } from "@/hooks/queries/use-emails-api";
 import { isTerminalEmailStatus } from "@/types/email-api";
 import { EmailActions } from "./email-actions";
@@ -19,10 +20,11 @@ export function EmailDetailView({ emailId }: { emailId: string }) {
 
   if (emailQuery.isPending) {
     return (
-      <div className="mx-auto flex w-full max-w-5xl items-center justify-center gap-2 pb-6 pt-16 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Loading email…
-      </div>
+      <LoadingBlock
+        label="Loading email…"
+        variant="page"
+        className="mx-auto w-full max-w-5xl pb-6 pt-16"
+      />
     );
   }
 
@@ -50,7 +52,7 @@ export function EmailDetailView({ emailId }: { emailId: string }) {
 
   return (
     <div className="mx-auto w-full max-w-5xl pb-6">
-      <div className="animate-fade-up space-y-3">
+      <div className="space-y-3">
         <Link
           href="/dashboard/email/emails"
           className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
@@ -62,13 +64,7 @@ export function EmailDetailView({ emailId }: { emailId: string }) {
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div
-          className="animate-fade-up space-y-6 lg:col-span-2"
-          style={{
-            animationDelay: "100ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div className="space-y-6 lg:col-span-2">
           <EmailMetaGrid email={email} />
           <EmailActions email={email} isTerminal={isTerminal} />
           <EmailTimeline
@@ -78,13 +74,7 @@ export function EmailDetailView({ emailId }: { emailId: string }) {
           />
         </div>
 
-        <div
-          className="animate-fade-up lg:col-span-1"
-          style={{
-            animationDelay: "150ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div className="lg:col-span-1">
           <EmailContentCard email={email} />
         </div>
       </div>

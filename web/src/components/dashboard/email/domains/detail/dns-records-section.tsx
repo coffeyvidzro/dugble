@@ -12,9 +12,9 @@ export function DnsRecordsSection({ domain }: { domain: SenderDomain }) {
   const spfRecords = domain.records.filter((r) => r.record === "SPF");
 
   return (
-    <Card className="border-border/40 shadow-sm">
-      <CardHeader className="space-y-1 border-b border-border/40 bg-muted/10 pb-4">
-        <CardTitle className="text-xl">Fill in your DNS records</CardTitle>
+    <Card>
+      <CardHeader className="space-y-1 border-b pb-4">
+        <CardTitle>Fill in your DNS records</CardTitle>
         <CardDescription>
           Add the following DNS records with your domain provider.
         </CardDescription>

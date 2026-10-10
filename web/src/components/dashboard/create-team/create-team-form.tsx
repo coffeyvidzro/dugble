@@ -4,10 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type CSSProperties, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
-
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -95,8 +94,7 @@ export function CreateTeamForm() {
     <form
       id="create-team-form"
       onSubmit={handleSubmit(onSubmit)}
-      className="animate-fade-up space-y-6"
-      style={{ animationDelay: "0.08s" } as CSSProperties}
+      className="space-y-6"
     >
       <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/40">
         <div className="space-y-6 px-5 py-6 sm:px-8 sm:py-8">
@@ -195,13 +193,9 @@ export function CreateTeamForm() {
       <div className="flex items-center justify-between gap-3">
         <Link
           href="/dashboard"
-          className="group/button relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border bg-background px-4 py-1.5 font-mono text-sm text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:text-foreground hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
+          className="group/button relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border bg-background px-4 py-1.5 font-mono text-sm text-muted-foreground transition-all hover:border-foreground/30 hover:text-foreground"
         >
           Cancel
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-foreground/10 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-          />
         </Link>
 
         <Button

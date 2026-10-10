@@ -5,7 +5,7 @@ import { env } from "./src/config/env";
 import { buildContentSecurityPolicy } from "./src/lib/security/csp";
 
 const backendUrl = env.BACKEND_URL.replace(/\/+$/, "");
- 
+
 const isDev = process.env.NODE_ENV === "development";
 
 const securityHeaders = [

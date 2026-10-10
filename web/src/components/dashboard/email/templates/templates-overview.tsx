@@ -1,8 +1,11 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { useMemo } from "react";
+import {
+  ErrorState,
+  LoadingBlock,
+} from "@/components/dashboard/shared/data-states";
 import { RequireActiveTeam } from "@/components/dashboard/shared/require-active-team";
 import { useTemplatesApi } from "@/hooks/queries/use-templates-api";
 import { TemplateGrid } from "./template-grid";
@@ -78,27 +81,15 @@ function TemplatesOverviewContent() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl pb-6">
+    <div className="mx-auto w-full max-w-7xl pb-6">
       <TemplatesHeader totalCount={templates.length} />
 
       <div className="space-y-6">
-        <div
-          className="animate-fade-up"
-          style={{
-            animationDelay: "100ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div>
           <TemplatesStats templates={templates} />
         </div>
 
-        <div
-          className="animate-fade-up"
-          style={{
-            animationDelay: "150ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div>
           <TemplatesToolbar
             search={search}
             onSearchChange={setSearch}
@@ -111,22 +102,14 @@ function TemplatesOverviewContent() {
           />
         </div>
 
-        <div
-          className="animate-fade-up"
-          style={{
-            animationDelay: "200ms",
-            animationFillMode: "both",
-          }}
-        >
+        <div>
           {isError ? (
-            <p className="py-16 text-center text-sm text-danger">
-              Couldn&apos;t load templates. Try refreshing the page.
-            </p>
+            <ErrorState
+              title="Couldn't load templates"
+              description="Try refreshing the page."
+            />
           ) : isPending ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              Loading templates…
-            </div>
+            <LoadingBlock label="Loading templates…" />
           ) : filtered.length === 0 ? (
             <TemplatesEmptyState
               variant={hasActiveFilters ? "no-results" : "no-templates"}

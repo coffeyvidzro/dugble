@@ -1,7 +1,11 @@
 "use client";
 
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import {
+  ErrorState,
+  LoadingBlock,
+} from "@/components/dashboard/shared/data-states";
 import {
   Card,
   CardDescription,
@@ -16,21 +20,16 @@ export function RecentSendsList() {
   const { data: sends, isPending, isError } = useSmsMessages({ limit: 5 });
 
   return (
-    <Card className="border-border/40 shadow-sm">
-      <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
-        <CardTitle className="text-xl">Recently sent</CardTitle>
+    <Card>
+      <CardHeader className="border-b pb-4">
+        <CardTitle>Recently sent</CardTitle>
         <CardDescription>One-off messages sent from this page.</CardDescription>
       </CardHeader>
 
       {isPending ? (
-        <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading…
-        </div>
+        <LoadingBlock label="Loading…" />
       ) : isError ? (
-        <p className="py-10 text-center text-sm text-danger">
-          Couldn&apos;t load recent messages.
-        </p>
+        <ErrorState title="Couldn't load recent messages" />
       ) : sends?.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">
           Nothing sent yet. Your first message will show up here.

@@ -71,7 +71,7 @@ export function SendTestDialog({
               <DialogDescription>Delivered to {email}.</DialogDescription>
             </DialogHeader>
 
-            <div className="flex flex-col items-center gap-2 py-4 text-center animate-fade-up">
+            <div className="flex flex-col items-center gap-2 py-4 text-center">
               <div className="flex size-10 items-center justify-center rounded-full bg-signal/10">
                 <Check className="size-5 text-signal" />
               </div>
@@ -127,7 +127,7 @@ export function SendTestDialog({
                 type="button"
                 onClick={handleSend}
                 disabled={!email.trim() || testSend.isPending}
-                className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
+                className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
               >
                 {testSend.isPending ? (
                   <Loader2 className="size-3.5 animate-spin" />
@@ -135,10 +135,6 @@ export function SendTestDialog({
                   <Send className="size-3.5" />
                 )}
                 {testSend.isPending ? "Sending..." : "Send test email"}
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-                />
               </Button>
             </DialogFooter>
           </>

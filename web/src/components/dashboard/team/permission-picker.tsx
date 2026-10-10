@@ -270,7 +270,7 @@ export function PermissionPicker({
             : `${value.length} permission${value.length === 1 ? "" : "s"} selected`}
         </span>
         {activePreset && (
-          <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+          <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary hover:bg-primary/90">
             <Check className="size-3" />
             Matches {PERMISSION_PRESETS[activePreset].label}
           </span>

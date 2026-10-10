@@ -42,12 +42,19 @@ function Button({
     className,
     variant = "default",
     size = "default",
+    cta = false,
     children,
     ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: ButtonPrimitive.Props &
+    VariantProps<typeof buttonVariants> & {
+        /** Marks a page's primary call to action; inside the dashboard only
+         * these keep the hover shimmer. */
+        cta?: boolean;
+    }) {
     return (
         <ButtonPrimitive
             data-slot="button"
+            data-cta={cta ? "" : undefined}
             className={cn(buttonVariants({ variant, size, className }))}
             {...props}
         >
@@ -55,6 +62,7 @@ function Button({
             {variant === "default" && (
                 <span
                     aria-hidden
+                    data-shimmer=""
                     className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-black/10 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
                 />
             )}

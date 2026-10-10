@@ -9,7 +9,7 @@ import { TemplateStatusBadge } from "./template-status-badge";
 
 export function TemplateCard({ template }: { template: TemplateListItem }) {
   return (
-    <Card className="group flex flex-col overflow-hidden border-border/40 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+    <Card className="group flex flex-col overflow-hidden transition-all">
       <Link
         href={`/dashboard/email/templates/${template.id}`}
         className="block p-3 pb-0"

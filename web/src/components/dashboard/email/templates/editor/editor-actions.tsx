@@ -30,14 +30,10 @@ export function EditorActions({
         type="button"
         onClick={onPublish}
         disabled={isSaving}
-        className="group/button relative inline-flex items-center gap-1.5 overflow-hidden rounded-full bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 disabled:pointer-events-none disabled:opacity-60 dark:hover:shadow-black/20"
+        className="group/button relative inline-flex items-center gap-1.5 overflow-hidden rounded-full bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-foreground shadow-sm transition-all disabled:pointer-events-none disabled:opacity-60 hover:bg-primary/90"
       >
         {isSaving && <Loader2 className="size-3.5 animate-spin" />}
         {status === "published" ? "Save changes" : "Publish"}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-        />
       </button>
     </div>
   );

@@ -34,7 +34,7 @@ export function EditorHeader({
   templateId,
 }: EditorHeaderProps) {
   return (
-    <div className="animate-fade-up space-y-3">
+    <div className="space-y-3">
       <Link
         href="/dashboard/email/templates"
         className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"

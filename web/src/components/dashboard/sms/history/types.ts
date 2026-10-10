@@ -24,10 +24,10 @@ export const HISTORY_STATUS_FILTERS: HistoryStatusFilter[] = [
 export type HistoryDateFilter = "24h" | "7d" | "30d" | "90d" | "all";
 
 export const HISTORY_DATE_LABEL: Record<HistoryDateFilter, string> = {
-  "24h": "24h",
-  "7d": "7d",
-  "30d": "30d",
-  "90d": "90d",
+  "24h": "Last 24 hours",
+  "7d": "Last 7 days",
+  "30d": "Last 30 days",
+  "90d": "Last 90 days",
   all: "All time",
 };
 

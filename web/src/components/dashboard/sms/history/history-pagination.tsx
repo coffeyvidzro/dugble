@@ -18,7 +18,7 @@ export function HistoryPagination({
   const end = (page - 1) * pageSize + itemCount;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/40 px-4 py-3 text-sm text-muted-foreground">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-2.5 text-[13px] text-muted-foreground">
       <span>{itemCount === 0 ? "0 results" : `Showing ${start}–${end}`}</span>
       <div className="flex items-center gap-1">
         <button

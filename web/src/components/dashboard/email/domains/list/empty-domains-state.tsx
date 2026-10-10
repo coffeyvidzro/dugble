@@ -1,10 +1,9 @@
 import { Globe } from "lucide-react";
-
 import { AddDomainDialog } from "./add-domain-dialog";
 
 export function EmptyDomainsState() {
   return (
-    <div className="animate-fade-up flex flex-col items-center justify-center rounded-xl border border-dashed border-border px-6 py-16 text-center">
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border px-6 py-16 text-center">
       <div className="mb-4 flex size-12 items-center justify-center rounded-full border border-dashed border-border bg-muted/50">
         <Globe className="size-5 text-muted-foreground" />
       </div>

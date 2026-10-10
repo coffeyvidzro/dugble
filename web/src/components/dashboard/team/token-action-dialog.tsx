@@ -125,7 +125,7 @@ export function TokenActionDialog({
                   })}
                 </div>
                 {expiry === "never" && (
-                  <p className="flex items-start gap-1.5 text-xs text-danger animate-fade-up">
+                  <p className="flex items-start gap-1.5 text-xs text-danger">
                     <ShieldAlert className="mt-0.5 size-3 shrink-0" />
                     Tokens that never expire raise your exposure if one leaks.
                     Prefer a fixed expiry where possible.
@@ -134,9 +134,7 @@ export function TokenActionDialog({
               </div>
 
               {error && (
-                <p className="text-xs font-medium text-danger animate-fade-up">
-                  {error}
-                </p>
+                <p className="text-xs font-medium text-danger">{error}</p>
               )}
             </div>
 

@@ -1,5 +1,4 @@
 import { Calendar, Send } from "lucide-react";
-
 import {
   Card,
   CardContent,
@@ -24,14 +23,14 @@ export function ScheduleCard({
   onScheduledAtChange: (value: string) => void;
 }) {
   return (
-    <Card className="border-border/40 shadow-sm">
-      <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
+    <Card>
+      <CardHeader className="border-b pb-4">
         <div className="flex items-center gap-3">
           <div className="flex size-9 items-center justify-center rounded-lg border border-border/50 bg-muted/40 text-muted-foreground">
             <Calendar className="size-4" />
           </div>
           <div className="space-y-1">
-            <CardTitle className="text-xl">Delivery</CardTitle>
+            <CardTitle>Delivery</CardTitle>
             <CardDescription>
               Send immediately or queue this broadcast for later.
             </CardDescription>
@@ -69,7 +68,7 @@ export function ScheduleCard({
         </div>
 
         {timing === "later" && (
-          <div className="max-w-xs space-y-2 animate-fade-up">
+          <div className="max-w-xs space-y-2">
             <Label htmlFor="broadcast-scheduled-at">Send at</Label>
             <input
               id="broadcast-scheduled-at"

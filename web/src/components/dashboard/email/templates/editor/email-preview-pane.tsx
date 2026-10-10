@@ -24,13 +24,13 @@ export function EmailPreviewPane({
         isHiddenOnMobile ? "hidden lg:flex" : "flex",
       )}
     >
-      <div className="border-b border-border/40 bg-muted/10 px-4 py-2">
+      <div className="border-b px-4 py-2">
         <span className="font-mono text-xs font-medium text-muted-foreground">
           Preview
         </span>
       </div>
       <InboxPreviewStrip subject={subject} previewText={previewText} />
-      <div className="flex min-w-0  flex-1 justify-center overflow-auto bg-muted/20 p-4 sm:p-6">
+      <div className="flex min-w-0 flex-1 justify-center overflow-auto bg-muted/20 p-4 sm:p-6">
         <iframe
           title="Email preview"
           srcDoc={compiledHtml}

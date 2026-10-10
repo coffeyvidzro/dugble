@@ -3,12 +3,14 @@
 import {
   CheckCircle2,
   Copy,
-  Loader2,
   MousePointerClick,
   Send,
   Users,
 } from "lucide-react";
-
+import {
+  ErrorState,
+  LoadingBlock,
+} from "@/components/dashboard/shared/data-states";
 import {
   Dialog,
   DialogContent,
@@ -77,14 +79,9 @@ export function BroadcastDetailDialog({
               <BroadcastStatusBadge status={broadcast.status} />
 
               {analytics.isPending ? (
-                <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-                  <Loader2 className="size-4 animate-spin" />
-                  Loading analytics…
-                </div>
+                <LoadingBlock label="Loading analytics…" />
               ) : analytics.isError || !analytics.data ? (
-                <p className="py-8 text-center text-sm text-danger">
-                  Couldn&apos;t load analytics for this broadcast.
-                </p>
+                <ErrorState title="Couldn't load analytics for this broadcast" />
               ) : (
                 <div className="grid grid-cols-3 gap-3">
                   <div className="rounded-lg border border-border/50 bg-muted/10 p-3 text-center">

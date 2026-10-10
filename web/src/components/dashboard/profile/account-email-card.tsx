@@ -11,7 +11,7 @@ export function AccountEmailCard({
   emailVerified: boolean;
 }) {
   return (
-    <Card className="overflow-hidden border-border/40 shadow-sm">
+    <Card className="overflow-hidden">
       <SectionCardHeader
         icon={Mail}
         title="Email Address"

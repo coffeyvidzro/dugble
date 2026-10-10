@@ -1,53 +1,49 @@
+import { AlertTriangle } from "lucide-react";
 import {
-  AlertTriangle,
-  Ban,
-  Check,
-  Clock,
-  HelpCircle,
-  Loader2,
-  Send,
-  X,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+  StatusBadge,
+  type StatusTone,
+} from "@/components/dashboard/shared/status-badge";
 import { SMS_API_STATUS_LABEL, type SmsApiStatus } from "@/types/sms-api";
 
-const STATUS_CONFIG: Record<
-  SmsApiStatus,
-  { icon: typeof Check; className: string; pulse?: boolean; spin?: boolean }
-> = {
-  queued: { icon: Clock, className: "text-pending", pulse: true },
-  processing: { icon: Loader2, className: "text-pending", spin: true },
-  submitted: { icon: Send, className: "text-pending" },
-  sent: { icon: Send, className: "text-pending" },
-  delivered: { icon: Check, className: "text-signal" },
-  undelivered: { icon: AlertTriangle, className: "text-danger" },
-  rejected: { icon: X, className: "text-danger" },
-  failed: { icon: X, className: "text-danger" },
-  expired: { icon: AlertTriangle, className: "text-danger" },
-  unknown: { icon: HelpCircle, className: "text-muted-foreground" },
-  canceled: { icon: Ban, className: "text-muted-foreground" },
+const STATUS_TONE: Record<SmsApiStatus, StatusTone> = {
+  queued: "progress",
+  processing: "progress",
+  submitted: "progress",
+  sent: "progress",
+  delivered: "success",
+  undelivered: "danger",
+  rejected: "danger",
+  failed: "danger",
+  expired: "danger",
+  unknown: "neutral",
+  canceled: "neutral",
 };
 
-export function SmsStatusBadge({ status }: { status: SmsApiStatus }) {
-  const config = STATUS_CONFIG[status];
-  const Icon = config.icon;
+export function smsStatusTone(status: SmsApiStatus): StatusTone {
+  return STATUS_TONE[status];
+}
 
+const TRIANGLE_STATUSES: SmsApiStatus[] = ["undelivered", "expired"];
+
+export function SmsStatusBadge({
+  status,
+  live = false,
+  size,
+}: {
+  status: SmsApiStatus;
+  /** Pulse the mark while the message is being polled for updates. */
+  live?: boolean;
+  size?: "sm" | "md";
+}) {
+  const tone = STATUS_TONE[status];
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 text-sm font-medium",
-        config.className,
-      )}
+    <StatusBadge
+      tone={tone}
+      size={size}
+      live={live && tone === "progress"}
+      icon={TRIANGLE_STATUSES.includes(status) ? AlertTriangle : undefined}
     >
-      {config.pulse ? (
-        <span className="relative flex size-1.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-pending opacity-75" />
-          <span className="relative inline-flex size-1.5 rounded-full bg-pending" />
-        </span>
-      ) : (
-        <Icon className={cn("size-3.5", config.spin && "animate-spin")} />
-      )}
       {SMS_API_STATUS_LABEL[status]}
-    </span>
+    </StatusBadge>
   );
 }

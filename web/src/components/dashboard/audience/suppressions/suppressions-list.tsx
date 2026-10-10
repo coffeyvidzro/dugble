@@ -47,7 +47,7 @@ export function SuppressionsList() {
 
   return (
     <>
-      <Card className="border-border/40 shadow-sm">
+      <Card>
         <ListCardHeader
           title="Suppressed addresses"
           description={`${items.length} suppression${

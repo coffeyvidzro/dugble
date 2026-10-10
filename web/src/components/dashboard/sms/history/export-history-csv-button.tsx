@@ -44,7 +44,7 @@ export function ExportHistoryCsvButton({
       type="button"
       onClick={handleExport}
       disabled={messages.length === 0}
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border/60 px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/40 disabled:pointer-events-none disabled:opacity-50"
+      className="inline-flex h-[34px] shrink-0 items-center gap-1.5 rounded-full border bg-background px-3.5 text-[13px] font-medium text-foreground transition-colors hover:bg-muted/50 disabled:pointer-events-none disabled:opacity-50"
     >
       <Download className="size-3.5" />
       Export CSV

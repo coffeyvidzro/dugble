@@ -65,8 +65,8 @@ export function RateMetricCard({
         : TrendingDown;
 
   return (
-    <Card className="overflow-hidden border-border/40 shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between gap-2 border-b border-border/40 bg-muted/10 pb-4">
+    <Card className="overflow-hidden">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 border-b pb-4">
         <div className="flex items-center gap-1.5">
           <CardDescription className="font-mono text-[11px] uppercase tracking-widest">
             {title}

@@ -143,7 +143,6 @@ export function SenderIdDetailSheet({
           </>
         )}
       </SheetContent>
-      s
     </Sheet>
   );
 }

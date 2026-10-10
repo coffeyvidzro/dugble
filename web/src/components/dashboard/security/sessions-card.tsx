@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { SectionCardHeader } from "@/components/dashboard/profile/section-card-header";
 import { ConfirmDialog } from "@/components/dashboard/shared/confirm-dialog";
+import { ErrorState } from "@/components/dashboard/shared/data-states";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useRevokeSessions, useSessions } from "@/hooks/queries/use-security";
@@ -56,7 +57,7 @@ export function SessionsCard() {
   }
 
   return (
-    <Card className="overflow-hidden border-border/40 shadow-sm">
+    <Card className="overflow-hidden">
       <SectionCardHeader
         icon={MonitorSmartphone}
         title="Active sessions"
@@ -68,9 +69,7 @@ export function SessionsCard() {
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
           </div>
         ) : sessions.isError ? (
-          <p className="py-8 text-center text-sm text-danger">
-            Couldn&apos;t load your sessions.
-          </p>
+          <ErrorState title="Couldn't load your sessions" />
         ) : active.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
             No active sessions.

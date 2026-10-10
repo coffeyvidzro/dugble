@@ -1,8 +1,10 @@
 "use client";
 
-import { AlertTriangle, ArrowRight, Loader2, PlusCircle } from "lucide-react";
+import { AlertTriangle, ArrowRight, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { CopyButton } from "@/components/dashboard/shared/copy-button";
+import { LoadingBlock } from "@/components/dashboard/shared/data-states";
+import { StatusBadge } from "@/components/dashboard/shared/status-badge";
 import {
   Card,
   CardDescription,
@@ -10,7 +12,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useWebhookEndpoints } from "@/hooks/queries/use-webhooks";
-import { cn } from "@/lib/utils";
 import { getWebhookStatusDisplay } from "@/lib/webhook-status";
 import { formatRelativeTime } from "./types";
 
@@ -20,33 +21,26 @@ export function WebhookHealthCard() {
   const extraCount = endpoints ? Math.max(endpoints.length - 1, 0) : 0;
 
   return (
-    <Card className="h-full border-border/40 shadow-sm">
-      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 border-b border-border/40 bg-muted/10 pb-4">
+    <Card className="h-full">
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 border-b pb-4">
         <div className="space-y-1">
-          <CardTitle className="text-xl">Webhooks</CardTitle>
+          <CardTitle>Webhooks</CardTitle>
           <CardDescription>
             Delivery status for your configured endpoint.
           </CardDescription>
         </div>
         <Link
           href="/dashboard/developers/webhooks"
-          className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 font-mono text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/20"
+          className="group/button relative inline-flex shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
         >
           Manage webhooks
           <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover/button:translate-x-full motion-reduce:hidden"
-          />
         </Link>
       </CardHeader>
 
       <div className="space-y-4 p-4">
         {isPending ? (
-          <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            Loading…
-          </div>
+          <LoadingBlock label="Loading…" />
         ) : isError ? (
           <div className="flex items-center gap-2 rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger">
             <AlertTriangle className="size-4 shrink-0" />
@@ -87,16 +81,9 @@ function WebhookHealthDetails({
   return (
     <>
       <div className="flex items-center justify-between">
-        <span
-          className={cn(
-            "inline-flex items-center gap-1.5 text-sm font-medium",
-            display.textClassName,
-          )}
-          title={display.tooltip}
-        >
-          <span className={cn("size-2 rounded-full", display.dotClassName)} />
+        <StatusBadge tone={display.tone} title={display.tooltip}>
           {display.label}
-        </span>
+        </StatusBadge>
         {extraCount > 0 && (
           <span className="font-mono text-xs text-muted-foreground">
             +{extraCount} more

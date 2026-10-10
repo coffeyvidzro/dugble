@@ -14,7 +14,7 @@ export function TemplatesEmptyState({
   const isNoResults = variant === "no-results";
 
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16 px-6 text-center animate-fade-up">
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16 px-6 text-center">
       <div className="mb-4 flex size-12 items-center justify-center rounded-full border border-dashed border-border bg-muted/50">
         {isNoResults ? (
           <SearchX className="size-5 text-muted-foreground" />

@@ -12,7 +12,7 @@ export function DomainDangerZone({ domain }: { domain: SenderDomain }) {
     <Card className="border-red-200 bg-red-50/50 shadow-sm dark:border-red-900/50 dark:bg-red-950/20">
       <CardHeader className="flex flex-col gap-4 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <CardTitle className="text-lg text-red-600 dark:text-red-500">
+          <CardTitle className="text-red-600 dark:text-red-500">
             Danger zone
           </CardTitle>
           <CardDescription>

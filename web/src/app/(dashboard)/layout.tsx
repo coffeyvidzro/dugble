@@ -29,7 +29,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <RootDocument nonce={nonce}>
+    <RootDocument nonce={nonce} surface="dashboard">
       <ActiveTeamStoreProvider initialTeamId={teamId}>
         <HydrationBoundary state={dehydrate(queryClient)}>
           <DashboardShell user={session.user}>{children}</DashboardShell>

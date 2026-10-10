@@ -1,7 +1,6 @@
 "use client";
 
 import { Loader2, Mail } from "lucide-react";
-
 import {
   Card,
   CardContent,
@@ -55,14 +54,14 @@ export function BroadcastDetailsCard({
     "w-full rounded-lg border border-border bg-muted/20 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground shadow-sm transition-colors focus:border-primary focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/40";
 
   return (
-    <Card className="border-border/40 shadow-sm">
-      <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
+    <Card>
+      <CardHeader className="border-b pb-4">
         <div className="flex items-center gap-3">
           <div className="flex size-9 items-center justify-center rounded-lg border border-border/50 bg-muted/40 text-muted-foreground">
             <Mail className="size-4" />
           </div>
           <div className="space-y-1">
-            <CardTitle className="text-xl">Broadcast Details</CardTitle>
+            <CardTitle>Broadcast Details</CardTitle>
             <CardDescription>
               The subject line, preview text, and sender identity recipients
               will see.

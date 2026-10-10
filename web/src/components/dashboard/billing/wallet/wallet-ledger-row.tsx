@@ -23,14 +23,14 @@ export function WalletLedgerRow({
   const isCredit = entry.amount_units > 0;
 
   return (
-    <TableRow className="border-b border-border/40 last:border-0">
+    <TableRow>
       <TableCell>
         <div className="flex items-center gap-3">
           <div
             className={cn(
               "flex size-8 shrink-0 items-center justify-center rounded-lg border",
               isCredit
-                ? "border-signal/30 bg-signal/10 text-signal"
+                ? "border-signal/30 bg-signal-subtle text-signal"
                 : "border-border/50 bg-muted/30 text-muted-foreground",
             )}
           >
@@ -60,7 +60,7 @@ export function WalletLedgerRow({
       </TableCell>
       <TableCell
         className={cn(
-          "text-right font-mono text-sm font-medium",
+          "text-right font-mono text-[13px] font-medium tabular-nums",
           isCredit ? "text-signal" : "text-foreground",
         )}
       >

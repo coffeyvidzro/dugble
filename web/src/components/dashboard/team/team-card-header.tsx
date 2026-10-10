@@ -19,7 +19,7 @@ export function TeamCardHeader({
     <CardHeader
       className={cn(
         "flex-row items-center gap-3 pb-4",
-        danger ? "" : "border-b border-border/40 bg-muted/10",
+        danger ? "" : "border-b",
       )}
     >
       <div

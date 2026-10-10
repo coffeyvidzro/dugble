@@ -147,7 +147,6 @@ export function MobileNav({
                       aria-hidden
                       className="absolute right-2 top-2 flex size-1.5"
                     >
-                      <span className="absolute inline-flex size-full animate-ping rounded-full bg-signal/60 motion-reduce:animate-none" />
                       <span className="relative inline-flex size-1.5 rounded-full bg-signal" />
                     </span>
                   )}

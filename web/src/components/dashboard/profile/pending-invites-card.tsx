@@ -8,7 +8,7 @@ export function PendingInvitesCard() {
   const { data: invites, isPending, isError, error } = useMyInvitations();
 
   return (
-    <Card className="border-border/40 shadow-sm">
+    <Card>
       <SectionCardHeader
         icon={Inbox}
         title="Invites"
@@ -27,7 +27,7 @@ export function PendingInvitesCard() {
           <p className="mt-1 text-sm text-muted-foreground">{error.message}</p>
         </div>
       ) : invites.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 px-6 text-center animate-fade-up">
+        <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
           <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-muted/50 border border-dashed border-border">
             <Inbox className="size-5 text-muted-foreground" />
           </div>

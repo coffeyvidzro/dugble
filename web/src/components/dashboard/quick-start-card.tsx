@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, Circle } from "lucide-react";
 import Link from "next/link";
 import {
   Card,
@@ -41,7 +41,7 @@ export function QuickStartCard() {
     },
     {
       title: "Create an API token",
-      href: "/dashboard/settings/team",
+      href: "/dashboard/developers/api-tokens",
       isComplete: hasToken,
     },
     {
@@ -63,49 +63,64 @@ export function QuickStartCard() {
 
   const completed = quickStart.filter((step) => step.isComplete).length;
 
+  const allDone = completed === quickStart.length;
+
   return (
-    <Card>
+    <Card className="gap-4">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Quick start</CardTitle>
-          <span className="font-mono text-xs text-muted-foreground">
-            {completed} of {quickStart.length} complete
+        <div className="flex items-baseline justify-between gap-3">
+          <CardTitle>
+            {allDone ? "Setup complete" : "Finish setting up"}
+          </CardTitle>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {completed} of {quickStart.length} done
           </span>
         </div>
         <CardDescription>
-          Complete these steps to send your first Dugble message.
+          {allDone
+            ? "Your workspace is ready to send."
+            : "Complete these steps to send your first Dugble message."}
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <ul className="space-y-3">
+      <CardContent className="space-y-3">
+        <div
+          aria-hidden
+          className="h-1.5 overflow-hidden rounded-full bg-muted"
+        >
+          <div
+            className="h-full rounded-full bg-signal transition-[width] duration-500"
+            style={{ width: `${(completed / quickStart.length) * 100}%` }}
+          />
+        </div>
+        <ul className="-mx-2">
           {quickStart.map((item) => (
             <li key={item.title}>
               <Link
                 href={item.href}
-                className={cn(
-                  "group flex items-center gap-3 rounded-2xl border p-3 text-sm transition-colors hover:border-signal/40",
-                  item.isComplete && "bg-muted/30 border-transparent",
-                )}
+                className="group flex items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-muted/60"
               >
-                <span className="flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground">
-                  {item.isComplete ? (
-                    <CheckCircle2 className="size-5 text-signal" />
-                  ) : (
-                    <span className="flex size-full items-center justify-center rounded-md border text-xs">
-                      □
-                    </span>
-                  )}
-                </span>
+                {item.isComplete ? (
+                  <CheckCircle2
+                    aria-label="Done"
+                    className="size-[18px] shrink-0 text-signal"
+                  />
+                ) : (
+                  <Circle
+                    aria-label="To do"
+                    strokeDasharray="3 2.5"
+                    className="size-[18px] shrink-0 text-muted-foreground/60"
+                  />
+                )}
                 <span
                   className={cn(
                     "flex-1",
-                    item.isComplete && "text-muted-foreground line-through",
+                    item.isComplete && "text-muted-foreground",
                   )}
                 >
                   {item.title}
                 </span>
                 {!item.isComplete && (
-                  <ArrowRight className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                  <ArrowRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
                 )}
               </Link>
             </li>

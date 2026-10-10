@@ -7,7 +7,33 @@ function openCommandPalette() {
   window.dispatchEvent(new Event("dugble:open-command-palette"));
 }
 
-export function SearchTrigger({ className }: { className?: string }) {
+export function SearchTrigger({
+  className,
+  variant = "pill",
+}: {
+  className?: string;
+  /** `field` renders a wide, quiet search field for the dashboard top bar. */
+  variant?: "pill" | "field";
+}) {
+  if (variant === "field") {
+    return (
+      <button
+        type="button"
+        onClick={openCommandPalette}
+        className={cn(
+          "inline-flex h-8 w-60 items-center gap-2 rounded-lg border bg-muted/40 pr-1.5 pl-2.5 text-[13px] text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground",
+          className,
+        )}
+      >
+        <Search className="size-3.5 shrink-0" />
+        <span className="flex-1 truncate text-left">Search pages and logs</span>
+        <kbd className="rounded border bg-background px-1.5 py-px font-mono text-[11px] text-muted-foreground">
+          ⌘K
+        </kbd>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"

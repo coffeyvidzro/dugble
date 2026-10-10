@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
+import { ErrorState } from "@/components/dashboard/shared/data-states";
 import {
   Sheet,
   SheetContent,
@@ -37,9 +38,7 @@ export function TemplatePreviewSheet({
               Rendering preview…
             </div>
           ) : preview.isError ? (
-            <p className="py-16 text-center text-sm text-danger">
-              Couldn&apos;t render a preview for this template.
-            </p>
+            <ErrorState title="Couldn't render a preview for this template" />
           ) : preview.data ? (
             <>
               <div className="overflow-hidden rounded-lg border border-border/40">

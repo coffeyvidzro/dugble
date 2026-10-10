@@ -5,7 +5,7 @@ import { TeamMembersClient } from "./team-members-client";
 
 export function TeamMembers({ teamId }: { teamId: string }) {
   return (
-    <Card className="border-border/40 shadow-sm">
+    <Card>
       <TeamCardHeader
         icon={Users}
         title="Members"

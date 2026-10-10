@@ -1,6 +1,9 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import {
+  ErrorState,
+  LoadingBlock,
+} from "@/components/dashboard/shared/data-states";
 import { RequireActiveTeam } from "@/components/dashboard/shared/require-active-team";
 import {
   usePlans,
@@ -27,23 +30,15 @@ function PlanOverviewContent() {
       <PlanHeader status={subscriptionQuery.data?.status ?? null} />
 
       {isError ? (
-        <p className="py-16 text-center text-sm text-danger">
-          Couldn&apos;t load your billing details. Try refreshing the page.
-        </p>
+        <ErrorState
+          title="Couldn't load your billing details"
+          description="Try refreshing the page."
+        />
       ) : !subscription || !plans ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading plan details…
-        </div>
+        <LoadingBlock label="Loading plan details…" variant="page" />
       ) : (
         <div className="space-y-10">
-          <div
-            className="animate-fade-up space-y-4"
-            style={{
-              animationDelay: "80ms",
-              animationFillMode: "both",
-            }}
-          >
+          <div className="space-y-4">
             <PendingChangeBanner
               subscription={subscriptionQuery.data}
               plans={plansQuery.data}
@@ -54,32 +49,15 @@ function PlanOverviewContent() {
             />
           </div>
 
-          <div
-            className="animate-fade-up"
-            style={{
-              animationDelay: "140ms",
-              animationFillMode: "both",
-            }}
-          >
+          <div>
             <PlanPickerGrid plans={plansQuery.data} />
           </div>
 
-          <div
-            className="animate-fade-up"
-            style={{
-              animationDelay: "200ms",
-              animationFillMode: "both",
-            }}
-          >
+          <div>
             {chargesQuery.isError ? (
-              <p className="py-8 text-center text-sm text-danger">
-                Couldn&apos;t load billing history.
-              </p>
+              <ErrorState title="Couldn't load billing history" />
             ) : chargesQuery.isPending ? (
-              <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" />
-                Loading billing history…
-              </div>
+              <LoadingBlock label="Loading billing history…" />
             ) : (
               <ChargesTable charges={chargesQuery.data?.charges ?? []} />
             )}
